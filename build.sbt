@@ -11,6 +11,7 @@ lazy val commonSettings = Seq(
     "-unchecked", 
     "-feature", 
     "-deprecation",
+    "-Ypartial-unification",
     "-Ywarn-unused:imports,privates,-patvars,-locals,params,-implicits"
   ),
   resolvers += Resolver.sonatypeRepo("releases"),
