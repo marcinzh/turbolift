@@ -35,10 +35,7 @@ object HandlerStack {
 private[abstraction] final class StackedHandler[M[+_], U, T[_[+_], +_], V](
   val impure: ImpureHandler[T],
   val next: HandlerStack[M, U]
-) extends HandlerStack[
-  T[M, +?],
-  U with V
-] {
+) extends HandlerStack[T[M, +?], U with V] {
   private implicit def M: MonadPar[M] = next
   private type TM[+A] = T[M, A]
 
