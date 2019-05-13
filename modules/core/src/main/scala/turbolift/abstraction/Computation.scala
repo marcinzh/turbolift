@@ -22,7 +22,7 @@ sealed trait Computation[+A, -U] {
   final def **>![B, V](that : => B !! V): B !! U with V = flatMap(_ => that)
 
   final def void: Unit !! U = map(_ => ())
-  final def upCast[V <: U] = this: A !! V
+  final def widen[V <: U] = this: A !! V
   final def forceFilterable = this: A !! U with EffectWithFilter
 }
 
