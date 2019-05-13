@@ -16,6 +16,7 @@ trait ImpureHandler[T[_[+_], +_]] {
 
   def decode[M[+_] : MonadPar] : Decode[M]
 
-  // def empty_?[M[+_] : MonadPar] : Option[T[M, Nothing]]
+  final type Encoded[M[+_], A] = Decode[M] => Decode[M]#Op[A]
+
   val isFilterable: Boolean	
 }

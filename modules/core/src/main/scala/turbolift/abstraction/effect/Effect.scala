@@ -40,7 +40,6 @@ sealed trait AnyEffect[Z <: Signature] extends Signature {
 
 trait Effect[Z <: Signature] extends AnyEffect[Z] {
   trait ThisHandler[T[_[+_], +_]] extends super.ThisHandler[T] {
-    // final override val empty_?[M[+_] : MonadPar] : Option[T[M, Nothing]] = None
     final override val isFilterable = false
   }
 
@@ -56,7 +55,6 @@ trait FilterableEffect[Z <: FailSig] extends AnyEffect[Z] with FailSig with Effe
 
   trait ThisHandler[T[_[+_], +_]] extends super.ThisHandler[T] {
     trait Decode[M[+_]] extends super.Decode[M] with FailSig
-    // final override def empty_?[M[+_] : MonadPar] : Option[T[M, Nothing]] = Some(???)
     final override val isFilterable = true
   }
 

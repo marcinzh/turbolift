@@ -47,23 +47,16 @@ private[abstraction] final class StackedHandler[M[+_], U, T[_[+_], +_], V](
   def zipPar[A, B](ma: TM[A], mb: TM[B]): TM[(A, B)] = impure.zipPar(ma, mb)
 
   private val decode = impure.decode[M]
+
   def dispatch[A, Z <: Signature](effectId: AnyRef, op: Z => Z#Op[A]): TM[A] =
     if (effectId eq impure.effectId)
-      op.asInstanceOf[impure.Decode[M] => impure.Decode[M]#Op[A]](decode)
+      op.asInstanceOf[impure.Encoded[M, A]](decode)
     else
       impure.lift(next.dispatch(effectId, op))
 
   def dispatchFail: TM[Nothing] =
     if(impure.isFilterable)
-      FailSig.encodeFail.asInstanceOf[impure.Decode[M] => impure.Decode[M]#Op[Nothing]](decode)
+      FailSig.encodeFail.asInstanceOf[impure.Encoded[M, Nothing]](decode)
     else
       impure.lift(next.dispatchFail)
-
-    
-  //@#@ [M]
-  // def dispatchFail: TM[Nothing] =
-  // 	impure.empty_?[M] match {
-  // 		case Some(tma) => tma
-  // 		case None => impure.lift(next.dispatchFail)
-  // 	}
 }
