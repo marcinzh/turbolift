@@ -23,3 +23,12 @@ trait Monoid[T] extends Semigroup[T] {
 object Monoid {
   def apply[T](implicit ev: Monoid[T]) = ev
 }
+
+
+trait NonEmpty[X, T] {
+   def nonEmpty(x: X): T
+}
+
+object NonEmpty {
+	def apply[X, T](implicit ev: NonEmpty[X, T]) = ev
+}
