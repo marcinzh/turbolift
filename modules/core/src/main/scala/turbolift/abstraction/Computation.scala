@@ -77,7 +77,8 @@ trait ComputationExports {
 
   implicit class ComputationExtension[A, U](thiz: A !! U) {
     def run(implicit ev: CanRunPure[U]): A = ev(thiz).run_!(HandlerStack.pure)
-    def runWith[M[+_], V](h: HandlerStack[M, V])(implicit ev: CanRunImpure[U, V]): M[A] = ev(thiz).run_!(h)
+    def runWith[H <: PartialHandler](h: H)(implicit ev: CanRunImpure[U, h.Effects]) : h.Result[A] =
+      h.doHandle[A, Any](ev(thiz)).run
 
     def handleWith[V] : HandleWithApply[V] = new HandleWithApply[V]
     class HandleWithApply[V] {

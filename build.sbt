@@ -12,7 +12,8 @@ lazy val commonSettings = Seq(
     "-feature", 
     "-deprecation",
     "-Ypartial-unification",
-    "-Ywarn-unused:imports,privates,-patvars,-locals,params,-implicits"
+    // "-Ywarn-unused:imports,privates,-patvars,-locals,params,-implicits"
+    // "-Ywarn-unused:privates,-patvars,-locals,params,-implicits"
   ),
   resolvers += Resolver.sonatypeRepo("releases"),
   libraryDependencies += compilerPlugin("org.typelevel" % "kind-projector" % "0.10.0" cross CrossVersion.binary),
