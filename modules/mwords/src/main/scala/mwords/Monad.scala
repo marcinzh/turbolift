@@ -10,7 +10,7 @@ object Functor {
 }
 
 trait FunctorExports {
-  implicit class Functor_syntax[A, F[_]: Functor](thiz: F[A]) {
+  implicit class FunctorSyntax[A, F[_]: Functor](thiz: F[A]) {
     def map[B](f: A => B): F[B] = Functor[F].map(thiz)(f)
   }
 }
@@ -31,7 +31,7 @@ object Monad {
 }
 
 trait MonadExports {
-  implicit class Monad_syntax[A, F[_]: Monad](thiz: F[A]) {
+  implicit class MonadSyntax[A, F[_]: Monad](thiz: F[A]) {
     def flatMap[B](f: A => F[B]): F[B] = Monad[F].flatMap(thiz)(f)
     def flatten(implicit ev: A <:< F[A]): F[A] = Monad[F].flatMap(thiz)(ev)
     def **![B](that : => F[B]): F[(A, B)] = Monad[F].zipSeq(thiz, that)
@@ -58,7 +58,7 @@ object MonadPar {
 }
 
 trait MonadParExports {
-  implicit class MonadPar_syntax[F[_]: MonadPar, A](thiz: F[A]) {
+  implicit class MonadParSyntax[F[_]: MonadPar, A](thiz: F[A]) {
     def *![B](that: F[B]): F[(A, B)] = MonadPar[F].zipPar(thiz, that)
     def *<![B](that: F[B]): F[A] = MonadPar[F].zipPar1st(thiz, that)
     def *>![B](that: F[B]): F[B] = MonadPar[F].zipPar2nd(thiz, that)
