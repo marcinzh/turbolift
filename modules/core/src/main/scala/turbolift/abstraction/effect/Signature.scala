@@ -10,5 +10,5 @@ trait FailSig extends Signature {
 }
 
 private[abstraction] object FailSig {
-  def encodeFail = (sig: FailSig) => sig.fail
+  val encodeFail = (sig: FailSig) => sig.fail
 }
