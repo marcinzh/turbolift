@@ -1,7 +1,7 @@
 package turbolift.abstraction.effect
 // import mwords._
 import turbolift.abstraction.{!!, Return}
-import turbolift.abstraction.ComputationTags.Dispatch
+import turbolift.abstraction.ComputationCases.Dispatch
 import turbolift.abstraction.handlers.{ImpureHandler, PartialHandler}
 
 

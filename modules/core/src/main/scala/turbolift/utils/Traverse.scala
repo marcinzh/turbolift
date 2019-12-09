@@ -5,7 +5,7 @@ import scala.collection.generic.CanBuildFrom
 
 trait TraverseExports {
   implicit class IterableOfComputationExtension[+A, -U, S[+X] <: Iterable[X]](thiz: S[A !! U]) {
-    def traverseVoid: Unit !! U = thiz.foldLeft(Return().widen[U])(_ *<! _)
+    def traverseVoid: Unit !! U = thiz.foldLeft(Return().upCast[U])(_ *<! _)
 
     def traverseVoidShort: Unit !! U = {
       def loop(todos: Iterable[A !! U]): Unit !! U =
@@ -21,7 +21,7 @@ trait TraverseExports {
 
   implicit class IterableOfComputationCBFExtension[+A, -U, S[+X] <: Iterable[X]](thiz: S[A !! U])(implicit cbf: CanBuildFrom[S[A !! U], A, S[A]]) {
     def traverse: S[A] !! U =
-      thiz.foldLeft(Return(Vector.empty[A]).widen[U]) { 
+      thiz.foldLeft(Return(Vector.empty[A]).upCast[U]) { 
         case (as_!, a_!) => (as_! *! a_!).map { case (as, a) => as :+ a } 
       }
       .map(as => (cbf() ++= as).result())

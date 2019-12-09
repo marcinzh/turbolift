@@ -2,7 +2,7 @@ package turbolift.abstraction
 import mwords._
 import turbolift.abstraction.effect.{Signature, EffectWithFilter}
 import turbolift.abstraction.handlers.{HandlerStack, PartialHandler, CanRunPure, CanRunImpure, CanHandle}
-import ComputationTags._
+import ComputationCases._
 
 
 sealed trait Computation[+A, -U] {
@@ -22,16 +22,16 @@ sealed trait Computation[+A, -U] {
   final def **>![B, V](that : => B !! V): B !! U with V = flatMap(_ => that)
 
   final def void: Unit !! U = map(_ => ())
-  final def widen[V <: U] = this: A !! V
+  final def upCast[V <: U] = this: A !! V
   final def forceFilterable = this: A !! U with EffectWithFilter
 }
 
+
 object Computation {
-  implicit def monadInstance[U] : MonadPar[Computation[?, U]] = new MonadPar[Computation[?, U]] {
-    def pure[A](a: A): A !! U = Return(a)
-    def flatMap[A, B](ma: A !! U)(f: A => B !! U): B !! U = ma.flatMap(f)
-    def zipPar[A, B](ma: A !! U, mb: B !! U): (A, B) !! U = ma *! mb
-  }
+  def pure(): Unit !! Any = Return()
+  def pure[A](a: A): A !! Any = Return(a)
+  def fail: Nothing !! Any = Fail
+  def defer[A, U](ua: => A !! U): A !! U = Return().flatMap(_ => ua)
 }
 
 
@@ -42,7 +42,7 @@ object Return {
 }
 
 
-private[abstraction] object ComputationTags {
+private[abstraction] object ComputationCases {
   final class Pure[+A](value: A) extends Computation[A, Any] {
     def run_![M[+_]](h: HandlerStack[M, Any]): M[A] = h.pure(value)
   }
@@ -72,11 +72,22 @@ private[abstraction] object ComputationTags {
 }
 
 
+object ComputationInstances {
+  implicit def monad[U] : MonadPar[Computation[?, U]] = new MonadPar[Computation[?, U]] {
+    def pure[A](a: A): A !! U = Return(a)
+    def flatMap[A, B](ma: A !! U)(f: A => B !! U): B !! U = ma.flatMap(f)
+    def zipPar[A, B](ma: A !! U, mb: B !! U): (A, B) !! U = ma *! mb
+  }
+}
+
+
 trait ComputationExports {
   type !![+A, -U] = Computation[A, U]
+  def !! = Computation
 
   implicit class ComputationExtension[A, U](thiz: A !! U) {
     def run(implicit ev: CanRunPure[U]): A = ev(thiz).run_!(HandlerStack.pure)
+    
     def runWith[H <: PartialHandler](h: H)(implicit ev: CanRunImpure[U, h.Effects]) : h.Result[A] =
       h.doHandle[A, Any](ev(thiz)).run
 
