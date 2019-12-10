@@ -41,7 +41,7 @@ class RepeatedlyTest extends Specification with CanStackOverflow {
     def many[A, U](eff: A !! U) = Vector.fill(TooBigForStack)(eff)
     List(
       new Mapper("chained") {
-        def apply[A, U](eff: A !! U) = many(eff).reduce((a, b) => a.flatMap(_ => b))
+        def apply[A, U](eff: A !! U) = many(eff).reduce(_ **>! _)
       },
       new Mapper("traversed") {
         def apply[A, U](eff: A !! U) = many(eff).traverse
