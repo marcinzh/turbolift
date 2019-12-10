@@ -6,8 +6,6 @@ import ComputationCases._
 
 
 sealed trait Computation[+A, -U] {
-  private[abstraction] def run_![M[+_]](h: HandlerStack[M, U]): M[A]
-
   final def map[B](f: A => B): B !! U = new FlatMap(this, f andThen (new Pure(_)))
   final def flatMap[B, V](f: A => B !! V): B !! U with V = new FlatMap(this, f)
   final def flatten[B, V](implicit ev: A <:< (B !! V)): B !! U with V = flatMap(ev)
@@ -43,32 +41,12 @@ object Return {
 
 
 private[abstraction] object ComputationCases {
-  final class Pure[+A](value: A) extends Computation[A, Any] {
-    def run_![M[+_]](h: HandlerStack[M, Any]): M[A] = h.pure(value)
-  }
-
-  final class FlatMap[A, +B, -U](step: A !! U, cont: A => B !! U) extends Computation[B, U] {
-    def run_![M[+_]](h: HandlerStack[M, U]): M[B] = h.flatMap(step.run_!(h))(cont andThen (_.run_!(h)))
-  }
-
-  final class ZipPar[+A, +B, -U](lhs: A !! U, rhs: B !! U) extends Computation[(A, B), U] {
-    def run_![M[+_]](h: HandlerStack[M, U]): M[(A, B)] = h.zipPar(lhs.run_!(h), rhs.run_!(h))
-  }
-
-  final class Dispatch[+A, -U, Z <: Signature](effectId: AnyRef, op: Z => Z#Op[A]) extends Computation[A, U] {
-    def run_![M[+_]](h: HandlerStack[M, U]): M[A] = h.dispatch(effectId, op)
-  }
-
-  object Fail extends Computation[Nothing, Any] {
-    def run_![M[+_]](h: HandlerStack[M, Any]): M[Nothing] = h.dispatchFail
-  }
-
-  final class HandleInScope[+A, -U, H <: PartialHandler.Gimmick](scope: A !! U with H#Effects, ph: H) extends Computation[H#Result[A], U] {
-    def run_![M[+_]](h: HandlerStack[M, U]): M[H#Result[A]] = {
-      val h2 = h.push[ph.Trans, ph.Effects](ph.impure)
-      ph.gimmick(scope.run_!(h2))
-    }
-  }
+  final case class Pure[+A](value: A) extends Computation[A, Any]
+  final case class FlatMap[A, +B, -U](that: A !! U, k: A => B !! U) extends Computation[B, U]
+  final case class ZipPar[+A, +B, -U](lhs: A !! U, rhs: B !! U) extends Computation[(A, B), U]
+  final case class Dispatch[+A, -U, Z <: Signature](effectId: AnyRef, op: Z => Z#Op[A]) extends Computation[A, U]
+  case object Fail extends Computation[Nothing, Any]
+  final case class HandleInScope[+A, -U, H <: PartialHandler.Gimmick](scope: A !! U with H#Effects, ph: H) extends Computation[H#Result[A], U]
 }
 
 
@@ -86,9 +64,9 @@ trait ComputationExports {
   def !! = Computation
 
   implicit class ComputationExtension[A, U](thiz: A !! U) {
-    def run(implicit ev: CanRunPure[U]): A = ev(thiz).run_!(HandlerStack.pure)
+    def run(implicit ev: CanRunPure[U]): A = (HandlerStack.pure.run_!(ev(thiz))).run
     
-    def runWith[H <: PartialHandler](h: H)(implicit ev: CanRunImpure[U, h.Effects]) : h.Result[A] =
+    def runWith[H <: PartialHandler](h: H)(implicit ev: CanRunImpure[U, h.Effects]): h.Result[A] =
       h.doHandle[A, Any](ev(thiz)).run
 
     def handleWith[V] : HandleWithApply[V] = new HandleWithApply[V]

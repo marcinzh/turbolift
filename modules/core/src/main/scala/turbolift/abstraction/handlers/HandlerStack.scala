@@ -1,6 +1,8 @@
 package turbolift.abstraction.handlers
 import mwords._
 import turbolift.abstraction.effect.{Signature, FailSig}
+import turbolift.abstraction.!!
+import turbolift.abstraction.ComputationCases._
 
 
 sealed trait HandlerStack[M[+_], +U] extends MonadPar[M] {
@@ -9,14 +11,31 @@ sealed trait HandlerStack[M[+_], +U] extends MonadPar[M] {
 
   final def push[T[_[+_], +_], V](ih: ImpureHandler[T]): HandlerStack[T[M, +?], U with V] =
     new StackedHandler[M, U, T, V](ih: ImpureHandler[T], this)
+
+  implicit def theMonad: MonadPar[M] = this
+
+  final def run_![A](ua: A !! U): M[A] = loop(ua)
+
+  private def loop[A](ua: A !! U): M[A] =
+    ua match {
+      case Pure(a) => pure(a)
+      case FlatMap(ux, k) => ux match {
+        case Pure(x) => loop(k(x))
+        case FlatMap(uy, j) => loop(FlatMap(uy, (y: Any) => FlatMap(j(y), k)))
+        case _ => loop(ux).flatMap(x => loop(k(x)))
+      }
+      case ZipPar(uy, uz) => zipPar(loop(uy), loop(uz))
+      case Dispatch(id, op) => dispatch(id, op)
+      case Fail => dispatchFail
+      case HandleInScope(uy, ph) =>
+        val h2 = push[ph.Trans, ph.Effects](ph.impure)
+        ph.gimmick(h2.loop(uy))
+  }
 }
 
 object HandlerStack {
-  val pure: HandlerStack[Identity, Any] = new Unhandled[Identity] {
-    def pure[A](a: A): A = a
-    def flatMap[A, B](a: A)(f: A => B): B = f(a)
-    def zipPar[A, B](a: A, b: B): (A, B) = (a, b)
-  }
+  val pure: HandlerStack[Trampoline, Any] = apply(TrampolineInstances.monad)
+  val pureStackUnsafe: HandlerStack[Identity, Any] = apply(MonadPar.identity)
 
   def apply[M[+_]](implicit M: MonadPar[M]): HandlerStack[M, Any] = new Unhandled[M] {
     def pure[A](a: A): M[A] = M.pure(a)
