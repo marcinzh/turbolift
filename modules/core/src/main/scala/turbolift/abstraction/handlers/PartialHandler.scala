@@ -1,6 +1,6 @@
 package turbolift.abstraction.handlers
 import turbolift.abstraction.!!
-import turbolift.abstraction.ComputationTags.HandleInScope
+import turbolift.abstraction.ComputationCases.HandleInScope
 import mwords._
 
 
@@ -58,7 +58,7 @@ object PartialHandler {
     type Trans[M[+_], +A]
     override type Effects <: AnyRef
 
-    val impure: ImpureHandler[Trans]
+    val primitive: PrimitiveHandler[Trans]
     def gimmick[M[+_], A](tma: Trans[M, A]): M[Result[A]]
 
     final def doHandle[A, U](eff: A !! Effects with U): Result[A] !! U =

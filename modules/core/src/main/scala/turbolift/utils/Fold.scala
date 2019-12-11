@@ -5,7 +5,7 @@ import turbolift.abstraction._
 trait FoldExports {
   implicit class Fold_TraversableOnceOfComputationExtension[A, C[X] <: TraversableOnce[X]](thiz: C[A]) {
     def foldLeft_!![U, B](z: B)(op: (B, A) => B !! U): B !! U =
-      thiz.foldLeft(Return(z).widen[U]) {
+      thiz.foldLeft(Return(z).upCast[U]) {
         case (b_!, a) => for {
           b <- b_!
           b2 <- op(b, a)
@@ -28,7 +28,7 @@ trait FoldExports {
 
   implicit class Fold_IterableOfComputationExtension[A, C[X] <: Iterable[X]](thiz: C[A]) {
     def foldRight_!![U, B](z: B)(op: (A, B) => B !! U): B !! U =
-      thiz.foldRight(Return(z).widen[U]) {
+      thiz.foldRight(Return(z).upCast[U]) {
         case (a, b_!) => for {
           b <- b_!
           b2 <- op(a, b)

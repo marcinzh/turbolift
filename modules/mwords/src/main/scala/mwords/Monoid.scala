@@ -7,17 +7,17 @@ trait Semigroup[T] {
 
 object Semigroup {
   def apply[T](implicit ev: Semigroup[T]) = ev
-}
-
-trait SemigroupExports {
-  implicit class Semigroup_sentax[T: Semigroup](a: T) {
-    def |@|(b: T): T = Semigroup[T].append(a, b)
-  }
 
   implicit def forInt: Semigroup[Int] = Monoid[Int]
   implicit def forString: Semigroup[String] = Monoid[String]
   implicit def forVector[T]: Semigroup[Vector[T]] = Monoid[Vector[T]]
   implicit def forList[T]: Semigroup[List[T]] = Monoid[List[T]]
+}
+
+trait SemigroupExports {
+  implicit class SemigroupSyntax[T: Semigroup](a: T) {
+    def |@|(b: T): T = Semigroup[T].append(a, b)
+  }
 }
 
 

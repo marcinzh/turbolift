@@ -16,15 +16,17 @@ trait Reader[R] extends Effect[ReaderSig[R]] with ReaderSig[R] {
   val handler = new DefaultHandler
 
   class DefaultHandler extends Unary[R, Identity] {
-    def lift[M[+_] : MonadPar, A](ma: M[A]): R => M[A] = _ => ma
+    def commonOps[M[+_] : MonadPar] = new CommonOps[M] {
+      def lift[A](ma: M[A]): R => M[A] = _ => ma
 
-    def flatMap[M[+_] : MonadPar, A, B](tma: R => M[A])(f: A => R => M[B]): R => M[B] =
-      r => tma(r).flatMap(a => f(a)(r))
+      def flatMap[A, B](tma: R => M[A])(f: A => R => M[B]): R => M[B] =
+        r => tma(r).flatMap(a => f(a)(r))
 
-    def zipPar[M[+_] : MonadPar, A, B](tma: R => M[A], tmb: R => M[B]): R => M[(A, B)] =
-      r => tma(r) *! tmb(r)
+      def zipPar[A, B](tma: R => M[A], tmb: R => M[B]): R => M[(A, B)] =
+        r => tma(r) *! tmb(r)
+    }
 
-    def decode[M[+_] : MonadPar] = new Decode[M] with ReaderSig[R] {
+    def specialOps[M[+_] : MonadPar] = new SpecialOps[M] with ReaderSig[R] {
       val ask = r => MonadPar[M].pure(r)
     }
   }

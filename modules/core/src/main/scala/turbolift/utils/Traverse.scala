@@ -5,7 +5,7 @@ import scala.collection.generic.CanBuildFrom
 
 trait TraverseExports {
   implicit class IterableOfComputationExtension[+A, -U, S[+X] <: Iterable[X]](thiz: S[A !! U]) {
-    def traverseVoid: Unit !! U = thiz.foldLeft(Return().widen[U])(_ *<! _)
+    def traverseVoid: Unit !! U = thiz.foldLeft(Return().upCast[U])(_ *<! _)
 
     def traverseVoidShort: Unit !! U = {
       def loop(todos: Iterable[A !! U]): Unit !! U =
@@ -20,11 +20,18 @@ trait TraverseExports {
 
 
   implicit class IterableOfComputationCBFExtension[+A, -U, S[+X] <: Iterable[X]](thiz: S[A !! U])(implicit cbf: CanBuildFrom[S[A !! U], A, S[A]]) {
-    def traverse: S[A] !! U =
-      thiz.foldLeft(Return(Vector.empty[A]).widen[U]) { 
-        case (as_!, a_!) => (as_! *! a_!).map { case (as, a) => as :+ a } 
-      }
+    def traverse: S[A] !! U = {
+      def loop(as: Iterable[A !! U]): Vector[A] !! U =
+        as.size match {
+          case 0 => Return(Vector.empty[A])
+          case 1 => thiz.head.map(Vector(_))
+          case n =>
+            val (as1, as2) = as.splitAt(n / 2)
+            (loop(as1) *! loop(as2)).map { case (xs, ys) => xs ++ ys }
+        }
+      loop(thiz)
       .map(as => (cbf() ++= as).result())
+    }
 
     def traverseShort: S[A] !! U = {
       def loop(todos: Iterable[A !! U], accum: Vector[A]): Vector[A] !! U =
@@ -37,7 +44,6 @@ trait TraverseExports {
       .map(as => (cbf() ++= as).result())
     }
   }
-
 
   implicit class OptionOfComputationExtension[+A, -U](thiz: Option[A !! U]) {
     def traverse: Option[A] !! U =
