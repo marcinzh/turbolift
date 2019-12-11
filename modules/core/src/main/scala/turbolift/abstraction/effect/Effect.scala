@@ -54,7 +54,7 @@ trait FilterableEffect[Z <: FailSig] extends AnyEffect[Z] with FailSig with Effe
   final val fail = encode(_.fail)
 
   trait ThisHandler[T[_[+_], +_]] extends super.ThisHandler[T] {
-    trait Decode[M[+_]] extends super.Decode[M] with FailSig
+    trait SpecialOps[M[+_]] extends super.SpecialOps[M] with FailSig
     final override val isFilterable = true
   }
 

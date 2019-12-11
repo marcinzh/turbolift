@@ -24,22 +24,24 @@ trait Except[E] extends Effect[ExceptSig[E]] with ExceptSig[E] {
   val handler = new DefaultHandler
 
   class DefaultHandler extends Nullary[Either[E, +?]] {
-    def lift[M[_] : MonadPar, A](ma: M[A]): M[Either[E, A]] = ma.map(Right(_))
+    def commonOps[M[+_] : MonadPar] = new CommonOps[M] {
+      def lift[A](ma: M[A]): M[Either[E, A]] = ma.map(Right(_))
 
-    def flatMap[M[_] : MonadPar, A, B](tma: M[Either[E, A]])(f: A => M[Either[E, B]]): M[Either[E, B]] =
-      tma.flatMap { 
-        case Right(a) => f(a)
-        case Left(e) => Monad[M].pure(Left(e))
-      }
+      def flatMap[A, B](tma: M[Either[E, A]])(f: A => M[Either[E, B]]): M[Either[E, B]] =
+        tma.flatMap {
+          case Right(a) => f(a)
+          case Left(e) => Monad[M].pure(Left(e))
+        }
 
-    def zipPar[M[_] : MonadPar, A, B](tma: M[Either[E, A]], tmb: M[Either[E, B]]): M[Either[E, (A, B)]] =
-      (tma *! tmb).map { 
-        case (Right(a), Right(b)) => Right((a, b))
-        case (Left(e), _) => Left(e)
-        case (_, Left(e)) => Left(e)
-      }
+      def zipPar[A, B](tma: M[Either[E, A]], tmb: M[Either[E, B]]): M[Either[E, (A, B)]] =
+        (tma *! tmb).map {
+          case (Right(a), Right(b)) => Right((a, b))
+          case (Left(e), _) => Left(e)
+          case (_, Left(e)) => Left(e)
+        }
+    }
 
-    def decode[M[+_] : MonadPar] = new Decode[M] with ExceptSig[E] {
+    def specialOps[M[+_] : MonadPar] = new SpecialOps[M] with ExceptSig[E] {
       def raise(e: E) = Monad[M].pure(Left(e))
     }
   }

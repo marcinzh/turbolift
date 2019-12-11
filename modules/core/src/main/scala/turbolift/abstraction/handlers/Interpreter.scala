@@ -17,7 +17,7 @@ sealed trait Interpreter[M[+_], +U] {
   final def run_![A](ua: A !! U): M[A] = loop(ua)
 
   private def loop[A](ua: A !! U): M[A] = {
-    // implicit def M: MonadPar[M] = theMonad
+    implicit def M: MonadPar[M] = theMonad
     ua match {
       case Pure(a) => theMonad.pure(a)
       case FlatMap(ux, k) => ux match {
@@ -25,7 +25,7 @@ sealed trait Interpreter[M[+_], +U] {
         case FlatMap(uy, j) => loop(FlatMap(uy, (y: Any) => FlatMap(j(y), k)))
         case _ => loop(ux).flatMap(x => loop(k(x)))
       }
-      case ZipPar(uy, uz) => theMonad.zipPar(loop(uy), loop(uz))
+      case ZipPar(uy, uz) => loop(uy) *! loop(uz)
       case Dispatch(id, op) => dispatch(id, op)
       case Fail => dispatchFail
       case HandleInScope(uy, ph) =>
@@ -55,20 +55,21 @@ private[abstraction] final class Push[M[+_], U, T[_[+_], +_], V](
 ) extends Interpreter[T[M, +?], U with V] {
   type TM[+A] = T[M, A]
 
+  private val commonOps = primitive.commonOps[M]
+  private val specialOps = primitive.specialOps[M]
+  
   implicit def nextMonad: MonadPar[M] = next.theMonad
-  override val theMonad: MonadPar[TM] = primitive.makeMonad[M]
-
-  private val decode = primitive.decode[M]
+  override val theMonad: MonadPar[TM] = commonOps
 
   override def dispatch[A, Z <: Signature](effectId: AnyRef, op: Z => Z#Op[A]): TM[A] =
     if (effectId eq primitive.effectId)
-      op.asInstanceOf[primitive.Encoded[M, A]](decode)
+      op.asInstanceOf[primitive.Encoded[M, A]](specialOps)
     else
-      primitive.lift(next.dispatch(effectId, op))
+      commonOps.lift(next.dispatch(effectId, op))
 
   override def dispatchFail: TM[Nothing] =
     if(primitive.isFilterable)
-      FailSig.encodeFail.asInstanceOf[primitive.Encoded[M, Nothing]](decode)
+      FailSig.encodeFail.asInstanceOf[primitive.Encoded[M, Nothing]](specialOps)
     else
-      primitive.lift(next.dispatchFail)
+      commonOps.lift(next.dispatchFail)
 }
