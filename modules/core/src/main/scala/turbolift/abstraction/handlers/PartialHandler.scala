@@ -58,7 +58,7 @@ object PartialHandler {
     type Trans[M[+_], +A]
     override type Effects <: AnyRef
 
-    val impure: ImpureHandler[Trans]
+    val primitive: PrimitiveHandler[Trans]
     def gimmick[M[+_], A](tma: Trans[M, A]): M[Result[A]]
 
     final def doHandle[A, U](eff: A !! Effects with U): Result[A] !! U =

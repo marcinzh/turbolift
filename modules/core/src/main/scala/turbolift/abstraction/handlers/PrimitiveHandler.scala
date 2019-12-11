@@ -3,7 +3,7 @@ import mwords._
 import turbolift.abstraction.effect.Signature
 
 
-trait ImpureHandler[T[_[+_], +_]] {
+trait PrimitiveHandler[T[_[+_], +_]] {
   private[abstraction] def effectId: AnyRef
 
   def lift[M[+_] : MonadPar, A](ma: M[A]): T[M, A]

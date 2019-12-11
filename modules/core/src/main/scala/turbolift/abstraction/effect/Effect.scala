@@ -2,7 +2,7 @@ package turbolift.abstraction.effect
 // import mwords._
 import turbolift.abstraction.{!!, Return}
 import turbolift.abstraction.ComputationCases.Dispatch
-import turbolift.abstraction.handlers.{ImpureHandler, PartialHandler}
+import turbolift.abstraction.handlers.{PrimitiveHandler, PartialHandler}
 
 
 sealed trait AnyEffect[Z <: Signature] extends Signature {
@@ -12,7 +12,7 @@ sealed trait AnyEffect[Z <: Signature] extends Signature {
   final def pure[A](a: A): A !! this.type = Return(a)
   final def encode[A](f: Z => Z#Op[A]): A !! this.type = new Dispatch[A, this.type, Z](this, f)
 
-  trait ThisHandler[T[_[+_], +_]] extends ImpureHandler[T] {
+  trait ThisHandler[T[_[+_], +_]] extends PrimitiveHandler[T] {
     final type ThisT[M[+_], +A] = T[M, A]
     final override def effectId: AnyRef = AnyEffect.this
   }
@@ -21,7 +21,7 @@ sealed trait AnyEffect[Z <: Signature] extends Signature {
     final override type Effects = AnyEffect.this.type
     final override type Result[+A] = F[A]
     final override type Trans[M[+_], +A] = ThisT[M, A]
-    final override val impure = this
+    final override val primitive = this
     final override def gimmick[M[+_], A](tma: M[F[A]]): M[F[A]] = tma
   }
 
@@ -31,7 +31,7 @@ sealed trait AnyEffect[Z <: Signature] extends Signature {
       final override type Effects = AnyEffect.this.type
       final override type Result[+A] = F[A]
       final override type Trans[M[+_], +A] = ThisT[M, A]
-      final override val impure = Unary.this
+      final override val primitive = Unary.this
       final override def gimmick[M[+_], A](tma: S => M[F[A]]): M[F[A]] = tma(initial)
     }
   }

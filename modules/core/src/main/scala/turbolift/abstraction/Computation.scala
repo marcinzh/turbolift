@@ -1,7 +1,7 @@
 package turbolift.abstraction
 import mwords._
 import turbolift.abstraction.effect.{Signature, EffectWithFilter}
-import turbolift.abstraction.handlers.{HandlerStack, PartialHandler, CanRunPure, CanRunImpure, CanHandle}
+import turbolift.abstraction.handlers.{Interpreter, PartialHandler, CanRunPure, CanRunImpure, CanHandle}
 import ComputationCases._
 
 
@@ -64,7 +64,7 @@ trait ComputationExports {
   def !! = Computation
 
   implicit class ComputationExtension[A, U](thiz: A !! U) {
-    def run(implicit ev: CanRunPure[U]): A = (HandlerStack.pure.run_!(ev(thiz))).run
+    def run(implicit ev: CanRunPure[U]): A = (Interpreter.pure.run_!(ev(thiz))).run
     
     def runWith[H <: PartialHandler](h: H)(implicit ev: CanRunImpure[U, h.Effects]): h.Result[A] =
       h.doHandle[A, Any](ev(thiz)).run
