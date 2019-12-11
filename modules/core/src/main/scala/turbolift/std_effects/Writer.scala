@@ -35,24 +35,4 @@ trait Writer[W] extends Effect[WriterSig[W]] with WriterSig[W] {
       def tell(w: W) = w0 => Monad[M].pure((w0 |@| w, ()))
     }
   }
-
-  class StackUnsafeHandler(implicit W: Monoid[W]) extends Nullary[(W, +?)] {
-    def commonOps[M[+_] : MonadPar] = new CommonOps[M] {
-      def lift[A](ma: M[A]): M[(W, A)] = ma.map((W.empty, _))
-
-      def flatMap[A, B](tma: M[(W, A)])(f: A => M[(W, B)]): M[(W, B)] =
-        tma.flatMap {
-          case (w0, a) => f(a).map {
-            case (w1, b) => (w0 |@| w1, b)
-          }
-        }
-
-      def zipPar[A, B](tma: M[(W, A)], tmb: M[(W, B)]): M[(W, (A, B))] =
-        (tma *! tmb).map { case ((w0, a), (w1, b)) => ((w0 |@| w1), (a, b)) }
-    }
-
-    def specialOps[M[+_] : MonadPar] = new SpecialOps[M] with WriterSig[W] {
-      def tell(w: W) = Monad[M].pure((w, ()))
-    }
-  }
 }
