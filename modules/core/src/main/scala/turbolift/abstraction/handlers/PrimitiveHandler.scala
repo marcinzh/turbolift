@@ -3,8 +3,15 @@ import mwords._
 import turbolift.abstraction.effect.Signature
 
 
-trait PrimitiveHandler[T[_[+_], +_]] { outer =>
+trait PrimitiveHandlerBase {
   private[abstraction] def effectId: AnyRef
+  val isFilterable: Boolean
+
+  type ThisSignature <: Signature
+}
+
+
+trait PrimitiveHandler[T[_[+_], +_]] extends PrimitiveHandlerBase {
 
   def commonOps[M[+_] : MonadPar] : CommonOps[M]
 
@@ -16,11 +23,20 @@ trait PrimitiveHandler[T[_[+_], +_]] { outer =>
 
   def specialOps[M[+_] : MonadPar] : SpecialOps[M]
 
-  trait SpecialOps[M[+_]] extends Signature {
+  trait SpecialOps[M[+_]] extends Signature { this: ThisSignature =>
     type Op[+A] = T[M, A]
   }
 
   final type Encoded[M[+_], A] = SpecialOps[M] => SpecialOps[M]#Op[A]
+}
 
-  val isFilterable: Boolean	
+
+object PrimitiveHandler {
+  trait Nullary[O[+_]] extends PrimitiveHandler[Lambda[(`M[+_]`, +[A]) => M[O[A]]]] {
+    //@#@TODO
+  }
+
+  trait Unary[S, O[+_]] extends PrimitiveHandler[Lambda[(`M[+_]`, +[A]) => S => M[O[A]]]] {
+    //@#@TODO
+  }
 }
