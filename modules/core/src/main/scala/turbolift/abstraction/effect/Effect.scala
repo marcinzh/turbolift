@@ -14,7 +14,7 @@ sealed trait AnyEffect[Z <: Signature] extends Signature {
 
 
   trait ThisHandlerBase extends PrimitiveHandlerBase {
-    final override def effectId: AnyRef = AnyEffect.this
+    final override val effectId: AnyRef = AnyEffect.this
     final override type ThisSignature = Z
   }
 

@@ -4,7 +4,7 @@ import turbolift.abstraction.effect.Signature
 
 
 trait PrimitiveHandlerBase {
-  private[abstraction] def effectId: AnyRef
+  private[abstraction] val effectId: AnyRef
   val isFilterable: Boolean
 
   type ThisSignature <: Signature
