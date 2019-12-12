@@ -3,6 +3,7 @@ import mwords._
 import turbolift.abstraction.effect.{Signature, FailSig}
 import turbolift.abstraction.!!
 import turbolift.abstraction.ComputationCases._
+import turbolift.abstraction.handlers.aux.{Trampoline, TrampolineInstances}
 
 
 sealed trait Interpreter[M[+_], +U] {

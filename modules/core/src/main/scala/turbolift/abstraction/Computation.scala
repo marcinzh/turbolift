@@ -1,7 +1,8 @@
 package turbolift.abstraction
 import mwords._
 import turbolift.abstraction.effect.{Signature, EffectWithFilter}
-import turbolift.abstraction.handlers.{Interpreter, PartialHandler, CanRunPure, CanRunImpure, CanHandle}
+import turbolift.abstraction.handlers.{Interpreter, PartialHandler}
+import turbolift.abstraction.handlers.aux.{CanRunPure, CanRunImpure, CanHandle}
 import ComputationCases._
 
 

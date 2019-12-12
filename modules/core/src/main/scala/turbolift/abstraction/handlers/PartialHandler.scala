@@ -1,6 +1,7 @@
 package turbolift.abstraction.handlers
 import turbolift.abstraction.!!
 import turbolift.abstraction.ComputationCases.HandleInScope
+import turbolift.abstraction.handlers.aux.CanHandle
 import mwords._
 
 

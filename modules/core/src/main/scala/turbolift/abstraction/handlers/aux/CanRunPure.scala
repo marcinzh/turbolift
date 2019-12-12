@@ -1,4 +1,4 @@
-package turbolift.abstraction.handlers
+package turbolift.abstraction.handlers.aux
 import scala.annotation.implicitNotFound
 import turbolift.abstraction.!!
 

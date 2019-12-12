@@ -1,4 +1,4 @@
-package turbolift.abstraction.handlers
+package turbolift.abstraction.handlers.aux
 import mwords._
 import scala.annotation.tailrec
 import TrampolineCases._
