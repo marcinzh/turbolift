@@ -1,7 +1,7 @@
 package turbolift.abstraction
 import mwords._
 import turbolift.abstraction.effect.{Signature, EffectWithFilter}
-import turbolift.abstraction.handlers.{Interpreter, PartialHandler}
+import turbolift.abstraction.handlers.{Interpreter, Handler, SaturatedHandler}
 import turbolift.abstraction.handlers.aux.{CanRunPure, CanRunImpure, CanHandle}
 import ComputationCases._
 
@@ -47,7 +47,7 @@ private[abstraction] object ComputationCases {
   final case class ZipPar[+A, +B, -U](lhs: A !! U, rhs: B !! U) extends Computation[(A, B), U]
   final case class Dispatch[+A, -U, Z <: Signature](effectId: AnyRef, op: Z => Z#Op[A]) extends Computation[A, U]
   case object Fail extends Computation[Nothing, Any]
-  final case class HandleInScope[+A, -U, H <: PartialHandler.Gimmick](scope: A !! U with H#Effects, ph: H) extends Computation[H#Result[A], U]
+  final case class HandleInScope[+A, -U, H <: SaturatedHandler](scope: A !! U with H#Effects, ph: H) extends Computation[H#Result[A], U]
 }
 
 
@@ -67,12 +67,12 @@ trait ComputationExports {
   implicit class ComputationExtension[A, U](thiz: A !! U) {
     def run(implicit ev: CanRunPure[U]): A = (Interpreter.pure.run_!(ev(thiz))).run
     
-    def runWith[H <: PartialHandler](h: H)(implicit ev: CanRunImpure[U, h.Effects]): h.Result[A] =
+    def runWith[H <: Handler](h: H)(implicit ev: CanRunImpure[U, h.Effects]): h.Result[A] =
       h.doHandle[A, Any](ev(thiz)).run
 
     def handleWith[V] : HandleWithApply[V] = new HandleWithApply[V]
     class HandleWithApply[V] {
-      def apply[H <: PartialHandler](h: H)(implicit ev: CanHandle[V, U, h.Effects]): h.Result[A] !! V =
+      def apply[H <: Handler](h: H)(implicit ev: CanHandle[V, U, h.Effects]): h.Result[A] !! V =
         h.doHandle[A, V](ev(thiz))
     }
 

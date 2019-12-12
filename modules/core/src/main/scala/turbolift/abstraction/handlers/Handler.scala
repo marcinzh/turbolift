@@ -1,11 +1,10 @@
 package turbolift.abstraction.handlers
 import turbolift.abstraction.!!
-import turbolift.abstraction.ComputationCases.HandleInScope
 import turbolift.abstraction.handlers.aux.CanHandle
 import mwords._
 
 
-sealed trait PartialHandler { outer =>
+sealed trait Handler { outer =>
   type Result[+A]
   type Effects
 
@@ -20,14 +19,14 @@ sealed trait PartialHandler { outer =>
   }
 
 
-  final def <<<![H <: PartialHandler](that: H) = new Composed(that)
-  final def >>>![H <: PartialHandler](that: H) = that <<<! this
+  final def <<<![H <: Handler](that: H) = new Composed(that)
+  final def >>>![H <: Handler](that: H) = that <<<! this
 
-  final def map[F[+_]](f: Result ~> F): PartialHandler.Apply[F, Effects] = new Mapped[F] {
+  final def map[F[+_]](f: Result ~> F): Handler.Apply[F, Effects] = new Mapped[F] {
     def apply[A](x: outer.Result[A]): F[A] = f.apply[A](x)
   }
   
-  final class Composed[H <: PartialHandler](val h: H) extends PartialHandler {
+  final class Composed[H <: Handler](val h: H) extends Handler {
     override type Effects = outer.Effects with h.Effects
     override type Result[+A] = outer.Result[h.Result[A]]
 
@@ -37,7 +36,7 @@ sealed trait PartialHandler { outer =>
       )
   }
 
-  abstract class Mapped[F[+_]] extends PartialHandler {
+  abstract class Mapped[F[+_]] extends Handler {
     override type Result[+A] = F[A]
     override type Effects = outer.Effects
 
@@ -49,39 +48,30 @@ sealed trait PartialHandler { outer =>
 }
 
 
-object PartialHandler {
-  type Apply[F[+_], U] = PartialHandler {
+object Handler {
+  type Apply[F[+_], U] = Handler {
     type Result[+A] = F[A]
     type Effects = U
   }
 
-  private[abstraction] trait Gimmick extends PartialHandler { outer =>
-    type Trans[M[+_], +A]
-    override type Effects <: AnyRef
-
-    val primitive: PrimitiveHandler[Trans]
-    def gimmick[M[+_], A](tma: Trans[M, A]): M[Result[A]]
-
-    final def doHandle[A, U](eff: A !! Effects with U): Result[A] !! U =
-      new HandleInScope[A, U, this.type](eff, this)
-  }
+  private[abstraction] trait Unsealed extends Handler
 }
 
 
-trait PartialHandlerExports {
-  type >>>![H1 <: PartialHandler, H2 <: PartialHandler] = H2 <<<! H1
+trait HandlerExports {
+  type >>>![H1 <: Handler, H2 <: Handler] = H2 <<<! H1
 
-  type <<<![H1 <: PartialHandler, H2 <: PartialHandler] = PartialHandler {
+  type <<<![H1 <: Handler, H2 <: Handler] = Handler {
     type Effects = H1#Effects with H2#Effects
     type Result[+A] = H1#Result[H2#Result[A]]
   }
 
-  implicit class PartialHandlerExtension[S, U](val thiz: PartialHandler.Apply[(S, +?), U]) {
-    def eval: PartialHandler.Apply[Identity, U] = new thiz.Mapped[Identity] {
+  implicit class HandlerExtension[S, U](val thiz: Handler.Apply[(S, +?), U]) {
+    def eval: Handler.Apply[Identity, U] = new thiz.Mapped[Identity] {
       def apply[A](pair: (S, A)) = pair._2
     }
 
-    def exec: PartialHandler.Apply[Lambda[+[X] => S], U] = new thiz.Mapped[Lambda[+[X] => S]] {
+    def exec: Handler.Apply[Lambda[+[X] => S], U] = new thiz.Mapped[Lambda[+[X] => S]] {
       def apply[A](pair: (S, A)) = pair._1
     }
 

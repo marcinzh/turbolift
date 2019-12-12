@@ -2,7 +2,7 @@ package turbolift.abstraction.effect
 // import mwords._
 import turbolift.abstraction.{!!, Return}
 import turbolift.abstraction.ComputationCases.Dispatch
-import turbolift.abstraction.handlers.{PrimitiveHandler, PartialHandler}
+import turbolift.abstraction.handlers.{PrimitiveHandler, SaturatedHandler}
 
 
 sealed trait AnyEffect[Z <: Signature] extends Signature {
@@ -17,22 +17,22 @@ sealed trait AnyEffect[Z <: Signature] extends Signature {
     final override def effectId: AnyRef = AnyEffect.this
   }
 
-  trait Nullary[F[+_]] extends ThisHandler[Lambda[(`M[+_]`, +[A]) => M[F[A]]]] with PartialHandler.Gimmick {
+  trait Nullary[F[+_]] extends ThisHandler[Lambda[(`M[+_]`, +[A]) => M[F[A]]]] with SaturatedHandler {
     final override type Effects = AnyEffect.this.type
     final override type Result[+A] = F[A]
     final override type Trans[M[+_], +A] = ThisT[M, A]
     final override val primitive = this
-    final override def gimmick[M[+_], A](tma: M[F[A]]): M[F[A]] = tma
+    final override def prime[M[+_], A](tma: M[F[A]]): M[F[A]] = tma
   }
 
   trait Unary[S, F[+_]] extends ThisHandler[Lambda[(`M[+_]`, +[A]) => S => M[F[A]]]] {
     def apply(initial: S): ThisGimmick = new ThisGimmick(initial)
-    class ThisGimmick(initial: S) extends PartialHandler.Gimmick {
+    class ThisGimmick(initial: S) extends SaturatedHandler {
       final override type Effects = AnyEffect.this.type
       final override type Result[+A] = F[A]
       final override type Trans[M[+_], +A] = ThisT[M, A]
       final override val primitive = Unary.this
-      final override def gimmick[M[+_], A](tma: S => M[F[A]]): M[F[A]] = tma(initial)
+      final override def prime[M[+_], A](tma: S => M[F[A]]): M[F[A]] = tma(initial)
     }
   }
 }

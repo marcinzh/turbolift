@@ -5,6 +5,6 @@ package object abstraction
   with handlers.aux.CanHandleExports
   with handlers.aux.CanRunPureExports
   with handlers.aux.CanRunImpureExports
-  with handlers.PartialHandlerExports
+  with handlers.HandlerExports
   with turbolift.utils.Exports
   
