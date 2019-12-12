@@ -4,7 +4,7 @@ import turbolift.abstraction.ComputationCases.HandleInScope
 import mwords._
 
 
-private[abstraction] trait SaturatedHandler extends Handler.Unsealed {
+private[abstraction] trait SaturatedHandler extends HandlerCases.Unsealed {
   type Trans[M[+_], +A]
   override type Effects <: AnyRef
 
