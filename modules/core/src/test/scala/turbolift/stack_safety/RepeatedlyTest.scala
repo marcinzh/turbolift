@@ -1,6 +1,6 @@
 package turbolift.stack_safety
 import turbolift.abstraction._
-import turbolift.abstraction.handlers.PartialHandler
+import turbolift.abstraction.handlers.Handler
 import turbolift.std_effects._
 import org.specs2._
 
@@ -16,7 +16,7 @@ class RepeatedlyTest extends Specification with CanStackOverflow {
     } yield test)
     .reduce(_ ^ _)
 
-  case class Case[A, U](name: String, h: PartialHandler { type Effects = U }, eff: A !! U) {
+  case class Case[A, U](name: String, h: Handler { type Effects = U }, eff: A !! U) {
     def mapEff[B](f: A !! U => B !! U) = copy(eff = f(eff))
     def run = h run eff
   }

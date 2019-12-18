@@ -3,6 +3,7 @@ import mwords._
 import turbolift.abstraction.effect.{Signature, FailSig}
 import turbolift.abstraction.!!
 import turbolift.abstraction.ComputationCases._
+import turbolift.abstraction.handlers.aux.{Trampoline, TrampolineInstances}
 
 
 sealed trait Interpreter[M[+_], +U] {
@@ -30,7 +31,7 @@ sealed trait Interpreter[M[+_], +U] {
       case Fail => dispatchFail
       case HandleInScope(uy, ph) =>
         val h2 = push[ph.Trans, ph.Effects](ph.primitive)
-        ph.gimmick(h2.loop(uy))
+        ph.prime(h2.loop(uy))
     }
   }
 }
