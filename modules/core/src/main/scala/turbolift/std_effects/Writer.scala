@@ -8,15 +8,19 @@ trait WriterSig[W] extends Signature {
   def tell(w: W): Op[Unit]
 }
 
+
 trait Writer[W] extends Effect[WriterSig[W]] with WriterSig[W] {
   def tell(w: W): Unit !! this.type = encode(_.tell(w))
   def tell[X](x: X)(implicit ev: NonEmpty[X, W]): Unit !! this.type = tell(ev.nonEmpty(x))
   def listen[A, U](scope: A !! U)(implicit W: Monoid[W]) = handler.handle[U](scope).flatMap { case w_a @ (w, _) => tell(w) *>! pure(w_a) }
   def censor[A, U](scope: A !! U)(f: W => W)(implicit W: Monoid[W]) = handler.handle[U](scope).flatMap { case (w, a) => tell(f(w)) *>! pure(a) }
 
-  def handler(implicit W: Monoid[W]) = (new DefaultHandler).apply(W.empty)
+  def handler(implicit W: Monoid[W]) = WriterHandler[W, this.type](this).apply(W.empty)
+}
 
-  class DefaultHandler(implicit W: Monoid[W]) extends Unary[W, (W, +?)] {
+
+object WriterHandler {
+  def apply[W, Fx <: Writer[W]](effect: Fx)(implicit W: Monoid[W]) = new effect.Unary[W, (W, +?)] {
     def commonOps[M[+_] : MonadPar] = new CommonOps[M] {
       def lift[A](ma: M[A]): W => M[(W, A)] = w => ma.map((w, _))
 
@@ -34,5 +38,5 @@ trait Writer[W] extends Effect[WriterSig[W]] with WriterSig[W] {
     def specialOps[M[+_] : MonadPar] = new SpecialOps[M] with WriterSig[W] {
       def tell(w: W) = w0 => Monad[M].pure((w0 |@| w, ()))
     }
-  }
+  }.self
 }

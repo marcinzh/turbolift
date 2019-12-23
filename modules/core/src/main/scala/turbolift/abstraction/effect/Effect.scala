@@ -18,8 +18,8 @@ sealed trait AnyEffect[Z <: Signature] extends Signature {
     final override type ThisSignature = Z
   }
 
-  trait Nullary[O[+_]] extends SaturatedHandler.Nullary[ThisEffect, O] with ThisHandlerBase
-  trait Unary[S, O[+_]] extends SaturatedHandler.Unary[ThisEffect, S, O] with ThisHandlerBase
+  trait Nullary[O[+_]] extends SaturatedHandler.Nullary[ThisEffect, O] with ThisHandlerBase { def self: Nullary[O] = this }
+  trait Unary[S, O[+_]] extends SaturatedHandler.Unary[ThisEffect, S, O] with ThisHandlerBase { def self: Unary[S, O] = this }
 }
 
 
