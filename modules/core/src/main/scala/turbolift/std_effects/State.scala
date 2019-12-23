@@ -9,14 +9,18 @@ trait StateSig[S] extends Signature {
   def put(s: S): Op[Unit]
 }
 
+
 trait State[S] extends Effect[StateSig[S]] with StateSig[S] {
   val get = encode(_.get)
   def put(s: S) = encode(_.put(s))
   def mod(f: S => S) = get.flatMap(s => put(f(s)))
 
-  val handler = new DefaultHandler
+  val handler = StateHandler[S, this.type](this)
+}
 
-  class DefaultHandler extends Unary[S, (S, +?)] {
+
+object StateHandler {
+  def apply[S, Fx <: State[S]](effect: Fx) = new effect.Unary[S, (S, +?)] {
     def commonOps[M[+_] : MonadPar] = new CommonOps[M] {
       def lift[A](ma: M[A]): S => M[(S, A)] = s => ma.map((s, _))
 
@@ -37,5 +41,5 @@ trait State[S] extends Effect[StateSig[S]] with StateSig[S] {
       val get = s => Monad[M].pure((s, s))
       def put(s: S) = _ => Monad[M].pure((s, ()))
     }
-  }
+  }.self
 }

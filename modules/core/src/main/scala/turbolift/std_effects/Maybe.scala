@@ -6,6 +6,7 @@ import turbolift.abstraction.effect._
 
 trait MaybeSig extends FailSig
 
+
 trait Maybe extends FilterableEffect[MaybeSig] with MaybeSig {
   
   def from[A](x: Option[A]): A !! this.type = x match {
@@ -13,9 +14,12 @@ trait Maybe extends FilterableEffect[MaybeSig] with MaybeSig {
     case _ => fail
   }
 
-  val handler = new DefaultHandler
+  val handler = MaybeHandler(this)
+}
 
-  class DefaultHandler extends Nullary[Option] {
+
+object MaybeHandler {
+  def apply[Fx <: Maybe](effect: Fx) = new effect.Nullary[Option] {
     def commonOps[M[+_] : MonadPar] = new CommonOps[M] {
       def lift[A](ma: M[A]): M[Option[A]] = ma.map(Some(_))
 
@@ -35,5 +39,5 @@ trait Maybe extends FilterableEffect[MaybeSig] with MaybeSig {
     def specialOps[M[+_] : MonadPar] = new SpecialOps[M] with MaybeSig {
       val fail = Monad[M].pure(None)
     }
-  }
+  }.self
 }

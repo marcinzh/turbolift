@@ -8,14 +8,18 @@ trait NonDetSig extends FailSig {
   def each[A](as: Iterable[A]): Op[A]
 }
 
+
 trait NonDet extends FilterableEffect[NonDetSig] with NonDetSig {
   def each[A](as: Iterable[A]) = encode(_.each(as))
   
   def from[A](as: A*) = each(as.toVector)
 
-  val handler = new DefaultHandler
+  val handler = NonDetHandler(this)
+}
 
-  class DefaultHandler extends Nullary[Vector] {
+
+object NonDetHandler {
+  def apply[Fx <: NonDet](effect: Fx) = new effect.Nullary[Vector] {
     def commonOps[M[+_] : MonadPar] = new CommonOps[M] {
       def lift[A](ma: M[A]): M[Vector[A]] = ma.map(Vector(_))
 
@@ -46,5 +50,5 @@ trait NonDet extends FilterableEffect[NonDetSig] with NonDetSig {
       val fail = Monad[M].pure(Vector())
       def each[A](as: Iterable[A]) = Monad[M].pure(as.toVector)
     }
-  }
+  }.self
 }

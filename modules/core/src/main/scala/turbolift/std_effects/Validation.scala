@@ -8,6 +8,7 @@ trait ValidationSig[E] extends Signature {
   def invalid(e: E): Op[Nothing]
 }
 
+
 trait Validation[E] extends Effect[ValidationSig[E]] with ValidationSig[E] {
   def invalid(e: E): Nothing !! this.type = encode(_.invalid(e))
   def invalid[X](x: X)(implicit ev: NonEmpty[X, E]): Nothing !! this.type = invalid(ev.nonEmpty(x))
@@ -22,9 +23,12 @@ trait Validation[E] extends Effect[ValidationSig[E]] with ValidationSig[E] {
     case Left(e) => invalid(e)
   }
 
-  def handler(implicit E: Semigroup[E]) = new DefaultHandler
+  def handler(implicit E: Semigroup[E]) = ValidationHandler[E, this.type](this)
+}
 
-  class DefaultHandler(implicit E: Semigroup[E]) extends Nullary[Either[E, +?]] {
+
+object ValidationHandler {
+  def apply[E: Semigroup, Fx <: Validation[E]](effect: Fx) = new effect.Nullary[Either[E, +?]] {
     def commonOps[M[+_] : MonadPar] = new CommonOps[M] {
       def lift[A](ma: M[A]): M[Either[E, A]] = ma.map(Right(_))
 
@@ -46,5 +50,5 @@ trait Validation[E] extends Effect[ValidationSig[E]] with ValidationSig[E] {
     def specialOps[M[+_] : MonadPar] = new SpecialOps[M] with ValidationSig[E] {
       def invalid(e: E) = Monad[M].pure(Left(e))
     }
-  }
+  }.self
 }
