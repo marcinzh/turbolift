@@ -42,12 +42,12 @@ object Return {
 
 
 private[abstraction] object ComputationCases {
-  final case class Pure[+A](value: A) extends Computation[A, Any]
-  final case class FlatMap[A, +B, -U](that: A !! U, k: A => B !! U) extends Computation[B, U]
-  final case class ZipPar[+A, +B, -U](lhs: A !! U, rhs: B !! U) extends Computation[(A, B), U]
-  final case class Dispatch[+A, -U, Z <: Signature](effectId: AnyRef, op: Z => Z#Op[A]) extends Computation[A, U]
+  final case class Pure[A](value: A) extends Computation[A, Any]
+  final case class FlatMap[A, B, U](that: A !! U, k: A => B !! U) extends Computation[B, U]
+  final case class ZipPar[A, B, U](lhs: A !! U, rhs: B !! U) extends Computation[(A, B), U]
+  final case class Dispatch[A, U, Z <: Signature](effectId: AnyRef, op: Z => Z#Op[A]) extends Computation[A, U]
   case object Fail extends Computation[Nothing, Any]
-  final case class HandleInScope[+A, -U, H <: SaturatedHandler](scope: A !! U with H#Effects, ph: H) extends Computation[H#Result[A], U]
+  final case class HandleInScope[A, U, H <: SaturatedHandler](scope: A !! U with H#Effects, ph: H) extends Computation[H#Result[A], U]
 }
 
 

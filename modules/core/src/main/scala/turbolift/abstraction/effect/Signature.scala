@@ -2,11 +2,11 @@ package turbolift.abstraction.effect
 
 
 trait Signature {
-  type Op[+A]
+  type Op[A]
 }
 
 trait FailSig extends Signature {
-  def fail: Op[Nothing]
+  def fail[A]: Op[A]
 }
 
 private[abstraction] object FailSig {

@@ -20,7 +20,7 @@ trait NonDet extends FilterableEffect[NonDetSig] with NonDetSig {
 
 object NonDetHandler {
   def apply[Fx <: NonDet](effect: Fx) = new effect.Nullary[Vector] {
-    def commonOps[M[+_] : MonadPar] = new CommonOps[M] {
+    def commonOps[M[_]: MonadPar] = new CommonOps[M] {
       def lift[A](ma: M[A]): M[Vector[A]] = ma.map(Vector(_))
 
       def flatMap[A, B](tma: M[Vector[A]])(f: A => M[Vector[B]]): M[Vector[B]] = {
@@ -46,8 +46,8 @@ object NonDetHandler {
         }
     }
 
-    def specialOps[M[+_] : MonadPar] = new SpecialOps[M] with NonDetSig {
-      val fail = Monad[M].pure(Vector())
+    def specialOps[M[_]: MonadPar] = new SpecialOps[M] with NonDetSig {
+      def fail[A] = Monad[M].pure(Vector())
       def each[A](as: Iterable[A]) = Monad[M].pure(as.toVector)
     }
   }.self

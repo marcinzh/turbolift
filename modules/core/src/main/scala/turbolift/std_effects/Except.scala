@@ -26,8 +26,8 @@ trait Except[E] extends Effect[ExceptSig[E]] with ExceptSig[E] {
 
 
 object ExceptHandler {
-  def apply[E, Fx <: Except[E]](effect: Fx) = new effect.Nullary[Either[E, +?]] {
-    def commonOps[M[+_] : MonadPar] = new CommonOps[M] {
+  def apply[E, Fx <: Except[E]](effect: Fx) = new effect.Nullary[Either[E, ?]] {
+    def commonOps[M[_]: MonadPar] = new CommonOps[M] {
       def lift[A](ma: M[A]): M[Either[E, A]] = ma.map(Right(_))
 
       def flatMap[A, B](tma: M[Either[E, A]])(f: A => M[Either[E, B]]): M[Either[E, B]] =
@@ -44,7 +44,7 @@ object ExceptHandler {
         }
     }
 
-    def specialOps[M[+_] : MonadPar] = new SpecialOps[M] with ExceptSig[E] {
+    def specialOps[M[_]: MonadPar] = new SpecialOps[M] with ExceptSig[E] {
       def raise(e: E) = Monad[M].pure(Left(e))
     }
   }.self

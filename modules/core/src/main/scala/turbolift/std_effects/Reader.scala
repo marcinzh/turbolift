@@ -20,7 +20,7 @@ trait Reader[R] extends Effect[ReaderSig[R]] with ReaderSig[R] {
 
 object ReaderHandler {
   def apply[R, Fx <: Reader[R]](effect: Fx) = new effect.Unary[R, Identity] {
-    def commonOps[M[+_] : MonadPar] = new CommonOps[M] {
+    def commonOps[M[_]: MonadPar] = new CommonOps[M] {
       def lift[A](ma: M[A]): R => M[A] = _ => ma
 
       def flatMap[A, B](tma: R => M[A])(f: A => R => M[B]): R => M[B] =
@@ -30,7 +30,7 @@ object ReaderHandler {
         r => tma(r) *! tmb(r)
     }
 
-    def specialOps[M[+_] : MonadPar] = new SpecialOps[M] with ReaderSig[R] {
+    def specialOps[M[_]: MonadPar] = new SpecialOps[M] with ReaderSig[R] {
       val ask = r => MonadPar[M].pure(r)
     }
   }.self

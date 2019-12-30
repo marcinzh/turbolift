@@ -28,8 +28,8 @@ trait Validation[E] extends Effect[ValidationSig[E]] with ValidationSig[E] {
 
 
 object ValidationHandler {
-  def apply[E: Semigroup, Fx <: Validation[E]](effect: Fx) = new effect.Nullary[Either[E, +?]] {
-    def commonOps[M[+_] : MonadPar] = new CommonOps[M] {
+  def apply[E: Semigroup, Fx <: Validation[E]](effect: Fx) = new effect.Nullary[Either[E, ?]] {
+    def commonOps[M[_]: MonadPar] = new CommonOps[M] {
       def lift[A](ma: M[A]): M[Either[E, A]] = ma.map(Right(_))
 
       def flatMap[A, B](tma: M[Either[E, A]])(f: A => M[Either[E, B]]): M[Either[E, B]] =
@@ -47,7 +47,7 @@ object ValidationHandler {
         }
     }
 
-    def specialOps[M[+_] : MonadPar] = new SpecialOps[M] with ValidationSig[E] {
+    def specialOps[M[_]: MonadPar] = new SpecialOps[M] with ValidationSig[E] {
       def invalid(e: E) = Monad[M].pure(Left(e))
     }
   }.self

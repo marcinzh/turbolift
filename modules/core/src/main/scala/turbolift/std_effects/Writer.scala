@@ -20,8 +20,8 @@ trait Writer[W] extends Effect[WriterSig[W]] with WriterSig[W] {
 
 
 object WriterHandler {
-  def apply[W, Fx <: Writer[W]](effect: Fx)(implicit W: Monoid[W]) = new effect.Unary[W, (W, +?)] {
-    def commonOps[M[+_] : MonadPar] = new CommonOps[M] {
+  def apply[W, Fx <: Writer[W]](effect: Fx)(implicit W: Monoid[W]) = new effect.Unary[W, (W, ?)] {
+    def commonOps[M[_]: MonadPar] = new CommonOps[M] {
       def lift[A](ma: M[A]): W => M[(W, A)] = w => ma.map((w, _))
 
       def flatMap[A, B](tma: W => M[(W, A)])(f: A => W => M[(W, B)]): W => M[(W, B)] =
@@ -35,7 +35,7 @@ object WriterHandler {
         }
     }
 
-    def specialOps[M[+_] : MonadPar] = new SpecialOps[M] with WriterSig[W] {
+    def specialOps[M[_]: MonadPar] = new SpecialOps[M] with WriterSig[W] {
       def tell(w: W) = w0 => Monad[M].pure((w0 |@| w, ()))
     }
   }.self

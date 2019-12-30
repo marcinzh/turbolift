@@ -20,8 +20,8 @@ trait State[S] extends Effect[StateSig[S]] with StateSig[S] {
 
 
 object StateHandler {
-  def apply[S, Fx <: State[S]](effect: Fx) = new effect.Unary[S, (S, +?)] {
-    def commonOps[M[+_] : MonadPar] = new CommonOps[M] {
+  def apply[S, Fx <: State[S]](effect: Fx) = new effect.Unary[S, (S, ?)] {
+    def commonOps[M[_]: MonadPar] = new CommonOps[M] {
       def lift[A](ma: M[A]): S => M[(S, A)] = s => ma.map((s, _))
 
       def flatMap[A, B](tma: S => M[(S, A)])(f: A => S => M[(S, B)]): S => M[(S, B)] =
@@ -37,7 +37,7 @@ object StateHandler {
         }
     }
 
-    def specialOps[M[+_] : MonadPar] = new SpecialOps[M] with StateSig[S] {
+    def specialOps[M[_]: MonadPar] = new SpecialOps[M] with StateSig[S] {
       val get = s => Monad[M].pure((s, s))
       def put(s: S) = _ => Monad[M].pure((s, ()))
     }

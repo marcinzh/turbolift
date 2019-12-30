@@ -20,7 +20,7 @@ trait Maybe extends FilterableEffect[MaybeSig] with MaybeSig {
 
 object MaybeHandler {
   def apply[Fx <: Maybe](effect: Fx) = new effect.Nullary[Option] {
-    def commonOps[M[+_] : MonadPar] = new CommonOps[M] {
+    def commonOps[M[_]: MonadPar] = new CommonOps[M] {
       def lift[A](ma: M[A]): M[Option[A]] = ma.map(Some(_))
 
       def flatMap[A, B](tma: M[Option[A]])(f: A => M[Option[B]]): M[Option[B]] =
@@ -36,8 +36,8 @@ object MaybeHandler {
         }
     }
 
-    def specialOps[M[+_] : MonadPar] = new SpecialOps[M] with MaybeSig {
-      val fail = Monad[M].pure(None)
+    def specialOps[M[_]: MonadPar] = new SpecialOps[M] with MaybeSig {
+      def fail[A] = Monad[M].pure(None)
     }
   }.self
 }
