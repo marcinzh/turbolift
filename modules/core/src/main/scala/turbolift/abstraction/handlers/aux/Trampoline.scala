@@ -4,7 +4,7 @@ import scala.annotation.tailrec
 import TrampolineCases._
 
 
-sealed trait Trampoline[+A] {
+sealed trait Trampoline[A] {
   final def map[B](f: A => B): Trampoline[B] = flatMap(a => Done(f(a)))
 
   final def flatMap[B](f: A => Trampoline[B]): Trampoline[B] =
@@ -55,7 +55,7 @@ object TrampolineCases {
   sealed trait DoneOrMore[A] extends Trampoline[A]
   case class Done[A](value: A) extends DoneOrMore[A]
   case class More[A](thunk: () => Trampoline[A]) extends DoneOrMore[A]
-  case class FlatMap[A, +B](that: DoneOrMore[A], kont: A => Trampoline[B]) extends Trampoline[B]
+  case class FlatMap[A, B](that: DoneOrMore[A], kont: A => Trampoline[B]) extends Trampoline[B]
 }
 
 

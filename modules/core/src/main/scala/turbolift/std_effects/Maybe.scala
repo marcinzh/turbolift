@@ -1,13 +1,13 @@
 package turbolift.std_effects
 import mwords._
 import turbolift.abstraction.!!
-import turbolift.abstraction.effect._
+import turbolift.abstraction.effect.{FilterableEffect, FailSig}
 
 
-trait MaybeSig extends FailSig
+trait MaybeSig[P[_]] extends FailSig[P]
 
 
-trait Maybe extends FilterableEffect[MaybeSig] with MaybeSig {
+trait Maybe extends FilterableEffect[MaybeSig] {
   
   def from[A](x: Option[A]): A !! this.type = x match {
     case Some(a) => pure(a)
@@ -20,7 +20,9 @@ trait Maybe extends FilterableEffect[MaybeSig] with MaybeSig {
 
 object MaybeHandler {
   def apply[Fx <: Maybe](effect: Fx) = new effect.Nullary[Option] {
-    def commonOps[M[+_] : MonadPar] = new CommonOps[M] {
+    val theFunctor = FunctorInstances.option
+
+    def commonOps[M[_] : MonadPar] = new CommonOps[M] {
       def lift[A](ma: M[A]): M[Option[A]] = ma.map(Some(_))
 
       def flatMap[A, B](tma: M[Option[A]])(f: A => M[Option[B]]): M[Option[B]] =
@@ -36,8 +38,8 @@ object MaybeHandler {
         }
     }
 
-    def specialOps[M[+_] : MonadPar] = new SpecialOps[M] with MaybeSig {
-      val fail = Monad[M].pure(None)
+    def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with MaybeSig[P] {
+      def fail[A]: P[A] = liftOuter(pureInner(None))
     }
   }.self
 }

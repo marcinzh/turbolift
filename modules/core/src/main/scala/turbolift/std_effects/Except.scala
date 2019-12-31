@@ -1,20 +1,18 @@
 package turbolift.std_effects
 import mwords._
 import turbolift.abstraction.!!
-import turbolift.abstraction.effect._
+import turbolift.abstraction.effect.{Effect, Signature}
 
 
-trait ExceptSig[E] extends Signature {
-  def raise(e: E): Op[Nothing]
+trait ExceptSig[P[_], E] extends Signature[P] {
+  def raise[A](e: E): P[A]
+  def katch[A](scope: P[A])(recover: E => P[A]): P[A]
 }
 
-trait Except[E] extends Effect[ExceptSig[E]] with ExceptSig[E] {
-  def raise(e: E) = encode(_.raise(e))
-  def katch[A, U](scope: A !! U)(recover: E => A !! U) =
-    handler.handle[U](scope).flatMap {
-      case Right(a) => pure(a)
-      case Left(e) => recover(e)
-    }
+
+trait Except[E] extends Effect[ExceptSig[?[_], E]] {
+  def raise(e: E): Nothing !! this.type = encodeFO(_.raise(e))
+  def katch[A, U](scope: A !! U)(recover: E => A !! U): A !! U with this.type = encodeHO[U](run => _.katch(run(scope))(e => run(recover(e))))
 
   def from[A](x: Either[E, A]): A !! this.type = x match {
     case Right(a) => pure(a)
@@ -26,8 +24,10 @@ trait Except[E] extends Effect[ExceptSig[E]] with ExceptSig[E] {
 
 
 object ExceptHandler {
-  def apply[E, Fx <: Except[E]](effect: Fx) = new effect.Nullary[Either[E, +?]] {
-    def commonOps[M[+_] : MonadPar] = new CommonOps[M] {
+  def apply[E, Fx <: Except[E]](effect: Fx) = new effect.Nullary[Either[E, ?]] {
+    val theFunctor = FunctorInstances.either[E]
+
+    def commonOps[M[_] : MonadPar] = new CommonOps[M] {
       def lift[A](ma: M[A]): M[Either[E, A]] = ma.map(Right(_))
 
       def flatMap[A, B](tma: M[Either[E, A]])(f: A => M[Either[E, B]]): M[Either[E, B]] =
@@ -44,8 +44,16 @@ object ExceptHandler {
         }
     }
 
-    def specialOps[M[+_] : MonadPar] = new SpecialOps[M] with ExceptSig[E] {
-      def raise(e: E) = Monad[M].pure(Left(e))
+    def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with ExceptSig[P, E] {
+      def raise[A](e: E): P[A] = liftOuter(pureInner(Left(e)))
+
+      def katch[A](scope: P[A])(recover: E => P[A]): P[A] =
+        withUnlift { run =>
+          run(scope).flatMap {
+            case Right(fa) => pureInner(Right(fa))
+            case Left(e) => run(recover(e))
+          }
+        }
     }
   }.self
 }
