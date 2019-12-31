@@ -1,18 +1,19 @@
 package turbolift.std_effects
 import mwords._
 import turbolift.abstraction.!!
-import turbolift.abstraction.effect._
+import turbolift.abstraction.effect.{Effect, Signature}
 
 
-trait ReaderSig[R] extends Signature {
-  def ask: Op[R]
+trait ReaderSig[P[_], R] extends Signature[P] {
+  def ask: P[R]
+  def local[A](mod: R => R)(scope: P[A]): P[A]
 }
 
 
-trait Reader[R] extends Effect[ReaderSig[R]] with ReaderSig[R] {
-  val ask = encode(_.ask)
-  def asks[A](f: R => A) = ask.map(f)
-  def local[A, U](mod: R => R)(scope: A !! U) = ask.flatMap(r => handler(mod(r)).handle[U](scope))
+trait Reader[R] extends Effect[ReaderSig[?[_], R]] {
+  val ask: R !! this.type = encodeFO(_.ask)
+  def asks[A](f: R => A): A !! this.type = ask.map(f)
+  def local[A, U](mod: R => R)(scope: A !! U): A !! U with this.type = encodeHO[U](run => _.local(mod)(run(scope)))
 
   val handler = ReaderHandler[R, this.type](this)
 }
@@ -20,7 +21,9 @@ trait Reader[R] extends Effect[ReaderSig[R]] with ReaderSig[R] {
 
 object ReaderHandler {
   def apply[R, Fx <: Reader[R]](effect: Fx) = new effect.Unary[R, Identity] {
-    def commonOps[M[_]: MonadPar] = new CommonOps[M] {
+    val theFunctor = Functor.identity
+
+    def commonOps[M[_] : MonadPar] = new CommonOps[M] {
       def lift[A](ma: M[A]): R => M[A] = _ => ma
 
       def flatMap[A, B](tma: R => M[A])(f: A => R => M[B]): R => M[B] =
@@ -30,8 +33,13 @@ object ReaderHandler {
         r => tma(r) *! tmb(r)
     }
 
-    def specialOps[M[_]: MonadPar] = new SpecialOps[M] with ReaderSig[R] {
-      val ask = r => MonadPar[M].pure(r)
+    def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with ReaderSig[P, R] {
+      val ask: P[R] = liftOuter(r => pureInner(r))
+
+      def local[A](mod: R => R)(scope: P[A]): P[A] =
+        withUnlift { run =>
+          r => run(scope)(mod(r))
+        }
     }
   }.self
 }

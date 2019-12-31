@@ -4,11 +4,11 @@ import turbolift.abstraction.ComputationCases.HandleInScope
 import mwords._
 
 
-private[abstraction] trait SaturatedHandler extends HandlerCases.Unsealed {
+private[abstraction] sealed trait SaturatedHandler extends HandlerCases.Unsealed {
   type Trans[M[_], A]
-  override type Effects <: AnyRef
+  // override type Effects <: AnyRef
 
-  val primitive: PrimitiveHandler[Trans]
+  val primitive: PrimitiveHandler[Trans, Result]
   def prime[M[_], A](tma: Trans[M, A]): M[Result[A]]
 
   final def doHandle[A, U](eff: A !! Effects with U): Result[A] !! U = 
@@ -17,7 +17,7 @@ private[abstraction] trait SaturatedHandler extends HandlerCases.Unsealed {
 
 
 object SaturatedHandler {
-  trait Nullary[Fx <: AnyRef, O[_]] extends PrimitiveHandler.Nullary[O] with SaturatedHandler {
+  trait Nullary[Fx, O[_]] extends PrimitiveHandler.Nullary[O] with SaturatedHandler {
     final override type Effects = Fx
     final override type Result[A] = O[A]
     final override type Trans[M[_], A] = M[O[A]]
@@ -26,7 +26,7 @@ object SaturatedHandler {
     final override def prime[M[_], A](tma: M[O[A]]): M[O[A]] = tma
   }
 
-  trait Unary[Fx <: AnyRef, S, O[_]] extends PrimitiveHandler.Unary[S, O] {
+  trait Unary[Fx, S, O[_]] extends PrimitiveHandler.Unary[S, O] {
     def apply(initial: S): ThisSaturatedHandler = new ThisSaturatedHandler(initial)
 
     class ThisSaturatedHandler(initial: S) extends SaturatedHandler {

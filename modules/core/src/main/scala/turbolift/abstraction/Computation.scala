@@ -44,10 +44,11 @@ object Return {
 private[abstraction] object ComputationCases {
   final case class Pure[A](value: A) extends Computation[A, Any]
   final case class FlatMap[A, B, U](that: A !! U, k: A => B !! U) extends Computation[B, U]
-  final case class ZipPar[A, B, U](lhs: A !! U, rhs: B !! U) extends Computation[(A, B), U]
-  final case class Dispatch[A, U, Z <: Signature](effectId: AnyRef, op: Z => Z#Op[A]) extends Computation[A, U]
+  final case class ZipPar[A, +B, U](lhs: A !! U, rhs: B !! U) extends Computation[(A, B), U]
+  final case class DispatchFO[A, U, Z[P[_]] <: Signature[P], P[_]](effectId: AnyRef, op: Z[P] => P[A]) extends Computation[A, U]
+  final case class DispatchHO[A, U, Z[P[_]] <: Signature[P], P[_]](effectId: AnyRef, op: ((? !! U) ~> P) => Z[P] => P[A]) extends Computation[A, U]
   case object Fail extends Computation[Nothing, Any]
-  final case class HandleInScope[A, U, H <: SaturatedHandler](scope: A !! U with H#Effects, ph: H) extends Computation[H#Result[A], U]
+  final case class HandleInScope[A, U, H <: SaturatedHandler](scope: A !! U with H#Effects, h: H) extends Computation[H#Result[A], U]
 }
 
 
@@ -65,7 +66,7 @@ trait ComputationExports {
   def !! = Computation
 
   implicit class ComputationExtension[A, U](thiz: A !! U) {
-    def run(implicit ev: CanRunPure[U]): A = (Interpreter.pure.run_!(ev(thiz))).run
+    def run(implicit ev: CanRunPure[U]): A = (Interpreter.pure(ev(thiz))).run
     
     def runWith[H <: Handler](h: H)(implicit ev: CanRunImpure[U, h.Effects]): h.Result[A] =
       h.doHandle[A, Any](ev(thiz)).run

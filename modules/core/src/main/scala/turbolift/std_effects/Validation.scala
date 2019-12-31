@@ -1,22 +1,19 @@
 package turbolift.std_effects
 import mwords._
 import turbolift.abstraction.!!
-import turbolift.abstraction.effect._
+import turbolift.abstraction.effect.{Effect, Signature}
 
 
-trait ValidationSig[E] extends Signature {
-  def invalid(e: E): Op[Nothing]
+trait ValidationSig[P[_], E] extends Signature[P] {
+  def invalid[A](e: E): P[A]
+  def validate[A](scope: P[A])(recover: E => P[A]): P[A]
 }
 
 
-trait Validation[E] extends Effect[ValidationSig[E]] with ValidationSig[E] {
-  def invalid(e: E): Nothing !! this.type = encode(_.invalid(e))
+trait Validation[E] extends Effect[ValidationSig[?[_], E]] {
+  def invalid(e: E): Nothing !! this.type = encodeFO(_.invalid(e))
   def invalid[X](x: X)(implicit ev: NonEmpty[X, E]): Nothing !! this.type = invalid(ev.nonEmpty(x))
-  def validate[A, U](scope: A !! U)(recover: E => A !! U)(implicit E: Semigroup[E]) =
-    handler.handle[U](scope).flatMap {
-      case Right(a) => pure(a)
-      case Left(e) => recover(e)
-    }
+  def validate[A, U](scope: A !! U)(recover: E => A !! U): A !! U with this.type = encodeHO[U](run => _.validate(run(scope))(e => run(recover(e))))
 
   def from[A](x: Either[E, A]): A !! this.type = x match {
     case Right(a) => pure(a)
@@ -29,7 +26,9 @@ trait Validation[E] extends Effect[ValidationSig[E]] with ValidationSig[E] {
 
 object ValidationHandler {
   def apply[E: Semigroup, Fx <: Validation[E]](effect: Fx) = new effect.Nullary[Either[E, ?]] {
-    def commonOps[M[_]: MonadPar] = new CommonOps[M] {
+    val theFunctor = FunctorInstances.either[E]
+
+    def commonOps[M[_] : MonadPar] = new CommonOps[M] {
       def lift[A](ma: M[A]): M[Either[E, A]] = ma.map(Right(_))
 
       def flatMap[A, B](tma: M[Either[E, A]])(f: A => M[Either[E, B]]): M[Either[E, B]] =
@@ -47,8 +46,16 @@ object ValidationHandler {
         }
     }
 
-    def specialOps[M[_]: MonadPar] = new SpecialOps[M] with ValidationSig[E] {
-      def invalid(e: E) = Monad[M].pure(Left(e))
+    def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with ValidationSig[P, E] {
+      def invalid[A](e: E): P[A] = liftOuter(pureInner(Left(e)))
+
+      def validate[A](scope: P[A])(recover: E => P[A]): P[A] =
+        withUnlift { run =>
+          run(scope).flatMap {
+            case Right(fa) => pureInner(Right(fa))
+            case Left(e) => run(recover(e))
+          }
+        }
     }
   }.self
 }

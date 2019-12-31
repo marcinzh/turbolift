@@ -1,19 +1,20 @@
 package turbolift.std_effects
 import mwords._
-// import turbolift.abstraction.!!
-import turbolift.abstraction.effect._
+import turbolift.abstraction.!!
+import turbolift.abstraction.effect.{Effect, Signature}
 
 
-trait StateSig[S] extends Signature {
-  def get: Op[S]
-  def put(s: S): Op[Unit]
+trait StateSig[P[_], S] extends Signature[P] {
+  def get: P[S]
+  def put(s: S): P[Unit]
+  def mod(f: S => S): P[Unit] = get.flatMap(s => put(f(s)))
 }
 
 
-trait State[S] extends Effect[StateSig[S]] with StateSig[S] {
-  val get = encode(_.get)
-  def put(s: S) = encode(_.put(s))
-  def mod(f: S => S) = get.flatMap(s => put(f(s)))
+trait State[S] extends Effect[StateSig[?[_], S]] {
+  val get: S !! this.type = encodeFO(_.get)
+  def put(s: S): Unit !! this.type = encodeFO(_.put(s))
+  def mod(f: S => S): Unit !! this.type = encodeFO(_.mod(f))
 
   val handler = StateHandler[S, this.type](this)
 }
@@ -21,7 +22,9 @@ trait State[S] extends Effect[StateSig[S]] with StateSig[S] {
 
 object StateHandler {
   def apply[S, Fx <: State[S]](effect: Fx) = new effect.Unary[S, (S, ?)] {
-    def commonOps[M[_]: MonadPar] = new CommonOps[M] {
+    val theFunctor = FunctorInstances.pair[S]
+
+    def commonOps[M[_] : MonadPar] = new CommonOps[M] {
       def lift[A](ma: M[A]): S => M[(S, A)] = s => ma.map((s, _))
 
       def flatMap[A, B](tma: S => M[(S, A)])(f: A => S => M[(S, B)]): S => M[(S, B)] =
@@ -37,9 +40,10 @@ object StateHandler {
         }
     }
 
-    def specialOps[M[_]: MonadPar] = new SpecialOps[M] with StateSig[S] {
-      val get = s => Monad[M].pure((s, s))
-      def put(s: S) = _ => Monad[M].pure((s, ()))
+    def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with StateSig[P, S] {
+      val get: P[S] = liftOuter(s => pureInner((s, s)))
+      def put(s: S): P[Unit] = liftOuter(_ => pureInner((s, ())))
+      override def mod(f: S => S): P[Unit] = liftOuter(s => pureInner((f(s), ())))
     }
   }.self
 }

@@ -27,10 +27,10 @@ class RepeatedlyTest extends Specification with CanStackOverflow {
   case object FxC extends NonDet
 
   val cases = List(
-    Case("Reader", FxR.handler(0), FxR.ask),
-    Case("Writer", FxW.handler, FxW.tell(111)),
+    // Case("Reader", FxR.handler(0), FxR.ask),
+    // Case("Writer", FxW.handler, FxW.tell(111)),
     Case("State", FxS.handler(0), for { x <- FxS.get; _ <- FxS.put(x + 1) } yield ()),
-    Case("NonDet", FxC.handler, FxC.each(List(0)))
+    // Case("NonDet", FxC.handler, FxC.each(List(0)))
   )
 
   abstract class Mapper(val name: String) {

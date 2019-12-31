@@ -1,16 +1,16 @@
 package turbolift.std_effects
 import mwords._
-// import turbolift.abstraction.!!
-import turbolift.abstraction.effect._
+import turbolift.abstraction.!!
+import turbolift.abstraction.effect.{FilterableEffect, FailSig}
 
 
-trait NonDetSig extends FailSig {
-  def each[A](as: Iterable[A]): Op[A]
+trait NonDetSig[P[_]] extends FailSig[P] {
+  def each[A](as: Iterable[A]): P[A]
 }
 
 
-trait NonDet extends FilterableEffect[NonDetSig] with NonDetSig {
-  def each[A](as: Iterable[A]) = encode(_.each(as))
+trait NonDet extends FilterableEffect[NonDetSig] {
+  def each[A](as: Iterable[A]) = encodeFO(_.each(as))
   
   def from[A](as: A*) = each(as.toVector)
 
@@ -20,7 +20,9 @@ trait NonDet extends FilterableEffect[NonDetSig] with NonDetSig {
 
 object NonDetHandler {
   def apply[Fx <: NonDet](effect: Fx) = new effect.Nullary[Vector] {
-    def commonOps[M[_]: MonadPar] = new CommonOps[M] {
+    val theFunctor = FunctorInstances.vector
+
+    def commonOps[M[_] : MonadPar] = new CommonOps[M] {
       def lift[A](ma: M[A]): M[Vector[A]] = ma.map(Vector(_))
 
       def flatMap[A, B](tma: M[Vector[A]])(f: A => M[Vector[B]]): M[Vector[B]] = {
@@ -46,9 +48,9 @@ object NonDetHandler {
         }
     }
 
-    def specialOps[M[_]: MonadPar] = new SpecialOps[M] with NonDetSig {
-      def fail[A] = Monad[M].pure(Vector())
-      def each[A](as: Iterable[A]) = Monad[M].pure(as.toVector)
+    def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with NonDetSig[P] {
+      def fail[A]: P[A] = liftOuter(pureInner(Vector()))
+      def each[A](as: Iterable[A]): P[A] = liftOuter(pureInner(as.toVector))
     }
   }.self
 }

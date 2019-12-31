@@ -1,27 +1,31 @@
 package turbolift.std_effects
 import mwords._
 import turbolift.abstraction.!!
-import turbolift.abstraction.effect._
+import turbolift.abstraction.effect.{Effect, Signature}
 
 
-trait WriterSig[W] extends Signature {
-  def tell(w: W): Op[Unit]
+trait WriterSig[P[_], W] extends Signature[P] {
+  def tell(w: W): P[Unit]
+  def listen[A](scope: P[A]): P[(W, A)]
+  def censor[A](scope: P[A])(mod: W => W): P[A]
 }
 
 
-trait Writer[W] extends Effect[WriterSig[W]] with WriterSig[W] {
-  def tell(w: W): Unit !! this.type = encode(_.tell(w))
+trait Writer[W] extends Effect[WriterSig[?[_], W]] {
+  def tell(w: W): Unit !! this.type = encodeFO(_.tell(w))
   def tell[X](x: X)(implicit ev: NonEmpty[X, W]): Unit !! this.type = tell(ev.nonEmpty(x))
-  def listen[A, U](scope: A !! U)(implicit W: Monoid[W]) = handler.handle[U](scope).flatMap { case w_a @ (w, _) => tell(w) *>! pure(w_a) }
-  def censor[A, U](scope: A !! U)(f: W => W)(implicit W: Monoid[W]) = handler.handle[U](scope).flatMap { case (w, a) => tell(f(w)) *>! pure(a) }
+  def listen[A, U](scope: A !! U): (W, A) !! U with this.type = encodeHO[U](run => _.listen(run(scope)))
+  def censor[A, U](scope: A !! U)(f: W => W): A !! U with this.type = encodeHO[U](run => _.censor(run(scope))(f))
 
   def handler(implicit W: Monoid[W]) = WriterHandler[W, this.type](this).apply(W.empty)
 }
 
 
 object WriterHandler {
-  def apply[W, Fx <: Writer[W]](effect: Fx)(implicit W: Monoid[W]) = new effect.Unary[W, (W, ?)] {
-    def commonOps[M[_]: MonadPar] = new CommonOps[M] {
+  def apply[W: Monoid, Fx <: Writer[W]](effect: Fx) = new effect.Unary[W, (W, ?)] {
+    val theFunctor = FunctorInstances.pair[W]
+
+    def commonOps[M[_] : MonadPar] = new CommonOps[M] {
       def lift[A](ma: M[A]): W => M[(W, A)] = w => ma.map((w, _))
 
       def flatMap[A, B](tma: W => M[(W, A)])(f: A => W => M[(W, B)]): W => M[(W, B)] =
@@ -30,13 +34,23 @@ object WriterHandler {
         }
 
       def zipPar[A, B](tma: W => M[(W, A)], tmb: W => M[(W, B)]): W => M[(W, (A, B))] =
-        w0 => (tma(W.empty) *! tmb(W.empty)).map {
+        w0 => (tma(Monoid[W].empty) *! tmb(Monoid[W].empty)).map {
           case ((w1, a), (w2, b)) => ((w0 |@| w1) |@| w2, (a, b))
         }
     }
 
-    def specialOps[M[_]: MonadPar] = new SpecialOps[M] with WriterSig[W] {
-      def tell(w: W) = w0 => Monad[M].pure((w0 |@| w, ()))
+    def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with WriterSig[P, W] {
+      def tell(w: W): P[Unit] = liftOuter(w0 => pureInner((w0 |@| w, ())))
+
+      def listen[A](scope: P[A]): P[(W, A)] =
+        withUnlift { run => w0 =>
+          run(scope)(w0).map { case (w, fa) => (w, fa.map((w, _))) }
+        }
+
+      def censor[A](scope: P[A])(mod: W => W): P[A] =
+        withUnlift { run => w0 =>
+          run(scope)(w0).map { case (w, fa) => (mod(w), fa) }
+        }
     }
   }.self
 }
