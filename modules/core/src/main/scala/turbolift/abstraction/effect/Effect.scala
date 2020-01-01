@@ -1,24 +1,12 @@
 package turbolift.abstraction.effect
 import mwords._
-import turbolift.abstraction.{!!, Return}
-import turbolift.abstraction.ComputationCases.{DispatchFO, DispatchHO}
+import turbolift.abstraction.!!
 import turbolift.abstraction.handlers.{PrimitiveHandler, PrimitiveHandlerBase, SaturatedHandler}
 
 
-sealed trait AnyEffect[Z[P[_]] <: Signature[P]] {
-  final type ThisEffect = this.type
-
-  final def pure[A](a: A): A !! this.type = Return(a)
-
-  final def encodeFO[A](f: Z[Phantom] => Phantom[A]): A !! this.type = new DispatchFO(this, f)
-
-  final def encodeHO[U] = new EncodeHO[U with this.type]
-  class EncodeHO[U] {
-    type Run = (? !! U) ~> Phantom 
-    def apply[A](ff: Run => Z[Phantom] => Phantom[A]): A !! U = new DispatchHO(AnyEffect.this, ff) //// DANGER, `this` is shadowed
-  }
-
-  type Phantom[A] //// Solves the "Can't existentially abstract over parameterized type" problem
+sealed trait AnyEffect[Z[P[_]] <: Signature[P]] extends EffectEncoding[Z] {
+  final override type ThisEffect = this.type
+  final override def effectId: AnyRef = this
 
   trait ThisHandlerBase extends PrimitiveHandlerBase {
     final override val effectId: AnyRef = AnyEffect.this
