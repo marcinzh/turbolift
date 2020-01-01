@@ -50,7 +50,18 @@ object NonDetHandler {
 
     def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with NonDetSig[P] {
       def fail[A]: P[A] = liftOuter(pureInner(Vector()))
+
       def each[A](as: Iterable[A]): P[A] = liftOuter(pureInner(as.toVector))
+
+      def orElse[A](lhs: P[A], rhs: => P[A]): P[A] =
+        withUnlift { run =>
+          run(lhs).flatMap { x =>
+            if (x.nonEmpty)
+              pureInner(x)
+            else
+              run(rhs)
+          }
+        }
     }
   }.self
 }
