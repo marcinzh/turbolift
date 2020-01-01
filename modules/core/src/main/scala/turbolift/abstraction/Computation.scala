@@ -1,6 +1,6 @@
 package turbolift.abstraction
 import mwords._
-import turbolift.abstraction.effect.{Signature, EffectWithFilter}
+import turbolift.abstraction.effect.{Signature, FailEffect}
 import turbolift.abstraction.handlers.{Interpreter, Handler, SaturatedHandler}
 import turbolift.abstraction.handlers.aux.{CanRunPure, CanRunImpure, CanHandle}
 import ComputationCases._
@@ -22,7 +22,7 @@ sealed trait Computation[+A, -U] {
 
   final def void: Unit !! U = map(_ => ())
   final def upCast[V <: U] = this: A !! V
-  final def forceFilterable = this: A !! U with EffectWithFilter
+  final def forceFilterable = this: A !! U with FailEffect
 }
 
 
@@ -77,7 +77,7 @@ trait ComputationExports {
         h.doHandle[A, V](ev(thiz))
     }
 
-    def withFilter(f: A => Boolean)(implicit ev: U <:< EffectWithFilter): A !! U =
+    def withFilter(f: A => Boolean)(implicit ev: U <:< FailEffect): A !! U =
       thiz.flatMap(a => if (f(a)) Return(a) else Fail)
 
     def downCast[V >: U] = thiz.asInstanceOf[Computation[A, V]]

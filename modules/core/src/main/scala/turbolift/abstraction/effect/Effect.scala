@@ -28,9 +28,9 @@ trait Effect[Z[P[_]] <: Signature[P]] extends AnyEffect[Z] {
 }
 
 
-sealed trait EffectWithFilter
+sealed trait FailEffect
 
-trait FilterableEffect[Z[P[_]] <: FailSig[P]] extends AnyEffect[Z] with EffectWithFilter {
+trait FilterableEffect[Z[P[_]] <: FailSig[P]] extends AnyEffect[Z] with FailEffect {
   final val fail: Nothing !! this.type = encodeFO(_.fail)
 
   trait ThisHandlerBase extends super.ThisHandlerBase {
