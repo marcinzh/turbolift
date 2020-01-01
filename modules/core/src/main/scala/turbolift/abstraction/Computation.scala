@@ -20,6 +20,14 @@ sealed trait Computation[+A, -U] {
   final def **<![B, V](that : => B !! V): A !! U with V = flatMap(a => that.map(_ => a))
   final def **>![B, V](that : => B !! V): B !! U with V = flatMap(_ => that)
 
+  final def &![B, V](that: B !! V): B !! U with V = this *>! that
+  final def &&![B, V](that : => B !! V): B !! U with V = this **>! that
+
+  final def |?[B >: A, V](that: B !! V): B !! U with V with FailEffect = FailEffect.orElsePar(this, that)
+  final def ||?[B >: A, V](that: => B !! V): B !! U with V with FailEffect = FailEffect.orElseSeq(this, that)
+
+  final def withFilter(f: A => Boolean): A !! U with FailEffect = flatMap(a => if (f(a)) !!.pure(a) else !!.fail)
+
   final def void: Unit !! U = map(_ => ())
   final def upCast[V <: U] = this: A !! V
   final def forceFilterable = this: A !! U with FailEffect
@@ -29,7 +37,7 @@ sealed trait Computation[+A, -U] {
 object Computation {
   def pure(): Unit !! Any = Return()
   def pure[A](a: A): A !! Any = Return(a)
-  def fail: Nothing !! Any = Fail
+  def fail: Nothing !! FailEffect = FailEffect.fail
   def defer[A, U](ua: => A !! U): A !! U = Return().flatMap(_ => ua)
 }
 
@@ -44,10 +52,9 @@ object Return {
 private[abstraction] object ComputationCases {
   final case class Pure[A](value: A) extends Computation[A, Any]
   final case class FlatMap[A, B, U](that: A !! U, k: A => B !! U) extends Computation[B, U]
-  final case class ZipPar[A, +B, U](lhs: A !! U, rhs: B !! U) extends Computation[(A, B), U]
+  final case class ZipPar[A, B, U](lhs: A !! U, rhs: B !! U) extends Computation[(A, B), U]
   final case class DispatchFO[A, U, Z[P[_]] <: Signature[P], P[_]](effectId: AnyRef, op: Z[P] => P[A]) extends Computation[A, U]
   final case class DispatchHO[A, U, Z[P[_]] <: Signature[P], P[_]](effectId: AnyRef, op: ((? !! U) ~> P) => Z[P] => P[A]) extends Computation[A, U]
-  case object Fail extends Computation[Nothing, Any]
   final case class HandleInScope[A, U, H <: SaturatedHandler](scope: A !! U with H#Effects, h: H) extends Computation[H#Result[A], U]
 }
 
@@ -76,9 +83,6 @@ trait ComputationExports {
       def apply[H <: Handler](h: H)(implicit ev: CanHandle[V, U, h.Effects]): h.Result[A] !! V =
         h.doHandle[A, V](ev(thiz))
     }
-
-    def withFilter(f: A => Boolean)(implicit ev: U <:< FailEffect): A !! U =
-      thiz.flatMap(a => if (f(a)) Return(a) else Fail)
 
     def downCast[V >: U] = thiz.asInstanceOf[Computation[A, V]]
   }

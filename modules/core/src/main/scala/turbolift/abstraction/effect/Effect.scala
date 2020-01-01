@@ -1,6 +1,4 @@
 package turbolift.abstraction.effect
-import mwords._
-import turbolift.abstraction.!!
 import turbolift.abstraction.handlers.{PrimitiveHandler, PrimitiveHandlerBase, SaturatedHandler}
 
 
@@ -28,11 +26,7 @@ trait Effect[Z[P[_]] <: Signature[P]] extends AnyEffect[Z] {
 }
 
 
-sealed trait FailEffect
-
-trait FilterableEffect[Z[P[_]] <: FailSig[P]] extends AnyEffect[Z] with FailEffect {
-  final val fail: Nothing !! this.type = encodeFO(_.fail)
-
+trait FilterableEffect[Z[P[_]] <: FailSig[P]] extends AnyEffect[Z] with FailEffectEncoding[Z] {
   trait ThisHandlerBase extends super.ThisHandlerBase {
     final override val isFilterable = true
   }

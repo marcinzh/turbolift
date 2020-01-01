@@ -40,6 +40,23 @@ object MaybeHandler {
 
     def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with MaybeSig[P] {
       def fail[A]: P[A] = liftOuter(pureInner(None))
+
+      def orElseSeq[A](lhs: P[A], rhs: => P[A]): P[A] =
+        withUnlift { run =>
+          run(lhs).flatMap { x =>
+            if (x.isDefined)
+              pureInner(x)
+            else
+              run(rhs)
+          }
+        }
+
+      def orElsePar[A](lhs: P[A], rhs: P[A]): P[A] =
+        withUnlift { run =>
+          (run(lhs) *! run(rhs)).map {
+            case (x, y) => x.orElse(y)
+          }
+        }
     }
   }.self
 }
