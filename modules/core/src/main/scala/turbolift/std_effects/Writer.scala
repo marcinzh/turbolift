@@ -25,7 +25,7 @@ object WriterHandler {
   def apply[W: Monoid, Fx <: Writer[W]](effect: Fx) = new effect.Unary[W, (W, ?)] {
     val theFunctor = FunctorInstances.pair[W]
 
-    def commonOps[M[_] : MonadPar] = new CommonOps[M] {
+    def commonOps[M[_]: MonadPar] = new CommonOps[M] {
       def lift[A](ma: M[A]): W => M[(W, A)] = w => ma.map((w, _))
 
       def flatMap[A, B](tma: W => M[(W, A)])(f: A => W => M[(W, B)]): W => M[(W, B)] =

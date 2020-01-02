@@ -60,7 +60,7 @@ private[abstraction] object ComputationCases {
 
 
 object ComputationInstances {
-  implicit def monad[U] : MonadPar[Computation[?, U]] = new MonadPar[Computation[?, U]] {
+  implicit def monad[U]: MonadPar[Computation[?, U]] = new MonadPar[Computation[?, U]] {
     def pure[A](a: A): A !! U = Return(a)
     def flatMap[A, B](ma: A !! U)(f: A => B !! U): B !! U = ma.flatMap(f)
     def zipPar[A, B](ma: A !! U, mb: B !! U): (A, B) !! U = ma *! mb

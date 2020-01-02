@@ -24,7 +24,7 @@ object StateHandler {
   def apply[S, Fx <: State[S]](effect: Fx) = new effect.Unary[S, (S, ?)] {
     val theFunctor = FunctorInstances.pair[S]
 
-    def commonOps[M[_] : MonadPar] = new CommonOps[M] {
+    def commonOps[M[_]: MonadPar] = new CommonOps[M] {
       def lift[A](ma: M[A]): S => M[(S, A)] = s => ma.map((s, _))
 
       def flatMap[A, B](tma: S => M[(S, A)])(f: A => S => M[(S, B)]): S => M[(S, B)] =
