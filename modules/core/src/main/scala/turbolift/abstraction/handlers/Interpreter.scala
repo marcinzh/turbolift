@@ -28,8 +28,8 @@ final class Interpreter[M[_], U](
   private def loop[A](ua: A !! U): M[A] = {
     import turbolift.abstraction.ComputationCases._
     implicit def M: MonadPar[M] = theMonad
-    def castM[X](ma: M[X]) = ma.asInstanceOf[M[A]]
-    def castS[X[_], Z[P[_]] <: Signature[P]](f: Z[X] => X[A]) = f.asInstanceOf[Signature[M] => M[A]]
+    def castM[A1](ma: M[A1]) = ma.asInstanceOf[M[A]]
+    def castS[M1[_], Z[P[_]] <: Signature[P]](f: Z[M1] => M1[A]) = f.asInstanceOf[Signature[M] => M[A]]
     ua match {
       case Pure(a) => theMonad.pure(a)
       case FlatMap(ux, k) => ux match {
@@ -40,7 +40,7 @@ final class Interpreter[M[_], U](
       case ZipPar(uy, uz) => castM(loop(uy) *! loop(uz))
       case DispatchFO(id, op) => castS(op)(decoderMap(id))
       case DispatchHO(id, op) => castS(op(this))(decoderMap(id))
-      case HandleInScope(uy, ph) => castM(ph.prime(push(ph.primitive).loop(uy)))
+      case PushHandler(uy, ph) => castM(ph.prime(push(ph.primitive).loop(uy)))
     }
   }
 }

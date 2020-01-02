@@ -55,7 +55,7 @@ private[abstraction] object ComputationCases {
   final case class ZipPar[A, B, U](lhs: A !! U, rhs: B !! U) extends Computation[(A, B), U]
   final case class DispatchFO[A, U, Z[P[_]] <: Signature[P], P[_]](effectId: AnyRef, op: Z[P] => P[A]) extends Computation[A, U]
   final case class DispatchHO[A, U, Z[P[_]] <: Signature[P], P[_]](effectId: AnyRef, op: ((? !! U) ~> P) => Z[P] => P[A]) extends Computation[A, U]
-  final case class HandleInScope[A, U, H <: SaturatedHandler](scope: A !! U with H#Effects, h: H) extends Computation[H#Result[A], U]
+  final case class PushHandler[A, U, H <: SaturatedHandler](scope: A !! U with H#Effects, h: H) extends Computation[H#Result[A], U]
 }
 
 

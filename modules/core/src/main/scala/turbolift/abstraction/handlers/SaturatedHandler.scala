@@ -1,6 +1,6 @@
 package turbolift.abstraction.handlers
 import turbolift.abstraction.!!
-import turbolift.abstraction.ComputationCases.HandleInScope
+import turbolift.abstraction.ComputationCases.PushHandler
 import mwords._
 
 
@@ -12,7 +12,7 @@ private[abstraction] sealed trait SaturatedHandler extends HandlerCases.Unsealed
   def prime[M[_], A](tma: Trans[M, A]): M[Result[A]]
 
   final def doHandle[A, U](eff: A !! Effects with U): Result[A] !! U = 
-    new HandleInScope[A, U, this.type](eff, this)
+    new PushHandler[A, U, this.type](eff, this)
 }
 
 

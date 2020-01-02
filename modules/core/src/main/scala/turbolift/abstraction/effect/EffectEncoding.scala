@@ -12,10 +12,10 @@ trait EffectEncoding[Z[P[_]] <: Signature[P]] {
 
   final def encodeFO[A](f: Z[Phantom] => Phantom[A]): A !! ThisEffect = new DispatchFO(effectId, f)
 
-  final def encodeHO[U] = new EncodeHO[U with ThisEffect]
+  final def encodeHO[U] = new EncodeHO[U]
   class EncodeHO[U] {
-    type Run = (? !! U) ~> Phantom 
-    def apply[A](ff: Run => Z[Phantom] => Phantom[A]): A !! U = new DispatchHO(effectId, ff)
+    type Run = (? !! U with ThisEffect) ~> Phantom 
+    def apply[A](ff: Run => Z[Phantom] => Phantom[A]): A !! U with ThisEffect = new DispatchHO(effectId, ff)
   }
 
   final def pure[A](a: A): A !! ThisEffect = !!.pure(a)
