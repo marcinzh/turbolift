@@ -1,11 +1,10 @@
-package turbolift.abstraction.handlers
-import turbolift.abstraction.!!
+package turbolift.abstraction.internals.handler
+import turbolift.abstraction.{!!, HandlerCases}
 import turbolift.abstraction.ComputationCases.PushHandler
 
 
 private[abstraction] sealed trait SaturatedHandler extends HandlerCases.Unsealed {
   type Trans[M[_], A]
-  // override type Effects <: AnyRef
 
   val primitive: PrimitiveHandler[Trans, Result]
   def prime[M[_], A](tma: Trans[M, A]): M[Result[A]]

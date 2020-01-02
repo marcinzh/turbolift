@@ -1,7 +1,8 @@
-package turbolift.abstraction.handlers
+package turbolift.abstraction.internals.interpreter
 import mwords.{MonadPar, Identity}
 import turbolift.abstraction.!!
 import turbolift.abstraction.effect.Signature
+import turbolift.abstraction.internals.handler.{PrimitiveHandler, Lifting, Context}
 
 
 sealed trait HandlerStack[P[_]] {

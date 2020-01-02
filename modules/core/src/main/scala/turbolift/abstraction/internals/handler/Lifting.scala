@@ -1,4 +1,4 @@
-package turbolift.abstraction.handlers
+package turbolift.abstraction.internals.handler
 import mwords.{Functor, Identity, ~>}
 
 

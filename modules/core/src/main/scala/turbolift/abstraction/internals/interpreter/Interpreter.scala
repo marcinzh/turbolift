@@ -1,8 +1,8 @@
-package turbolift.abstraction.handlers
+package turbolift.abstraction.internals.interpreter
 import mwords._
-import turbolift.abstraction.handlers.aux.{Trampoline, TrampolineInstances}
-import turbolift.abstraction.effect.Signature
 import turbolift.abstraction.!!
+import turbolift.abstraction.effect.Signature
+import turbolift.abstraction.internals.handler.PrimitiveHandler
 
 
 final class Interpreter[M[_], U](

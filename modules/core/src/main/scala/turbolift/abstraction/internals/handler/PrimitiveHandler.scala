@@ -1,7 +1,7 @@
-package turbolift.abstraction.handlers
+package turbolift.abstraction.internals.handler
 import mwords.{MonadPar, Functor, Identity, ~>}
-import turbolift.abstraction.effect.Signature
 import turbolift.abstraction.!!
+import turbolift.abstraction.effect.Signature
 
 
 trait PrimitiveHandlerBase {

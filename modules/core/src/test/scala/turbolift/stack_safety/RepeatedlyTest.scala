@@ -1,6 +1,5 @@
 package turbolift.stack_safety
 import turbolift.abstraction._
-import turbolift.abstraction.handlers.Handler
 import turbolift.std_effects._
 import org.specs2._
 

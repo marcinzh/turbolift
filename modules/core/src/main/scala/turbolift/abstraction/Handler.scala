@@ -1,7 +1,6 @@
-package turbolift.abstraction.handlers
+package turbolift.abstraction
 import mwords.{Identity, ~>}
-import turbolift.abstraction.!!
-import turbolift.abstraction.handlers.aux.CanHandle
+import turbolift.abstraction.internals.aux.CanHandle
 
 
 sealed trait Handler {
