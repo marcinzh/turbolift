@@ -1,5 +1,5 @@
 package turbolift.abstraction.handlers
-import mwords._
+import mwords.{Functor, Identity, ~>}
 
 
 trait Lifting[Outer[_], Inner[_], Stash[_]] {

@@ -1,5 +1,5 @@
 package turbolift.abstraction.handlers
-import mwords._
+import mwords.{MonadPar, ~>}
 import turbolift.abstraction.!!
 
 

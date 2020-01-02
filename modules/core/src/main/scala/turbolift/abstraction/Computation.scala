@@ -1,5 +1,5 @@
 package turbolift.abstraction
-import mwords._
+import mwords.{MonadPar, ~>}
 import turbolift.abstraction.effect.{Signature, FailEffect}
 import turbolift.abstraction.handlers.{Interpreter, Handler, SaturatedHandler}
 import turbolift.abstraction.handlers.aux.{CanRunPure, CanRunImpure, CanHandle}

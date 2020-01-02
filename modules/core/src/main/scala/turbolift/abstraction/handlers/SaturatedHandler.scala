@@ -1,7 +1,6 @@
 package turbolift.abstraction.handlers
 import turbolift.abstraction.!!
 import turbolift.abstraction.ComputationCases.PushHandler
-import mwords._
 
 
 private[abstraction] sealed trait SaturatedHandler extends HandlerCases.Unsealed {

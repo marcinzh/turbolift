@@ -1,5 +1,5 @@
 package turbolift.abstraction.handlers
-import mwords._
+import mwords.{MonadPar, Identity}
 import turbolift.abstraction.!!
 import turbolift.abstraction.effect.Signature
 
