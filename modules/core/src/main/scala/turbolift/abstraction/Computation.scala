@@ -75,9 +75,13 @@ trait ComputationExports {
 
   implicit class ComputationExtension[A, U](thiz: A !! U) {
     def run(implicit ev: CanRunPure[U]): A = (Interpreter.pure(ev(thiz))).run
+    def runStackUnsafe(implicit ev: CanRunPure[U]): A = (Interpreter.pureStackUnsafe[A](ev(thiz)))
     
     def runWith[H <: Handler](h: H)(implicit ev: CanRunImpure[U, h.Effects]): h.Result[A] =
       h.doHandle[A, Any](ev(thiz)).run
+
+    def runStackUnsafeWith[H <: Handler](h: H)(implicit ev: CanRunImpure[U, h.Effects]): h.Result[A] =
+      h.doHandle[A, Any](ev(thiz)).runStackUnsafe
 
     def handleWith[V] : HandleWithApply[V] = new HandleWithApply[V]
     class HandleWithApply[V] {
