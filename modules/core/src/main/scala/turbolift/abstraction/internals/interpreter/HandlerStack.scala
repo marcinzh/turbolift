@@ -1,7 +1,8 @@
-package turbolift.abstraction.handlers
-import mwords._
+package turbolift.abstraction.internals.interpreter
+import mwords.{MonadPar, Identity}
 import turbolift.abstraction.!!
 import turbolift.abstraction.effect.Signature
+import turbolift.abstraction.internals.handler.{PrimitiveHandler, Lifting, Context}
 
 
 sealed trait HandlerStack[P[_]] {
@@ -13,7 +14,7 @@ sealed trait HandlerStack[P[_]] {
 
 
 object HandlerStack {
-  def pushFirst[T[_[_], _], O[_], M[_] : MonadPar](primitive: PrimitiveHandler[T, O]): HandlerStack[T[M, ?]] =
+  def pushFirst[T[_[_], _], O[_], M[_]: MonadPar](primitive: PrimitiveHandler[T, O]): HandlerStack[T[M, ?]] =
     HandlerStackCases.PushFirst(primitive)    
 }
 
@@ -50,7 +51,7 @@ private object HandlerStackCases {
   }
 
 
-  final case class PushFirst[T[_[_], _], O[_], M[_] : MonadPar](primitive: PrimitiveHandler[T, O]) extends CanDecode[T[M, ?]] { outer =>
+  final case class PushFirst[T[_[_], _], O[_], M[_]: MonadPar](primitive: PrimitiveHandler[T, O]) extends CanDecode[T[M, ?]] { outer =>
     override def effectId: AnyRef = primitive.effectId
     override def outerMonad: MonadPar[T[M, ?]] = primitive.commonOps[M]
 

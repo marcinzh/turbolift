@@ -1,5 +1,5 @@
 package turbolift.abstraction.effect
-import turbolift.abstraction.handlers.{PrimitiveHandler, PrimitiveHandlerBase, SaturatedHandler}
+import turbolift.abstraction.internals.handler.{PrimitiveHandler, PrimitiveHandlerBase, SaturatedHandler}
 
 
 sealed trait AnyEffect[Z[P[_]] <: Signature[P]] extends EffectEncoding[Z] {

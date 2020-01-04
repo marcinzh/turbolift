@@ -23,7 +23,7 @@ object ReaderHandler {
   def apply[R, Fx <: Reader[R]](effect: Fx) = new effect.Unary[R, Identity] {
     val theFunctor = Functor.identity
 
-    def commonOps[M[_] : MonadPar] = new CommonOps[M] {
+    def commonOps[M[_]: MonadPar] = new CommonOps[M] {
       def lift[A](ma: M[A]): R => M[A] = _ => ma
 
       def flatMap[A, B](tma: R => M[A])(f: A => R => M[B]): R => M[B] =

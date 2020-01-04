@@ -1,7 +1,7 @@
-package turbolift.abstraction.handlers
-import mwords._
-import turbolift.abstraction.effect.Signature
+package turbolift.abstraction.internals.handler
+import mwords.{MonadPar, Functor, Identity, ~>}
 import turbolift.abstraction.!!
+import turbolift.abstraction.effect.Signature
 
 
 trait PrimitiveHandlerBase {
@@ -15,9 +15,9 @@ trait PrimitiveHandlerBase {
 trait PrimitiveHandler[T[_[_], _], O[_]] extends PrimitiveHandlerBase {
   def theFunctor: Functor[O]
 
-  def commonOps[M[_] : MonadPar] : CommonOps[M]
+  def commonOps[M[_]: MonadPar] : CommonOps[M]
 
-  abstract class CommonOps[M[_] : MonadPar] extends MonadPar[T[M, ?]] with Lifting[T[M, ?], M, O] {
+  abstract class CommonOps[M[_]: MonadPar] extends MonadPar[T[M, ?]] with Lifting[T[M, ?], M, O] {
     final def mainMonad: MonadPar[T[M, ?]] = this
     final def innerMonad: MonadPar[M] = MonadPar[M]
     final def stashFunctor: Functor[O] = theFunctor
@@ -55,7 +55,7 @@ trait PrimitiveHandler[T[_[_], _], O[_]] extends PrimitiveHandlerBase {
 
 object PrimitiveHandler {
   trait Nullary[O[_]] extends PrimitiveHandler[Lambda[(`M[_]`, A) => M[O[A]]], O] {
-    abstract class CommonOps[M[_] : MonadPar] extends super.CommonOps[M] {
+    abstract class CommonOps[M[_]: MonadPar] extends super.CommonOps[M] {
       final override def withUnlift[A](ff: Unlift => M[O[A]]): M[O[A]] =
         ff(~>.identity[Lambda[X => M[O[X]]]])
     }
@@ -67,7 +67,7 @@ object PrimitiveHandler {
   }
 
   trait Unary[S, O[_]] extends PrimitiveHandler[Lambda[(`M[_]`, A) => S => M[O[A]]], O] {
-    abstract class CommonOps[M[_] : MonadPar] extends super.CommonOps[M] {
+    abstract class CommonOps[M[_]: MonadPar] extends super.CommonOps[M] {
       final override def withUnlift[A](ff: Unlift => M[O[A]]): S => M[O[A]] =
         s => ff(new Unlift {
           def apply[A](tma: S => M[O[A]]): M[O[A]] = tma(s)

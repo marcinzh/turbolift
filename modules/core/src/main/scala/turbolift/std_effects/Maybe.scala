@@ -8,7 +8,6 @@ trait MaybeSig[P[_]] extends FailSig[P]
 
 
 trait Maybe extends FilterableEffect[MaybeSig] {
-  
   def from[A](x: Option[A]): A !! this.type = x match {
     case Some(a) => pure(a)
     case _ => fail
@@ -22,7 +21,7 @@ object MaybeHandler {
   def apply[Fx <: Maybe](effect: Fx) = new effect.Nullary[Option] {
     val theFunctor = FunctorInstances.option
 
-    def commonOps[M[_] : MonadPar] = new CommonOps[M] {
+    def commonOps[M[_]: MonadPar] = new CommonOps[M] {
       def lift[A](ma: M[A]): M[Option[A]] = ma.map(Some(_))
 
       def flatMap[A, B](tma: M[Option[A]])(f: A => M[Option[B]]): M[Option[B]] =
@@ -41,13 +40,20 @@ object MaybeHandler {
     def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with MaybeSig[P] {
       def fail[A]: P[A] = liftOuter(pureInner(None))
 
-      def orElse[A](lhs: P[A], rhs: => P[A]): P[A] =
+      def orElseSeq[A](lhs: P[A], rhs: => P[A]): P[A] =
         withUnlift { run =>
           run(lhs).flatMap { x =>
             if (x.isDefined)
               pureInner(x)
             else
               run(rhs)
+          }
+        }
+
+      def orElsePar[A](lhs: P[A], rhs: P[A]): P[A] =
+        withUnlift { run =>
+          (run(lhs) *! run(rhs)).map {
+            case (x, y) => x.orElse(y)
           }
         }
     }

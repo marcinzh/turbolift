@@ -1,6 +1,6 @@
-package turbolift.abstraction.handlers.aux
-import mwords._
+package turbolift.abstraction.internals.interpreter
 import scala.annotation.tailrec
+import mwords.MonadPar
 import TrampolineCases._
 
 

@@ -1,8 +1,9 @@
 package turbolift.abstraction
-import mwords._
+import mwords.{MonadPar, ~>}
 import turbolift.abstraction.effect.{Signature, FailEffect}
-import turbolift.abstraction.handlers.{Interpreter, Handler, SaturatedHandler}
-import turbolift.abstraction.handlers.aux.{CanRunPure, CanRunImpure, CanHandle}
+import turbolift.abstraction.internals.handler.SaturatedHandler
+import turbolift.abstraction.internals.interpreter.Interpreter
+import turbolift.abstraction.internals.aux.{CanRunPure, CanRunImpure, CanHandle}
 import ComputationCases._
 
 
@@ -23,8 +24,8 @@ sealed trait Computation[+A, -U] {
   final def &![B, V](that: B !! V): B !! U with V = this *>! that
   final def &&![B, V](that : => B !! V): B !! U with V = this **>! that
 
-  final def |?[B >: A, V](that: B !! V): B !! U with V with FailEffect = ??? //@#@TODO
-  final def ||?[B >: A, V](that: => B !! V): B !! U with V with FailEffect = FailEffect.orElse(this, that)
+  final def |?[B >: A, V](that: B !! V): B !! U with V with FailEffect = FailEffect.orElsePar(this, that)
+  final def ||?[B >: A, V](that: => B !! V): B !! U with V with FailEffect = FailEffect.orElseSeq(this, that)
 
   final def withFilter(f: A => Boolean): A !! U with FailEffect = flatMap(a => if (f(a)) !!.pure(a) else !!.fail)
 
@@ -55,12 +56,16 @@ private[abstraction] object ComputationCases {
   final case class ZipPar[A, B, U](lhs: A !! U, rhs: B !! U) extends Computation[(A, B), U]
   final case class DispatchFO[A, U, Z[P[_]] <: Signature[P], P[_]](effectId: AnyRef, op: Z[P] => P[A]) extends Computation[A, U]
   final case class DispatchHO[A, U, Z[P[_]] <: Signature[P], P[_]](effectId: AnyRef, op: ((? !! U) ~> P) => Z[P] => P[A]) extends Computation[A, U]
+<<<<<<< HEAD
+  final case class PushHandler[A, U, H <: SaturatedHandler](scope: A !! U with H#Effects, h: H) extends Computation[H#Result[A], U]
+=======
   final case class HandleInScope[A, U, H <: SaturatedHandler](scope: A !! U with H#Effects, h: H) extends Computation[H#Result[A], U]
+>>>>>>> master
 }
 
 
 object ComputationInstances {
-  implicit def monad[U] : MonadPar[Computation[?, U]] = new MonadPar[Computation[?, U]] {
+  implicit def monad[U]: MonadPar[Computation[?, U]] = new MonadPar[Computation[?, U]] {
     def pure[A](a: A): A !! U = Return(a)
     def flatMap[A, B](ma: A !! U)(f: A => B !! U): B !! U = ma.flatMap(f)
     def zipPar[A, B](ma: A !! U, mb: B !! U): (A, B) !! U = ma *! mb

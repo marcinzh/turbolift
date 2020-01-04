@@ -1,8 +1,6 @@
-package turbolift.abstraction.handlers
-import turbolift.abstraction.!!
-import turbolift.abstraction.handlers.aux.CanHandle
-import HandlerCases._
-import mwords._
+package turbolift.abstraction
+import mwords.{Identity, ~>}
+import turbolift.abstraction.internals.aux.CanHandle
 
 
 sealed trait Handler {
@@ -19,10 +17,10 @@ sealed trait Handler {
       doHandle[A, V](ev(eff))
   }
 
-  final def <<<![H <: Handler](that: H) = Composed[This, H](this, that)
+  final def <<<![H <: Handler](that: H) = HandlerCases.Composed[This, H](this, that)
   final def >>>![H <: Handler](that: H) = that <<<! this
 
-  final def map[F[_]](f: Result ~> F): Handler.Apply[F, Effects] = Mapped[This, F](this)(f)
+  final def map[F[_]](f: Result ~> F): Handler.Apply[F, Effects] = HandlerCases.Mapped[This, F](this)(f)
 
   protected[abstraction] def doHandle[A, U](eff: A !! Effects with U): Result[A] !! U
 }

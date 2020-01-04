@@ -12,7 +12,9 @@ trait ExceptSig[P[_], E] extends Signature[P] {
 
 trait Except[E] extends Effect[ExceptSig[?[_], E]] {
   def raise(e: E): Nothing !! this.type = encodeFO(_.raise(e))
-  def katch[A, U](scope: A !! U)(recover: E => A !! U): A !! U with this.type = encodeHO[U](run => _.katch(run(scope))(e => run(recover(e))))
+  
+  def katch[A, U](scope: A !! U)(recover: E => A !! U): A !! U with this.type =
+    encodeHO[U](run => _.katch(run(scope))(e => run(recover(e))))
 
   def from[A](x: Either[E, A]): A !! this.type = x match {
     case Right(a) => pure(a)
@@ -27,7 +29,7 @@ object ExceptHandler {
   def apply[E, Fx <: Except[E]](effect: Fx) = new effect.Nullary[Either[E, ?]] {
     val theFunctor = FunctorInstances.either[E]
 
-    def commonOps[M[_] : MonadPar] = new CommonOps[M] {
+    def commonOps[M[_]: MonadPar] = new CommonOps[M] {
       def lift[A](ma: M[A]): M[Either[E, A]] = ma.map(Right(_))
 
       def flatMap[A, B](tma: M[Either[E, A]])(f: A => M[Either[E, B]]): M[Either[E, B]] =

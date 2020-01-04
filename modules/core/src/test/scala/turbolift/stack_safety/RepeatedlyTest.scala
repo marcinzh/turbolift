@@ -1,6 +1,5 @@
 package turbolift.stack_safety
 import turbolift.abstraction._
-import turbolift.abstraction.handlers.Handler
 import turbolift.std_effects._
 import org.specs2._
 
@@ -10,14 +9,24 @@ class RepeatedlyTest extends Specification with CanStackOverflow {
     (for {
       c <- cases
       m <- mappers
-      c2 = c.mapEff(m(_))
-      name = s"${c.name} effect repeatedly ${m.name} should be stack safe"
+      c2 = c.mapEff(m)
+      name = s"${c.name} effect composed ${m.name} should be stack safe"
       test = br ^ name ! mustNotStackOverflow { c2.run }
     } yield test)
     .reduce(_ ^ _)
 
-  case class Case[A, U](name: String, h: Handler { type Effects = U }, eff: A !! U) {
-    def mapEff[B](f: A !! U => B !! U) = copy(eff = f(eff))
+  trait Case0 { outer =>
+    type Fx
+    type This = Case0 { type Fx = outer.Fx }
+    val name: String
+    val eff: Any !! Fx
+    def mapEff(mapper: Mapper): This
+    def run: Any
+  }
+
+  case class Case[U](name: String, h: Handler { type Effects = U }, eff: Any !! U) extends Case0 {
+    type Fx = U
+    def mapEff(f: Mapper) = copy(eff = f(eff))
     def run = h run eff
   }
 
@@ -26,25 +35,26 @@ class RepeatedlyTest extends Specification with CanStackOverflow {
   case object FxS extends State[Int]
   case object FxC extends NonDet
 
-  val cases = List(
-    // Case("Reader", FxR.handler(0), FxR.ask),
-    // Case("Writer", FxW.handler, FxW.tell(111)),
-    Case("State", FxS.handler(0), for { x <- FxS.get; _ <- FxS.put(x + 1) } yield ()),
-    // Case("NonDet", FxC.handler, FxC.each(List(0)))
+  val cases = List[Case0](
+    Case("Reader", FxR.handler(0), FxR.ask),
+    Case("Writer", FxW.handler, FxW.tell(111)),
+    Case("State", FxS.handler(0), FxS.mod(_ + 1)),
+    Case("NonDet", FxC.handler, FxC.each(List(0)))
   )
 
   abstract class Mapper(val name: String) {
-    def apply[A, U](eff: A !! U): _ !! U
+    def apply[U](eff: Any !! U): _ !! U
   }
 
   val mappers = {
     def many[A, U](eff: A !! U) = Vector.fill(TooBigForStack)(eff)
     List(
-      new Mapper("chained") {
-        def apply[A, U](eff: A !! U) = many(eff).reduce(_ **>! _)
+      new Mapper("sequentially") {
+        def apply[U](eff: Any !! U) = many(eff).reduce(_ &&! _)
       },
-      new Mapper("traversed") {
-        def apply[A, U](eff: A !! U) = many(eff).traverse
+      new Mapper("parallelly") {
+        def apply[U](eff: Any !! U) = many(eff).reduce(_ &! _)
+        // def apply[U](eff: Any !! U) = many(eff).traverse
       }
     )
   }

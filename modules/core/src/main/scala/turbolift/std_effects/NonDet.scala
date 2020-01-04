@@ -22,7 +22,7 @@ object NonDetHandler {
   def apply[Fx <: NonDet](effect: Fx) = new effect.Nullary[Vector] {
     val theFunctor = FunctorInstances.vector
 
-    def commonOps[M[_] : MonadPar] = new CommonOps[M] {
+    def commonOps[M[_]: MonadPar] = new CommonOps[M] {
       def lift[A](ma: M[A]): M[Vector[A]] = ma.map(Vector(_))
 
       def flatMap[A, B](tma: M[Vector[A]])(f: A => M[Vector[B]]): M[Vector[B]] = {
@@ -53,13 +53,20 @@ object NonDetHandler {
 
       def each[A](as: Iterable[A]): P[A] = liftOuter(pureInner(as.toVector))
 
-      def orElse[A](lhs: P[A], rhs: => P[A]): P[A] =
+      def orElseSeq[A](lhs: P[A], rhs: => P[A]): P[A] =
         withUnlift { run =>
           run(lhs).flatMap { x =>
             if (x.nonEmpty)
               pureInner(x)
             else
               run(rhs)
+          }
+        }
+
+      def orElsePar[A](lhs: P[A], rhs: P[A]): P[A] =
+        withUnlift { run =>
+          (run(lhs) *! run(rhs)).map {
+            case (xs, ys) => if (xs.nonEmpty) xs else ys
           }
         }
     }
