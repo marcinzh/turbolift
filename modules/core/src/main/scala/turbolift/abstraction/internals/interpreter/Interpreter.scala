@@ -1,25 +1,25 @@
 package turbolift.abstraction.internals.interpreter
 import mwords._
 import turbolift.abstraction.!!
-import turbolift.abstraction.effect.Signature
+import turbolift.abstraction.effect.{EffectId, Signature}
 import turbolift.abstraction.internals.handler.PrimitiveHandler
 
 
 final class Interpreter[M[_], U](
   val theMonad: MonadPar[M],
   val handlerStacks: List[HandlerStack[M]],
-  val failEffectId: AnyRef,
+  val failEffectId: EffectId,
 ) extends ((? !! U) ~> M) {
   override def apply[A](ua: A !! U): M[A] = loop(ua)
 
   def push[T[_[_], _], O[_], V](primitive: PrimitiveHandler[T, O]): Interpreter[T[M, ?], U with V] = {
     val newHead: HandlerStack[T[M, ?]] = HandlerStack.pushFirst(primitive)(this.theMonad)
     val newTail: List[HandlerStack[T[M, ?]]] = this.handlerStacks.map(_.pushNext(primitive))
-    val newFailEffectId: AnyRef = if (primitive.isFilterable) primitive.effectId else this.failEffectId
+    val newFailEffectId: EffectId = if (primitive.isFilterable) primitive.effectId else this.failEffectId
     new Interpreter[T[M, ?], U with V](newHead.outerMonad, newHead :: newTail, newFailEffectId)
   }
 
-  def lookup(effectId: AnyRef): Signature[M] = {
+  def lookup(effectId: EffectId): Signature[M] = {
     def loop(i: Int): Signature[M] = {
       if (vmt(i) eq effectId)
         vmt(i+1).asInstanceOf[Signature[M]]

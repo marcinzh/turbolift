@@ -16,7 +16,7 @@ trait FailEffectEncoding[Z[P[_]] <: FailSig[P]] extends FailEffect with EffectEn
   final def orElseSeq[A, U](lhs: A !! U, rhs: => A !! U): A !! U with ThisEffect = encodeHO[U](run => _.orElseSeq(run(lhs), run(rhs)))
 }
 
-case object FailEffect extends FailEffectEncoding[FailSig] {
+case object FailEffect extends FailEffectEncoding[FailSig] with HasEffectId.Nul {
   override type ThisEffect = FailEffect
-  override def effectId: AnyRef = null
+  // override def effectId: AnyRef = null
 }

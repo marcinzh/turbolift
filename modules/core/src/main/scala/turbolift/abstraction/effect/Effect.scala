@@ -2,12 +2,12 @@ package turbolift.abstraction.effect
 import turbolift.abstraction.internals.handler.{PrimitiveHandler, PrimitiveHandlerBase, SaturatedHandler}
 
 
-sealed trait AnyEffect[Z[P[_]] <: Signature[P]] extends EffectEncoding[Z] {
+sealed trait AnyEffect[Z[P[_]] <: Signature[P]] extends EffectEncoding[Z] with HasEffectId.Self {
   final override type ThisEffect = this.type
-  final override def effectId: AnyRef = this
+  // final override def effectId: AnyRef = this
 
   trait ThisHandlerBase extends PrimitiveHandlerBase {
-    final override val effectId: AnyRef = AnyEffect.this
+    final override def effectIdDelegate = AnyEffect.this
     final override type ThisSignature[P[_]] = Z[P]
   }
 

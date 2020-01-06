@@ -1,11 +1,11 @@
 package turbolift.abstraction.internals.handler
 import mwords.{MonadPar, Functor, Identity, ~>}
 import turbolift.abstraction.!!
-import turbolift.abstraction.effect.Signature
+import turbolift.abstraction.effect.{Signature, HasEffectId}
 
 
-trait PrimitiveHandlerBase {
-  private[abstraction] val effectId: AnyRef
+trait PrimitiveHandlerBase extends HasEffectId.Delegate {
+  // private[abstraction] val effectId: AnyRef
   val isFilterable: Boolean
 
   type ThisSignature[P[_]] <: Signature[P]
