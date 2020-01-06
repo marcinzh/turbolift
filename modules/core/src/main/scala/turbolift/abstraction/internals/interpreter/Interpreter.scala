@@ -24,6 +24,12 @@ final class Interpreter[M[_], U](
       if (vmt(i) eq effectId)
         vmt(i+1).asInstanceOf[Signature[M]]
       else
+      if (vmt(i+2) eq effectId)
+        vmt(i+3).asInstanceOf[Signature[M]]
+      else
+      if (vmt(i+4) eq effectId)
+        vmt(i+5).asInstanceOf[Signature[M]]
+      else
         loop(i+2)
     }
     loop(0)
