@@ -22,7 +22,7 @@ sealed trait Handler {
 
   final def map[F[_]](f: Result ~> F): Handler.Apply[F, Effects] = HandlerCases.Mapped[This, F](this)(f)
 
-  protected[abstraction] def doHandle[A, U](eff: A !! Effects with U): Result[A] !! U
+  protected[abstraction] def doHandle[A, U](eff: A !! U with Effects): Result[A] !! U
 }
 
 
@@ -41,7 +41,7 @@ object HandlerCases {
     override type Effects = lhs.Effects with rhs.Effects
     override type Result[A] = lhs.Result[rhs.Result[A]]
 
-    protected[abstraction] override def doHandle[A, U](eff: A !! lhs.Effects with rhs.Effects with U): Result[A] !! U =
+    protected[abstraction] override def doHandle[A, U](eff: A !! U with lhs.Effects with rhs.Effects): Result[A] !! U =
       lhs.doHandle[rhs.Result[A], U](
         rhs.doHandle[A, U with lhs.Effects](eff)
       )
@@ -51,7 +51,7 @@ object HandlerCases {
     override type Result[A] = F[A]
     override type Effects = that.Effects
 
-    protected[abstraction] override def doHandle[A, U](eff: A !! Effects with U): Result[A] !! U =
+    protected[abstraction] override def doHandle[A, U](eff: A !! U with Effects): Result[A] !! U =
       that.doHandle[A, U](eff).map(fun(_))
   }
 }
