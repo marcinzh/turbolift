@@ -17,12 +17,12 @@ trait Writer[W] extends Effect[WriterSig[?[_], W]] {
   def listen[A, U](scope: A !! U): (W, A) !! U with this.type = encodeHO[U](run => _.listen(run(scope)))
   def censor[A, U](scope: A !! U)(f: W => W): A !! U with this.type = encodeHO[U](run => _.censor(run(scope))(f))
 
-  def handler(implicit W: Monoid[W]) = WriterHandler[W, this.type](this).apply(W.empty)
+  def handler(implicit W: Monoid[W]) = DefaultWriterHandler[W, this.type](this).apply(W.empty)
 }
 
 
-object WriterHandler {
-  def apply[W: Monoid, Fx <: Writer[W]](effect: Fx) = new effect.Unary[W, (W, ?)] {
+object DefaultWriterHandler {
+  def apply[W: Monoid, Fx <: Writer[W]](fx: Fx) = new fx.Unary[W, (W, ?)] {
     val theFunctor = FunctorInstances.pair[W]
 
     def commonOps[M[_]: MonadPar] = new CommonOps[M] {

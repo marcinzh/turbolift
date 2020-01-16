@@ -21,12 +21,12 @@ trait Validation[E] extends Effect[ValidationSig[?[_], E]] {
     case Left(e) => invalid(e)
   }
 
-  def handler(implicit E: Semigroup[E]) = ValidationHandler[E, this.type](this)
+  def handler(implicit E: Semigroup[E]) = DefaultValidationHandler[E, this.type](this)
 }
 
 
-object ValidationHandler {
-  def apply[E: Semigroup, Fx <: Validation[E]](effect: Fx) = new effect.Nullary[Either[E, ?]] {
+object DefaultValidationHandler {
+  def apply[E: Semigroup, Fx <: Validation[E]](fx: Fx) = new fx.Nullary[Either[E, ?]] {
     val theFunctor = FunctorInstances.either[E]
 
     def commonOps[M[_]: MonadPar] = new CommonOps[M] {

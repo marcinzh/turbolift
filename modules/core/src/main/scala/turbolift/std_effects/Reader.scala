@@ -15,12 +15,12 @@ trait Reader[R] extends Effect[ReaderSig[?[_], R]] {
   def asks[A](f: R => A): A !! this.type = ask.map(f)
   def local[A, U](mod: R => R)(scope: A !! U): A !! U with this.type = encodeHO[U](run => _.local(mod)(run(scope)))
 
-  val handler = ReaderHandler[R, this.type](this)
+  val handler = DefaultReaderHandler[R, this.type](this)
 }
 
 
-object ReaderHandler {
-  def apply[R, Fx <: Reader[R]](effect: Fx) = new effect.Unary[R, Identity] {
+object DefaultReaderHandler {
+  def apply[R, Fx <: Reader[R]](fx: Fx) = new fx.Unary[R, Identity] {
     val theFunctor = Functor.identity
 
     def commonOps[M[_]: MonadPar] = new CommonOps[M] {
