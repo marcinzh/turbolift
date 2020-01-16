@@ -19,16 +19,10 @@ final class Interpreter[M[_], U](
     new Interpreter[T[M, ?], U with V](newHead.outerMonad, newHead :: newTail, newFailEffectId)
   }
 
-  def lookup(effectId: EffectId): Signature[M] = {
+  private def lookup(effectId: EffectId): Signature[M] = {
     def loop(i: Int): Signature[M] = {
       if (vmt(i) eq effectId)
         vmt(i+1).asInstanceOf[Signature[M]]
-      else
-      if (vmt(i+2) eq effectId)
-        vmt(i+3).asInstanceOf[Signature[M]]
-      else
-      if (vmt(i+4) eq effectId)
-        vmt(i+5).asInstanceOf[Signature[M]]
       else
         loop(i+2)
     }
@@ -40,7 +34,7 @@ final class Interpreter[M[_], U](
     val arr = new Array[AnyRef]((n + 1) * 2)
     for ((hh, i) <- handlerStacks.iterator.zipWithIndex) {
       arr(i*2) = hh.effectId
-      arr(i*2 + 1) = hh.decoder
+      arr(i*2+1) = hh.decoder
     }
     arr(n*2) = null
     arr(n*2+1) = if (failEffectId == null) null else arr(arr.indexOf(failEffectId) + 1)
