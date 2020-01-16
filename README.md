@@ -6,7 +6,7 @@ An alternative to both MTL and Eff monad. Combines advantages of extensible effe
 
 The frontend is mostly inherited from [Skutek](https://github.com/marcinzh/skutek) - an implementation of Eff monad, using Scala's intersection types for tracking sets of effects used in computations.
 
-The backend doesn't use canonical monad transformer's data types (e.g. `StateT`). Instead, it uses type aliases, encapsulated in effect handler definitions. As a side effect of this design, number of object allocations at runtime is reduced (preliminary microbenchmarking shows x2 performance improvement over Cats monad transformers). Effect handlers though, are defined in terms of canonical monad->monad transformation, with methods such as `lift` and `flatMap`, to fill in (example: definition of `State` effect [here](https://github.com/marcinzh/turbolift/blob/d9facaf160e6094f8f409696f9cffa12ce57d964/modules/core/src/main/scala/turbolift/std_effects/State.scala#L28-L33)).
+The backend doesn't use canonical monad transformer's data types (e.g. `StateT`). Instead, it uses type aliases, encapsulated in effect handler definitions. As a side effect of this design, number of object allocations at runtime is reduced (preliminary microbenchmarking shows x2 performance improvement over Cats monad transformers). Effect handlers though, are defined in terms of canonical monad->monad transformation, with methods such as `lift` and `flatMap`, to fill in (example: definition of `State` effect [here](https://github.com/marcinzh/turbolift/blob/35147d3545f5d7bbcd0d7f1498fedb3d6469dd39/modules/core/src/main/scala/turbolift/std_effects/State.scala#L28-L33)).
 
 
 
