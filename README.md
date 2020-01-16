@@ -2,7 +2,7 @@
 
 :construction: :construction: Work In Progress :construction: :construction:
 
-An alternative to MTL. Combines advantages of extensible effects (on the frontend) and monad transformers (on the backend). Supports higher order effects.
+An alternative to both MTL and Eff monad. Combines advantages of extensible effects (on the frontend) and monad transformers (on the backend). Supports higher order effects.
 
 The frontend is mostly inherited from [Skutek](https://github.com/marcinzh/skutek) - an implementation of Eff monad, using Scala's intersection types for tracking sets of effects used in computations.
 
@@ -22,7 +22,7 @@ The backend doesn't use canonical monad transformer's data types (e.g. `StateT`)
 
 3. Explore using preexisting IO monads (Cats-Effect, ZIO, Monix) as the base for Turbolift's monad stack. Currently, Identity and Trampoline are provided as the base monads.
 
-4. Improve performance of larger effect stacks, by coalescing similar kinded effects, adjacent in the stack, into single one, backed by shared data type. This would result in flatter effect stacks, Preliminary microbenchmarking shows potential for x2-3 performance gain, over current Turbolift's equally sized effect stack, but made of fully isolated effects.
+4. Improve performance of larger effect stacks, by coalescing similar kinded effects, adjacent in the stack, into single one, backed by shared data type. This would result in flatter effect stacks. Preliminary microbenchmarking shows potential for x2-3 performance gain, over current Turbolift's equally sized effect stack, but made of fully isolated effects.
 
 
 # Example
