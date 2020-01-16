@@ -16,12 +16,12 @@ trait State[S] extends Effect[StateSig[?[_], S]] {
   def put(s: S): Unit !! this.type = encodeFO(_.put(s))
   def mod(f: S => S): Unit !! this.type = encodeFO(_.mod(f))
 
-  val handler = StateHandler[S, this.type](this)
+  val handler = DefaultStateHandler[S, this.type](this)
 }
 
 
-object StateHandler {
-  def apply[S, Fx <: State[S]](effect: Fx) = new effect.Unary[S, (S, ?)] {
+object DefaultStateHandler {
+  def apply[S, Fx <: State[S]](fx: Fx) = new fx.Unary[S, (S, ?)] {
     val theFunctor = FunctorInstances.pair[S]
 
     def commonOps[M[_]: MonadPar] = new CommonOps[M] {

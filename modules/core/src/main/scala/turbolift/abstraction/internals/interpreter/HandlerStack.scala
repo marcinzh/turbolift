@@ -1,12 +1,12 @@
 package turbolift.abstraction.internals.interpreter
 import mwords.{MonadPar, Identity}
 import turbolift.abstraction.!!
-import turbolift.abstraction.effect.Signature
+import turbolift.abstraction.effect.{HasEffectId, Signature}
 import turbolift.abstraction.internals.handler.{PrimitiveHandler, Lifting, Context}
 
 
-sealed trait HandlerStack[P[_]] {
-  def effectId: AnyRef
+sealed trait HandlerStack[P[_]] extends HasEffectId.Delegate {
+  // def effectId: AnyRef
   def outerMonad: MonadPar[P]
   def decoder: Signature[P]
   def pushNext[T[_[_], _], O[_]](primitive: PrimitiveHandler[T, O]): HandlerStack[T[P, ?]]
@@ -46,13 +46,15 @@ private object HandlerStackCases {
   ) extends CanLift[T[P, ?], Q, Lambda[X => F[O[X]]]] {
     private val commonOps = primitive.commonOps[P](that.outerMonad)
     override def outerMonad: MonadPar[T[P, ?]] = commonOps
-    override val effectId: AnyRef = that.effectId
+    // override val effectId: AnyRef = that.effectId
+    override def effectIdDelegate: HasEffectId = that
     override val lifting = Lifting.compose(commonOps, that.lifting)
   }
 
 
   final case class PushFirst[T[_[_], _], O[_], M[_]: MonadPar](primitive: PrimitiveHandler[T, O]) extends CanDecode[T[M, ?]] { outer =>
-    override def effectId: AnyRef = primitive.effectId
+    override def effectIdDelegate: HasEffectId = primitive
+    // override def effectId: AnyRef = primitive.effectId
     override def outerMonad: MonadPar[T[M, ?]] = primitive.commonOps[M]
 
     override def makeDecoder[P[_]: MonadPar, F[_]](penthouse: Lifting[P, T[M, ?], F]): Signature[P] = {

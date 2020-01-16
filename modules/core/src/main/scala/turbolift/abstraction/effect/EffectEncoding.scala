@@ -4,9 +4,8 @@ import turbolift.abstraction.!!
 import turbolift.abstraction.ComputationCases.{DispatchFO, DispatchHO}
 
 
-trait EffectEncoding[Z[P[_]] <: Signature[P]] {
+trait EffectEncoding[Z[P[_]] <: Signature[P]] extends HasEffectId.Unsealed {
   type ThisEffect
-  def effectId: AnyRef
 
   type Phantom[A] // Stays undefined. Solves the "Can't existentially abstract over parameterized type" problem
 

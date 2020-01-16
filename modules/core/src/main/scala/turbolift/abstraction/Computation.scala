@@ -1,6 +1,6 @@
 package turbolift.abstraction
 import mwords.{MonadPar, ~>}
-import turbolift.abstraction.effect.{Signature, FailEffect}
+import turbolift.abstraction.effect.{EffectId, Signature, FailEffect}
 import turbolift.abstraction.internals.handler.SaturatedHandler
 import turbolift.abstraction.internals.interpreter.Interpreter
 import turbolift.abstraction.internals.aux.{CanRunPure, CanRunImpure, CanHandle}
@@ -54,8 +54,8 @@ private[abstraction] object ComputationCases {
   final case class Pure[A](value: A) extends Computation[A, Any]
   final case class FlatMap[A, B, U](that: A !! U, k: A => B !! U) extends Computation[B, U]
   final case class ZipPar[A, B, U](lhs: A !! U, rhs: B !! U) extends Computation[(A, B), U]
-  final case class DispatchFO[A, U, Z[P[_]] <: Signature[P], P[_]](effectId: AnyRef, op: Z[P] => P[A]) extends Computation[A, U]
-  final case class DispatchHO[A, U, Z[P[_]] <: Signature[P], P[_]](effectId: AnyRef, op: ((? !! U) ~> P) => Z[P] => P[A]) extends Computation[A, U]
+  final case class DispatchFO[A, U, Z[P[_]] <: Signature[P], P[_]](effectId: EffectId, op: Z[P] => P[A]) extends Computation[A, U]
+  final case class DispatchHO[A, U, Z[P[_]] <: Signature[P], P[_]](effectId: EffectId, op: ((? !! U) ~> P) => Z[P] => P[A]) extends Computation[A, U]
   final case class PushHandler[A, U, H <: SaturatedHandler](scope: A !! U with H#Effects, h: H) extends Computation[H#Result[A], U]
 }
 
@@ -75,9 +75,13 @@ trait ComputationExports {
 
   implicit class ComputationExtension[A, U](thiz: A !! U) {
     def run(implicit ev: CanRunPure[U]): A = (Interpreter.pure(ev(thiz))).run
+    def runStackUnsafe(implicit ev: CanRunPure[U]): A = (Interpreter.pureStackUnsafe[A](ev(thiz)))
     
     def runWith[H <: Handler](h: H)(implicit ev: CanRunImpure[U, h.Effects]): h.Result[A] =
       h.doHandle[A, Any](ev(thiz)).run
+
+    def runStackUnsafeWith[H <: Handler](h: H)(implicit ev: CanRunImpure[U, h.Effects]): h.Result[A] =
+      h.doHandle[A, Any](ev(thiz)).runStackUnsafe
 
     def handleWith[V] : HandleWithApply[V] = new HandleWithApply[V]
     class HandleWithApply[V] {

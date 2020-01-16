@@ -1,28 +1,44 @@
 package turbolift.abstraction.internals.interpreter
 import mwords._
 import turbolift.abstraction.!!
-import turbolift.abstraction.effect.Signature
+import turbolift.abstraction.effect.{EffectId, Signature}
 import turbolift.abstraction.internals.handler.PrimitiveHandler
 
 
 final class Interpreter[M[_], U](
   val theMonad: MonadPar[M],
   val handlerStacks: List[HandlerStack[M]],
-  val failEffectId: AnyRef,
+  val failEffectId: EffectId,
 ) extends ((? !! U) ~> M) {
   override def apply[A](ua: A !! U): M[A] = loop(ua)
 
   def push[T[_[_], _], O[_], V](primitive: PrimitiveHandler[T, O]): Interpreter[T[M, ?], U with V] = {
     val newHead: HandlerStack[T[M, ?]] = HandlerStack.pushFirst(primitive)(this.theMonad)
     val newTail: List[HandlerStack[T[M, ?]]] = this.handlerStacks.map(_.pushNext(primitive))
-    val newFailEffectId: AnyRef = if (primitive.isFilterable) primitive.effectId else this.failEffectId
+    val newFailEffectId: EffectId = if (primitive.isFilterable) primitive.effectId else this.failEffectId
     new Interpreter[T[M, ?], U with V](newHead.outerMonad, newHead :: newTail, newFailEffectId)
   }
 
-  private val decoderMap: Map[AnyRef, Signature[M]] = {
-    val m: Map[AnyRef, Signature[M]] = handlerStacks.iterator.map(h => h.effectId -> h.decoder).toMap
-    val v: Signature[M] = if (failEffectId != null) m(failEffectId) else null
-    m + ((null, v))
+  private def lookup(effectId: EffectId): Signature[M] = {
+    def loop(i: Int): Signature[M] = {
+      if (vmt(i) eq effectId)
+        vmt(i+1).asInstanceOf[Signature[M]]
+      else
+        loop(i+2)
+    }
+    loop(0)
+  }
+
+  private val vmt: Array[AnyRef] = {
+    val n = handlerStacks.size
+    val arr = new Array[AnyRef]((n + 1) * 2)
+    for ((hh, i) <- handlerStacks.iterator.zipWithIndex) {
+      arr(i*2) = hh.effectId
+      arr(i*2+1) = hh.decoder
+    }
+    arr(n*2) = null
+    arr(n*2+1) = if (failEffectId == null) null else arr(arr.indexOf(failEffectId) + 1)
+    arr
   }
 
   private def loop[A](ua: A !! U): M[A] = {
@@ -38,8 +54,8 @@ final class Interpreter[M[_], U](
         case _ => loop(ux).flatMap(x => loop(k(x)))
       }
       case ZipPar(uy, uz) => castM(loop(uy) *! loop(uz))
-      case DispatchFO(id, op) => castS(op)(decoderMap(id))
-      case DispatchHO(id, op) => castS(op(this))(decoderMap(id))
+      case DispatchFO(id, op) => castS(op)(lookup(id))
+      case DispatchHO(id, op) => castS(op(this))(lookup(id))
       case PushHandler(uy, ph) => castM(ph.prime(push(ph.primitive).loop(uy)))
     }
   }

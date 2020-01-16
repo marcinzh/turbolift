@@ -21,12 +21,12 @@ trait Except[E] extends Effect[ExceptSig[?[_], E]] {
     case Left(e) => raise(e)
   }
 
-  val handler = ExceptHandler[E, this.type](this)
+  val handler = DefaultExceptHandler[E, this.type](this)
 }
 
 
-object ExceptHandler {
-  def apply[E, Fx <: Except[E]](effect: Fx) = new effect.Nullary[Either[E, ?]] {
+object DefaultExceptHandler {
+  def apply[E, Fx <: Except[E]](fx: Fx) = new fx.Nullary[Either[E, ?]] {
     val theFunctor = FunctorInstances.either[E]
 
     def commonOps[M[_]: MonadPar] = new CommonOps[M] {

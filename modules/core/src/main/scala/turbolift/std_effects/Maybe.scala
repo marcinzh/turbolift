@@ -13,12 +13,12 @@ trait Maybe extends FilterableEffect[MaybeSig] {
     case _ => fail
   }
 
-  val handler = MaybeHandler(this)
+  val handler = DefaultMaybeHandler(this)
 }
 
 
-object MaybeHandler {
-  def apply[Fx <: Maybe](effect: Fx) = new effect.Nullary[Option] {
+object DefaultMaybeHandler {
+  def apply[Fx <: Maybe](fx: Fx) = new fx.Nullary[Option] {
     val theFunctor = FunctorInstances.option
 
     def commonOps[M[_]: MonadPar] = new CommonOps[M] {

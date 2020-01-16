@@ -14,12 +14,12 @@ trait NonDet extends FilterableEffect[NonDetSig] {
   
   def from[A](as: A*) = each(as.toVector)
 
-  val handler = NonDetHandler(this)
+  val handler = DefaultNonDetHandler(this)
 }
 
 
-object NonDetHandler {
-  def apply[Fx <: NonDet](effect: Fx) = new effect.Nullary[Vector] {
+object DefaultNonDetHandler {
+  def apply[Fx <: NonDet](fx: Fx) = new fx.Nullary[Vector] {
     val theFunctor = FunctorInstances.vector
 
     def commonOps[M[_]: MonadPar] = new CommonOps[M] {
