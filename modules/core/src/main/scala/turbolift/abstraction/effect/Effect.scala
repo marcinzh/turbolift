@@ -4,7 +4,6 @@ import turbolift.abstraction.internals.handler.{PrimitiveHandler, PrimitiveHandl
 
 sealed trait AnyEffect[Z[P[_]] <: Signature[P]] extends EffectEncoding[Z] with HasEffectId.Self {
   final override type ThisEffect = this.type
-  // final override def effectId: AnyRef = this
 
   trait ThisHandlerBase extends PrimitiveHandlerBase {
     final override def effectIdDelegate = AnyEffect.this
