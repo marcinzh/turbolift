@@ -4,15 +4,14 @@ import turbolift.abstraction.!!
 import turbolift.abstraction.effect.{Signature, HasEffectId}
 
 
-trait PrimitiveHandlerBase extends HasEffectId.Delegate {
-  // private[abstraction] val effectId: AnyRef
+trait PrimitiveHandlerStub extends HasEffectId.Delegate {
   val isFilterable: Boolean
 
   type ThisSignature[P[_]] <: Signature[P]
 }
 
 
-trait PrimitiveHandler[T[_[_], _], O[_]] extends PrimitiveHandlerBase {
+trait PrimitiveHandler[T[_[_], _], O[_]] extends PrimitiveHandlerStub {
   def theFunctor: Functor[O]
 
   def commonOps[M[_]: MonadPar] : CommonOps[M]
