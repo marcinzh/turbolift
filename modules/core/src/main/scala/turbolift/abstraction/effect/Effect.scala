@@ -25,11 +25,13 @@ trait Effect[Z[P[_]] <: Signature[P]] extends AnyEffect[Z] {
 }
 
 
-trait FilterableEffect[Z[P[_]] <: FailSig[P]] extends AnyEffect[Z] with FailEffectEncoding[Z] {
-  trait ThisHandlerBase extends super.ThisHandlerBase {
-    final override val isFilterable = true
-  }
+object Effect {
+  trait Filterable[Z[P[_]] <: FailSig[P]] extends AnyEffect[Z] with FailEffectEncoding[Z] {
+    trait ThisHandlerBase extends super.ThisHandlerBase {
+      final override val isFilterable = true
+    }
 
-  trait Nullary[O[_]] extends ThisHandlerBase with super.Nullary[O]
-  trait Unary[S, O[_]] extends ThisHandlerBase with super.Unary[S, O]
+    trait Nullary[O[_]] extends ThisHandlerBase with super.Nullary[O]
+    trait Unary[S, O[_]] extends ThisHandlerBase with super.Unary[S, O]
+  }
 }

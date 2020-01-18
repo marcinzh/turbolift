@@ -1,7 +1,7 @@
 package turbolift.std_effects
 import mwords._
 import turbolift.abstraction.!!
-import turbolift.abstraction.effect.{FilterableEffect, FailSig}
+import turbolift.abstraction.effect.{Effect, FailSig}
 
 
 trait NonDetSig[P[_]] extends FailSig[P] {
@@ -9,7 +9,7 @@ trait NonDetSig[P[_]] extends FailSig[P] {
 }
 
 
-trait NonDet extends FilterableEffect[NonDetSig] {
+trait NonDet extends Effect.Filterable[NonDetSig] {
   def each[A](as: Iterable[A]) = encodeFO(_.each(as))
   
   def from[A](as: A*) = each(as.toVector)
