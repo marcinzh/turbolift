@@ -5,9 +5,9 @@ import org.specs2._
 
 
 class NonDetTest extends Specification {
-  def is = List(wog, wg).reduce(_ and _)
+  def is = List(withoutGuard, withGuard, withExcept).reduce(_ ^ _)
 
-  def wog = {
+  def withoutGuard = br ^ "each: without guard" ! {
     case object Fx extends NonDet
 
     val eff = for {
@@ -19,7 +19,7 @@ class NonDetTest extends Specification {
   }
 
 
-  def wg = {
+  def withGuard = br ^ "each: with guard" ! {
     case object Fx extends NonDet
 
     val eff = for {
@@ -29,5 +29,22 @@ class NonDetTest extends Specification {
     } yield s"$i$c"
 
     eff.runWith(Fx.handler) must_== Vector("1a", "1b", "1c", "3a", "3b", "3c"),
+  }
+
+
+  def withExcept = {
+    case object FxC extends NonDet
+    case object FxE extends Except[Int]
+
+    val eff = for {
+      xx <- FxC.from(Return(1), FxE.raise(2))
+      x <- xx
+    } yield x
+
+    def testCE = eff.runWith(FxC.handler <<<! FxE.handler) must_== Vector(Right(1), Left(2))
+    def testEC = eff.runWith(FxE.handler <<<! FxC.handler) must_== Left(2)
+
+    br ^ "each: Choice <<<! Except" ! testCE ^
+    br ^ "each: Except <<<! Choice" ! testEC
   }
 }
