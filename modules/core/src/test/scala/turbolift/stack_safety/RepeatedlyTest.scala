@@ -33,13 +33,13 @@ class RepeatedlyTest extends Specification with CanStackOverflow {
   case object FxR extends Reader[Int]
   case object FxW extends Writer[Int]
   case object FxS extends State[Int]
-  case object FxC extends NonDet
+  case object FxC extends Choice
 
   val cases = List[Case0](
     Case("Reader", FxR.handler(0), FxR.ask),
     Case("Writer", FxW.handler, FxW.tell(111)),
     Case("State", FxS.handler(0), FxS.mod(_ + 1)),
-    Case("NonDet", FxC.handler, FxC.each(List(0)))
+    Case("Choice", FxC.handler, FxC.each(List(0)))
   )
 
   abstract class Mapper(val name: String) {

@@ -11,7 +11,7 @@ class InferenceTest extends Specification {
   case object Fx1 extends State[Double]
   case object Fx2 extends Writer[String]
   case object Fx3 extends Reader[Boolean]
-  case object Fx4 extends NonDet
+  case object Fx4 extends Choice
 
   def is = {
     val eff = for {

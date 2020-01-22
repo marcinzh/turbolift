@@ -4,11 +4,11 @@ import turbolift.std_effects._
 import org.specs2._
 
 
-class NonDetTest extends Specification {
+class ChoiceTest extends Specification {
   def is = List(withoutGuard, withGuard, withExcept).reduce(_ ^ _)
 
   def withoutGuard = br ^ "each: without guard" ! {
-    case object Fx extends NonDet
+    case object Fx extends Choice
 
     val eff = for {
       i <- Fx.each(1 to 2)
@@ -20,7 +20,7 @@ class NonDetTest extends Specification {
 
 
   def withGuard = br ^ "each: with guard" ! {
-    case object Fx extends NonDet
+    case object Fx extends Choice
 
     val eff = for {
       i <- Fx.each(0 to 3)
@@ -33,7 +33,7 @@ class NonDetTest extends Specification {
 
 
   def withExcept = {
-    case object FxC extends NonDet
+    case object FxC extends Choice
     case object FxE extends Except[Int]
 
     val eff = for {
