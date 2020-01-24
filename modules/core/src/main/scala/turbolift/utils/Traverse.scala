@@ -24,7 +24,7 @@ trait TraverseExports {
       def loop(as: Iterable[A !! U]): Vector[A] !! U =
         as.size match {
           case 0 => Return(Vector.empty[A])
-          case 1 => thiz.head.map(Vector(_))
+          case 1 => as.head.map(Vector(_))
           case n =>
             val (as1, as2) = as.splitAt(n / 2)
             (loop(as1) *! loop(as2)).map { case (xs, ys) => xs ++ ys }
