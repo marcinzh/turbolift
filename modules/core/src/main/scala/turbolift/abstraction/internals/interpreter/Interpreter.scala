@@ -10,7 +10,6 @@ final class Interpreter[M[_], U](
   val handlerStacks: List[HandlerStack[M]],
   val failEffectId: EffectId,
 ) extends ((? !! U) ~> M) {
-  override def apply[A](ua: A !! U): M[A] = loop(ua)
 
   def push[T[_[_], _], O[_], V](primitive: PrimitiveHandler[T, O]): Interpreter[T[M, ?], U with V] = {
     val newHead: HandlerStack[T[M, ?]] = HandlerStack.pushFirst(primitive)(this.theMonad)
@@ -41,26 +40,40 @@ final class Interpreter[M[_], U](
     arr
   }
 
-  private def loop[A](ua: A !! U): M[A] = {
+  override def apply[A](ua: A !! U): M[A] = run(ua, nullMA, Que.empty)
+
+  private def nullMA[A]: M[A] = null.asInstanceOf[M[A]]
+
+  private def run[A](ua: A !! U, ma: M[A], que: Que[M, U]): M[A] = {
     import turbolift.abstraction.ComputationCases._
-    implicit def M: MonadPar[M] = theMonad
-    def castM[A1](ma: M[A1]) = ma.asInstanceOf[M[A]]
+    import turbolift.abstraction.internals.interpreter.QueCases._
     def castS[M1[_], Z[P[_]] <: Signature[P]](f: Z[M1] => M1[A]) = f.asInstanceOf[Signature[M] => M[A]]
-    ua match {
-      case Pure(a) => theMonad.pure(a)
-      case FlatMap(ux, k) => ux match {
-        case Pure(x) => loop(k(x))
-        case FlatMap(uy, j) => loop(FlatMap(uy, (y: Any) => FlatMap(j(y), k)))
-        case _ => loop(ux).flatMap(x => loop(k(x)))
+    def castU[A1](ua1: A1 !! U) = ua1.asInstanceOf[A !! U]
+    def castM[A1](ma1: M[A1]) = ma1.asInstanceOf[M[A]]
+    if (ua != null)
+      ua match {
+        // case Pure(a) => que match {
+        //   case Empty() => theMonad.pure(a)
+        //   case SeqStep(f, next) => run(castU(f(a)), nullMA, next)
+        //   case ParStepLeft(ux, next) => run(castU(ux), nullMA, ParStepRight(theMonad.pure(a), next))
+        //   case ParStepRight(mx, next) => run(null, castM(theMonad.map(mx)((_, a))), next)
+        // }
+        case Pure(a) => run(null, theMonad.pure(a), que)
+        case FlatMap(ux, k) => run(castU(ux), nullMA, SeqStep(k, que))
+        case ZipPar(ux, uy) => run(castU(ux), nullMA, ParStepLeft(castU(uy), que))
+        case DispatchFO(id, op) => run(null, castM(castS(op)(lookup(id))), que)
+        case DispatchHO(id, op) => run(null, castM(castS(op(this))(lookup(id))), que)
+        case PushHandler(ux, ph) => run(null, castM(ph.prime(push(ph.primitive).apply(ux))), que)
       }
-      case ZipPar(uy, uz) => castM(loop(uy) *! loop(uz))
-      case DispatchFO(id, op) => castS(op)(lookup(id))
-      case DispatchHO(id, op) => castS(op(this))(lookup(id))
-      case PushHandler(uy, ph) => castM(ph.prime(push(ph.primitive).loop(uy)))
-    }
+    else
+      que match {
+        case Empty() => ma
+        case SeqStep(f, next) => theMonad.flatMap(ma)(a => run(castU(f(a)), nullMA, next))
+        case ParStepLeft(ux, next) => run(castU(ux), nullMA, ParStepRight(ma, next))
+        case ParStepRight(mx, next) => run(null, castM(theMonad.zipPar(mx, ma)), next)
+      }
   }
 }
-
 
 object Interpreter {
   val pure: Interpreter[Trampoline, Any] = apply(TrampolineInstances.monad)

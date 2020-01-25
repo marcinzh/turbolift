@@ -10,7 +10,7 @@ class RepeatedlyTest extends Specification with CanStackOverflow {
       c <- cases
       m <- mappers
       c2 = c.mapEff(m)
-      name = s"${c.name} effect composed ${m.name} should be stack safe"
+      name = s"${c.name} effect composed ${m.name}, should be stack safe"
       test = br ^ name ! mustNotStackOverflow { c2.run }
     } yield test)
     .reduce(_ ^ _)
@@ -54,8 +54,10 @@ class RepeatedlyTest extends Specification with CanStackOverflow {
       },
       new Mapper("parallelly") {
         def apply[U](eff: Any !! U) = many(eff).reduce(_ &! _)
-        // def apply[U](eff: Any !! U) = many(eff).traverse
-      }
+      },
+      new Mapper("both sequentially and parallelly") {
+        def apply[U](eff: Any !! U) = many(eff).grouped(2).map(_.reduce(_ &! _)).reduce(_ &&! _)
+      },
     )
   }
 }
