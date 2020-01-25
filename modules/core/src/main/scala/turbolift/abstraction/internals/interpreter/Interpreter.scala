@@ -1,6 +1,6 @@
 package turbolift.abstraction.internals.interpreter
 import mwords._
-import turbolift.abstraction.!!
+import turbolift.abstraction.{!!, ComputationCases}
 import turbolift.abstraction.effect.{EffectId, Signature}
 import turbolift.abstraction.internals.handler.PrimitiveHandler
 
@@ -45,19 +45,13 @@ final class Interpreter[M[_], U](
   private def nullMA[A]: M[A] = null.asInstanceOf[M[A]]
 
   private def run[A](ua: A !! U, ma: M[A], que: Que[M, U]): M[A] = {
-    import turbolift.abstraction.ComputationCases._
-    import turbolift.abstraction.internals.interpreter.QueCases._
+    import ComputationCases._
+    import QueCases._
     def castS[M1[_], Z[P[_]] <: Signature[P]](f: Z[M1] => M1[A]) = f.asInstanceOf[Signature[M] => M[A]]
     def castU[A1](ua1: A1 !! U) = ua1.asInstanceOf[A !! U]
     def castM[A1](ma1: M[A1]) = ma1.asInstanceOf[M[A]]
     if (ua != null)
       ua match {
-        // case Pure(a) => que match {
-        //   case Empty() => theMonad.pure(a)
-        //   case SeqStep(f, next) => run(castU(f(a)), nullMA, next)
-        //   case ParStepLeft(ux, next) => run(castU(ux), nullMA, ParStepRight(theMonad.pure(a), next))
-        //   case ParStepRight(mx, next) => run(null, castM(theMonad.map(mx)((_, a))), next)
-        // }
         case Pure(a) => run(null, theMonad.pure(a), que)
         case FlatMap(ux, k) => run(castU(ux), nullMA, SeqStep(k, que))
         case ZipPar(ux, uy) => run(castU(ux), nullMA, ParStepLeft(castU(uy), que))
