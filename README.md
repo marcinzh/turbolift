@@ -1,29 +1,20 @@
-# Turbolift
-
 :construction: :construction: Work In Progress :construction: :construction:
 
-An alternative to both MTL and Eff monad. Combines advantages of extensible effects (on the frontend) and monad transformers (on the backend). Supports higher order effects.
+# Turbolift
 
-The frontend is mostly inherited from [Skutek](https://github.com/marcinzh/skutek) - an implementation of Eff monad, using Scala's intersection types for tracking sets of effects used in computations.
+A functional effect system. An alternative to Eff monad and MTL, combining advantages of both:
 
-The backend doesn't use canonical monad transformer's data types (e.g. `StateT`). Instead, it uses type aliases, encapsulated in effect handler definitions. As a side effect of this design, number of object allocations at runtime is reduced (preliminary microbenchmarking shows x2 performance improvement over Cats monad transformers). Effect handlers though, are defined in terms of canonical monad->monad transformation, with methods such as `lift` and `flatMap`, to fill in (example: definition of `State` effect [here](https://github.com/marcinzh/turbolift/blob/35147d3545f5d7bbcd0d7f1498fedb3d6469dd39/modules/core/src/main/scala/turbolift/std_effects/State.scala#L28-L33)).
+- Like Eff monad, Turbolift allows user to conveniently introduce and eliminate new effects to/from the computation, at any point, without knowledge of, or interference from preexisting effects.
 
+- Like MTL, Turbolift supports higher order effects.
 
+Other features:
 
-# Roadmap
+- Boilerplate free interface. 
 
-1. Provide missing critical functionality, such as:
+- Parallel composition of effects.
 
-   - Stack safety for parallel (applicative-like) composition (tough one).
-   
-   - Ability to define new effects, by delegation to preexisting effects.
-
-2. Replace `mwords` (a self-made, stop-gap, minimal FP library) with dependency on `cats-core`
-
-3. Explore using preexisting IO monads (Cats-Effect, ZIO, Monix) as the base for Turbolift's monad stack. Currently, Identity and Trampoline are provided as the base monads.
-
-4. Improve performance of larger effect stacks, by coalescing similar kinded effects, adjacent in the stack, into single one, backed by shared data type. This would result in flatter effect stacks. Preliminary microbenchmarking shows potential for x2-3 performance gain, over current Turbolift's equally sized effect stack, but made of fully isolated effects.
-
+- Unique labelling/tagging of effects. Always on, by design, as opposed to optional, with modifier, e.g. in [Idris](http://docs.idris-lang.org/en/latest/effects/state.html#labelled-effects).
 
 # Example
 ```scala
