@@ -1,25 +1,25 @@
 package turbolift.std_effects
 import mwords._
 import turbolift.abstraction.!!
-import turbolift.abstraction.effect.{FilterableEffect, FailSig}
+import turbolift.abstraction.effect.{Effect, FailSig}
 
 
-trait NonDetSig[P[_]] extends FailSig[P] {
+trait ChoiceSig[P[_]] extends FailSig[P] {
   def each[A](as: Iterable[A]): P[A]
 }
 
 
-trait NonDet extends FilterableEffect[NonDetSig] {
+trait Choice extends Effect.Filterable[ChoiceSig] {
   def each[A](as: Iterable[A]) = encodeFO(_.each(as))
   
   def from[A](as: A*) = each(as.toVector)
 
-  val handler = DefaultNonDetHandler(this)
+  val handler = DefaultChoiceHandler(this)
 }
 
 
-object DefaultNonDetHandler {
-  def apply[Fx <: NonDet](fx: Fx) = new fx.Nullary[Vector] {
+object DefaultChoiceHandler {
+  def apply[Fx <: Choice](fx: Fx) = new fx.Nullary[Vector] {
     val theFunctor = FunctorInstances.vector
 
     def commonOps[M[_]: MonadPar] = new CommonOps[M] {
@@ -48,7 +48,7 @@ object DefaultNonDetHandler {
         }
     }
 
-    def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with NonDetSig[P] {
+    def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with ChoiceSig[P] {
       def fail[A]: P[A] = liftOuter(pureInner(Vector()))
 
       def each[A](as: Iterable[A]): P[A] = liftOuter(pureInner(as.toVector))

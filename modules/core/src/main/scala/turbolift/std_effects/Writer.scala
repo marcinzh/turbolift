@@ -44,12 +44,12 @@ object DefaultWriterHandler {
 
       def listen[A](scope: P[A]): P[(W, A)] =
         withUnlift { run => w0 =>
-          run(scope)(w0).map { case (w, fa) => (w, fa.map((w, _))) }
+          run(scope)(Monoid[W].empty).map { case (w, fa) => (w0 |@| w, fa.map((w, _))) }
         }
 
       def censor[A](scope: P[A])(mod: W => W): P[A] =
         withUnlift { run => w0 =>
-          run(scope)(w0).map { case (w, fa) => (mod(w), fa) }
+          run(scope)(Monoid[W].empty).map { case (w, fa) => (w0 |@| mod(w), fa) }
         }
     }
   }.self

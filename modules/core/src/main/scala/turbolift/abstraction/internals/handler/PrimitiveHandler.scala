@@ -4,15 +4,14 @@ import turbolift.abstraction.!!
 import turbolift.abstraction.effect.{Signature, HasEffectId}
 
 
-trait PrimitiveHandlerBase extends HasEffectId.Delegate {
-  // private[abstraction] val effectId: AnyRef
+trait PrimitiveHandlerStub extends HasEffectId.Delegate {
   val isFilterable: Boolean
 
   type ThisSignature[P[_]] <: Signature[P]
 }
 
 
-trait PrimitiveHandler[T[_[_], _], O[_]] extends PrimitiveHandlerBase {
+sealed trait PrimitiveHandler[T[_[_], _], O[_]] extends PrimitiveHandlerStub {
   def theFunctor: Functor[O]
 
   def commonOps[M[_]: MonadPar] : CommonOps[M]
@@ -35,20 +34,23 @@ trait PrimitiveHandler[T[_[_], _], O[_]] extends PrimitiveHandlerBase {
 
   abstract class SpecialOps[M[_], P[_]](val context: ThisContext[M, P]) extends Signature[P] { this: ThisSignature[P] =>
     final type Stash[A] = context.Stash[A]
+
+    final override def theMonad = outerMonad //// Signature's monad
     
     final implicit def innerMonad: MonadPar[M] = context.innerMonad
     final implicit def outerMonad: MonadPar[P] = context.outerMonad
-    final /*implicit*/ def mainMonad: MonadPar[T[M, ?]] = context.mainMonad
+    final /******/ def mainMonad: MonadPar[T[M, ?]] = context.mainMonad
     final implicit def stashFunctor: Functor[Stash] = context.lifting.stashFunctor
 
-    final def liftOuter[A](tma: T[M, A]): P[A] = context.lifting.lift(tma)
     final def pureInner[A](a: A): M[A] = context.innerMonad.pure(a)
+    final def pureOuter[A](a: A): P[A] = context.outerMonad.pure(a)
+    final def liftOuter[A](tma: T[M, A]): P[A] = context.lifting.lift(tma)
 
-    final override def theMonad = outerMonad
-
-    // moved to subclasses to aid compiler find innerMonad instance:
-    // final type Unlift = context.Unlift
-    // def withUnlift[A](ff: Unlift => TM[Stash[A]]): A !! U = context.withUnlift(ff)
+    //// Overriden in direct subclasses of SpecialOps, but with exactly the same values as here, except 
+    //// for having type T inlined. This inlining appearently prevents compiler from getting confused
+    //// about finding Monad[M] instance, in effect definitions.
+    type Unlift = context.lifting.Unlift
+    def withUnlift[A](ff: Unlift => T[M, Stash[A]]): P[A] = context.lifting.withUnlift(ff)
   }
 }
 
@@ -61,8 +63,8 @@ object PrimitiveHandler {
     }
 
     abstract class SpecialOps[M[_], P[_]](ctx: ThisContext[M, P]) extends super.SpecialOps(ctx) { this: ThisSignature[P] =>
-      final type Unlift = P ~> Lambda[X => M[O[Stash[X]]]]
-      final def withUnlift[A](ff: Unlift => M[O[Stash[A]]]): P[A] = context.lifting.withUnlift(ff)
+      final override type Unlift = P ~> Lambda[X => M[O[Stash[X]]]]
+      final override def withUnlift[A](ff: Unlift => M[O[Stash[A]]]): P[A] = context.lifting.withUnlift(ff)
     }
   }
 
@@ -75,8 +77,8 @@ object PrimitiveHandler {
     }
 
     abstract class SpecialOps[M[_], P[_]](ctx: ThisContext[M, P]) extends super.SpecialOps(ctx) { this: ThisSignature[P] =>
-      final type Unlift = P ~> Lambda[X => S => M[O[Stash[X]]]]
-      final def withUnlift[A](ff: Unlift => S => M[O[Stash[A]]]): P[A] = context.lifting.withUnlift(ff)
+      final override type Unlift = P ~> Lambda[X => S => M[O[Stash[X]]]]
+      final override def withUnlift[A](ff: Unlift => S => M[O[Stash[A]]]): P[A] = context.lifting.withUnlift(ff)
     }
   }
 }

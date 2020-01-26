@@ -1,13 +1,13 @@
 package turbolift.std_effects
 import mwords._
 import turbolift.abstraction.!!
-import turbolift.abstraction.effect.{FilterableEffect, FailSig}
+import turbolift.abstraction.effect.{Effect, FailSig}
 
 
 trait MaybeSig[P[_]] extends FailSig[P]
 
 
-trait Maybe extends FilterableEffect[MaybeSig] {
+trait Maybe extends Effect.Filterable[MaybeSig] {
   def from[A](x: Option[A]): A !! this.type = x match {
     case Some(a) => pure(a)
     case _ => fail

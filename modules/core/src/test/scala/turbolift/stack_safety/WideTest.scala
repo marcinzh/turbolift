@@ -8,7 +8,7 @@ class WideTest extends Specification with CanStackOverflow {
   def is = choice
 
   def choice = br ^ "Choice from big collection should be stack safe" ! mustNotStackOverflow {
-    case object Fx extends NonDet
+    case object Fx extends Choice
 
     (for {
       i <- Fx.each(1 to TooBigForStack)

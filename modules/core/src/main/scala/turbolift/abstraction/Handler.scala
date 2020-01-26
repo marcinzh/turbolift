@@ -41,7 +41,7 @@ object HandlerCases {
     override type Effects = lhs.Effects with rhs.Effects
     override type Result[A] = lhs.Result[rhs.Result[A]]
 
-    protected[abstraction] override def doHandle[A, U](eff: A !! U with lhs.Effects with rhs.Effects): Result[A] !! U =
+    protected[abstraction] override def doHandle[A, U](eff: A !! U with Effects): Result[A] !! U =
       lhs.doHandle[rhs.Result[A], U](
         rhs.doHandle[A, U with lhs.Effects](eff)
       )

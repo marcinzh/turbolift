@@ -18,5 +18,4 @@ trait FailEffectEncoding[Z[P[_]] <: FailSig[P]] extends FailEffect with EffectEn
 
 case object FailEffect extends FailEffectEncoding[FailSig] with HasEffectId.Nul {
   override type ThisEffect = FailEffect
-  // override def effectId: AnyRef = null
 }

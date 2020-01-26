@@ -18,6 +18,12 @@ object Functor {
   }
 }
 
+trait FunctorExports {
+  implicit class FunctorSyntax[A, F[_]: Functor](thiz: F[A]) {
+    def map[B](f: A => B): F[B] = Functor[F].map(thiz)(f)
+  }
+}
+
 object FunctorInstances {
   def pair[S]: Functor[(S, +?)] = new Functor[(S, +?)] {
     def map[A, B](sa: (S, A))(f: A => B): (S, B) = (sa._1, f(sa._2))
@@ -36,17 +42,38 @@ object FunctorInstances {
   }
 }
 
-trait FunctorExports {
-  implicit class FunctorSyntax[A, F[_]: Functor](thiz: F[A]) {
-    def map[B](f: A => B): F[B] = Functor[F].map(thiz)(f)
+trait Applicative[F[_]] extends Functor[F] {
+  def pure[A](a: A): F[A]
+  def map2[A, B, C](fa: F[A], fb: F[B])(f: (A, B) => C): F[C]
+}
+
+object Applicative {
+  def apply[F[_]](implicit ev: Applicative[F]) = ev
+
+  def compose[F[_], G[_]](F: Applicative[F], G: Applicative[G]): Applicative[Lambda[X => F[G[X]]]] =
+    new Applicative[Lambda[X => F[G[X]]]] {
+      def pure[A](a: A): F[G[A]] = F.pure(G.pure(a))
+      def map[A, B](fga: F[G[A]])(f: A => B): F[G[B]] = F.map(fga)(ga => G.map(ga)(f))
+      def map2[A, B, C](fga: F[G[A]], fgb: F[G[B]])(f: (A, B) => C): F[G[C]] = F.map2(fga, fgb)((ga, gb) => G.map2(ga, gb)(f))
+    }
+
+  val identity: Applicative[Lambda[X => X]] = new Applicative[Lambda[X => X]] {
+    def pure[A](a: A): A = a
+    def map[A, B](a: A)(f: A => B): B = f(a)
+    def map2[A, B, C](a: A, b: B)(f: (A, B) => C): C = f(a, b)
   }
 }
 
+trait ApplicativeExports {
+  implicit class ApplicativeSyntax[A, F[_]: Applicative](thiz: F[A]) {
+    def map2[B, C](that: F[B])(f: (A, B) => C): F[C] = Applicative[F].map2(thiz, that)(f)
+  }
+}
 
-trait Monad[F[_]] extends Functor[F] {
-  def pure[A](a: A): F[A]
+trait Monad[F[_]] extends Applicative[F] {
   def flatMap[A, B](fa: F[A])(f: A => F[B]): F[B]
   def map[A, B](fa: F[A])(f: A => B): F[B] = flatMap(fa)(a => pure(f(a)))
+  def map2[A, B, C](fa: F[A], fb: F[B])(f: (A, B) => C): F[C] = flatMap(fa)(a => map(fb)(b => f(a, b)))
   def flatten[A](ffa: F[F[A]]): F[A] = flatMap(ffa)(fa => fa)
   def zipSeq[A, B](fa: F[A], fb : => F[B]): F[(A, B)] = flatMap(fa)(a => map(fb)((a, _)))
   def zipSeq1st[A, B](fa: F[A], fb : => F[B]): F[A] = flatMap(fa)(a => map(fb)(_ => a))
