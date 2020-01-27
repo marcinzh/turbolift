@@ -118,3 +118,20 @@ trait MonadParExports {
     def *>![B](that: F[B]): F[B] = MonadPar[F].zipPar2nd(thiz, that)
   }
 }
+
+
+trait MonadBasePar[F[_]] extends MonadPar[F] {
+  def defer[A](th: () => F[A]): F[A]
+}
+
+
+object MonadBasePar {
+  def apply[F[_]](implicit ev: MonadBasePar[F]) = ev
+
+  val identity: MonadBasePar[Identity] = new MonadBasePar[Identity] {
+    def pure[A](a: A): A = a
+    def flatMap[A, B](a: A)(f: A => B): B = f(a)
+    def zipPar[A, B](a: A, b: B): (A, B) = (a, b)
+    def defer[A](th: () => A): A = th()
+  }
+}
