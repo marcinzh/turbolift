@@ -1,6 +1,6 @@
 package turbolift.stack_safety
-import turbolift.abstraction._
-import turbolift.std_effects._
+import turbolift.abstraction.{!!, Handler}
+import turbolift.std_effects.{Reader, Writer, State, Choice}
 import org.specs2._
 
 

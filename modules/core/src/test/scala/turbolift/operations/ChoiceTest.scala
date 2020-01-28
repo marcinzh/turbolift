@@ -1,6 +1,6 @@
 package turbolift.operations
-import turbolift.abstraction._
-import turbolift.std_effects._
+import turbolift.abstraction.!!
+import turbolift.std_effects.{Choice, Except}
 import org.specs2._
 
 
@@ -37,7 +37,7 @@ class ChoiceTest extends Specification {
     case object FxE extends Except[Int]
 
     val eff = for {
-      xx <- FxC.from(Return(1), FxE.raise(2))
+      xx <- FxC.from(!!.pure(1), FxE.raise(2))
       x <- xx
     } yield x
 

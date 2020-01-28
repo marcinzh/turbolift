@@ -1,6 +1,6 @@
 package turbolift.operations
-import turbolift.abstraction._
-import turbolift.std_effects._
+import turbolift.abstraction.!!
+import turbolift.std_effects.Maybe
 import org.specs2._
 
 
@@ -11,7 +11,7 @@ class MaybeTest extends Specification with CanLaunchTheMissiles {
     val missile1 = Missile()
     val missile2 = Missile()
     (for {
-      i <- Return(123)
+      i <- !!.pure(123)
       _ <- Fx.fail *! missile1.launch_!
       _ <- missile2.launch_!
     } yield i)

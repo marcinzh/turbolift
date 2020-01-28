@@ -1,6 +1,5 @@
 package turbolift.type_safety
 import turbolift.abstraction._
-import turbolift.std_effects._
 import org.specs2._
 import org.specs2.execute._, Typecheck._
 import org.specs2.matcher.TypecheckMatchers._

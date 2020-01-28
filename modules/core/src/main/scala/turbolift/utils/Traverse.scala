@@ -1,16 +1,16 @@
 package turbolift.utils
-import turbolift.abstraction._
+import turbolift.abstraction.!!
 import scala.collection.generic.CanBuildFrom
 
 
 trait TraverseExports {
   implicit class IterableOfComputationExtension[+A, -U, S[+X] <: Iterable[X]](thiz: S[A !! U]) {
-    def traverseVoid: Unit !! U = thiz.foldLeft(Return().upCast[U])(_ *<! _)
+    def traverseVoid: Unit !! U = thiz.foldLeft(!!.pure().upCast[U])(_ *<! _)
 
     def traverseVoidShort: Unit !! U = {
       def loop(todos: Iterable[A !! U]): Unit !! U =
         if (todos.isEmpty)
-          Return()
+          !!.pure()
         else 
           todos.head.flatMap(_ => loop(todos.tail))
 
@@ -23,7 +23,7 @@ trait TraverseExports {
     def traverse: S[A] !! U = {
       def loop(as: Iterable[A !! U]): Vector[A] !! U =
         as.size match {
-          case 0 => Return(Vector.empty[A])
+          case 0 => !!.pure(Vector.empty[A])
           case 1 => as.head.map(Vector(_))
           case n =>
             val (as1, as2) = as.splitAt(n / 2)
@@ -36,7 +36,7 @@ trait TraverseExports {
     def traverseShort: S[A] !! U = {
       def loop(todos: Iterable[A !! U], accum: Vector[A]): Vector[A] !! U =
         if (todos.isEmpty)
-          Return(accum)
+          !!.pure(accum)
         else 
           todos.head.flatMap(a => loop(todos.tail, accum :+ a))
 
@@ -49,12 +49,12 @@ trait TraverseExports {
     def traverse: Option[A] !! U =
       thiz match {
         case Some(ma) => ma.map(Some(_))
-        case None => Return(None)
+        case None => !!.pure(None)
       }
     def traverseVoid: Unit !! U =
       thiz match {
         case Some(ma) => ma.void
-        case None => Return()
+        case None => !!.pure()
       }
     def traverseShort = traverse
     def traverseVoidShort = traverseVoid
@@ -65,12 +65,12 @@ trait TraverseExports {
     def traverse: Either[T, A] !! U =
       thiz match {
         case Right(ma) => ma.map(Right(_))
-        case Left(x) => Return(Left(x))
+        case Left(x) => !!.pure(Left(x))
       }
     def traverseVoid: Unit !! U =
       thiz match {
         case Right(ma) => ma.void
-        case Left(_) => Return()
+        case Left(_) => !!.pure()
       }
     def traverseShort = traverse
     def traverseVoidShort = traverseVoid

@@ -36,19 +36,12 @@ sealed trait Computation[+A, -U] {
 
 
 object Computation {
-  def pure(): Unit !! Any = Return()
-  def pure[A](a: A): A !! Any = Return(a)
-  def fail: Nothing !! FailEffect = FailEffect.fail
-  // def defer[A, U](ua: => A !! U): A !! U = Return().flatMap(_ => ua)
+  private val pureUnit = Pure(())
+  def pure(): Unit !! Any = pureUnit
+  def pure[A](a: A): A !! Any = Pure(a)
   def defer[A, U](ua: => A !! U): A !! U = Defer(() => ua)
-  def eval[A](a: => A): A !! Any = Defer(() => Return(a))
-}
-
-
-object Return {
-  private val unit = apply(())
-  def apply(): Unit !! Any = unit
-  def apply[A](a: A): A !! Any = new Pure(a)
+  def eval[A](a: => A): A !! Any = Defer(() => Pure(a))
+  def fail: Nothing !! FailEffect = FailEffect.fail
 }
 
 
@@ -66,7 +59,7 @@ private[abstraction] object ComputationCases {
 object ComputationInstances {
   // implicit def monad[U]: MonadPar[Computation[?, U]] = new MonadPar[Computation[?, U]] {
   implicit def monad[U]: Monad[Computation[?, U]] = new Monad[Computation[?, U]] {
-    def pure[A](a: A): A !! U = Return(a)
+    def pure[A](a: A): A !! U = Pure(a)
     def flatMap[A, B](ma: A !! U)(f: A => B !! U): B !! U = ma.flatMap(f)
     // def zipPar[A, B](ma: A !! U, mb: B !! U): (A, B) !! U = ma *! mb
     // def defer[A](th: () => F[A]): F[A] = ???

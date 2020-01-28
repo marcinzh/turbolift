@@ -1,6 +1,6 @@
 package turbolift.stack_safety
-import turbolift.abstraction._
-import turbolift.std_effects._
+// import turbolift.abstraction.!!
+import turbolift.std_effects.Choice
 import org.specs2._
 
 
