@@ -1,5 +1,6 @@
 package turbolift.operations
 import turbolift.abstraction.!!
+import turbolift.abstraction.implicits._
 import turbolift.std_effects.{Memoizer, Writer}
 import org.specs2._
 

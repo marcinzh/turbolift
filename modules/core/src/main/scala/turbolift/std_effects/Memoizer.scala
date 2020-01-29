@@ -3,6 +3,7 @@ import mwords._
 import turbolift.abstraction.!!
 import turbolift.abstraction.effect.{Effect, Signature}
 import turbolift.abstraction.{!!, Handler}
+import turbolift.abstraction.implicits._
 
 
 trait MemoizerSig[P[_], K, V] extends Signature[P] {

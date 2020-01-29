@@ -2,7 +2,7 @@ package turbolift.utils
 import turbolift.abstraction.!!
 
 
-trait FoldExports {
+trait FoldImplicits {
   implicit class Fold_TraversableOnceOfComputationExtension[A, C[X] <: TraversableOnce[X]](thiz: C[A]) {
     def foldLeft_!![U, B](z: B)(op: (B, A) => B !! U): B !! U =
       thiz.foldLeft(!!.pure(z).upCast[U]) {

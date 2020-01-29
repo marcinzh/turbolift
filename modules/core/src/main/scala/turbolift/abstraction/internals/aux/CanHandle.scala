@@ -24,7 +24,7 @@ object CanHandle {
   }
 }
 
-trait CanHandleExports {
+trait CanHandleImplicits {
   implicit def CanHandle_evidence[U, V, W](implicit ev: (W with U) <:< V): CanHandle[U, V, W] =
     CanHandle.singleton.asInstanceOf[CanHandle[U, V, W]]
 }

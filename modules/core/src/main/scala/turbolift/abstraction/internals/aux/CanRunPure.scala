@@ -18,7 +18,7 @@ object CanRunPure {
   }
 }
 
-trait CanRunPureExports {
+trait CanRunPureImplicits {
   implicit def CanRunPure_evidence[U](implicit ev: U =:= Any): CanRunPure[U] =
     CanRunPure.singleton.asInstanceOf[CanRunPure[U]]
 }

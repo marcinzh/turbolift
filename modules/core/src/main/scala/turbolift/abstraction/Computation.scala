@@ -54,7 +54,7 @@ private[abstraction] object ComputationCases {
 }
 
 
-object ComputationInstances {
+trait ComputationInstances {
   // implicit def monad[U]: MonadPar[Computation[?, U]] = new MonadPar[Computation[?, U]] {
   implicit def monad[U]: Monad[Computation[?, U]] = new Monad[Computation[?, U]] {
     def pure[A](a: A): A !! U = Pure(a)
@@ -68,6 +68,11 @@ object ComputationInstances {
 trait ComputationExports {
   type !![+A, -U] = Computation[A, U]
   def !! = Computation
+}
+
+
+trait ComputationImplicits extends ComputationInstances {
+  import turbolift.abstraction.implicits.{CanRunPure_evidence, CanHandle_evidence}
 
   implicit class ComputationExtension[A, U](thiz: A !! U) {
     def run(implicit ev: CanRunPure[U]): A = (Interpreter.pure(ev(thiz))).run
