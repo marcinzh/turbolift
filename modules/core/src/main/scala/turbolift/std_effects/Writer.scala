@@ -13,7 +13,7 @@ trait WriterSig[P[_], W] extends Signature[P] {
 
 trait Writer[W] extends Effect[WriterSig[?[_], W]] {
   def tell(w: W): Unit !! this.type = encodeFO(_.tell(w))
-  def tell[X](x: X)(implicit ev: NonEmpty[X, W]): Unit !! this.type = tell(ev.nonEmpty(x))
+  def tell[X](x: X)(implicit ev: One[X, W]): Unit !! this.type = tell(ev.one(x))
   def listen[A, U](scope: A !! U): (W, A) !! U with this.type = encodeHO[U](run => _.listen(run(scope)))
   def censor[A, U](scope: A !! U)(f: W => W): A !! U with this.type = encodeHO[U](run => _.censor(run(scope))(f))
 
