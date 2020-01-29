@@ -4,18 +4,18 @@ import turbolift.abstraction.!!
 import turbolift.abstraction.effect.{Effect, AlternativeSig}
 
 
-trait MaybeSig[P[_]] extends AlternativeSig[P]
+trait FailSig[P[_]] extends AlternativeSig[P]
 
 
-trait Maybe extends Effect.Alternative[MaybeSig] {
+trait Fail extends Effect.Alternative[FailSig] {
   val fail: Nothing !! this.type = empty
   
-  val handler = DefaultMaybeHandler(this)
+  val handler = DefaultFailHandler(this)
 }
 
 
-object DefaultMaybeHandler {
-  def apply[Fx <: Maybe](fx: Fx) = new fx.Nullary[Option] {
+object DefaultFailHandler {
+  def apply[Fx <: Fail](fx: Fx) = new fx.Nullary[Option] {
     val theFunctor = FunctorInstances.option
 
     def commonOps[M[_]: MonadPar] = new CommonOps[M] {
@@ -34,7 +34,7 @@ object DefaultMaybeHandler {
         }
     }
 
-    def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with MaybeSig[P] {
+    def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with FailSig[P] {
       def empty[A]: P[A] = liftOuter(pureInner(None))
 
       def plus[A](lhs: P[A], rhs: => P[A]): P[A] =

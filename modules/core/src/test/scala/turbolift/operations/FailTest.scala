@@ -1,12 +1,12 @@
 package turbolift.operations
 import turbolift.abstraction.!!
-import turbolift.std_effects.Maybe
+import turbolift.std_effects.Fail
 import org.specs2._
 
 
-class MaybeTest extends Specification with CanLaunchTheMissiles {
+class FailTest extends Specification with CanLaunchTheMissiles {
   def is = {
-    case object Fx extends Maybe
+    case object Fx extends Fail
 
     val missile1 = Missile()
     val missile2 = Missile()
