@@ -26,7 +26,7 @@ trait Effect[Z[P[_]] <: Signature[P]] extends AnyEffect[Z] {
 
 
 object Effect {
-  trait Filterable[Z[P[_]] <: FailSig[P]] extends AnyEffect[Z] with FailEffectEncoding[Z] {
+  trait Alternative[Z[P[_]] <: AlternativeSig[P]] extends AnyEffect[Z] with AlternativeEffectEncoding[Z] {
     trait ThisHandler extends super.ThisHandler {
       final override val isFilterable = true
     }

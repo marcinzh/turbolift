@@ -1,18 +1,15 @@
 package turbolift.std_effects
 import mwords._
 import turbolift.abstraction.!!
-import turbolift.abstraction.effect.{Effect, FailSig}
+import turbolift.abstraction.effect.{Effect, AlternativeSig}
 
 
-trait MaybeSig[P[_]] extends FailSig[P]
+trait MaybeSig[P[_]] extends AlternativeSig[P]
 
 
-trait Maybe extends Effect.Filterable[MaybeSig] {
-  def from[A](x: Option[A]): A !! this.type = x match {
-    case Some(a) => pure(a)
-    case _ => fail
-  }
-
+trait Maybe extends Effect.Alternative[MaybeSig] {
+  val fail: Nothing !! this.type = empty
+  
   val handler = DefaultMaybeHandler(this)
 }
 
@@ -38,22 +35,15 @@ object DefaultMaybeHandler {
     }
 
     def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with MaybeSig[P] {
-      def fail[A]: P[A] = liftOuter(pureInner(None))
+      def empty[A]: P[A] = liftOuter(pureInner(None))
 
-      def orElseSeq[A](lhs: P[A], rhs: => P[A]): P[A] =
+      def plus[A](lhs: P[A], rhs: => P[A]): P[A] =
         withUnlift { run =>
           run(lhs).flatMap { x =>
             if (x.isDefined)
               pureInner(x)
             else
               run(rhs)
-          }
-        }
-
-      def orElsePar[A](lhs: P[A], rhs: P[A]): P[A] =
-        withUnlift { run =>
-          (run(lhs) *! run(rhs)).map {
-            case (x, y) => x.orElse(y)
           }
         }
     }

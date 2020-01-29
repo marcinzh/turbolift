@@ -1,18 +1,18 @@
 package turbolift.std_effects
 import mwords._
 import turbolift.abstraction.!!
-import turbolift.abstraction.effect.{Effect, FailSig}
+import turbolift.abstraction.effect.{Effect, AlternativeSig}
 
 
-trait ChoiceSig[P[_]] extends FailSig[P] {
+trait ChoiceSig[P[_]] extends AlternativeSig[P] {
   def each[A](as: Iterable[A]): P[A]
 }
 
 
-trait Choice extends Effect.Filterable[ChoiceSig] {
+trait Choice extends Effect.Alternative[ChoiceSig] {
   def each[A](as: Iterable[A]) = encodeFO(_.each(as))
   
-  def from[A](as: A*) = each(as.toVector)
+  def fromEach[A](as: A*) = each(as.toVector)
 
   val handler = DefaultChoiceHandler(this)
 }
@@ -49,26 +49,16 @@ object DefaultChoiceHandler {
     }
 
     def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with ChoiceSig[P] {
-      def fail[A]: P[A] = liftOuter(pureInner(Vector()))
+      def empty[A]: P[A] = liftOuter(pureInner(Vector()))
 
-      def each[A](as: Iterable[A]): P[A] = liftOuter(pureInner(as.toVector))
-
-      def orElseSeq[A](lhs: P[A], rhs: => P[A]): P[A] =
-        withUnlift { run =>
-          run(lhs).flatMap { x =>
-            if (x.nonEmpty)
-              pureInner(x)
-            else
-              run(rhs)
-          }
-        }
-
-      def orElsePar[A](lhs: P[A], rhs: P[A]): P[A] =
+      def plus[A](lhs: P[A], rhs: => P[A]): P[A] =
         withUnlift { run =>
           (run(lhs) *! run(rhs)).map {
-            case (xs, ys) => if (xs.nonEmpty) xs else ys
+            case (xs, ys) => xs ++ ys
           }
         }
+
+      def each[A](as: Iterable[A]): P[A] = liftOuter(pureInner(as.toVector))
     }
   }.self
 }

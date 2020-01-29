@@ -1,6 +1,6 @@
 package turbolift.abstraction
 import mwords.{Monad, ~>}
-import turbolift.abstraction.effect.{EffectId, Signature, FailEffect}
+import turbolift.abstraction.effect.{EffectId, Signature, AltFx, AlternativeEffect}
 import turbolift.abstraction.internals.handler.SaturatedHandler
 import turbolift.abstraction.internals.interpreter.Interpreter
 import turbolift.abstraction.internals.aux.{CanRunPure, CanRunImpure, CanHandle}
@@ -24,14 +24,12 @@ sealed trait Computation[+A, -U] {
   final def &![B, V](that: B !! V): B !! U with V = this *>! that
   final def &&![B, V](that : => B !! V): B !! U with V = this **>! that
 
-  final def |?[B >: A, V](that: B !! V): B !! U with V with FailEffect = FailEffect.orElsePar(this, that)
-  final def ||?[B >: A, V](that: => B !! V): B !! U with V with FailEffect = FailEffect.orElseSeq(this, that)
+  final def +![B >: A, V](that: => B !! V): B !! U with V with AltFx = AlternativeEffect.plus(this, that)
 
-  final def withFilter(f: A => Boolean): A !! U with FailEffect = flatMap(a => if (f(a)) !!.pure(a) else !!.fail)
+  final def withFilter(f: A => Boolean): A !! U with AltFx = flatMap(a => if (f(a)) !!.pure(a) else !!.empty)
 
   final def void: Unit !! U = map(_ => ())
   final def upCast[V <: U] = this: A !! V
-  final def forceFilterable = this: A !! U with FailEffect
 }
 
 
@@ -41,7 +39,7 @@ object Computation {
   def pure[A](a: A): A !! Any = Pure(a)
   def defer[A, U](ua: => A !! U): A !! U = Defer(() => ua)
   def eval[A](a: => A): A !! Any = Defer(() => Pure(a))
-  def fail: Nothing !! FailEffect = FailEffect.fail
+  def empty: Nothing !! AltFx = AlternativeEffect.empty
 }
 
 
