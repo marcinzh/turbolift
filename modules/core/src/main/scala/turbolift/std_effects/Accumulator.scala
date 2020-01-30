@@ -6,11 +6,13 @@ import turbolift.abstraction.effect.{Effect, Signature}
 
 trait AccumulatorSig[P[_], E] extends Signature[P] {
   def tell(e: E): P[Unit]
+  def clear[A](scope: P[A]): P[A]
 }
 
 
 trait Accumulator[E] extends Effect[AccumulatorSig[?[_], E]] { thiz =>
   def tell(e: E): Unit !! this.type = encodeFO(_.tell(e))
+  def clear[A, U](scope: A !! U): A !! U with this.type = encodeHO[U](run => _.clear(run(scope)))
 
   object handler {
     def apply[W](implicit W: PlusOneZero[E, W]) = DefaultAccumulatorHandler[E, W, thiz.type](thiz).apply(W.zero)
@@ -42,6 +44,11 @@ object DefaultAccumulatorHandler {
 
     def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with AccumulatorSig[P, E] {
       def tell(e: E): P[Unit] = liftOuter(w => pureInner((w |+ e, ())))
+
+      def clear[A](scope: P[A]): P[A] =
+        withUnlift { run => w0 =>
+          run(scope)(W.zero).map { case (_, fa) => (w0, fa) }
+        }
     }
   }.self
 }

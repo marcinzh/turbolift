@@ -8,6 +8,7 @@ trait WriterSig[P[_], W] extends Signature[P] {
   def tell(w: W): P[Unit]
   def listen[A](scope: P[A]): P[(W, A)]
   def censor[A](scope: P[A])(mod: W => W): P[A]
+  def clear[A](scope: P[A]): P[A]
 }
 
 
@@ -16,13 +17,14 @@ trait Writer[W] extends Effect[WriterSig[?[_], W]] {
   def tell[X](x: X)(implicit ev: One[X, W]): Unit !! this.type = tell(ev.one(x))
   def listen[A, U](scope: A !! U): (W, A) !! U with this.type = encodeHO[U](run => _.listen(run(scope)))
   def censor[A, U](scope: A !! U)(f: W => W): A !! U with this.type = encodeHO[U](run => _.censor(run(scope))(f))
+  def clear[A, U](scope: A !! U): A !! U with this.type = encodeHO[U](run => _.clear(run(scope)))
 
   def handler(implicit W: Monoid[W]) = DefaultWriterHandler[W, this.type](this).apply(W.empty)
 }
 
 
 object DefaultWriterHandler {
-  def apply[W: Monoid, Fx <: Writer[W]](fx: Fx) = new fx.Unary[W, (W, ?)] {
+  def apply[W, Fx <: Writer[W]](fx: Fx)(implicit W: Monoid[W]) = new fx.Unary[W, (W, ?)] {
     val theFunctor = FunctorInstances.pair[W]
 
     def commonOps[M[_]: MonadPar] = new CommonOps[M] {
@@ -34,7 +36,7 @@ object DefaultWriterHandler {
         }
 
       def zipPar[A, B](tma: W => M[(W, A)], tmb: W => M[(W, B)]): W => M[(W, (A, B))] =
-        w0 => (tma(Monoid[W].empty) *! tmb(Monoid[W].empty)).map {
+        w0 => (tma(W.empty) *! tmb(W.empty)).map {
           case ((w1, a), (w2, b)) => ((w0 |@| w1) |@| w2, (a, b))
         }
     }
@@ -44,12 +46,17 @@ object DefaultWriterHandler {
 
       def listen[A](scope: P[A]): P[(W, A)] =
         withUnlift { run => w0 =>
-          run(scope)(Monoid[W].empty).map { case (w, fa) => (w0 |@| w, fa.map((w, _))) }
+          run(scope)(W.empty).map { case (w, fa) => (w0 |@| w, fa.map((w, _))) }
         }
 
       def censor[A](scope: P[A])(mod: W => W): P[A] =
         withUnlift { run => w0 =>
-          run(scope)(Monoid[W].empty).map { case (w, fa) => (w0 |@| mod(w), fa) }
+          run(scope)(W.empty).map { case (w, fa) => (w0 |@| mod(w), fa) }
+        }
+
+      def clear[A](scope: P[A]): P[A] =
+        withUnlift { run => w0 =>
+          run(scope)(W.empty).map { case (_, fa) => (w0, fa) }
         }
     }
   }.self
