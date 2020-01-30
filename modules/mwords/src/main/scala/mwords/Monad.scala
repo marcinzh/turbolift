@@ -5,17 +5,13 @@ trait Functor[F[_]] {
   def map[A, B](fa: F[A])(f: A => B): F[B]
 }
 
-object Functor {
+object Functor extends FunctorInstances {
   def apply[F[_]](implicit ev: Functor[F]) = ev
 
   def compose[F[_], G[_]](F: Functor[F], G: Functor[G]): Functor[Lambda[X => F[G[X]]]] =
     new Functor[Lambda[X => F[G[X]]]] {
       def map[A, B](fga: F[G[A]])(f: A => B): F[G[B]] = F.map(fga)(ga => G.map(ga)(f))
     }
-
-  val identity: Functor[Lambda[X => X]] = new Functor[Lambda[X => X]] {
-    def map[A, B](a: A)(f: A => B): B = f(a)
-  }
 }
 
 trait FunctorExports {
@@ -24,20 +20,24 @@ trait FunctorExports {
   }
 }
 
-object FunctorInstances {
-  def pair[S]: Functor[(S, +?)] = new Functor[(S, +?)] {
+trait FunctorInstances {
+  implicit val identity: Functor[Lambda[X => X]] = new Functor[Lambda[X => X]] {
+    def map[A, B](a: A)(f: A => B): B = f(a)
+  }
+
+  implicit def pair[S]: Functor[(S, +?)] = new Functor[(S, +?)] {
     def map[A, B](sa: (S, A))(f: A => B): (S, B) = (sa._1, f(sa._2))
   }
 
-  val option: Functor[Option] = new Functor[Option] {
+  implicit val option: Functor[Option] = new Functor[Option] {
     def map[A, B](fa: Option[A])(f: A => B): Option[B] = fa.map(f)
   }
 
-  def either[E]: Functor[Either[E, +?]] = new Functor[Either[E, +?]] {
+  implicit def either[E]: Functor[Either[E, +?]] = new Functor[Either[E, +?]] {
     def map[A, B](fa: Either[E, A])(f: A => B): Either[E, B] = fa.map(f)
   }
 
-  val vector: Functor[Vector] = new Functor[Vector] {
+  implicit val vector: Functor[Vector] = new Functor[Vector] {
     def map[A, B](fa: Vector[A])(f: A => B): Vector[B] = fa.map(f)
   }
 }

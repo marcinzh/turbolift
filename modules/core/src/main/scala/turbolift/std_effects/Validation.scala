@@ -27,8 +27,6 @@ trait Validation[E] extends Effect[ValidationSig[?[_], E]] {
 
 object DefaultValidationHandler {
   def apply[E: Semigroup, Fx <: Validation[E]](fx: Fx) = new fx.Nullary[Either[E, ?]] {
-    val theFunctor = FunctorInstances.either[E]
-
     def commonOps[M[_]: MonadPar] = new CommonOps[M] {
       def lift[A](ma: M[A]): M[Either[E, A]] = ma.map(Right(_))
 

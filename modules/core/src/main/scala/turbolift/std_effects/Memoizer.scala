@@ -24,8 +24,6 @@ trait Memoizer[K, V] extends Effect[MemoizerSig[?[_], K, V]] {
 object DefaultMemoizerHandler {
   def apply[K, V, Fx <: Memoizer[K, V]](fx: Fx): Handler.Apply[Identity, fx.type] = new fx.Unary[Map[K, V], (Map[K, V], ?)] {
     private type S = Map[K, V]
-    val theFunctor = FunctorInstances.pair[S]
-
     def commonOps[M[_]: MonadPar] = new CommonOps[M] {
       def lift[A](ma: M[A]): S => M[(S, A)] = s => ma.map((s, _))
 

@@ -20,8 +20,6 @@ trait Choice extends Effect.Alternative[ChoiceSig] {
 
 object DefaultChoiceHandler {
   def apply[Fx <: Choice](fx: Fx) = new fx.Nullary[Vector] {
-    val theFunctor = FunctorInstances.vector
-
     def commonOps[M[_]: MonadPar] = new CommonOps[M] {
       def lift[A](ma: M[A]): M[Vector[A]] = ma.map(Vector(_))
 

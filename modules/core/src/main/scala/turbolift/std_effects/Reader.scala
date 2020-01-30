@@ -21,8 +21,6 @@ trait Reader[R] extends Effect[ReaderSig[?[_], R]] {
 
 object DefaultReaderHandler {
   def apply[R, Fx <: Reader[R]](fx: Fx) = new fx.Unary[R, Identity] {
-    val theFunctor = Functor.identity
-
     def commonOps[M[_]: MonadPar] = new CommonOps[M] {
       def lift[A](ma: M[A]): R => M[A] = _ => ma
 

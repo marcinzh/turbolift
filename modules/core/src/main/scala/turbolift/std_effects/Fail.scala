@@ -16,8 +16,6 @@ trait Fail extends Effect.Alternative[FailSig] {
 
 object DefaultFailHandler {
   def apply[Fx <: Fail](fx: Fx) = new fx.Nullary[Option] {
-    val theFunctor = FunctorInstances.option
-
     def commonOps[M[_]: MonadPar] = new CommonOps[M] {
       def lift[A](ma: M[A]): M[Option[A]] = ma.map(Some(_))
 

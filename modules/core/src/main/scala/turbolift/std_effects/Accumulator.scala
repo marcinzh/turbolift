@@ -26,8 +26,6 @@ trait Accumulator[E] extends Effect[AccumulatorSig[?[_], E]] { thiz =>
 
 object DefaultAccumulatorHandler {
   def apply[E, W, Fx <: Accumulator[E]](fx: Fx)(implicit W: PlusOneZero[E, W]) = new fx.Unary[W, (W, ?)] {
-    val theFunctor = FunctorInstances.pair[W]
-
     def commonOps[M[_]: MonadPar] = new CommonOps[M] {
       def lift[A](ma: M[A]): W => M[(W, A)] = w => ma.map((w, _))
 

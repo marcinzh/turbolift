@@ -25,8 +25,6 @@ trait Writer[W] extends Effect[WriterSig[?[_], W]] {
 
 object DefaultWriterHandler {
   def apply[W, Fx <: Writer[W]](fx: Fx)(implicit W: Monoid[W]) = new fx.Unary[W, (W, ?)] {
-    val theFunctor = FunctorInstances.pair[W]
-
     def commonOps[M[_]: MonadPar] = new CommonOps[M] {
       def lift[A](ma: M[A]): W => M[(W, A)] = w => ma.map((w, _))
 
