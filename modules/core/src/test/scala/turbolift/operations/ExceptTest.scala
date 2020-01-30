@@ -1,6 +1,7 @@
 package turbolift.operations
-import turbolift.abstraction._
-import turbolift.std_effects._
+import turbolift.abstraction.!!
+import turbolift.abstraction.implicits._
+import turbolift.std_effects.{Except, State}
 import org.specs2._
 
 
@@ -16,7 +17,7 @@ class ExceptTest extends Specification with CanLaunchTheMissiles {
       val missile3 = Missile()
       val eff = 
         for {
-          i <- Return(123)
+          i <- !!.pure(123)
           _ <- missile1.launch_! *! Fx.raise("turn") *! missile2.launch_!
           _ <- missile3.launch_!
         } yield i
@@ -43,7 +44,7 @@ class ExceptTest extends Specification with CanLaunchTheMissiles {
           _ <- FxS.put(1337)
           _ <- missile.launch_!
         } yield true
-      } (_ => Return(false))
+      } (_ => !!.pure(false))
       (eff, missile)
     }
 

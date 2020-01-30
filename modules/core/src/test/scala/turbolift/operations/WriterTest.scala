@@ -1,6 +1,7 @@
 package turbolift.operations
-import turbolift.abstraction._
-import turbolift.std_effects._
+import turbolift.abstraction.!!
+import turbolift.abstraction.implicits._
+import turbolift.std_effects.{Writer, Accumulator}
 import org.specs2._
 
 
@@ -8,14 +9,16 @@ class WriterTest extends Specification {
   def is = List(tell, listen, censor).reduce(_ ^ _)
 
   def tell = br ^ "tell" ! {
-    case object Fx extends Writer[Vector[Int]]
+    case object Fx extends Accumulator[Int]
 
-    (for {
+    val eff = for {
       _ <- Fx.tell(1)
       _ <- Fx.tell(2) *! Fx.tell(3) *! Fx.tell(4)
       _ <- Fx.tell(5)
-    } yield ())
-    .runWith(Fx.handler.justState) must_== (1 to 5)
+    } yield ()
+
+    (eff.runWith(Fx.handler.vector.justState) must_== (1 to 5)) and
+    (eff.runWith(Fx.handler.monoid.justState) must_== 15)
   }
 
   def listen = br ^ "listen" ! {

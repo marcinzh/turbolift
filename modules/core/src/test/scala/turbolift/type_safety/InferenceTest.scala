@@ -1,6 +1,6 @@
 package turbolift.type_safety
-import turbolift.abstraction._
-import turbolift.std_effects._
+import turbolift.abstraction.!!
+import turbolift.std_effects.{Reader, Writer, State, Choice}
 import org.specs2._
 import org.specs2.execute._, Typecheck._
 import org.specs2.matcher.TypecheckMatchers._
@@ -15,7 +15,7 @@ class InferenceTest extends Specification {
 
   def is = {
     val eff = for {
-      _ <- Return()
+      _ <- !!.pure()
       workaround <- Fx1.get *! Fx3.ask
       (a, b) = workaround
       _ <- Fx2.tell("lies")

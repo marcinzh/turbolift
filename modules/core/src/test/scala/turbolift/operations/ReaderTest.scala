@@ -1,6 +1,7 @@
 package turbolift.operations
-import turbolift.abstraction._
-import turbolift.std_effects._
+import turbolift.abstraction.!!
+import turbolift.abstraction.implicits._
+import turbolift.std_effects.{Reader, Writer}
 import org.specs2._
 
 
@@ -31,7 +32,7 @@ class ReaderTest extends Specification {
 
     def loop(str: String): Unit !! FxR.type with FxW.type = {
       if (str.isEmpty)
-        Return()
+        !!.pure()
       else 
         str.head match {
           case '[' => FxR.local(_ + 1)(loop(str.tail))

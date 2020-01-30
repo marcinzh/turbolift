@@ -1,4 +1,5 @@
 package turbolift.abstraction.effect
+import mwords.Functor
 import turbolift.abstraction.internals.handler.{PrimitiveHandlerStub, SaturatedHandler}
 
 
@@ -10,8 +11,15 @@ sealed trait AnyEffect[Z[P[_]] <: Signature[P]] extends EffectEncoding[Z] with H
     final override type ThisSignature[P[_]] = Z[P]
   }
 
-  trait Nullary[O[_]] extends ThisHandler with SaturatedHandler.Nullary[ThisEffect, O] { def self: Nullary[O] = this }
-  trait Unary[S, O[_]] extends ThisHandler with SaturatedHandler.Unary[ThisEffect, S, O] { def self: Unary[S, O] = this }
+  abstract class Nullary[O[_]: Functor] extends SaturatedHandler.Nullary[ThisEffect, O] with ThisHandler {
+    final def self: Nullary[O] = this
+    final override val theFunctor = Functor[O]
+  }
+
+  abstract class Unary[S, O[_]: Functor] extends SaturatedHandler.Unary[ThisEffect, S, O] with ThisHandler {
+    final def self: Unary[S, O] = this
+    final override val theFunctor = Functor[O]
+  }
 }
 
 
@@ -20,18 +28,18 @@ trait Effect[Z[P[_]] <: Signature[P]] extends AnyEffect[Z] {
     final override val isFilterable = false
   }
 
-  trait Nullary[O[_]] extends ThisHandler with super.Nullary[O]
-  trait Unary[S, O[_]] extends ThisHandler with super.Unary[S, O]
+  abstract class Nullary[O[_]: Functor] extends super.Nullary[O] with ThisHandler
+  abstract class Unary[S, O[_]: Functor] extends super.Unary[S, O] with ThisHandler
 }
 
 
 object Effect {
-  trait Filterable[Z[P[_]] <: FailSig[P]] extends AnyEffect[Z] with FailEffectEncoding[Z] {
+  trait Alternative[Z[P[_]] <: AlternativeSig[P]] extends AnyEffect[Z] with AlternativeEffectEncoding[Z] {
     trait ThisHandler extends super.ThisHandler {
       final override val isFilterable = true
     }
 
-    trait Nullary[O[_]] extends ThisHandler with super.Nullary[O]
-    trait Unary[S, O[_]] extends ThisHandler with super.Unary[S, O]
+    abstract class Nullary[O[_]: Functor] extends super.Nullary[O] with ThisHandler
+    abstract class Unary[S, O[_]: Functor] extends super.Unary[S, O] with ThisHandler
   }
 }

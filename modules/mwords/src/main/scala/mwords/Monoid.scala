@@ -48,24 +48,3 @@ object Monoid {
     def append(a: Vector[T], b: Vector[T]) = a ++ b
   }
 }
-
-
-trait NonEmpty[X, T] {
-  def nonEmpty(x: X): T
-}
-
-object NonEmpty {
-  def apply[X, T](implicit ev: NonEmpty[X, T]) = ev
-
-  implicit def forList[X] : NonEmpty[X, List[X]] = new NonEmpty[X, List[X]] {
-    def nonEmpty(x: X) = List(x)
-  }
-
-  implicit def forVector[X] : NonEmpty[X, Vector[X]] = new NonEmpty[X, Vector[X]] {
-    def nonEmpty(x: X) = Vector(x)
-  }
-
-  implicit def forSet[X] : NonEmpty[X, Set[X]] = new NonEmpty[X, Set[X]] {
-    def nonEmpty(x: X) = Set(x)
-  }
-}

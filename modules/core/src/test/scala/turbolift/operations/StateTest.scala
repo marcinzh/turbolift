@@ -1,6 +1,7 @@
 package turbolift.operations
-import turbolift.abstraction._
-import turbolift.std_effects._
+import turbolift.abstraction.!!
+import turbolift.abstraction.implicits._
+import turbolift.std_effects.State
 import org.specs2._
 
 

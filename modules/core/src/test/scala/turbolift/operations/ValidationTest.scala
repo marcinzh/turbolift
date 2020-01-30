@@ -1,6 +1,7 @@
 package turbolift.operations
-import turbolift.abstraction._
-import turbolift.std_effects._
+import turbolift.abstraction.!!
+import turbolift.abstraction.implicits._
+import turbolift.std_effects.{Validation, Writer}
 import org.specs2._
 // import mwords._
 
@@ -38,7 +39,7 @@ class ValidationTest extends Specification with CanLaunchTheMissiles {
           _ <- FxW.tell(1337)
           _ <- missile2.launch_!
         } yield "???"
-      } (str => Return(str.toUpperCase))
+      } (str => !!.pure(str.toUpperCase))
       (eff, missile1, missile2)
     }
 

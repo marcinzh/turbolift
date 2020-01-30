@@ -12,7 +12,7 @@ trait ValidationSig[P[_], E] extends Signature[P] {
 
 trait Validation[E] extends Effect[ValidationSig[?[_], E]] {
   def invalid(e: E): Nothing !! this.type = encodeFO(_.invalid(e))
-  def invalid[X](x: X)(implicit ev: NonEmpty[X, E]): Nothing !! this.type = invalid(ev.nonEmpty(x))
+  def invalid[X](x: X)(implicit ev: One[X, E]): Nothing !! this.type = invalid(ev.one(x))
   def validate[A, U](scope: A !! U)(recover: E => A !! U): A !! U with this.type =
     encodeHO[U](run => _.validate(run(scope))(e => run(recover(e))))
 
@@ -27,8 +27,6 @@ trait Validation[E] extends Effect[ValidationSig[?[_], E]] {
 
 object DefaultValidationHandler {
   def apply[E: Semigroup, Fx <: Validation[E]](fx: Fx) = new fx.Nullary[Either[E, ?]] {
-    val theFunctor = FunctorInstances.either[E]
-
     def commonOps[M[_]: MonadPar] = new CommonOps[M] {
       def lift[A](ma: M[A]): M[Either[E, A]] = ma.map(Right(_))
 

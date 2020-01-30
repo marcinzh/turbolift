@@ -18,8 +18,8 @@ Other features:
 
 # Example
 ```scala
-import turbolift.abstraction._
-import turbolift.std_effects._
+import turbolift.abstraction.!!
+import turbolift.std_effects.{Reader, Writer, State}
 
 object Main extends App {
   // Declare some effects:
@@ -33,7 +33,7 @@ object Main extends App {
     b <- MyReader.ask
     c <- {
       if (b != 0) 
-        Return(a / b)
+        !!.pure(a / b)
       else 
         MyExcept.raise(s"Tried to divide $a by zero")
     }

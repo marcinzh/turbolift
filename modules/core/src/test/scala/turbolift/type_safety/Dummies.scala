@@ -1,6 +1,6 @@
 package turbolift.type_safety
-import turbolift.abstraction._
-import turbolift.std_effects._
+import turbolift.abstraction.!!
+import turbolift.std_effects.{Reader, Writer, State}
 
 
 object Dummies {

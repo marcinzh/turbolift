@@ -1,6 +1,7 @@
 package turbolift.abstraction
 import mwords.{Identity, ~>}
 import turbolift.abstraction.internals.aux.CanHandle
+import turbolift.abstraction.implicits._
 
 
 sealed trait Handler {
@@ -64,7 +65,10 @@ trait HandlerExports {
     type Effects = H1#Effects with H2#Effects
     type Result[A] = H1#Result[H2#Result[A]]
   }
+}
 
+
+trait HandlerImplicits {
   implicit class HandlerExtension[S, U](val thiz: Handler.Apply[(S, ?), U]) {
     type Const[X] = S
 
