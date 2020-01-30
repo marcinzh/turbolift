@@ -4,7 +4,6 @@ import turbolift.abstraction.!!
 
 trait AlternativeSig[P[_]] extends Signature[P] {
   def empty[A]: P[A]
-  // def isEmpty(that: P[A]): P[Boolean]
   def plus[A](lhs: P[A], rhs: => P[A]): P[A]
 }
 
