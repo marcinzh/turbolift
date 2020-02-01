@@ -1,4 +1,5 @@
 package turbolift.type_safety
+import cats.implicits._
 import turbolift.abstraction.!!
 import turbolift.std_effects.{Reader, Writer, State}
 

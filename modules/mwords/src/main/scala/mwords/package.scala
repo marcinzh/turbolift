@@ -4,5 +4,3 @@ package object mwords
   with ApplicativeExports
   with MonadExports
   with MonadParExports
-  with SemigroupExports
-  with PlusOneExports

@@ -1,5 +1,7 @@
 package turbolift.std_effects
 import mwords._
+import cats.Monoid
+import cats.implicits._
 import turbolift.abstraction.!!
 import turbolift.abstraction.effect.{Effect, Signature}
 import turbolift.abstraction.typeclass.Accum
@@ -38,21 +40,21 @@ object DefaultWriterHandler {
 
       def zipPar[A, B](tma: W => M[(W, A)], tmb: W => M[(W, B)]): W => M[(W, (A, B))] =
         w0 => (tma(W.empty) *! tmb(W.empty)).map {
-          case ((w1, a), (w2, b)) => ((w0 |@| w1) |@| w2, (a, b))
+          case ((w1, a), (w2, b)) => ((w0 |+| w1) |+| w2, (a, b))
         }
     }
 
     def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with WriterSig[P, W] {
-      def tell(w: W): P[Unit] = liftOuter(w0 => pureInner((w0 |@| w, ())))
+      def tell(w: W): P[Unit] = liftOuter(w0 => pureInner((w0 |+| w, ())))
 
       def listen[A](scope: P[A]): P[(W, A)] =
         withUnlift { run => w0 =>
-          run(scope)(W.empty).map { case (w, fa) => (w0 |@| w, fa.map((w, _))) }
+          run(scope)(W.empty).map { case (w, fa) => (w0 |+| w, fa.map((w, _))) }
         }
 
       def censor[A](scope: P[A])(mod: W => W): P[A] =
         withUnlift { run => w0 =>
-          run(scope)(W.empty).map { case (w, fa) => (w0 |@| mod(w), fa) }
+          run(scope)(W.empty).map { case (w, fa) => (w0 |+| mod(w), fa) }
         }
 
       def clear[A](scope: P[A]): P[A] =

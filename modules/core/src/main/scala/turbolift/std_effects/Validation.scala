@@ -1,5 +1,7 @@
 package turbolift.std_effects
 import mwords._
+import cats.Semigroup
+import cats.implicits._
 import turbolift.abstraction.!!
 import turbolift.abstraction.effect.{Effect, Signature}
 import turbolift.abstraction.typeclass.Accum
@@ -42,7 +44,7 @@ object DefaultValidationHandler {
       def zipPar[A, B](tma: M[Either[E, A]], tmb: M[Either[E, B]]): M[Either[E, (A, B)]] =
         (tma *! tmb).map {
           case (Right(a), Right(b)) => Right((a, b))
-          case (Left(e1), Left(e2)) => Left(e1 |@| e2)
+          case (Left(e1), Left(e2)) => Left(e1 |+| e2)
           case (Left(e), _) => Left(e)
           case (_, Left(e)) => Left(e)
         }

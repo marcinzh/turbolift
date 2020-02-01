@@ -2,6 +2,7 @@ package turbolift.operations
 import turbolift.abstraction.!!
 import turbolift.abstraction.implicits._
 import turbolift.std_effects.{Validation, Writer}
+import cats.implicits._
 import org.specs2._
 // import mwords._
 
