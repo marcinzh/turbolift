@@ -60,7 +60,7 @@ trait ComputationInstances {
     def pure[A](a: A): A !! U = Pure(a)
     def flatMap[A, B](ua: A !! U)(f: A => B !! U): B !! U = ua.flatMap(f)
     def zipPar[A, B](ua: A !! U, ub: B !! U): (A, B) !! U = ua *! ub
-    def defer[A](th: () => A !! U): A !! U = !!.defer(th())
+    def defer[A](ua: => A !! U): A !! U = !!.defer(ua)
   }
 }
 

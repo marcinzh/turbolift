@@ -48,7 +48,7 @@ object DefaultMemoizerHandler {
           m0.get(k) match {
             case Some(v) => run(pureOuter(v))(m0)
             case None =>
-              run(outerMonad.defer(() => fun(k)).flatMap { v =>
+              run(outerMonad.defer(fun(k)).flatMap { v =>
                 liftOuter(m => pureInner((m.updated(k, v), v)))
               })(m0)
           }

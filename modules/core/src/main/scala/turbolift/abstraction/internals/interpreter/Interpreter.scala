@@ -31,7 +31,7 @@ final class Interpreter[M[_], U](
     if (ua != null)
       ua match {
         case Pure(a) => run(null, theMonad.pure(a), que)
-        case Defer(th) => theMonad.defer(() => run(th(), nullMA, que))
+        case Defer(th) => theMonad.defer(run(th(), nullMA, que))
         case FlatMap(ux, k) => run(castU(ux), nullMA, SeqStep(k, que))
         case ZipPar(ux, uy) => run(castU(ux), nullMA, ParStepLeft(castU(uy), que))
         case DispatchFO(id, op) => run(null, castM(castS(op)(lookup(id))), que)

@@ -99,7 +99,7 @@ trait MonadPar[F[_]] extends Monad[F] {
   def zipPar[A, B](fa: F[A], fb: F[B]): F[(A, B)]
   def zipPar1st[A, B](fa: F[A], fb: F[B]): F[A] = map(zipPar(fa, fb))(_._1)
   def zipPar2nd[A, B](fa: F[A], fb: F[B]): F[B] = map(zipPar(fa, fb))(_._2)
-  def defer[A](th: () => F[A]): F[A]
+  def defer[A](fa: => F[A]): F[A]
 }
 
 object MonadPar {
@@ -109,7 +109,7 @@ object MonadPar {
     def pure[A](a: A): A = a
     def flatMap[A, B](a: A)(f: A => B): B = f(a)
     def zipPar[A, B](a: A, b: B): (A, B) = (a, b)
-    def defer[A](th: () => A): A = th()
+    def defer[A](a: => A): A = a
   }
 }
 
