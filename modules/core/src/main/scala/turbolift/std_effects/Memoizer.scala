@@ -1,5 +1,6 @@
 package turbolift.std_effects
 import mwords._
+import cats.Id
 import cats.implicits._
 import turbolift.abstraction.!!
 import turbolift.abstraction.effect.{Effect, Signature}
@@ -23,7 +24,7 @@ trait Memoizer[K, V] extends Effect[MemoizerSig[?[_], K, V]] {
 
 //@#@TODO reuse State effect somehow
 object DefaultMemoizerHandler {
-  def apply[K, V, Fx <: Memoizer[K, V]](fx: Fx): Handler.Apply[Identity, fx.type] = new fx.Unary[Map[K, V], (Map[K, V], ?)] {
+  def apply[K, V, Fx <: Memoizer[K, V]](fx: Fx): Handler.Apply[Id, fx.type] = new fx.Unary[Map[K, V], (Map[K, V], ?)] {
     private type S = Map[K, V]
     def commonOps[M[_]](implicit M: MonadPar[M]) = new CommonOps[M] {
       def pure[A](a: A): S => M[(S, A)] = s => M.pure((s, a))

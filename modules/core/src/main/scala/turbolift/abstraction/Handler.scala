@@ -1,5 +1,6 @@
 package turbolift.abstraction
-import mwords.{Identity, ~>}
+import mwords.{~>}
+import cats.{Id}
 import turbolift.abstraction.internals.aux.CanHandle
 import turbolift.abstraction.implicits._
 
@@ -72,7 +73,7 @@ trait HandlerImplicits {
   implicit class HandlerExtension[S, U](val thiz: Handler.Apply[(S, ?), U]) {
     type Const[X] = S
 
-    def eval: Handler.Apply[Identity, U] = thiz.map(new ((S, ?) ~> Identity) {
+    def eval: Handler.Apply[Id, U] = thiz.map(new ((S, ?) ~> Id) {
       def apply[A](pair: (S, A)) = pair._2
     })
 

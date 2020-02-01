@@ -1,5 +1,6 @@
 package turbolift.std_effects
 import mwords._
+import cats.Id
 import cats.implicits._
 import turbolift.abstraction.!!
 import turbolift.abstraction.effect.{Effect, Signature}
@@ -21,7 +22,7 @@ trait Reader[R] extends Effect[ReaderSig[?[_], R]] {
 
 
 object DefaultReaderHandler {
-  def apply[R, Fx <: Reader[R]](fx: Fx) = new fx.Unary[R, Identity] {
+  def apply[R, Fx <: Reader[R]](fx: Fx) = new fx.Unary[R, Id] {
     def commonOps[M[_]](implicit M: MonadPar[M]) = new CommonOps[M] {
       def pure[A](a: A): R => M[A] = _ => M.pure(a)
 

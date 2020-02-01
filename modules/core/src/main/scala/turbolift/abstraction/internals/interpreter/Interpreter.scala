@@ -1,5 +1,6 @@
 package turbolift.abstraction.internals.interpreter
 import mwords._
+import cats.{Id}
 import turbolift.abstraction.{!!, ComputationCases}
 import turbolift.abstraction.effect.{EffectId, Signature}
 import turbolift.abstraction.internals.handler.PrimitiveHandler
@@ -72,6 +73,6 @@ final class Interpreter[M[_], U](
 
 object Interpreter {
   val pure: Interpreter[Trampoline, Any] = apply(TrampolineInstances.monad)
-  val pureStackUnsafe: Interpreter[Identity, Any] = apply(MonadPar.identity)
+  val pureStackUnsafe: Interpreter[Id, Any] = apply(MonadPar.identity)
   def apply[M[_]: MonadPar]: Interpreter[M, Any] = new Interpreter[M, Any](MonadPar[M], Nil, null)
 }
