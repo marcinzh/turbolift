@@ -75,9 +75,9 @@ trait Monad[F[_]] extends Applicative[F] {
   def map[A, B](fa: F[A])(f: A => B): F[B] = flatMap(fa)(a => pure(f(a)))
   def map2[A, B, C](fa: F[A], fb: F[B])(f: (A, B) => C): F[C] = flatMap(fa)(a => map(fb)(b => f(a, b)))
   def flatten[A](ffa: F[F[A]]): F[A] = flatMap(ffa)(fa => fa)
-  def zipSeq[A, B](fa: F[A], fb : => F[B]): F[(A, B)] = flatMap(fa)(a => map(fb)((a, _)))
-  def zipSeq1st[A, B](fa: F[A], fb : => F[B]): F[A] = flatMap(fa)(a => map(fb)(_ => a))
-  def zipSeq2nd[A, B](fa: F[A], fb : => F[B]): F[B] = flatMap(fa)(_ => fb)
+  def zipSeq[A, B](fa: F[A], fb: => F[B]): F[(A, B)] = flatMap(fa)(a => map(fb)((a, _)))
+  def zipSeq1st[A, B](fa: F[A], fb: => F[B]): F[A] = flatMap(fa)(a => map(fb)(_ => a))
+  def zipSeq2nd[A, B](fa: F[A], fb: => F[B]): F[B] = flatMap(fa)(_ => fb)
 }
 
 object Monad {
@@ -88,9 +88,9 @@ trait MonadExports {
   implicit class MonadSyntax[A, F[_]: Monad](thiz: F[A]) {
     def flatMap[B](f: A => F[B]): F[B] = Monad[F].flatMap(thiz)(f)
     def flatten(implicit ev: A <:< F[A]): F[A] = Monad[F].flatMap(thiz)(ev)
-    def **![B](that : => F[B]): F[(A, B)] = Monad[F].zipSeq(thiz, that)
-    def **<![B](that : => F[B]): F[A] = Monad[F].zipSeq1st(thiz, that)
-    def **>![B](that : => F[B]): F[B] = Monad[F].zipSeq2nd(thiz, that)
+    def **![B](that: => F[B]): F[(A, B)] = Monad[F].zipSeq(thiz, that)
+    def **<![B](that: => F[B]): F[A] = Monad[F].zipSeq1st(thiz, that)
+    def **>![B](that: => F[B]): F[B] = Monad[F].zipSeq2nd(thiz, that)
   }
 }
 

@@ -17,12 +17,12 @@ sealed trait Computation[+A, -U] {
   final def *<![B, V](that: B !! V): A !! U with V = zipPar(that).map(_._1)
   final def *>![B, V](that: B !! V): B !! U with V = zipPar(that).map(_._2)
 
-  final def **![B, V](that : => B !! V): (A, B) !! U with V = flatMap(a => that.map((a, _)))
-  final def **<![B, V](that : => B !! V): A !! U with V = flatMap(a => that.map(_ => a))
-  final def **>![B, V](that : => B !! V): B !! U with V = flatMap(_ => that)
+  final def **![B, V](that: => B !! V): (A, B) !! U with V = flatMap(a => that.map((a, _)))
+  final def **<![B, V](that: => B !! V): A !! U with V = flatMap(a => that.map(_ => a))
+  final def **>![B, V](that: => B !! V): B !! U with V = flatMap(_ => that)
 
   final def &![B, V](that: B !! V): B !! U with V = this *>! that
-  final def &&![B, V](that : => B !! V): B !! U with V = this **>! that
+  final def &&![B, V](that: => B !! V): B !! U with V = this **>! that
 
   final def +![B >: A, V](that: => B !! V): B !! U with V with AltFx = AlternativeEffect.plus(this, that)
 

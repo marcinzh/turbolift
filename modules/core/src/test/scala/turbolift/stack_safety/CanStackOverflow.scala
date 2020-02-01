@@ -5,10 +5,10 @@ import org.specs2._
 trait CanStackOverflow { this: Specification =>
   val TooBigForStack = 100000
 
-  // def mustNotStackOverflow[A](a : => A) = a must not (throwA[java.lang.StackOverflowError])
-  def mustNotStackOverflow[A](a : => A) = dump(a) must not (throwA[java.lang.StackOverflowError])
+  // def mustNotStackOverflow[A](a: => A) = a must not (throwA[java.lang.StackOverflowError])
+  def mustNotStackOverflow[A](a: => A) = dump(a) must not (throwA[java.lang.StackOverflowError])
 
-  private def dump[A](a : => A): A =
+  private def dump[A](a: => A): A =
     try {
       a
     } catch {

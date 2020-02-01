@@ -61,7 +61,7 @@ object TrampolineCases {
 
 object Trampoline {
   def done[A](a: A): Trampoline[A] = Done(a)
-  def defer[A](a : => A): Trampoline[A] = More(() => Done(a))
+  def defer[A](a: => A): Trampoline[A] = More(() => Done(a))
 }
 
 
