@@ -1,6 +1,5 @@
 package turbolift.abstraction.internals.handler
-import mwords.{~>}
-import cats.{Functor, Id}
+import cats.{Functor, Id, ~>}
 
 
 trait Lifting[Outer[_], Inner[_], Stash[_]] {

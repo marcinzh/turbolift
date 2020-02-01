@@ -1,6 +1,5 @@
 package turbolift.abstraction
-import mwords.{~>}
-import cats.{Id}
+import cats.{Id, ~>}
 import turbolift.abstraction.internals.aux.CanHandle
 import turbolift.abstraction.implicits._
 

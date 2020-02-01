@@ -1,5 +1,5 @@
 package turbolift.abstraction.effect
-import mwords.~>
+import cats.~>
 import turbolift.abstraction.!!
 import turbolift.abstraction.ComputationCases.{DispatchFO, DispatchHO}
 

@@ -1,5 +1,6 @@
 package turbolift.abstraction
-import mwords.{MonadPar, ~>}
+import mwords.MonadPar
+import cats.~>
 import turbolift.abstraction.effect.{EffectId, Signature, AltFx, AlternativeEffect}
 import turbolift.abstraction.internals.handler.SaturatedHandler
 import turbolift.abstraction.internals.interpreter.Interpreter

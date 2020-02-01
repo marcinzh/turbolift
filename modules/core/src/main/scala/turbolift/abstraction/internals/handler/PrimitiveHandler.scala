@@ -1,9 +1,13 @@
 package turbolift.abstraction.internals.handler
-import mwords.{MonadPar, ~>}
-import cats.Functor
+import mwords.MonadPar
+import cats.{Functor, ~>}
 import turbolift.abstraction.!!
 import turbolift.abstraction.effect.{Signature, HasEffectId}
 
+import PrimitiveHandler_toplevel._
+object PrimitiveHandler_toplevel {
+  val ~> = cats.arrow.FunctionK
+}
 
 trait PrimitiveHandlerStub extends HasEffectId.Delegate {
   val isFilterable: Boolean
@@ -61,7 +65,7 @@ object PrimitiveHandler {
     abstract class CommonOps[M[_]: MonadPar] extends super.CommonOps[M] {
       final override def defer[A](tma: => M[O[A]]): M[O[A]] = MonadPar[M].defer(tma)
       final override def withUnlift[A](ff: Unlift => M[O[A]]): M[O[A]] =
-        ff(~>.identity[Lambda[X => M[O[X]]]])
+        ff(~>.id[Lambda[X => M[O[X]]]])
     }
 
     abstract class SpecialOps[M[_], P[_]](ctx: ThisContext[M, P]) extends super.SpecialOps(ctx) { this: ThisSignature[P] =>
