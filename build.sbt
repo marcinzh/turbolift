@@ -17,6 +17,8 @@ lazy val commonSettings = Seq(
   ),
   resolvers += Resolver.sonatypeRepo("releases"),
   libraryDependencies += compilerPlugin("org.typelevel" % "kind-projector" % "0.10.0" cross CrossVersion.binary),
+  libraryDependencies += "org.typelevel" %% "simulacrum" % "1.0.0",
+  libraryDependencies += "org.typelevel" %% "cats-core" % "2.0.0",
 )
 
 lazy val commonExceptCoreSettings = Seq(
@@ -49,6 +51,7 @@ lazy val core = project
   .settings(name := "turbolift-core")
   .settings(commonSettings: _*)
   .settings(testSettings: _*)
+  .settings(libraryDependencies += compilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full))
   .dependsOn(mwords)
 
 lazy val mwords = project
