@@ -2,6 +2,7 @@ package turbolift.std_effects
 import mwords._
 import turbolift.abstraction.!!
 import turbolift.abstraction.effect.{Effect, Signature}
+import turbolift.abstraction.typeclass.Accum
 
 
 trait ValidationSig[P[_], E] extends Signature[P] {
@@ -12,7 +13,7 @@ trait ValidationSig[P[_], E] extends Signature[P] {
 
 trait Validation[E] extends Effect[ValidationSig[?[_], E]] {
   def invalid(e: E): Nothing !! this.type = encodeFO(_.invalid(e))
-  def invalid[X](x: X)(implicit ev: One[X, E]): Nothing !! this.type = invalid(ev.one(x))
+  def invalid[X](x: X)(implicit ev: Accum[X, E]): Nothing !! this.type = invalid(ev.one(x))
   def validate[A, U](scope: A !! U)(recover: E => A !! U): A !! U with this.type =
     encodeHO[U](run => _.validate(run(scope))(e => run(recover(e))))
 

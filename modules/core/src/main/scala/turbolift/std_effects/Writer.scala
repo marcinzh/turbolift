@@ -2,6 +2,7 @@ package turbolift.std_effects
 import mwords._
 import turbolift.abstraction.!!
 import turbolift.abstraction.effect.{Effect, Signature}
+import turbolift.abstraction.typeclass.Accum
 
 
 trait WriterSig[P[_], W] extends Signature[P] {
@@ -14,7 +15,7 @@ trait WriterSig[P[_], W] extends Signature[P] {
 
 trait Writer[W] extends Effect[WriterSig[?[_], W]] {
   def tell(w: W): Unit !! this.type = encodeFO(_.tell(w))
-  def tell[X](x: X)(implicit ev: One[X, W]): Unit !! this.type = tell(ev.one(x))
+  def tell[X](x: X)(implicit ev: Accum[X, W]): Unit !! this.type = tell(ev.one(x))
   def listen[A, U](scope: A !! U): (W, A) !! U with this.type = encodeHO[U](run => _.listen(run(scope)))
   def censor[A, U](scope: A !! U)(f: W => W): A !! U with this.type = encodeHO[U](run => _.censor(run(scope))(f))
   def clear[A, U](scope: A !! U): A !! U with this.type = encodeHO[U](run => _.clear(run(scope)))

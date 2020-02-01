@@ -1,7 +1,10 @@
 package turbolift.std_effects
 import mwords._
+import cats.Monoid
 import turbolift.abstraction.!!
 import turbolift.abstraction.effect.{Effect, Signature}
+import turbolift.abstraction.typeclass.AccumZero
+import turbolift.abstraction.implicits.AccumSyntax
 
 
 trait AccumulatorSig[P[_], E] extends Signature[P] {
@@ -15,7 +18,7 @@ trait Accumulator[E] extends Effect[AccumulatorSig[?[_], E]] { thiz =>
   def clear[A, U](scope: A !! U): A !! U with this.type = encodeHO[U](run => _.clear(run(scope)))
 
   object handler {
-    def apply[W](implicit W: PlusOneZero[E, W]) = DefaultAccumulatorHandler[E, W, thiz.type](thiz).apply(W.zero)
+    def apply[W](implicit W: AccumZero[E, W]) = DefaultAccumulatorHandler[E, W, thiz.type](thiz).apply(W.zero)
     def monoid(implicit ev: Monoid[E]) = apply[E]
     def vector = apply[Vector[E]]
     def list = apply[List[E]]
@@ -25,7 +28,7 @@ trait Accumulator[E] extends Effect[AccumulatorSig[?[_], E]] { thiz =>
 
 
 object DefaultAccumulatorHandler {
-  def apply[E, W, Fx <: Accumulator[E]](fx: Fx)(implicit W: PlusOneZero[E, W]) = new fx.Unary[W, (W, ?)] {
+  def apply[E, W, Fx <: Accumulator[E]](fx: Fx)(implicit W: AccumZero[E, W]) = new fx.Unary[W, (W, ?)] {
     def commonOps[M[_]](implicit M: MonadPar[M]) = new CommonOps[M] {
       def pure[A](a: A): W => M[(W, A)] = w => M.pure((w, a))
 
