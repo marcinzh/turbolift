@@ -1,6 +1,7 @@
 package turbolift.std_effects
 import mwords._
 import cats.Monoid
+import cats.implicits._
 import turbolift.abstraction.!!
 import turbolift.abstraction.effect.{Effect, Signature}
 import turbolift.abstraction.typeclass.AccumZero

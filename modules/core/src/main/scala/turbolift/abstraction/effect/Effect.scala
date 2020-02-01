@@ -1,5 +1,5 @@
 package turbolift.abstraction.effect
-import mwords.Functor
+import cats.Functor
 import turbolift.abstraction.internals.handler.{PrimitiveHandlerStub, SaturatedHandler}
 
 

@@ -1,5 +1,6 @@
 package turbolift.abstraction.internals.interpreter
-import mwords.{MonadPar, Identity}
+import mwords.{MonadPar}
+import cats.Id
 import turbolift.abstraction.!!
 import turbolift.abstraction.effect.{HasEffectId, Signature}
 import turbolift.abstraction.internals.handler.{PrimitiveHandler, Lifting, Context}
@@ -30,7 +31,7 @@ private object HandlerStackCases {
   }
 
 
-  sealed trait CanDecode[Q[_]] extends CanLift[Q, Q, Identity] {
+  sealed trait CanDecode[Q[_]] extends CanLift[Q, Q, Id] {
     final override def lifting = Lifting.identity[Q]
     final override def canDecode: CanDecode[Q] = this
 

@@ -1,5 +1,6 @@
 package turbolift.abstraction.internals.handler
-import mwords.{MonadPar, Functor, Identity, ~>}
+import mwords.{MonadPar, ~>}
+import cats.Functor
 import turbolift.abstraction.!!
 import turbolift.abstraction.effect.{Signature, HasEffectId}
 
