@@ -1,10 +1,10 @@
 package turbolift.std_effects
-import mwords._
 import cats.Semigroup
 import cats.implicits._
 import turbolift.abstraction.!!
 import turbolift.abstraction.effect.{Effect, Signature}
-import turbolift.abstraction.typeclass.Accum
+import turbolift.abstraction.typeclass.{MonadPar, Accum}
+import turbolift.abstraction.implicits.ZipParSyntax
 
 
 trait ValidationSig[P[_], E] extends Signature[P] {
@@ -38,7 +38,7 @@ object DefaultValidationHandler {
       def flatMap[A, B](tma: M[Either[E, A]])(f: A => M[Either[E, B]]): M[Either[E, B]] =
         tma.flatMap {
           case Right(a) => f(a)
-          case Left(e) => Monad[M].pure(Left(e))
+          case Left(e) => MonadPar[M].pure(Left(e))
         }
 
       def zipPar[A, B](tma: M[Either[E, A]], tmb: M[Either[E, B]]): M[Either[E, (A, B)]] =

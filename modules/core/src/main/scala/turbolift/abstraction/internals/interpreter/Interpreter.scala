@@ -1,8 +1,8 @@
 package turbolift.abstraction.internals.interpreter
-import mwords._
 import cats.{Id, ~>}
 import turbolift.abstraction.{!!, ComputationCases}
 import turbolift.abstraction.effect.{EffectId, Signature}
+import turbolift.abstraction.typeclass.MonadPar
 import turbolift.abstraction.internals.handler.PrimitiveHandler
 
 

@@ -1,6 +1,6 @@
 package mwords
 
-
+/*
 trait Functor[F[_]] {
   def map[A, B](fa: F[A])(f: A => B): F[B]
 }
@@ -120,3 +120,4 @@ trait MonadParExports {
     def *>![B](that: F[B]): F[B] = MonadPar[F].zipPar2nd(thiz, that)
   }
 }
+*/

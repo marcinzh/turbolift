@@ -1,9 +1,9 @@
 package turbolift.abstraction.internals.interpreter
-import mwords.{MonadPar}
 import cats.Id
 import turbolift.abstraction.!!
 import turbolift.abstraction.effect.{HasEffectId, Signature}
 import turbolift.abstraction.internals.handler.{PrimitiveHandler, Lifting, Context}
+import turbolift.abstraction.typeclass.MonadPar
 
 
 sealed trait HandlerStack[P[_]] extends HasEffectId.Delegate {

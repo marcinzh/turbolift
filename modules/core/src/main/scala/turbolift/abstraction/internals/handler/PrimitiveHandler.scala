@@ -1,8 +1,8 @@
 package turbolift.abstraction.internals.handler
-import mwords.MonadPar
 import cats.{Functor, ~>}
 import turbolift.abstraction.!!
 import turbolift.abstraction.effect.{Signature, HasEffectId}
+import turbolift.abstraction.typeclass.MonadPar
 
 import PrimitiveHandler_toplevel._
 object PrimitiveHandler_toplevel {
@@ -21,7 +21,7 @@ sealed trait PrimitiveHandler[T[_[_], _], O[_]] extends PrimitiveHandlerStub {
 
   def commonOps[M[_]: MonadPar] : CommonOps[M]
 
-  abstract class CommonOps[M[_]: MonadPar] extends MonadPar[T[M, ?]] with Lifting[T[M, ?], M, O] {
+  abstract class CommonOps[M[_]: MonadPar] extends MonadPar.StackSafe[T[M, ?]] with Lifting[T[M, ?], M, O] {
     final def mainMonad: MonadPar[T[M, ?]] = this
     final def innerMonad: MonadPar[M] = MonadPar[M]
     final def stashFunctor: Functor[O] = theFunctor

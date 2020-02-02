@@ -1,10 +1,9 @@
 package turbolift.std_effects
-import mwords._
 import cats.Id
 import cats.implicits._
-import turbolift.abstraction.!!
-import turbolift.abstraction.effect.{Effect, Signature}
 import turbolift.abstraction.{!!, Handler}
+import turbolift.abstraction.effect.{Effect, Signature}
+import turbolift.abstraction.typeclass.MonadPar
 import turbolift.abstraction.implicits._
 
 
