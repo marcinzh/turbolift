@@ -44,7 +44,7 @@ lazy val root = project
   .settings(name := "turbolift-root")
   .settings(commonSettings: _*)
   .settings(dontPublishMe: _*)
-  .aggregate(core, mwords)
+  .aggregate(core)
 
 lazy val core = project
   .in(file("modules/core"))
@@ -52,10 +52,3 @@ lazy val core = project
   .settings(commonSettings: _*)
   .settings(testSettings: _*)
   .settings(libraryDependencies += compilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full))
-  .dependsOn(mwords)
-
-lazy val mwords = project
-  .in(file("modules/mwords"))
-  .settings(name := "turbolift-mwords")
-  .settings(commonSettings: _*)
-  .settings(commonExceptCoreSettings: _*)
