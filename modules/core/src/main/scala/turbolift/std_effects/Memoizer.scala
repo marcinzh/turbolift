@@ -1,6 +1,7 @@
 package turbolift.std_effects
 import cats.Id
-import cats.implicits._
+// import cats.implicits._
+import cats.instances.tuple._
 import turbolift.abstraction.{!!, Handler}
 import turbolift.abstraction.effect.{Effect, Signature}
 import turbolift.abstraction.typeclass.MonadPar

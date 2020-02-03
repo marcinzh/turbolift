@@ -1,10 +1,10 @@
 package turbolift.std_effects
 import cats.Monoid
-import cats.implicits._
+import cats.instances.tuple._
 import turbolift.abstraction.!!
 import turbolift.abstraction.effect.{Effect, Signature}
 import turbolift.abstraction.typeclass.{MonadPar, AccumZero}
-import turbolift.abstraction.implicits.{AccumSyntax, ZipParSyntax}
+import turbolift.abstraction.implicits.{AccumSyntax, MonadParSyntax}
 
 
 trait AccumulatorSig[P[_], E] extends Signature[P] {

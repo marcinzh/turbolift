@@ -1,10 +1,12 @@
 package turbolift.std_effects
 import cats.Monoid
-import cats.implicits._
+import cats.syntax.monoid._
+import cats.syntax.functor._
+import cats.instances.tuple._
 import turbolift.abstraction.!!
 import turbolift.abstraction.effect.{Effect, Signature}
 import turbolift.abstraction.typeclass.{MonadPar, Accum}
-import turbolift.abstraction.implicits.ZipParSyntax
+import turbolift.abstraction.implicits.MonadParSyntax
 
 
 trait WriterSig[P[_], W] extends Signature[P] {

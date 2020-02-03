@@ -1,9 +1,9 @@
 package turbolift.std_effects
-import cats.implicits._
+import cats.instances.either._
 import turbolift.abstraction.!!
 import turbolift.abstraction.effect.{Effect, Signature}
 import turbolift.abstraction.typeclass.MonadPar
-import turbolift.abstraction.implicits.ZipParSyntax
+import turbolift.abstraction.implicits.MonadParSyntax
 
 
 trait ExceptSig[P[_], E] extends Signature[P] {

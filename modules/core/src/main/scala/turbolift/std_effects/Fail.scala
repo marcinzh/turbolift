@@ -1,9 +1,10 @@
 package turbolift.std_effects
-import cats.implicits._
+// import cats.implicits._
+import cats.instances.option._
 import turbolift.abstraction.!!
 import turbolift.abstraction.effect.{Effect, AlternativeSig}
 import turbolift.abstraction.typeclass.MonadPar
-import turbolift.abstraction.implicits.ZipParSyntax
+import turbolift.abstraction.implicits.MonadParSyntax
 
 
 trait FailSig[P[_]] extends AlternativeSig[P]
