@@ -27,7 +27,9 @@ trait Except[E] extends Effect[ExceptSig[?[_], E]] {
 
 object DefaultExceptHandler {
   def apply[E, Fx <: Except[E]](fx: Fx) = new fx.Nullary[Either[E, ?]] {
-    def commonOps[M[_]: MonadPar] = new CommonOps[M] {
+    def commonOps[M[_]](implicit M: MonadPar[M]) = new CommonOps[M] {
+      def pure[A](a: A): M[Either[E, A]] = M.pure(Right(a))
+
       def lift[A](ma: M[A]): M[Either[E, A]] = ma.map(Right(_))
 
       def flatMap[A, B](tma: M[Either[E, A]])(f: A => M[Either[E, B]]): M[Either[E, B]] =

@@ -21,7 +21,7 @@ sealed trait PrimitiveHandler[T[_[_], _], O[_]] extends PrimitiveHandlerStub {
     final def innerMonad: MonadPar[M] = MonadPar[M]
     final def stashFunctor: Functor[O] = theFunctor
 
-    override def pure[A](a: A): T[M, A] = lift(MonadPar[M].pure(a))
+    final def defaultPure[A](a: A): T[M, A] = lift(MonadPar[M].pure(a))
   }
 
   final type ThisContext[M[_], P[_]] = Context {

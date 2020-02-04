@@ -21,7 +21,9 @@ trait Reader[R] extends Effect[ReaderSig[?[_], R]] {
 
 object DefaultReaderHandler {
   def apply[R, Fx <: Reader[R]](fx: Fx) = new fx.Unary[R, Identity] {
-    def commonOps[M[_]: MonadPar] = new CommonOps[M] {
+    def commonOps[M[_]](implicit M: MonadPar[M]) = new CommonOps[M] {
+      def pure[A](a: A): R => M[A] = _ => M.pure(a)
+
       def lift[A](ma: M[A]): R => M[A] = _ => ma
 
       def flatMap[A, B](tma: R => M[A])(f: A => R => M[B]): R => M[B] =
