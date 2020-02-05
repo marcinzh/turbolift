@@ -32,7 +32,9 @@ trait Validation[E] extends Effect[ValidationSig[?[_], E]] {
 object DefaultValidationHandler {
   def apply[E: Semigroup, Fx <: Validation[E]](fx: Fx) = new fx.Nullary[Either[E, ?]] {
     def commonOps[M[_]](implicit M: MonadPar[M]) = new CommonOps[M] {
-      def pure[A](a: A): M[Either[E, A]] = M.pure(Right(a))
+      // def pure[A](a: A): M[Either[E, A]] = M.pure(Right(a))
+
+      def purer[A](a: A): Either[E, A] = Right(a)
 
       def lift[A](ma: M[A]): M[Either[E, A]] = ma.map(Right(_))
 

@@ -30,7 +30,9 @@ trait Accumulator[E] extends Effect[AccumulatorSig[?[_], E]] { thiz =>
 object DefaultAccumulatorHandler {
   def apply[E, W, Fx <: Accumulator[E]](fx: Fx)(implicit W: AccumZero[E, W]) = new fx.Unary[W, (W, ?)] {
     def commonOps[M[_]](implicit M: MonadPar[M]) = new CommonOps[M] {
-      def pure[A](a: A): W => M[(W, A)] = w => M.pure((w, a))
+      // def pure[A](a: A): W => M[(W, A)] = w => M.pure((w, a))
+
+      def purer[A](a: A): W => (W, A) = w => (w, a)
 
       def lift[A](ma: M[A]): W => M[(W, A)] = w => ma.map((w, _))
 

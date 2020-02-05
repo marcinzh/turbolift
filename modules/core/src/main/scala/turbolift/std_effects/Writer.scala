@@ -31,7 +31,9 @@ trait Writer[W] extends Effect[WriterSig[?[_], W]] {
 object DefaultWriterHandler {
   def apply[W, Fx <: Writer[W]](fx: Fx)(implicit W: Monoid[W]) = new fx.Unary[W, (W, ?)] {
     def commonOps[M[_]](implicit M: MonadPar[M]) = new CommonOps[M] {
-      def pure[A](a: A): W => M[(W, A)] = w => M.pure((w, a))
+      // def pure[A](a: A): W => M[(W, A)] = w => M.pure((w, a))
+
+      def purer[A](a: A): W => (W, A) = w => (w, a)
 
       def lift[A](ma: M[A]): W => M[(W, A)] = w => ma.map((w, _))
 
