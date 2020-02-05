@@ -46,9 +46,23 @@ object DefaultStateHandler {
     }
 
     def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with StateSig[P, S] {
-      val get: P[S] = liftOuter(s => pureInner((s, s)))
-      def put(s: S): P[Unit] = liftOuter(_ => pureInner((s, ())))
-      override def mod(f: S => S): P[Unit] = liftOuter(s => pureInner((f(s), ())))
+      val get: P[S] =
+        withLift { l => s =>
+          pureInner((s, l.pure(s)))
+        }
+
+      def put(s: S): P[Unit] =
+        withLift { l => _ =>
+          pureInner((s, l.pure(())))
+        }
+      
+      override def mod(f: S => S): P[Unit] =
+        withLift { l => s =>
+          pureInner((f(s), l.pure(())))
+        }
+      // val get: P[S] = liftOuter(s => pureInner((s, s)))
+      // def put(s: S): P[Unit] = liftOuter(_ => pureInner((s, ())))
+      // override def mod(f: S => S): P[Unit] = liftOuter(s => pureInner((f(s), ())))
     }
   }.self
 }

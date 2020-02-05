@@ -54,15 +54,28 @@ object DefaultValidationHandler {
     }
 
     def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with ValidationSig[P, E] {
-      def invalid[A](e: E): P[A] = liftOuter(pureInner(Left(e)))
+      def invalid[A](e: E): P[A] =
+        withLift { l =>
+          pureInner(Left(e))
+        }
 
       def validate[A](scope: P[A])(recover: E => P[A]): P[A] =
-        withUnlift { run =>
-          run(scope).flatMap {
+        withLift { l =>
+          l.run(scope).flatMap {
             case Right(fa) => pureInner(Right(fa))
-            case Left(e) => run(recover(e))
+            case Left(e) => l.run(recover(e))
           }
         }
+
+      // def invalid[A](e: E): P[A] = liftOuter(pureInner(Left(e)))
+
+      // def validate[A](scope: P[A])(recover: E => P[A]): P[A] =
+      //   withUnlift { run =>
+      //     run(scope).flatMap {
+      //       case Right(fa) => pureInner(Right(fa))
+      //       case Left(e) => run(recover(e))
+      //     }
+      //   }
     }
   }.self
 }

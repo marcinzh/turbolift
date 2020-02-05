@@ -48,12 +48,22 @@ object DefaultAccumulatorHandler {
     }
 
     def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with AccumulatorSig[P, E] {
-      def tell(e: E): P[Unit] = liftOuter(w => pureInner((w |+ e, ())))
+      def tell(e: E): P[Unit] =
+        withLift { l => w0 =>
+          pureInner((w0 |+ e, l.pure(())))
+        }
 
       def clear[A](scope: P[A]): P[A] =
-        withUnlift { run => w0 =>
-          run(scope)(W.zero).map { case (_, fa) => (w0, fa) }
+        withLift { l => w0 =>
+          l.run(scope)(W.zero).map { case (_, fa) => (w0, fa) }
         }
+
+      // def tell(e: E): P[Unit] = liftOuter(w => pureInner((w |+ e, ())))
+
+      // def clear[A](scope: P[A]): P[A] =
+      //   withUnlift { run => w0 =>
+      //     run(scope)(W.zero).map { case (_, fa) => (w0, fa) }
+      //   }
     }
   }.self
 }

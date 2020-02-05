@@ -40,12 +40,15 @@ object DefaultReaderHandler {
     }
 
     def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with ReaderSig[P, R] {
-      val ask: P[R] = liftOuter(r => pureInner(r))
+      val ask: P[R] = withLift(l => r => pureInner(l.pure(r)))
+      def local[A](mod: R => R)(scope: P[A]): P[A] = withLift(l => r => l.run(scope)(mod(r)))
+      
+      // val ask: P[R] = liftOuter(r => pureInner(r))
 
-      def local[A](mod: R => R)(scope: P[A]): P[A] =
-        withUnlift { run =>
-          r => run(scope)(mod(r))
-        }
+      // def local[A](mod: R => R)(scope: P[A]): P[A] =
+      //   withUnlift { run =>
+      //     r => run(scope)(mod(r))
+      //   }
     }
   }.self
 }

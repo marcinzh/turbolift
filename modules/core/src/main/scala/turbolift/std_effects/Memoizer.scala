@@ -47,18 +47,37 @@ object DefaultMemoizerHandler {
     }
 
     def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with MemoizerSig[P, K, V] {
-      val snapshot: P[S] = liftOuter(m => pureInner((m, m)))
+      val snapshot: P[S] =
+        withLift { l => m =>
+          pureInner((m, l.pure(m)))
+        }
 
       def memo(fun: K => P[V])(k: K): P[V] =
-        withUnlift { run => m0 =>
+        withLift { l => m0 =>
           m0.get(k) match {
-            case Some(v) => run(pureOuter(v))(m0)
+            case Some(v) => pureInner((m0, l.pure(v)))
             case None =>
-              run(outerMonad.defer(fun(k)).flatMap { v =>
-                liftOuter(m => pureInner((m.updated(k, v), v)))
+              l.run(outerMonad.defer(fun(k)).flatMap { v =>
+                withLift { l => m =>
+                  val m2 = m.updated(k, v)
+                  pureInner((m2, l.pure(v)))
+                }
               })(m0)
           }
         }
+
+      // val snapshot: P[S] = liftOuter(m => pureInner((m, m)))
+
+      // def memo(fun: K => P[V])(k: K): P[V] =
+      //   withUnlift { run => m0 =>
+      //     m0.get(k) match {
+      //       case Some(v) => run(pureOuter(v))(m0)
+      //       case None =>
+      //         run(outerMonad.defer(fun(k)).flatMap { v =>
+      //           liftOuter(m => pureInner((m.updated(k, v), v)))
+      //         })(m0)
+      //     }
+      //   }
     }
   }.apply(Map.empty[K, V]).dropState
 }

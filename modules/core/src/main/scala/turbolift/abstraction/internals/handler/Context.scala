@@ -11,5 +11,5 @@ trait Context {
   val mainMonad: MonadPar[Main]
   val innerMonad: MonadPar[Inner]
   val outerMonad: MonadPar[Outer]
-  val lifting: Lifting[Outer, Main, Stash]
+  val lifting: Lifting2[Outer, Main, Stash]
 }

@@ -53,16 +53,33 @@ object DefaultChoiceHandler {
     }
 
     def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with ChoiceSig[P] {
-      def empty[A]: P[A] = liftOuter(pureInner(Vector()))
+      def empty[A]: P[A] =
+        withLift { l =>
+          pureInner(Vector())
+        }
 
       def plus[A](lhs: P[A], rhs: => P[A]): P[A] =
-        withUnlift { run =>
-          (run(lhs) *! run(rhs)).map {
+        withLift { l =>
+          (l.run(lhs) *! l.run(rhs)).map {
             case (xs, ys) => xs ++ ys
           }
         }
 
-      def each[A](as: Iterable[A]): P[A] = liftOuter(pureInner(as.toVector))
+      def each[A](as: Iterable[A]): P[A] =
+        withLift { l =>
+          pureInner(as.iterator.map(l.pure).toVector)
+        }
+
+      // def empty[A]: P[A] = liftOuter(pureInner(Vector()))
+
+      // def plus[A](lhs: P[A], rhs: => P[A]): P[A] =
+      //   withUnlift { run =>
+      //     (run(lhs) *! run(rhs)).map {
+      //       case (xs, ys) => xs ++ ys
+      //     }
+      //   }
+
+      // def each[A](as: Iterable[A]): P[A] = liftOuter(pureInner(as.toVector))
     }
   }.self
 }

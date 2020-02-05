@@ -40,17 +40,32 @@ object DefaultFailHandler {
     }
 
     def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with FailSig[P] {
-      def empty[A]: P[A] = liftOuter(pureInner(None))
+      def empty[A]: P[A] =
+        withLift { l =>
+          pureInner(None)
+        }
 
       def plus[A](lhs: P[A], rhs: => P[A]): P[A] =
-        withUnlift { run =>
-          run(lhs).flatMap { x =>
+        withLift { l =>
+          l.run(lhs).flatMap { x =>
             if (x.isDefined)
               pureInner(x)
             else
-              run(rhs)
+              l.run(rhs)
           }
         }
+
+      // def empty[A]: P[A] = liftOuter(pureInner(None))
+
+      // def plus[A](lhs: P[A], rhs: => P[A]): P[A] =
+      //   withUnlift { run =>
+      //     run(lhs).flatMap { x =>
+      //       if (x.isDefined)
+      //         pureInner(x)
+      //       else
+      //         run(rhs)
+      //     }
+      //   }
     }
   }.self
 }
