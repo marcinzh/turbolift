@@ -1,7 +1,8 @@
 package turbolift.abstraction.internals.interpreter
-import mwords._
+import cats.{Id, ~>}
 import turbolift.abstraction.{!!, ComputationCases}
 import turbolift.abstraction.effect.{EffectId, Signature}
+import turbolift.abstraction.typeclass.MonadPar
 import turbolift.abstraction.internals.handler.PrimitiveHandler
 
 
@@ -10,7 +11,6 @@ final class Interpreter[M[_], U](
   val handlerStacks: List[HandlerStack[M]],
   val failEffectId: EffectId,
 ) extends ((? !! U) ~> M) {
-
   def push[T[_[_], _], O[_], V](primitive: PrimitiveHandler[T, O]): Interpreter[T[M, ?], U with V] = {
     val newHead: HandlerStack[T[M, ?]] = HandlerStack.pushFirst(primitive)(this.theMonad)
     val newTail: List[HandlerStack[T[M, ?]]] = this.handlerStacks.map(_.pushNext(primitive))
@@ -26,16 +26,18 @@ final class Interpreter[M[_], U](
     import ComputationCases._
     import QueCases._
     def castS[M1[_], Z[P[_]] <: Signature[P]](f: Z[M1] => M1[A]) = f.asInstanceOf[Signature[M] => M[A]]
+    def castH[M1[_]](op: Any) = op.asInstanceOf[((? !! U) ~> M) => Signature[M] => M[A]] //// T_T
+    // def castH[M1[_], Z[P[_]] <: Signature[P]](op: ((? !! U) ~> M1) => Z[M1] => M1[A]) = op.asInstanceOf[((? !! U) ~> M) => Signature[M] => M[A]] //// T_T
     def castU[A1](ua1: A1 !! U) = ua1.asInstanceOf[A !! U]
     def castM[A1](ma1: M[A1]) = ma1.asInstanceOf[M[A]]
     if (ua != null)
       ua match {
         case Pure(a) => run(null, theMonad.pure(a), que)
-        case Defer(th) => theMonad.defer(() => run(th(), nullMA, que))
+        case Defer(th) => theMonad.defer(run(th(), nullMA, que))
         case FlatMap(ux, k) => run(castU(ux), nullMA, SeqStep(k, que))
         case ZipPar(ux, uy) => run(castU(ux), nullMA, ParStepLeft(castU(uy), que))
         case DispatchFO(id, op) => run(null, castM(castS(op)(lookup(id))), que)
-        case DispatchHO(id, op) => run(null, castM(castS(op(this))(lookup(id))), que)
+        case DispatchHO(id, op) => run(null, castM(castS(castH(op)(this))(lookup(id))), que)
         case PushHandler(ux, h) => run(null, castM(h.prime(push(h.primitive).apply(ux))), que)
       }
     else
@@ -72,6 +74,6 @@ final class Interpreter[M[_], U](
 
 object Interpreter {
   val pure: Interpreter[Trampoline, Any] = apply(TrampolineInstances.monad)
-  val pureStackUnsafe: Interpreter[Identity, Any] = apply(MonadPar.identity)
+  val pureStackUnsafe: Interpreter[Id, Any] = apply(MonadPar.identity)
   def apply[M[_]: MonadPar]: Interpreter[M, Any] = new Interpreter[M, Any](MonadPar[M], Nil, null)
 }

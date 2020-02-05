@@ -1,5 +1,5 @@
 package turbolift.abstraction.internals.handler
-import mwords.{Functor, Identity, ~>}
+import cats.{Functor, Id, ~>}
 
 
 trait Lifting[Outer[_], Inner[_], Stash[_]] {
@@ -15,7 +15,7 @@ object Lifting {
     type Stash[A] = StashI[StashO[A]]
 
     new Lifting[Outer, Inner, Stash] {
-      def stashFunctor: Functor[Stash] = Functor.compose[StashI, StashO](inner.stashFunctor, outer.stashFunctor)
+      def stashFunctor: Functor[Stash] = inner.stashFunctor.compose(outer.stashFunctor)
   
       def lift[A](la: Inner[A]): Outer[A] = outer.lift(inner.lift(la))
 
@@ -31,9 +31,9 @@ object Lifting {
   }
 
 
-  def identity[M[_]]: Lifting[M, M, Identity] =
-    new Lifting[M, M, Identity] {
-      def stashFunctor: Functor[Identity] = Functor.identity
+  def identity[M[_]]: Lifting[M, M, Id] =
+    new Lifting[M, M, Id] {
+      def stashFunctor: Functor[Id] = Functor[Id]
 
       def lift[A](ma: M[A]): M[A] = ma
 

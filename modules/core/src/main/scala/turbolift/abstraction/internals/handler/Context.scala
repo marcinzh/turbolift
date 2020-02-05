@@ -1,5 +1,5 @@
 package turbolift.abstraction.internals.handler
-import mwords.MonadPar
+import turbolift.abstraction.typeclass.MonadPar
 
 
 trait Context {

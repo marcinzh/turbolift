@@ -2,23 +2,14 @@
 
 # Turbolift
 
-A functional effect system. An alternative to Eff monad and MTL, combining advantages of both:
+A functional effect system. An alternative to both Eff monad and MTL. Supports higher order effects.
 
-- Like Eff monad, Turbolift allows user to conveniently introduce and eliminate new effects to/from the computation, at any point, without knowledge of, or interference from preexisting effects.
-
-- Like MTL, Turbolift supports higher order effects.
-
-Other features:
-
-- Boilerplate free interface. 
-
-- Parallel composition of effects.
-
-- Unique labelling/tagging of effects. Always on, by design, as opposed to optional, with modifier, e.g. in [Idris](http://docs.idris-lang.org/en/latest/effects/state.html#labelled-effects).
+TODO: Write overly enthusiastic introduction to Turbolift 's capablities.
 
 # Example
 ```scala
 import turbolift.abstraction.!!
+import turbolift.abstraction.implicits._
 import turbolift.std_effects.{Reader, Writer, State}
 
 object Main extends App {

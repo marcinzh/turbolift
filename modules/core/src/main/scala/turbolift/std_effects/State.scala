@@ -1,7 +1,10 @@
 package turbolift.std_effects
-import mwords._
+// import cats.implicits._
+import cats.instances.tuple._
 import turbolift.abstraction.!!
 import turbolift.abstraction.effect.{Effect, Signature}
+import turbolift.abstraction.typeclass.MonadPar
+import turbolift.abstraction.implicits.MonadParSyntax
 
 
 trait StateSig[P[_], S] extends Signature[P] {
@@ -22,7 +25,9 @@ trait State[S] extends Effect[StateSig[?[_], S]] {
 
 object DefaultStateHandler {
   def apply[S, Fx <: State[S]](fx: Fx) = new fx.Unary[S, (S, ?)] {
-    def commonOps[M[_]: MonadPar] = new CommonOps[M] {
+    def commonOps[M[_]](implicit M: MonadPar[M]) = new CommonOps[M] {
+      def pure[A](a: A): S => M[(S, A)] = s => M.pure((s, a))
+
       def lift[A](ma: M[A]): S => M[(S, A)] = s => ma.map((s, _))
 
       def flatMap[A, B](tma: S => M[(S, A)])(f: A => S => M[(S, B)]): S => M[(S, B)] =

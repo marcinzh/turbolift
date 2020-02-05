@@ -2,6 +2,7 @@ package turbolift.operations
 import turbolift.abstraction.!!
 import turbolift.abstraction.implicits._
 import turbolift.std_effects.{Writer, Accumulator}
+import cats.implicits._
 import org.specs2._
 
 

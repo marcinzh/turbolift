@@ -1,6 +1,6 @@
 package turbolift.abstraction.internals.interpreter
 import scala.annotation.tailrec
-import mwords.MonadPar
+import turbolift.abstraction.typeclass.MonadPar
 import TrampolineCases._
 
 
@@ -61,7 +61,7 @@ object TrampolineCases {
 
 object Trampoline {
   def done[A](a: A): Trampoline[A] = Done(a)
-  def defer[A](a : => A): Trampoline[A] = More(() => Done(a))
+  def defer[A](a: => A): Trampoline[A] = More(() => Done(a))
 }
 
 
@@ -70,6 +70,6 @@ object TrampolineInstances {
     def pure[A](a: A): Trampoline[A] = Done(a)
     def flatMap[A, B](ma: Trampoline[A])(f: A => Trampoline[B]): Trampoline[B] = ma.flatMap(f)
     def zipPar[A, B](ma: Trampoline[A], mb: Trampoline[B]): Trampoline[(A, B)] = ma.zipPar(mb)
-    def defer[A](th: () => Trampoline[A]): Trampoline[A] = More(th)
+    def defer[A](ma: => Trampoline[A]): Trampoline[A] = More(() => ma)
   }
 }

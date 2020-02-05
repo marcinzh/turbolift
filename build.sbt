@@ -2,7 +2,7 @@ sourcesInBase := false
 
 lazy val commonSettings = Seq(
   organization := "com.github.marcinzh",
-  version := "0.2.0-SNAPSHOT",
+  version := "0.2.0",
   scalaVersion := "2.12.10",
   crossScalaVersions := Seq(scalaVersion.value),
   scalacOptions ++= Seq(
@@ -17,6 +17,8 @@ lazy val commonSettings = Seq(
   ),
   resolvers += Resolver.sonatypeRepo("releases"),
   libraryDependencies += compilerPlugin("org.typelevel" % "kind-projector" % "0.10.0" cross CrossVersion.binary),
+  libraryDependencies += "org.typelevel" %% "simulacrum" % "1.0.0",
+  libraryDependencies += "org.typelevel" %% "cats-core" % "2.0.0",
 )
 
 lazy val commonExceptCoreSettings = Seq(
@@ -42,17 +44,11 @@ lazy val root = project
   .settings(name := "turbolift-root")
   .settings(commonSettings: _*)
   .settings(dontPublishMe: _*)
-  .aggregate(core, mwords)
+  .aggregate(core)
 
 lazy val core = project
   .in(file("modules/core"))
   .settings(name := "turbolift-core")
   .settings(commonSettings: _*)
   .settings(testSettings: _*)
-  .dependsOn(mwords)
-
-lazy val mwords = project
-  .in(file("modules/mwords"))
-  .settings(name := "turbolift-mwords")
-  .settings(commonSettings: _*)
-  .settings(commonExceptCoreSettings: _*)
+  .settings(libraryDependencies += compilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full))

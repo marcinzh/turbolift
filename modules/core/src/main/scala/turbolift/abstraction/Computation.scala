@@ -1,9 +1,11 @@
 package turbolift.abstraction
-import mwords.{Monad, ~>}
+import cats.~>
 import turbolift.abstraction.effect.{EffectId, Signature, AltFx, AlternativeEffect}
+import turbolift.abstraction.typeclass.MonadPar
 import turbolift.abstraction.internals.handler.SaturatedHandler
 import turbolift.abstraction.internals.interpreter.Interpreter
 import turbolift.abstraction.internals.aux.{CanRunPure, CanRunImpure, CanHandle}
+import turbolift.abstraction.implicits.{CanRunPure_evidence, CanHandle_evidence}
 import ComputationCases._
 
 
@@ -17,12 +19,12 @@ sealed trait Computation[+A, -U] {
   final def *<![B, V](that: B !! V): A !! U with V = zipPar(that).map(_._1)
   final def *>![B, V](that: B !! V): B !! U with V = zipPar(that).map(_._2)
 
-  final def **![B, V](that : => B !! V): (A, B) !! U with V = flatMap(a => that.map((a, _)))
-  final def **<![B, V](that : => B !! V): A !! U with V = flatMap(a => that.map(_ => a))
-  final def **>![B, V](that : => B !! V): B !! U with V = flatMap(_ => that)
+  final def **![B, V](that: => B !! V): (A, B) !! U with V = flatMap(a => that.map((a, _)))
+  final def **<![B, V](that: => B !! V): A !! U with V = flatMap(a => that.map(_ => a))
+  final def **>![B, V](that: => B !! V): B !! U with V = flatMap(_ => that)
 
   final def &![B, V](that: B !! V): B !! U with V = this *>! that
-  final def &&![B, V](that : => B !! V): B !! U with V = this **>! that
+  final def &&![B, V](that: => B !! V): B !! U with V = this **>! that
 
   final def +![B >: A, V](that: => B !! V): B !! U with V with AltFx = AlternativeEffect.plus(this, that)
 
@@ -55,12 +57,11 @@ private[abstraction] object ComputationCases {
 
 
 trait ComputationInstances {
-  // implicit def monad[U]: MonadPar[Computation[?, U]] = new MonadPar[Computation[?, U]] {
-  implicit def monad[U]: Monad[Computation[?, U]] = new Monad[Computation[?, U]] {
+  implicit def monad[U]: MonadPar[Computation[?, U]] = new MonadPar[Computation[?, U]] {
     def pure[A](a: A): A !! U = Pure(a)
-    def flatMap[A, B](ma: A !! U)(f: A => B !! U): B !! U = ma.flatMap(f)
-    // def zipPar[A, B](ma: A !! U, mb: B !! U): (A, B) !! U = ma *! mb
-    // def defer[A](th: () => F[A]): F[A] = ???
+    def flatMap[A, B](ua: A !! U)(f: A => B !! U): B !! U = ua.flatMap(f)
+    def zipPar[A, B](ua: A !! U, ub: B !! U): (A, B) !! U = ua *! ub
+    def defer[A](ua: => A !! U): A !! U = !!.defer(ua)
   }
 }
 
@@ -72,11 +73,9 @@ trait ComputationExports {
 
 
 trait ComputationImplicits extends ComputationInstances {
-  import turbolift.abstraction.implicits.{CanRunPure_evidence, CanHandle_evidence}
-
   implicit class ComputationExtension[A, U](thiz: A !! U) {
-    def run(implicit ev: CanRunPure[U]): A = (Interpreter.pure(ev(thiz))).run
-    def runStackUnsafe(implicit ev: CanRunPure[U]): A = (Interpreter.pureStackUnsafe[A](ev(thiz)))
+    def run(implicit ev: CanRunPure[U]): A = Interpreter.pure(ev(thiz)).run
+    def runStackUnsafe(implicit ev: CanRunPure[U]): A = Interpreter.pureStackUnsafe[A](ev(thiz))
     
     def runWith[H <: Handler](h: H)(implicit ev: CanRunImpure[U, h.Effects]): h.Result[A] =
       h.doHandle[A, Any](ev(thiz)).run
@@ -91,5 +90,10 @@ trait ComputationImplicits extends ComputationInstances {
     }
 
     def downCast[V >: U] = thiz.asInstanceOf[Computation[A, V]]
+  }
+
+  implicit class ComputationOfPairExtension[A, B, U](thiz: (A, B) !! U) {
+    def map2[C](f: (A, B) => C): C !! U = thiz.map(f.tupled)
+    def flatMap2[C, V](f: (A, B) => C !! V): C !! U with V = thiz.flatMap(f.tupled)
   }
 }

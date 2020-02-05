@@ -1,7 +1,9 @@
 package turbolift.std_effects
-import mwords._
+import cats.instances.either._
 import turbolift.abstraction.!!
 import turbolift.abstraction.effect.{Effect, Signature}
+import turbolift.abstraction.typeclass.MonadPar
+import turbolift.abstraction.implicits.MonadParSyntax
 
 
 trait ExceptSig[P[_], E] extends Signature[P] {
@@ -27,13 +29,15 @@ trait Except[E] extends Effect[ExceptSig[?[_], E]] {
 
 object DefaultExceptHandler {
   def apply[E, Fx <: Except[E]](fx: Fx) = new fx.Nullary[Either[E, ?]] {
-    def commonOps[M[_]: MonadPar] = new CommonOps[M] {
+    def commonOps[M[_]](implicit M: MonadPar[M]) = new CommonOps[M] {
+      def pure[A](a: A): M[Either[E, A]] = M.pure(Right(a))
+
       def lift[A](ma: M[A]): M[Either[E, A]] = ma.map(Right(_))
 
       def flatMap[A, B](tma: M[Either[E, A]])(f: A => M[Either[E, B]]): M[Either[E, B]] =
         tma.flatMap {
           case Right(a) => f(a)
-          case Left(e) => Monad[M].pure(Left(e))
+          case Left(e) => MonadPar[M].pure(Left(e))
         }
 
       def zipPar[A, B](tma: M[Either[E, A]], tmb: M[Either[E, B]]): M[Either[E, (A, B)]] =

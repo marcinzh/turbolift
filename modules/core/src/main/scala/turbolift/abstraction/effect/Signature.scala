@@ -1,5 +1,5 @@
 package turbolift.abstraction.effect
-import mwords.MonadPar
+import turbolift.abstraction.typeclass.MonadPar
 
 
 trait Signature[P[_]] {

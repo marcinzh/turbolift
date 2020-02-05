@@ -1,4 +1,5 @@
 package turbolift.stack_safety
+import cats.implicits._
 import turbolift.abstraction.{!!, Handler}
 import turbolift.std_effects.{Reader, Writer, State, Choice}
 import org.specs2._

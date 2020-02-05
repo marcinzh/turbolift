@@ -1,7 +1,10 @@
 package turbolift.std_effects
-import mwords._
+// import cats.implicits._
+import cats.instances.option._
 import turbolift.abstraction.!!
 import turbolift.abstraction.effect.{Effect, AlternativeSig}
+import turbolift.abstraction.typeclass.MonadPar
+import turbolift.abstraction.implicits.MonadParSyntax
 
 
 trait FailSig[P[_]] extends AlternativeSig[P]
@@ -16,13 +19,15 @@ trait Fail extends Effect.Alternative[FailSig] {
 
 object DefaultFailHandler {
   def apply[Fx <: Fail](fx: Fx) = new fx.Nullary[Option] {
-    def commonOps[M[_]: MonadPar] = new CommonOps[M] {
+    def commonOps[M[_]](implicit M: MonadPar[M]) = new CommonOps[M] {
+      def pure[A](a: A): M[Option[A]] = M.pure(Some(a))
+
       def lift[A](ma: M[A]): M[Option[A]] = ma.map(Some(_))
 
       def flatMap[A, B](tma: M[Option[A]])(f: A => M[Option[B]]): M[Option[B]] =
         tma.flatMap {
           case Some(a) => f(a)
-          case None => Monad[M].pure(None)
+          case None => MonadPar[M].pure(None)
         }
 
       def zipPar[A, B](tma: M[Option[A]], tmb: M[Option[B]]): M[Option[(A, B)]] =
