@@ -2,7 +2,7 @@ sourcesInBase := false
 
 lazy val commonSettings = Seq(
   organization := "com.github.marcinzh",
-  version := "0.2.0-SNAPSHOT",
+  version := "0.2.0",
   scalaVersion := "2.12.10",
   crossScalaVersions := Seq(scalaVersion.value),
   scalacOptions ++= Seq(
