@@ -28,7 +28,7 @@ object DefaultStateHandler {
     def commonOps[M[_]](implicit M: MonadPar[M]) = new CommonOps[M] {
       // def pure[A](a: A): S => M[(S, A)] = s => M.pure((s, a))
 
-      def purer[A](a: A): S => (S, A) = s => (s, a)
+      def purer[A](s: S, a: A): (S, A) = (s, a)
 
       def lift[A](ma: M[A]): S => M[(S, A)] = s => ma.map((s, _))
 

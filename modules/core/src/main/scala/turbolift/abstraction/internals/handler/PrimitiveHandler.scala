@@ -78,8 +78,8 @@ object PrimitiveHandler {
 
   trait Unary[S, O[_]] extends PrimitiveHandler[Lambda[(`M[_]`, A) => S => M[O[A]]], O] {
     abstract class CommonOps[M[_]: MonadPar] extends super.CommonOps[M] {
-      def purer[A](a: A): S => O[A]
-      final override def pure[A](a: A): S => M[O[A]] = s => MonadPar[M].pure(purer(a)(s))
+      def purer[A](s: S, a: A): O[A]
+      final override def pure[A](a: A): S => M[O[A]] = s => MonadPar[M].pure(purer(s, a))
       final override def defer[A](tma: => S => M[O[A]]): S => M[O[A]] = s => MonadPar[M].defer(tma(s))
       final override def withUnlift[A](ff: Unlift => M[O[A]]): S => M[O[A]] =
         s => ff(new Unlift {

@@ -28,7 +28,7 @@ object DefaultReaderHandler {
     def commonOps[M[_]](implicit M: MonadPar[M]) = new CommonOps[M] {
       // def pure[A](a: A): R => M[A] = _ => M.pure(a)
 
-      def purer[A](a: A): R => A = _ => a
+      def purer[A](r: R, a: A): A = a
 
       def lift[A](ma: M[A]): R => M[A] = _ => ma
 
