@@ -2,13 +2,17 @@ package turbolift.abstraction.internals.handler
 import cats.{Functor, Id, ~>}
 
 
-trait Lifting[Outer[_], Inner[_], Stash[_]] {
-  type Unlift = Outer ~> Lambda[X => Inner[Stash[X]]]
-  def stashFunctor: Functor[Stash]
-  def lift[A](la: Inner[A]): Outer[A]
-  def withUnlift[A](ff: Unlift => Inner[Stash[A]]): Outer[A]
+trait LiftOps[Outer[_], Inner[_], Stash[_]] {
+  def run[A](oa: Outer[A]): Inner[Stash[A]]
+  def pureStash[A](a: A): Stash[A]
+  def unitStash(): Stash[Unit]
 }
 
+trait Lifting[Outer[_], Inner[_], Stash[_]] {
+  type ThisLiftOps = LiftOps[Outer, Inner, Stash]
+  def stashFunctor: Functor[Stash]
+  def withLift[A](ff: ThisLiftOps => Inner[Stash[A]]): Outer[A]
+}
 
 object Lifting {
   def compose[Outer[_], Middle[_], Inner[_], StashO[_], StashI[_]](outer: Lifting[Outer, Middle, StashO], inner: Lifting[Middle, Inner, StashI]): Lifting[Outer, Inner, Lambda[X => StashI[StashO[X]]]] = {
@@ -17,13 +21,13 @@ object Lifting {
     new Lifting[Outer, Inner, Stash] {
       def stashFunctor: Functor[Stash] = inner.stashFunctor.compose(outer.stashFunctor)
   
-      def lift[A](la: Inner[A]): Outer[A] = outer.lift(inner.lift(la))
-
-      def withUnlift[A](ff: Unlift => Inner[Stash[A]]): Outer[A] =
-        outer.withUnlift { runOuter =>
-          inner.withUnlift { runInner =>
-            ff(new Unlift {
-              def apply[A](ua: Outer[A]): Inner[Stash[A]] = runInner(runOuter(ua))
+      def withLift[A](ff: ThisLiftOps => Inner[Stash[A]]): Outer[A] =
+        outer.withLift { ffOuter =>
+          inner.withLift { ffInner =>
+            ff(new ThisLiftOps {
+              def run[A](oa: Outer[A]): Inner[Stash[A]] = ffInner.run(ffOuter.run(oa))
+              def pureStash[A](a: A): Stash[A] = ffInner.pureStash(ffOuter.pureStash(a))
+              def unitStash(): Stash[Unit] = ffInner.pureStash(ffOuter.unitStash())
             })
           }
         }
@@ -35,11 +39,12 @@ object Lifting {
     new Lifting[M, M, Id] {
       def stashFunctor: Functor[Id] = Functor[Id]
 
-      def lift[A](ma: M[A]): M[A] = ma
+      def withLift[A](ff: ThisLiftOps => M[A]): M[A] = ff(liftOpsVal)
 
-      def withUnlift[A](ff: Unlift => M[A]): M[A] =
-        ff(new Unlift {
-          def apply[A](ma: M[A]): M[A] = ma
-        })
+      private val liftOpsVal: ThisLiftOps = new ThisLiftOps {
+        def run[A](ma: M[A]): M[A] = ma
+        def pureStash[A](a: A): A = a
+        def unitStash(): Unit = ()
+      }
     }
 }
