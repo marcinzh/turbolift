@@ -29,8 +29,6 @@ object DefaultMemoizerHandler {
     def commonOps[M[_]](implicit M: MonadPar[M]) = new CommonOps[M] {
       def purer[A](s: S, a: A): (S, A) = (s, a)
 
-      def lift[A](ma: M[A]): S => M[(S, A)] = s => ma.map((s, _))
-
       def flatMap[A, B](tma: S => M[(S, A)])(f: A => S => M[(S, B)]): S => M[(S, B)] =
         s0 => tma(s0).flatMap {
           case (s1, a) => f(a)(s1)

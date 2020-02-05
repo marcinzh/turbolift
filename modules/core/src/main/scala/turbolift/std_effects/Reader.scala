@@ -28,8 +28,6 @@ object DefaultReaderHandler {
     def commonOps[M[_]](implicit M: MonadPar[M]) = new CommonOps[M] {
       def purer[A](r: R, a: A): A = a
 
-      def lift[A](ma: M[A]): R => M[A] = _ => ma
-
       def flatMap[A, B](tma: R => M[A])(f: A => R => M[B]): R => M[B] =
         r => tma(r).flatMap(a => f(a)(r))
 

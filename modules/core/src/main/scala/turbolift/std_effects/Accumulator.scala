@@ -32,8 +32,6 @@ object DefaultAccumulatorHandler {
     def commonOps[M[_]](implicit M: MonadPar[M]) = new CommonOps[M] {
       def purer[A](w: W, a: A): (W, A) = (w, a)
 
-      def lift[A](ma: M[A]): W => M[(W, A)] = w => ma.map((w, _))
-
       def flatMap[A, B](tma: W => M[(W, A)])(f: A => W => M[(W, B)]): W => M[(W, B)] =
         w0 => tma(w0).flatMap {
           case (w1, a) => f(a)(w1)

@@ -25,8 +25,6 @@ object DefaultChoiceHandler {
     def commonOps[M[_]](implicit M: MonadPar[M]) = new CommonOps[M] {
       def purer[A](a: A): Vector[A] = Vector(a)
 
-      def lift[A](ma: M[A]): M[Vector[A]] = ma.map(Vector(_))
-
       def flatMap[A, B](tma: M[Vector[A]])(f: A => M[Vector[B]]): M[Vector[B]] = {
         def loop(as: Vector[A]): M[Vector[B]] = as match {
           case Vector() => MonadPar[M].pure(Vector())

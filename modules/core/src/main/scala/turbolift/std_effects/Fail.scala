@@ -22,8 +22,6 @@ object DefaultFailHandler {
     def commonOps[M[_]](implicit M: MonadPar[M]) = new CommonOps[M] {
       def purer[A](a: A): Option[A] = Some(a)
 
-      def lift[A](ma: M[A]): M[Option[A]] = ma.map(Some(_))
-
       def flatMap[A, B](tma: M[Option[A]])(f: A => M[Option[B]]): M[Option[B]] =
         tma.flatMap {
           case Some(a) => f(a)

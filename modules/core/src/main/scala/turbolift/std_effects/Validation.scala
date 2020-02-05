@@ -34,8 +34,6 @@ object DefaultValidationHandler {
     def commonOps[M[_]](implicit M: MonadPar[M]) = new CommonOps[M] {
       def purer[A](a: A): Either[E, A] = Right(a)
 
-      def lift[A](ma: M[A]): M[Either[E, A]] = ma.map(Right(_))
-
       def flatMap[A, B](tma: M[Either[E, A]])(f: A => M[Either[E, B]]): M[Either[E, B]] =
         tma.flatMap {
           case Right(a) => f(a)
