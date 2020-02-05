@@ -23,8 +23,6 @@ trait Choice extends Effect.Alternative[ChoiceSig] {
 object DefaultChoiceHandler {
   def apply[Fx <: Choice](fx: Fx) = new fx.Nullary[Vector] {
     def commonOps[M[_]](implicit M: MonadPar[M]) = new CommonOps[M] {
-      // def pure[A](a: A): M[Vector[A]] = M.pure(Vector(a))
-
       def purer[A](a: A): Vector[A] = Vector(a)
 
       def lift[A](ma: M[A]): M[Vector[A]] = ma.map(Vector(_))
@@ -69,17 +67,6 @@ object DefaultChoiceHandler {
         withLift { l =>
           pureInner(as.iterator.map(l.pureStash).toVector)
         }
-
-      // def empty[A]: P[A] = liftOuter(pureInner(Vector()))
-
-      // def plus[A](lhs: P[A], rhs: => P[A]): P[A] =
-      //   withUnlift { run =>
-      //     (run(lhs) *! run(rhs)).map {
-      //       case (xs, ys) => xs ++ ys
-      //     }
-      //   }
-
-      // def each[A](as: Iterable[A]): P[A] = liftOuter(pureInner(as.toVector))
     }
   }.self
 }

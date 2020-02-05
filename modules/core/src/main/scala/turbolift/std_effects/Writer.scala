@@ -31,8 +31,6 @@ trait Writer[W] extends Effect[WriterSig[?[_], W]] {
 object DefaultWriterHandler {
   def apply[W, Fx <: Writer[W]](fx: Fx)(implicit W: Monoid[W]) = new fx.Unary[W, (W, ?)] {
     def commonOps[M[_]](implicit M: MonadPar[M]) = new CommonOps[M] {
-      // def pure[A](a: A): W => M[(W, A)] = w => M.pure((w, a))
-
       def purer[A](w: W, a: A): (W, A) = (w, a)
 
       def lift[A](ma: M[A]): W => M[(W, A)] = w => ma.map((w, _))
@@ -68,23 +66,6 @@ object DefaultWriterHandler {
         withLift { l => w0 =>
           l.run(scope)(W.empty).map { case (_, fa) => (w0, fa) }
         }
-
-      // def tell(w: W): P[Unit] = liftOuter(w0 => pureInner((w0 |+| w, ())))
-
-      // def listen[A](scope: P[A]): P[(W, A)] =
-      //   withUnlift { run => w0 =>
-      //     run(scope)(W.empty).map { case (w, fa) => (w0 |+| w, fa.map((w, _))) }
-      //   }
-
-      // def censor[A](scope: P[A])(mod: W => W): P[A] =
-      //   withUnlift { run => w0 =>
-      //     run(scope)(W.empty).map { case (w, fa) => (w0 |+| mod(w), fa) }
-      //   }
-
-      // def clear[A](scope: P[A]): P[A] =
-      //   withUnlift { run => w0 =>
-      //     run(scope)(W.empty).map { case (_, fa) => (w0, fa) }
-      //   }
     }
   }.self
 }

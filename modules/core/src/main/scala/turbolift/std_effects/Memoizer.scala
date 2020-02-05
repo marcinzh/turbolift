@@ -27,8 +27,6 @@ object DefaultMemoizerHandler {
   def apply[K, V, Fx <: Memoizer[K, V]](fx: Fx): Handler.Apply[Id, fx.type] = new fx.Unary[Map[K, V], (Map[K, V], ?)] {
     private type S = Map[K, V]
     def commonOps[M[_]](implicit M: MonadPar[M]) = new CommonOps[M] {
-      // def pure[A](a: A): S => M[(S, A)] = s => M.pure((s, a))
-
       def purer[A](s: S, a: A): (S, A) = (s, a)
 
       def lift[A](ma: M[A]): S => M[(S, A)] = s => ma.map((s, _))
@@ -65,19 +63,6 @@ object DefaultMemoizerHandler {
               })(m0)
           }
         }
-
-      // val snapshot: P[S] = liftOuter(m => pureInner((m, m)))
-
-      // def memo(fun: K => P[V])(k: K): P[V] =
-      //   withUnlift { run => m0 =>
-      //     m0.get(k) match {
-      //       case Some(v) => run(pureOuter(v))(m0)
-      //       case None =>
-      //         run(outerMonad.defer(fun(k)).flatMap { v =>
-      //           liftOuter(m => pureInner((m.updated(k, v), v)))
-      //         })(m0)
-      //     }
-      //   }
     }
   }.apply(Map.empty[K, V]).dropState
 }

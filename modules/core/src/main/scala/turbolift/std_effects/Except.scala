@@ -30,8 +30,6 @@ trait Except[E] extends Effect[ExceptSig[?[_], E]] {
 object DefaultExceptHandler {
   def apply[E, Fx <: Except[E]](fx: Fx) = new fx.Nullary[Either[E, ?]] {
     def commonOps[M[_]](implicit M: MonadPar[M]) = new CommonOps[M] {
-      // def pure[A](a: A): M[Either[E, A]] = M.pure(Right(a))
-      
       def purer[A](a: A): Either[E, A] = Right(a)
 
       def lift[A](ma: M[A]): M[Either[E, A]] = ma.map(Right(_))
@@ -63,16 +61,6 @@ object DefaultExceptHandler {
             case Left(e) => l.run(recover(e))
           }
         }
-
-      // def raise[A](e: E): P[A] = liftOuter(pureInner(Left(e)))
-
-      // def katch[A](scope: P[A])(recover: E => P[A]): P[A] =
-      //   withUnlift { run =>
-      //     run(scope).flatMap {
-      //       case Right(fa) => pureInner(Right(fa))
-      //       case Left(e) => run(recover(e))
-      //     }
-      //   }
     }
   }.self
 }

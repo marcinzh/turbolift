@@ -26,8 +26,6 @@ trait Reader[R] extends Effect[ReaderSig[?[_], R]] {
 object DefaultReaderHandler {
   def apply[R, Fx <: Reader[R]](fx: Fx) = new fx.Unary[R, Id] {
     def commonOps[M[_]](implicit M: MonadPar[M]) = new CommonOps[M] {
-      // def pure[A](a: A): R => M[A] = _ => M.pure(a)
-
       def purer[A](r: R, a: A): A = a
 
       def lift[A](ma: M[A]): R => M[A] = _ => ma
@@ -40,15 +38,15 @@ object DefaultReaderHandler {
     }
 
     def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with ReaderSig[P, R] {
-      val ask: P[R] = withLift(l => r => pureInner(l.pureStash(r)))
-      def local[A](mod: R => R)(scope: P[A]): P[A] = withLift(l => r => l.run(scope)(mod(r)))
-      
-      // val ask: P[R] = liftOuter(r => pureInner(r))
+      val ask: P[R] =
+        withLift { l => r =>
+          pureInner(l.pureStash(r))
+        }
 
-      // def local[A](mod: R => R)(scope: P[A]): P[A] =
-      //   withUnlift { run =>
-      //     r => run(scope)(mod(r))
-      //   }
+      def local[A](mod: R => R)(scope: P[A]): P[A] =
+        withLift { l => r =>
+          l.run(scope)(mod(r))
+        }
     }
   }.self
 }

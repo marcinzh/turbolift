@@ -26,8 +26,6 @@ trait State[S] extends Effect[StateSig[?[_], S]] {
 object DefaultStateHandler {
   def apply[S, Fx <: State[S]](fx: Fx) = new fx.Unary[S, (S, ?)] {
     def commonOps[M[_]](implicit M: MonadPar[M]) = new CommonOps[M] {
-      // def pure[A](a: A): S => M[(S, A)] = s => M.pure((s, a))
-
       def purer[A](s: S, a: A): (S, A) = (s, a)
 
       def lift[A](ma: M[A]): S => M[(S, A)] = s => ma.map((s, _))
@@ -60,9 +58,6 @@ object DefaultStateHandler {
         withLift { l => s =>
           pureInner((f(s), l.unitStash()))
         }
-      // val get: P[S] = liftOuter(s => pureInner((s, s)))
-      // def put(s: S): P[Unit] = liftOuter(_ => pureInner((s, ())))
-      // override def mod(f: S => S): P[Unit] = liftOuter(s => pureInner((f(s), ())))
     }
   }.self
 }
