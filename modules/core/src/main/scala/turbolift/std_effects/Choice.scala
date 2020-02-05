@@ -67,7 +67,7 @@ object DefaultChoiceHandler {
 
       def each[A](as: Iterable[A]): P[A] =
         withLift { l =>
-          pureInner(as.iterator.map(l.pure).toVector)
+          pureInner(as.iterator.map(l.pureStash).toVector)
         }
 
       // def empty[A]: P[A] = liftOuter(pureInner(Vector()))

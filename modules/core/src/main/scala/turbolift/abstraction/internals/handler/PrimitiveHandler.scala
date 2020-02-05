@@ -73,9 +73,11 @@ object PrimitiveHandler {
       // final override def withUnlift[A](ff: Unlift => M[O[A]]): M[O[A]] =
       //   ff(~>.id[Lambda[X => M[O[X]]]])
 
+      private val unitStashVal = purer(())
       private val liftOpsVal = new ThisLiftOps {
         def run[A](tma: M[O[A]]): M[O[A]] = tma
-        def pure[A](a: A): O[A] = purer(a)
+        def pureStash[A](a: A): O[A] = purer(a)
+        def unitStash(): O[Unit] = unitStashVal
       }
     }
 
@@ -95,8 +97,10 @@ object PrimitiveHandler {
       final override def withLift[A](ff: ThisLiftOps => M[O[A]]): S => M[O[A]] =
         s => ff(new ThisLiftOps {
           def run[A](tma: S => M[O[A]]): M[O[A]] = tma(s)
-          def pure[A](a: A): O[A] = purer(s, a)
+          def pureStash[A](a: A): O[A] = purer(s, a)
+          def unitStash(): O[Unit] = purer(s, ())
         })
+
       // final override def withUnlift[A](ff: Unlift => M[O[A]]): S => M[O[A]] =
       //   s => ff(new Unlift {
       //     def apply[A](tma: S => M[O[A]]): M[O[A]] = tma(s)

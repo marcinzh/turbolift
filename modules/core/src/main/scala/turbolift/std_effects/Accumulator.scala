@@ -50,7 +50,7 @@ object DefaultAccumulatorHandler {
     def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with AccumulatorSig[P, E] {
       def tell(e: E): P[Unit] =
         withLift { l => w0 =>
-          pureInner((w0 |+ e, l.pure(())))
+          pureInner((w0 |+ e, l.unitStash()))
         }
 
       def clear[A](scope: P[A]): P[A] =

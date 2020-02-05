@@ -51,7 +51,7 @@ object DefaultWriterHandler {
     def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with WriterSig[P, W] {
       def tell(w: W): P[Unit] =
         withLift { l => w0 =>
-          pureInner((w0 |+| w, l.pure(())))
+          pureInner((w0 |+| w, l.unitStash()))
         }
 
       def listen[A](scope: P[A]): P[(W, A)] =

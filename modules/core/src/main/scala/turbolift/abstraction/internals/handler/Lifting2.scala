@@ -4,7 +4,8 @@ import cats.{Functor, Id, ~>}
 
 trait LiftOps[Outer[_], Inner[_], Stash[_]] {
   def run[A](oa: Outer[A]): Inner[Stash[A]]
-  def pure[A](a: A): Stash[A]
+  def pureStash[A](a: A): Stash[A]
+  def unitStash(): Stash[Unit]
 }
 
 trait Lifting2[Outer[_], Inner[_], Stash[_]] {
@@ -25,7 +26,8 @@ object Lifting2 {
           inner.withLift { ffInner =>
             ff(new ThisLiftOps {
               def run[A](oa: Outer[A]): Inner[Stash[A]] = ffInner.run(ffOuter.run(oa))
-              def pure[A](a: A): Stash[A] = ffInner.pure(ffOuter.pure(a))
+              def pureStash[A](a: A): Stash[A] = ffInner.pureStash(ffOuter.pureStash(a))
+              def unitStash(): Stash[Unit] = ffInner.pureStash(ffOuter.unitStash())
             })
           }
         }
@@ -41,7 +43,8 @@ object Lifting2 {
 
       private val liftOpsVal: ThisLiftOps = new ThisLiftOps {
         def run[A](ma: M[A]): M[A] = ma
-        def pure[A](a: A): A = a
+        def pureStash[A](a: A): A = a
+        def unitStash(): Unit = ()
       }
     }
 }

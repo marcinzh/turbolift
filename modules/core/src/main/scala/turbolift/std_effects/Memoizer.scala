@@ -49,18 +49,18 @@ object DefaultMemoizerHandler {
     def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with MemoizerSig[P, K, V] {
       val snapshot: P[S] =
         withLift { l => m =>
-          pureInner((m, l.pure(m)))
+          pureInner((m, l.pureStash(m)))
         }
 
       def memo(fun: K => P[V])(k: K): P[V] =
         withLift { l => m0 =>
           m0.get(k) match {
-            case Some(v) => pureInner((m0, l.pure(v)))
+            case Some(v) => pureInner((m0, l.pureStash(v)))
             case None =>
               l.run(outerMonad.defer(fun(k)).flatMap { v =>
                 withLift { l => m =>
                   val m2 = m.updated(k, v)
-                  pureInner((m2, l.pure(v)))
+                  pureInner((m2, l.pureStash(v)))
                 }
               })(m0)
           }
