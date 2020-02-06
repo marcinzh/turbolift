@@ -23,9 +23,7 @@ trait Choice extends Effect.Alternative[ChoiceSig] {
 object DefaultChoiceHandler {
   def apply[Fx <: Choice](fx: Fx) = new fx.Nullary[Vector] {
     def commonOps[M[_]](implicit M: MonadPar[M]) = new CommonOps[M] {
-      def pure[A](a: A): M[Vector[A]] = M.pure(Vector(a))
-
-      def lift[A](ma: M[A]): M[Vector[A]] = ma.map(Vector(_))
+      def purer[A](a: A): Vector[A] = Vector(a)
 
       def flatMap[A, B](tma: M[Vector[A]])(f: A => M[Vector[B]]): M[Vector[B]] = {
         def loop(as: Vector[A]): M[Vector[B]] = as match {
@@ -51,16 +49,22 @@ object DefaultChoiceHandler {
     }
 
     def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with ChoiceSig[P] {
-      def empty[A]: P[A] = liftOuter(pureInner(Vector()))
+      def empty[A]: P[A] =
+        withLift { l =>
+          pureInner(Vector())
+        }
 
       def plus[A](lhs: P[A], rhs: => P[A]): P[A] =
-        withUnlift { run =>
-          (run(lhs) *! run(rhs)).map {
+        withLift { l =>
+          (l.run(lhs) *! l.run(rhs)).map {
             case (xs, ys) => xs ++ ys
           }
         }
 
-      def each[A](as: Iterable[A]): P[A] = liftOuter(pureInner(as.toVector))
+      def each[A](as: Iterable[A]): P[A] =
+        withLift { l =>
+          pureInner(as.iterator.map(l.pureStash).toVector)
+        }
     }
   }.self
 }

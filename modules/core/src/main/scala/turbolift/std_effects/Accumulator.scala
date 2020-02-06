@@ -30,9 +30,7 @@ trait Accumulator[E] extends Effect[AccumulatorSig[?[_], E]] { thiz =>
 object DefaultAccumulatorHandler {
   def apply[E, W, Fx <: Accumulator[E]](fx: Fx)(implicit W: AccumZero[E, W]) = new fx.Unary[W, (W, ?)] {
     def commonOps[M[_]](implicit M: MonadPar[M]) = new CommonOps[M] {
-      def pure[A](a: A): W => M[(W, A)] = w => M.pure((w, a))
-
-      def lift[A](ma: M[A]): W => M[(W, A)] = w => ma.map((w, _))
+      def purer[A](w: W, a: A): (W, A) = (w, a)
 
       def flatMap[A, B](tma: W => M[(W, A)])(f: A => W => M[(W, B)]): W => M[(W, B)] =
         w0 => tma(w0).flatMap {
@@ -46,11 +44,14 @@ object DefaultAccumulatorHandler {
     }
 
     def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with AccumulatorSig[P, E] {
-      def tell(e: E): P[Unit] = liftOuter(w => pureInner((w |+ e, ())))
+      def tell(e: E): P[Unit] =
+        withLift { l => w0 =>
+          pureInner((w0 |+ e, l.unitStash()))
+        }
 
       def clear[A](scope: P[A]): P[A] =
-        withUnlift { run => w0 =>
-          run(scope)(W.zero).map { case (_, fa) => (w0, fa) }
+        withLift { l => w0 =>
+          l.run(scope)(W.zero).map { case (_, fa) => (w0, fa) }
         }
     }
   }.self

@@ -20,9 +20,7 @@ trait Fail extends Effect.Alternative[FailSig] {
 object DefaultFailHandler {
   def apply[Fx <: Fail](fx: Fx) = new fx.Nullary[Option] {
     def commonOps[M[_]](implicit M: MonadPar[M]) = new CommonOps[M] {
-      def pure[A](a: A): M[Option[A]] = M.pure(Some(a))
-
-      def lift[A](ma: M[A]): M[Option[A]] = ma.map(Some(_))
+      def purer[A](a: A): Option[A] = Some(a)
 
       def flatMap[A, B](tma: M[Option[A]])(f: A => M[Option[B]]): M[Option[B]] =
         tma.flatMap {
@@ -38,15 +36,18 @@ object DefaultFailHandler {
     }
 
     def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with FailSig[P] {
-      def empty[A]: P[A] = liftOuter(pureInner(None))
+      def empty[A]: P[A] =
+        withLift { l =>
+          pureInner(None)
+        }
 
       def plus[A](lhs: P[A], rhs: => P[A]): P[A] =
-        withUnlift { run =>
-          run(lhs).flatMap { x =>
+        withLift { l =>
+          l.run(lhs).flatMap { x =>
             if (x.isDefined)
               pureInner(x)
             else
-              run(rhs)
+              l.run(rhs)
           }
         }
     }

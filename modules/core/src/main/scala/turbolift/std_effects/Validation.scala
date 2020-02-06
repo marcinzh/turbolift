@@ -32,9 +32,7 @@ trait Validation[E] extends Effect[ValidationSig[?[_], E]] {
 object DefaultValidationHandler {
   def apply[E: Semigroup, Fx <: Validation[E]](fx: Fx) = new fx.Nullary[Either[E, ?]] {
     def commonOps[M[_]](implicit M: MonadPar[M]) = new CommonOps[M] {
-      def pure[A](a: A): M[Either[E, A]] = M.pure(Right(a))
-
-      def lift[A](ma: M[A]): M[Either[E, A]] = ma.map(Right(_))
+      def purer[A](a: A): Either[E, A] = Right(a)
 
       def flatMap[A, B](tma: M[Either[E, A]])(f: A => M[Either[E, B]]): M[Either[E, B]] =
         tma.flatMap {
@@ -52,13 +50,16 @@ object DefaultValidationHandler {
     }
 
     def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with ValidationSig[P, E] {
-      def invalid[A](e: E): P[A] = liftOuter(pureInner(Left(e)))
+      def invalid[A](e: E): P[A] =
+        withLift { l =>
+          pureInner(Left(e))
+        }
 
       def validate[A](scope: P[A])(recover: E => P[A]): P[A] =
-        withUnlift { run =>
-          run(scope).flatMap {
+        withLift { l =>
+          l.run(scope).flatMap {
             case Right(fa) => pureInner(Right(fa))
-            case Left(e) => run(recover(e))
+            case Left(e) => l.run(recover(e))
           }
         }
     }

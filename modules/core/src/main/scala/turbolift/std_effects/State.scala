@@ -26,9 +26,7 @@ trait State[S] extends Effect[StateSig[?[_], S]] {
 object DefaultStateHandler {
   def apply[S, Fx <: State[S]](fx: Fx) = new fx.Unary[S, (S, ?)] {
     def commonOps[M[_]](implicit M: MonadPar[M]) = new CommonOps[M] {
-      def pure[A](a: A): S => M[(S, A)] = s => M.pure((s, a))
-
-      def lift[A](ma: M[A]): S => M[(S, A)] = s => ma.map((s, _))
+      def purer[A](s: S, a: A): (S, A) = (s, a)
 
       def flatMap[A, B](tma: S => M[(S, A)])(f: A => S => M[(S, B)]): S => M[(S, B)] =
         s0 => tma(s0).flatMap {
@@ -44,9 +42,20 @@ object DefaultStateHandler {
     }
 
     def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with StateSig[P, S] {
-      val get: P[S] = liftOuter(s => pureInner((s, s)))
-      def put(s: S): P[Unit] = liftOuter(_ => pureInner((s, ())))
-      override def mod(f: S => S): P[Unit] = liftOuter(s => pureInner((f(s), ())))
+      val get: P[S] =
+        withLift { l => s =>
+          pureInner((s, l.pureStash(s)))
+        }
+
+      def put(s: S): P[Unit] =
+        withLift { l => _ =>
+          pureInner((s, l.unitStash()))
+        }
+      
+      override def mod(f: S => S): P[Unit] =
+        withLift { l => s =>
+          pureInner((f(s), l.unitStash()))
+        }
     }
   }.self
 }
