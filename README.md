@@ -4,7 +4,7 @@
 
 A functional effect system. An alternative to both Eff monad and MTL. Supports higher order effects.
 
-TODO: Write overly enthusiastic introduction to Turbolift 's capablities.
+TODO: Insert overly enthusiastic introduction to Turbolift 's capabilities.
 
 # Example
 ```scala
