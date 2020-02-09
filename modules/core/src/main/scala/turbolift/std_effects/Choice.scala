@@ -6,8 +6,8 @@ import turbolift.abstraction.typeclass.MonadPar
 import turbolift.abstraction.implicits.MonadParSyntax
 
 
-trait ChoiceSig[P[_]] extends AlternativeSig[P] {
-  def each[A](as: Iterable[A]): P[A]
+trait ChoiceSig[U] extends AlternativeSig[U] {
+  def each[A](as: Iterable[A]): A !! U
 }
 
 
@@ -48,20 +48,20 @@ object DefaultChoiceHandler {
         }
     }
 
-    def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with ChoiceSig[P] {
-      def empty[A]: P[A] =
+    def specialOps[M[_], U](context: ThisContext[M, U]) = new SpecialOps(context) with ChoiceSig[U] {
+      def empty[A]: A !! U =
         withLift { l =>
-          pureInner(Vector())
+          pureInner(Vector.empty[Stash[A]])
         }
 
-      def plus[A](lhs: P[A], rhs: => P[A]): P[A] =
+      def plus[A](lhs: A !! U, rhs: => A !! U): A !! U =
         withLift { l =>
           (l.run(lhs) *! l.run(rhs)).map {
             case (xs, ys) => xs ++ ys
           }
         }
 
-      def each[A](as: Iterable[A]): P[A] =
+      def each[A](as: Iterable[A]): A !! U =
         withLift { l =>
           pureInner(as.iterator.map(l.pureStash).toVector)
         }

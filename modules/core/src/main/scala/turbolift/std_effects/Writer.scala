@@ -9,20 +9,20 @@ import turbolift.abstraction.typeclass.{MonadPar, Accum}
 import turbolift.abstraction.implicits.MonadParSyntax
 
 
-trait WriterSig[P[_], W] extends Signature[P] {
-  def tell(w: W): P[Unit]
-  def listen[A](scope: P[A]): P[(W, A)]
-  def censor[A](scope: P[A])(mod: W => W): P[A]
-  def clear[A](scope: P[A]): P[A]
+trait WriterSig[U, W] extends Signature[U] {
+  def tell(w: W): Unit !! U
+  def listen[A](scope: A !! U): (W, A) !! U
+  def censor[A](scope: A !! U)(mod: W => W): A !! U
+  def clear[A](scope: A !! U): A !! U
 }
 
 
-trait Writer[W] extends Effect[WriterSig[?[_], W]] {
+trait Writer[W] extends Effect[WriterSig[?, W]] {
   def tell(w: W): Unit !! this.type = encodeFO(_.tell(w))
   def tell[X](x: X)(implicit ev: Accum[X, W]): Unit !! this.type = tell(ev.one(x))
-  def listen[A, U](scope: A !! U): (W, A) !! U with this.type = encodeHO[U](run => _.listen(run(scope)))
-  def censor[A, U](scope: A !! U)(f: W => W): A !! U with this.type = encodeHO[U](run => _.censor(run(scope))(f))
-  def clear[A, U](scope: A !! U): A !! U with this.type = encodeHO[U](run => _.clear(run(scope)))
+  def listen[A, U](scope: A !! U): (W, A) !! U with this.type = encodeHO[U](_.listen(scope))
+  def censor[A, U](scope: A !! U)(f: W => W): A !! U with this.type = encodeHO[U](_.censor(scope)(f))
+  def clear[A, U](scope: A !! U): A !! U with this.type = encodeHO[U](_.clear(scope))
 
   def handler(implicit W: Monoid[W]) = DefaultWriterHandler[W, this.type](this).apply(W.empty)
 }
@@ -44,23 +44,23 @@ object DefaultWriterHandler {
         }
     }
 
-    def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with WriterSig[P, W] {
-      def tell(w: W): P[Unit] =
+    def specialOps[M[_], U](context: ThisContext[M, U]) = new SpecialOps(context) with WriterSig[U, W] {
+      def tell(w: W): Unit !! U =
         withLift { l => w0 =>
           pureInner((w0 |+| w, l.unitStash()))
         }
 
-      def listen[A](scope: P[A]): P[(W, A)] =
+      def listen[A](scope: A !! U): (W, A) !! U =
         withLift { l => w0 =>
           l.run(scope)(W.empty).map { case (w, fa) => (w0 |+| w, fa.map((w, _))) }
         }
 
-      def censor[A](scope: P[A])(mod: W => W): P[A] =
+      def censor[A](scope: A !! U)(mod: W => W): A !! U =
         withLift { l => w0 =>
           l.run(scope)(W.empty).map { case (w, fa) => (w0 |+| mod(w), fa) }
         }
 
-      def clear[A](scope: P[A]): P[A] =
+      def clear[A](scope: A !! U): A !! U =
         withLift { l => w0 =>
           l.run(scope)(W.empty).map { case (_, fa) => (w0, fa) }
         }

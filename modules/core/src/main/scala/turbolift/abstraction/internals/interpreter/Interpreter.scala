@@ -18,39 +18,35 @@ final class Interpreter[M[_], U](
     new Interpreter[T[M, ?], U with V](newHead.outerMonad, newHead :: newTail, newFailEffectId)
   }
 
-  override def apply[A](ua: A !! U): M[A] = run(ua, nullMA, Que.empty)
+  override def apply[A](ua: A !! U): M[A] = run(ua, Que.empty)
 
-  private def nullMA[A]: M[A] = null.asInstanceOf[M[A]]
-
-  private def run[A](ua: A !! U, ma: M[A], que: Que[M, U]): M[A] = {
+  private def run[A](ua: A !! U, que: Que[M, U]): M[A] = {
     import ComputationCases._
     import QueCases._
-    def castS[M1[_], Z[P[_]] <: Signature[P]](f: Z[M1] => M1[A]) = f.asInstanceOf[Signature[M] => M[A]]
-    def castH[M1[_]](op: Any) = op.asInstanceOf[((? !! U) ~> M) => Signature[M] => M[A]] //// T_T
-    // def castH[M1[_], Z[P[_]] <: Signature[P]](op: ((? !! U) ~> M1) => Z[M1] => M1[A]) = op.asInstanceOf[((? !! U) ~> M) => Signature[M] => M[A]] //// T_T
+    def castS[Z[U1] <: Signature[U1]](f: Z[U] => A !! U) = f.asInstanceOf[Signature[U] => A !! U]
     def castU[A1](ua1: A1 !! U) = ua1.asInstanceOf[A !! U]
     def castM[A1](ma1: M[A1]) = ma1.asInstanceOf[M[A]]
-    if (ua != null)
-      ua match {
-        case Pure(a) => run(null, theMonad.pure(a), que)
-        case Defer(th) => theMonad.defer(run(th(), nullMA, que))
-        case FlatMap(ux, k) => run(castU(ux), nullMA, SeqStep(k, que))
-        case ZipPar(ux, uy) => run(castU(ux), nullMA, ParStepLeft(castU(uy), que))
-        case DispatchFO(id, op) => run(null, castM(castS(op)(findSig(id))), que)
-        case DispatchHO(id, op) => run(null, castM(castS(castH(op)(this))(findSig(id))), que)
-        case PushHandler(ux, h) => run(null, castM(h.prime(push(h.primitive).apply(ux))), que)
-      }
-    else
-      que match {
-        case Empty() => ma
-        case SeqStep(f, next) => theMonad.flatMap(ma)(a => run(castU(f(a)), nullMA, next))
-        case ParStepLeft(ux, next) => run(castU(ux), nullMA, ParStepRight(ma, next))
-        case ParStepRight(mx, next) => run(null, castM(theMonad.zipPar(mx, ma)), next)
-      }
+
+    ua match {
+      case Pure(a) => run(Penthouse(theMonad.pure(a)), que)
+      case ua: Penthouse[tA, tM, U] =>
+        val ma: M[A] = ua.value.asInstanceOf[M[A]]
+        que match {
+          case Empty() => ma
+          case SeqStep(f, next) => theMonad.flatMap(ma)(a => run(castU(f(a)), next))
+          case ParStepLeft(ux, next) => run(castU(ux), ParStepRight(ma, next))
+          case ParStepRight(mx, next) => run(Penthouse(castM(theMonad.zipPar(mx, ma))), next)
+        }
+      case Defer(th) => theMonad.defer(run(th(), que))
+      case FlatMap(ux, k) => run(castU(ux), SeqStep(k, que))
+      case ZipPar(ux, uy) => run(castU(ux), ParStepLeft(castU(uy), que))
+      case Dispatch(id, op) => run(castS(op)(findSig(id)), que)
+      case PushHandler(ux, h) => run(Penthouse(castM(h.prime(push(h.primitive).apply(ux)))), que)
+    }
   }
 
-  private def findSig(effectId: EffectId): Signature[M] =
-    lookup(effectId).asInstanceOf[Signature[M]]
+  private def findSig(effectId: EffectId): Signature[U] =
+    lookup(effectId).asInstanceOf[Signature[U]]
   
   private def lookup(key: AnyRef): AnyRef = {
     def loop(idx: Int): AnyRef = {
@@ -67,7 +63,7 @@ final class Interpreter[M[_], U](
     val arr = new Array[AnyRef]((n + 1) * 2)
     for ((hh, i) <- handlerStacks.iterator.zipWithIndex) {
       arr(i*2) = hh.effectId
-      arr(i*2+1) = hh.decoder
+      arr(i*2+1) = hh.decoder(this)
     }
     arr(n*2) = null
     arr(n*2+1) = if (failEffectId == null) null else arr(arr.indexOf(failEffectId) + 1)

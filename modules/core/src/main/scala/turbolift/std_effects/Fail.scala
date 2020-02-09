@@ -7,7 +7,7 @@ import turbolift.abstraction.typeclass.MonadPar
 import turbolift.abstraction.implicits.MonadParSyntax
 
 
-trait FailSig[P[_]] extends AlternativeSig[P]
+trait FailSig[U] extends AlternativeSig[U]
 
 
 trait Fail extends Effect.Alternative[FailSig] {
@@ -35,13 +35,13 @@ object DefaultFailHandler {
         }
     }
 
-    def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with FailSig[P] {
-      def empty[A]: P[A] =
+    def specialOps[M[_], U](context: ThisContext[M, U]) = new SpecialOps(context) with FailSig[U] {
+      def empty[A]: A !! U =
         withLift { l =>
-          pureInner(None)
+          pureInner(None: Option[Stash[A]])
         }
 
-      def plus[A](lhs: P[A], rhs: => P[A]): P[A] =
+      def plus[A](lhs: A !! U, rhs: => A !! U): A !! U =
         withLift { l =>
           l.run(lhs).flatMap { x =>
             if (x.isDefined)

@@ -8,17 +8,16 @@ import turbolift.abstraction.typeclass.{MonadPar, Accum}
 import turbolift.abstraction.implicits.MonadParSyntax
 
 
-trait ValidationSig[P[_], E] extends Signature[P] {
-  def invalid[A](e: E): P[A]
-  def validate[A](scope: P[A])(recover: E => P[A]): P[A]
+trait ValidationSig[U, E] extends Signature[U] {
+  def invalid[A](e: E): A !! U
+  def validate[A](scope: A !! U)(recover: E => A !! U): A !! U
 }
 
 
-trait Validation[E] extends Effect[ValidationSig[?[_], E]] {
+trait Validation[E] extends Effect[ValidationSig[?, E]] {
   def invalid(e: E): Nothing !! this.type = encodeFO(_.invalid(e))
   def invalid[X](x: X)(implicit ev: Accum[X, E]): Nothing !! this.type = invalid(ev.one(x))
-  def validate[A, U](scope: A !! U)(recover: E => A !! U): A !! U with this.type =
-    encodeHO[U](run => _.validate(run(scope))(e => run(recover(e))))
+  def validate[A, U](scope: A !! U)(recover: E => A !! U): A !! U with this.type = encodeHO[U](_.validate(scope)(recover))
 
   def from[A](x: Either[E, A]): A !! this.type = x match {
     case Right(a) => pure(a)
@@ -49,16 +48,16 @@ object DefaultValidationHandler {
         }
     }
 
-    def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with ValidationSig[P, E] {
-      def invalid[A](e: E): P[A] =
+    def specialOps[M[_], U](context: ThisContext[M, U]) = new SpecialOps(context) with ValidationSig[U, E] {
+      def invalid[A](e: E): A !! U =
         withLift { l =>
-          pureInner(Left(e))
+          pureInner(Left(e): Either[E, Stash[A]])
         }
 
-      def validate[A](scope: P[A])(recover: E => P[A]): P[A] =
+      def validate[A](scope: A !! U)(recover: E => A !! U): A !! U =
         withLift { l =>
           l.run(scope).flatMap {
-            case Right(fa) => pureInner(Right(fa))
+            case Right(fa) => pureInner(Right(fa): Either[E, Stash[A]])
             case Left(e) => l.run(recover(e))
           }
         }

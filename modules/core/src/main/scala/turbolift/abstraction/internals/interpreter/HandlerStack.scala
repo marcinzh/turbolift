@@ -1,14 +1,15 @@
 package turbolift.abstraction.internals.interpreter
-import cats.Id
+import cats.{Id, ~>}
 import turbolift.abstraction.!!
 import turbolift.abstraction.effect.{HasEffectId, Signature}
 import turbolift.abstraction.internals.handler.{PrimitiveHandler, Lifting, Context}
 import turbolift.abstraction.typeclass.MonadPar
+import turbolift.abstraction.ComputationCases.Penthouse
 
 
 sealed trait HandlerStack[P[_]] extends HasEffectId.Delegate {
   def outerMonad: MonadPar[P]
-  def decoder: Signature[P]
+  def decoder[U](recur: (? !! U) ~> P): Signature[U]
   def pushNext[T[_[_], _], O[_]](primitive: PrimitiveHandler[T, O]): HandlerStack[T[P, ?]]
 }
 
@@ -24,7 +25,8 @@ private object HandlerStackCases {
     def lifting: Lifting[P, Q, F]
     def canDecode: CanDecode[Q]
 
-    final override def decoder: Signature[P] = canDecode.makeDecoder(lifting)(outerMonad)
+    final override def decoder[U](recur: (? !! U) ~> P): Signature[U] =
+      canDecode.makeDecoder(recur, lifting)(outerMonad)
 
     final override def pushNext[T[_[_], _], O[_]](primitive: PrimitiveHandler[T, O]): HandlerStack[T[P, ?]] =
       PushNext(this, primitive, canDecode)
@@ -35,7 +37,7 @@ private object HandlerStackCases {
     final override def lifting = Lifting.identity[Q]
     final override def canDecode: CanDecode[Q] = this
 
-    def makeDecoder[P[_]: MonadPar, F[_]](penthouse: Lifting[P, Q, F]): Signature[P]
+    def makeDecoder[P[_]: MonadPar, F[_], U](recur: (? !! U) ~> P, lifting: Lifting[P, Q, F]): Signature[U]
   }
 
 
@@ -55,17 +57,27 @@ private object HandlerStackCases {
     override def effectIdDelegate: HasEffectId = primitive
     override def outerMonad: MonadPar[T[M, ?]] = primitive.commonOps[M]
 
-    override def makeDecoder[P[_]: MonadPar, F[_]](penthouse: Lifting[P, T[M, ?], F]): Signature[P] = {
-      val context: primitive.ThisContext[M, P] =
-        new Context {
+    override def makeDecoder[P[_]: MonadPar, F[_], U](recur: (? !! U) ~> P, lifting: Lifting[P, T[M, ?], F]): Signature[U] = {
+      val lifting2 = new Lifting[? !! U, T[M, ?], F] {
+        val stashFunctor = lifting.stashFunctor
+        def withLift[A](ff: ThisLiftOps => T[M, F[A]]): A !! U =
+          Penthouse(lifting.withLift { l =>
+            ff(new ThisLiftOps {
+              def run[A](ua: A !! U): T[M, F[A]] = l.run(recur(ua))
+              def pureStash[A](a: A): F[A] = l.pureStash(a)
+              def unitStash(): F[Unit] = l.unitStash()
+            })
+          })
+      }
+
+      val context: primitive.ThisContext[M, U] =
+        new Context[U] {
           override type Main[A] = T[M, A]
           override type Inner[A] = M[A]
-          override type Outer[A] = P[A]
           override type Stash[A] = F[A]
           override val mainMonad: MonadPar[Main] = outer.outerMonad
           override val innerMonad: MonadPar[Inner] = MonadPar[M]
-          override val outerMonad: MonadPar[Outer] = MonadPar[P]
-          override val lifting: Lifting[Outer, Main, Stash] = penthouse
+          override val lifting: Lifting[? !! U, Main, Stash] = lifting2
         }
 
       primitive.specialOps(context)

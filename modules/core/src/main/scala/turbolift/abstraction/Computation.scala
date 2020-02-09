@@ -47,11 +47,11 @@ object Computation {
 
 private[abstraction] object ComputationCases {
   final case class Pure[A](value: A) extends Computation[A, Any]
+  final case class Penthouse[A, M[_], U](value: M[A]) extends Computation[A, U]
   final case class Defer[A, U](thunk: () => A !! U) extends Computation[A, U]
   final case class FlatMap[A, B, U](that: A !! U, k: A => B !! U) extends Computation[B, U]
   final case class ZipPar[A, B, U](lhs: A !! U, rhs: B !! U) extends Computation[(A, B), U]
-  final case class DispatchFO[A, U, Z[P[_]] <: Signature[P], P[_]](effectId: EffectId, op: Z[P] => P[A]) extends Computation[A, U]
-  final case class DispatchHO[A, U, Z[P[_]] <: Signature[P], P[_]](effectId: EffectId, op: ((? !! U) ~> P) => Z[P] => P[A]) extends Computation[A, U]
+  final case class Dispatch[A, U, Z[V] <: Signature[V]](effectId: EffectId, op: Z[U] => A !! U) extends Computation[A, U]
   final case class PushHandler[A, U, H <: SaturatedHandler](scope: A !! U with H#Effects, h: H) extends Computation[H#Result[A], U]
 }
 

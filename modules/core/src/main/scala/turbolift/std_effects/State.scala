@@ -7,14 +7,14 @@ import turbolift.abstraction.typeclass.MonadPar
 import turbolift.abstraction.implicits.MonadParSyntax
 
 
-trait StateSig[P[_], S] extends Signature[P] {
-  def get: P[S]
-  def put(s: S): P[Unit]
-  def mod(f: S => S): P[Unit] = get.flatMap(s => put(f(s)))
+trait StateSig[U, S] extends Signature[U] {
+  def get: S !! U
+  def put(s: S): Unit !! U
+  def mod(f: S => S): Unit !! U = get.flatMap(s => put(f(s)))
 }
 
 
-trait State[S] extends Effect[StateSig[?[_], S]] {
+trait State[S] extends Effect[StateSig[?, S]] {
   val get: S !! this.type = encodeFO(_.get)
   def put(s: S): Unit !! this.type = encodeFO(_.put(s))
   def mod(f: S => S): Unit !! this.type = encodeFO(_.mod(f))
@@ -41,18 +41,18 @@ object DefaultStateHandler {
         }
     }
 
-    def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with StateSig[P, S] {
-      val get: P[S] =
+    def specialOps[M[_], U](context: ThisContext[M, U]) = new SpecialOps(context) with StateSig[U, S] {
+      val get: S !! U =
         withLift { l => s =>
           pureInner((s, l.pureStash(s)))
         }
 
-      def put(s: S): P[Unit] =
+      def put(s: S): Unit !! U =
         withLift { l => _ =>
           pureInner((s, l.unitStash()))
         }
       
-      override def mod(f: S => S): P[Unit] =
+      override def mod(f: S => S): Unit !! U =
         withLift { l => s =>
           pureInner((f(s), l.unitStash()))
         }

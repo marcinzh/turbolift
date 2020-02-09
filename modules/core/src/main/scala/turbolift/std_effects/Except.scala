@@ -6,17 +6,15 @@ import turbolift.abstraction.typeclass.MonadPar
 import turbolift.abstraction.implicits.MonadParSyntax
 
 
-trait ExceptSig[P[_], E] extends Signature[P] {
-  def raise[A](e: E): P[A]
-  def katch[A](scope: P[A])(recover: E => P[A]): P[A]
+trait ExceptSig[U, E] extends Signature[U] {
+  def raise[A](e: E): A !! U
+  def katch[A](scope: A !! U)(recover: E => A !! U): A !! U
 }
 
 
-trait Except[E] extends Effect[ExceptSig[?[_], E]] {
+trait Except[E] extends Effect[ExceptSig[?, E]] {
   def raise(e: E): Nothing !! this.type = encodeFO(_.raise(e))
-  
-  def katch[A, U](scope: A !! U)(recover: E => A !! U): A !! U with this.type =
-    encodeHO[U](run => _.katch(run(scope))(e => run(recover(e))))
+  def katch[A, U](scope: A !! U)(recover: E => A !! U): A !! U with this.type = encodeHO[U](_.katch(scope)(recover))
 
   def from[A](x: Either[E, A]): A !! this.type = x match {
     case Right(a) => pure(a)
@@ -46,16 +44,16 @@ object DefaultExceptHandler {
         }
     }
 
-    def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with ExceptSig[P, E] {
-      def raise[A](e: E): P[A] =
+    def specialOps[M[_], U](context: ThisContext[M, U]) = new SpecialOps(context) with ExceptSig[U, E] {
+      def raise[A](e: E): A !! U =
         withLift { l =>
-          pureInner(Left(e))
+          pureInner(Left(e): Either[E, Stash[A]])
         }
 
-      def katch[A](scope: P[A])(recover: E => P[A]): P[A] =
+      def katch[A](scope: A !! U)(recover: E => A !! U): A !! U =
         withLift { l =>
           l.run(scope).flatMap {
-            case Right(fa) => pureInner(Right(fa))
+            case Right(fa) => pureInner(Right(fa): Either[E, Stash[A]])
             case Left(e) => l.run(recover(e))
           }
         }

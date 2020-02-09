@@ -1,20 +1,17 @@
 package turbolift.abstraction.effect
 import cats.~>
 import turbolift.abstraction.!!
-import turbolift.abstraction.ComputationCases.{DispatchFO, DispatchHO}
+import turbolift.abstraction.ComputationCases.Dispatch
 
 
-trait EffectEncoding[Z[P[_]] <: Signature[P]] extends HasEffectId.Unsealed {
+trait EffectEncoding[Z[U] <: Signature[U]] extends HasEffectId.Unsealed {
   type ThisEffect
 
-  type Phantom[A] // Stays undefined. Solves the "Can't existentially abstract over parameterized type" problem
-
-  final def encodeFO[A](f: Z[Phantom] => Phantom[A]): A !! ThisEffect = new DispatchFO(effectId, f)
+  final def encodeFO[A](f: Z[ThisEffect] => A !! ThisEffect): A !! ThisEffect = new Dispatch(effectId, f)
 
   final def encodeHO[U] = new EncodeHO[U]
   class EncodeHO[U] {
-    type Run = (? !! U with ThisEffect) ~> Phantom 
-    def apply[A](ff: Run => Z[Phantom] => Phantom[A]): A !! U with ThisEffect = new DispatchHO(effectId, ff)
+    def apply[A](f: Z[U with ThisEffect] => A !! U with ThisEffect): A !! U with ThisEffect = new Dispatch(effectId, f)
   }
 
   final def pure[A](a: A): A !! ThisEffect = !!.pure(a)

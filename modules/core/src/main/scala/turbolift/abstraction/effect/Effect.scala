@@ -3,12 +3,12 @@ import cats.Functor
 import turbolift.abstraction.internals.handler.{PrimitiveHandlerStub, SaturatedHandler}
 
 
-sealed trait AnyEffect[Z[P[_]] <: Signature[P]] extends EffectEncoding[Z] with HasEffectId.Self {
+sealed trait AnyEffect[Z[U] <: Signature[U]] extends EffectEncoding[Z] with HasEffectId.Self {
   final override type ThisEffect = this.type
 
   trait ThisHandler extends PrimitiveHandlerStub {
     final override def effectIdDelegate = AnyEffect.this
-    final override type ThisSignature[P[_]] = Z[P]
+    final override type ThisSignature[U] = Z[U]
   }
 
   abstract class Nullary[O[_]: Functor] extends SaturatedHandler.Nullary[ThisEffect, O] with ThisHandler {
@@ -23,7 +23,7 @@ sealed trait AnyEffect[Z[P[_]] <: Signature[P]] extends EffectEncoding[Z] with H
 }
 
 
-trait Effect[Z[P[_]] <: Signature[P]] extends AnyEffect[Z] {
+trait Effect[Z[U] <: Signature[U]] extends AnyEffect[Z] {
   trait ThisHandler extends super.ThisHandler {
     final override val isFilterable = false
   }
@@ -34,7 +34,7 @@ trait Effect[Z[P[_]] <: Signature[P]] extends AnyEffect[Z] {
 
 
 object Effect {
-  trait Alternative[Z[P[_]] <: AlternativeSig[P]] extends AnyEffect[Z] with AlternativeEffectEncoding[Z] {
+  trait Alternative[Z[U] <: AlternativeSig[U]] extends AnyEffect[Z] with AlternativeEffectEncoding[Z] {
     trait ThisHandler extends super.ThisHandler {
       final override val isFilterable = true
     }

@@ -7,15 +7,15 @@ import turbolift.abstraction.typeclass.{MonadPar, AccumZero}
 import turbolift.abstraction.implicits.{AccumSyntax, MonadParSyntax}
 
 
-trait AccumulatorSig[P[_], E] extends Signature[P] {
-  def tell(e: E): P[Unit]
-  def clear[A](scope: P[A]): P[A]
+trait AccumulatorSig[U, E] extends Signature[U] {
+  def tell(e: E): Unit !! U
+  def clear[A](scope: A !! U): A !! U
 }
 
 
-trait Accumulator[E] extends Effect[AccumulatorSig[?[_], E]] { thiz =>
+trait Accumulator[E] extends Effect[AccumulatorSig[?, E]] { thiz =>
   def tell(e: E): Unit !! this.type = encodeFO(_.tell(e))
-  def clear[A, U](scope: A !! U): A !! U with this.type = encodeHO[U](run => _.clear(run(scope)))
+  def clear[A, U](scope: A !! U): A !! U with this.type = encodeHO[U](_.clear(scope))
 
   object handler {
     def apply[W](implicit W: AccumZero[E, W]) = DefaultAccumulatorHandler[E, W, thiz.type](thiz).apply(W.zero)
@@ -43,13 +43,13 @@ object DefaultAccumulatorHandler {
         }
     }
 
-    def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with AccumulatorSig[P, E] {
-      def tell(e: E): P[Unit] =
+    def specialOps[M[_], U](context: ThisContext[M, U]) = new SpecialOps(context) with AccumulatorSig[U, E] {
+      def tell(e: E): Unit !! U =
         withLift { l => w0 =>
           pureInner((w0 |+ e, l.unitStash()))
         }
 
-      def clear[A](scope: P[A]): P[A] =
+      def clear[A](scope: A !! U): A !! U =
         withLift { l => w0 =>
           l.run(scope)(W.zero).map { case (_, fa) => (w0, fa) }
         }

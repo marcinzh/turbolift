@@ -8,14 +8,14 @@ import turbolift.abstraction.typeclass.MonadPar
 import turbolift.abstraction.implicits._
 
 
-trait MemoizerSig[P[_], K, V] extends Signature[P] {
-  def memo(fun: K => P[V])(k: K): P[V]
-  def snapshot: P[Map[K, V]]
+trait MemoizerSig[U, K, V] extends Signature[U] {
+  def memo(fun: K => V !! U)(k: K): V !! U
+  def snapshot: Map[K, V] !! U
 }
 
 
-trait Memoizer[K, V] extends Effect[MemoizerSig[?[_], K, V]] {
-  def memo[U](fun: K => V !! U)(k: K): V !! U with this.type = encodeHO[U](run => _.memo(k1 => run(fun(k1)))(k))
+trait Memoizer[K, V] extends Effect[MemoizerSig[?, K, V]] {
+  def memo[U](fun: K => V !! U)(k: K): V !! U with this.type = encodeHO[U](_.memo(fun)(k))
   def snapshot: Map[K, V] !! this.type = encodeFO(_.snapshot)
 
   val handler = DefaultMemoizerHandler[K, V, this.type](this)
@@ -42,18 +42,18 @@ object DefaultMemoizerHandler {
         }
     }
 
-    def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with MemoizerSig[P, K, V] {
-      val snapshot: P[S] =
+    def specialOps[M[_], U](context: ThisContext[M, U]) = new SpecialOps(context) with MemoizerSig[U, K, V] {
+      val snapshot: S !! U =
         withLift { l => m =>
           pureInner((m, l.pureStash(m)))
         }
 
-      def memo(fun: K => P[V])(k: K): P[V] =
+      def memo(fun: K => V !! U)(k: K): V !! U =
         withLift { l => m0 =>
           m0.get(k) match {
             case Some(v) => pureInner((m0, l.pureStash(v)))
             case None =>
-              l.run(outerMonad.defer(fun(k)).flatMap { v =>
+              l.run(!!.defer(fun(k)).flatMap { v =>
                 withLift { l => m =>
                   val m2 = m.updated(k, v)
                   pureInner((m2, l.pureStash(v)))
