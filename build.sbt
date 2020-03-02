@@ -1,5 +1,7 @@
 sourcesInBase := false
 
+autoStartServer := false
+
 lazy val commonSettings = Seq(
   organization := "com.github.marcinzh",
   version := "0.4.0-SNAPSHOT",
