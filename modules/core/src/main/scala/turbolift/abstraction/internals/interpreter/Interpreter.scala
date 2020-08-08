@@ -36,8 +36,8 @@ final class Interpreter[M[_], U](
         case Defer(th) => theMonad.defer(run(th(), nullMA, que))
         case FlatMap(ux, k) => run(castU(ux), nullMA, SeqStep(k, que))
         case ZipPar(ux, uy) => run(castU(ux), nullMA, ParStepLeft(castU(uy), que))
-        case DispatchFO(id, op) => run(null, castM(castS(op)(lookup(id))), que)
-        case DispatchHO(id, op) => run(null, castM(castS(castH(op)(this))(lookup(id))), que)
+        case DispatchFO(id, op) => run(null, castM(castS(op)(findSig(id))), que)
+        case DispatchHO(id, op) => run(null, castM(castS(castH(op)(this))(findSig(id))), que)
         case PushHandler(ux, h) => run(null, castM(h.prime(push(h.primitive).apply(ux))), que)
       }
     else
@@ -49,12 +49,15 @@ final class Interpreter[M[_], U](
       }
   }
 
-  private def lookup(effectId: EffectId): Signature[M] = {
-    def loop(i: Int): Signature[M] = {
-      if (vmt(i) eq effectId)
-        vmt(i+1).asInstanceOf[Signature[M]]
+  private def findSig(effectId: EffectId): Signature[M] =
+    lookup(effectId).asInstanceOf[Signature[M]]
+  
+  private def lookup(key: AnyRef): AnyRef = {
+    def loop(idx: Int): AnyRef = {
+      if (vmt(idx) eq key)
+        vmt(idx+1)
       else
-        loop(i+2)
+        loop(idx+2)
     }
     loop(0)
   }
