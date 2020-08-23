@@ -28,20 +28,20 @@ final class Interpreter[M[_], U](
     def castM[A1](ma1: M[A1]) = ma1.asInstanceOf[M[A]]
 
     ua match {
-      case Pure(a) => run(Penthouse(theMonad.pure(a)), que)
-      case ua: Penthouse[tA, tM, U] =>
+      case Pure(a) => run(Done(theMonad.pure(a)), que)
+      case ua: Done[tA, tM, U] =>
         val ma: M[A] = ua.value.asInstanceOf[M[A]]
         que match {
           case Empty() => ma
           case SeqStep(f, next) => theMonad.flatMap(ma)(a => run(castU(f(a)), next))
           case ParStepLeft(ux, next) => run(castU(ux), ParStepRight(ma, next))
-          case ParStepRight(mx, next) => run(Penthouse(castM(theMonad.zipPar(mx, ma))), next)
+          case ParStepRight(mx, next) => run(Done(castM(theMonad.zipPar(mx, ma))), next)
         }
       case Defer(th) => theMonad.defer(run(th(), que))
       case FlatMap(ux, k) => run(castU(ux), SeqStep(k, que))
       case ZipPar(ux, uy) => run(castU(ux), ParStepLeft(castU(uy), que))
       case Dispatch(id, op) => run(castS(op)(findSig(id)), que)
-      case PushHandler(ux, h) => run(Penthouse(castM(h.prime(push(h.primitive).apply(ux)))), que)
+      case PushHandler(ux, h) => run(Done(castM(h.prime(push(h.primitive).apply(ux)))), que)
     }
   }
 

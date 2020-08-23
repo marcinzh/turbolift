@@ -47,7 +47,7 @@ object Computation {
 
 private[abstraction] object ComputationCases {
   final case class Pure[A](value: A) extends Computation[A, Any]
-  final case class Penthouse[A, M[_], U](value: M[A]) extends Computation[A, U]
+  final case class Done[A, M[_], U](value: M[A]) extends Computation[A, U]
   final case class Defer[A, U](thunk: () => A !! U) extends Computation[A, U]
   final case class FlatMap[A, B, U](that: A !! U, k: A => B !! U) extends Computation[B, U]
   final case class ZipPar[A, B, U](lhs: A !! U, rhs: B !! U) extends Computation[(A, B), U]

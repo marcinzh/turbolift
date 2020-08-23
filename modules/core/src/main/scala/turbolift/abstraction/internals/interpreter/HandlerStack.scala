@@ -4,7 +4,7 @@ import turbolift.abstraction.!!
 import turbolift.abstraction.effect.{HasEffectId, Signature}
 import turbolift.abstraction.internals.handler.{PrimitiveHandler, Lifting, Context}
 import turbolift.abstraction.typeclass.MonadPar
-import turbolift.abstraction.ComputationCases.Penthouse
+import turbolift.abstraction.ComputationCases.Done
 
 
 sealed trait HandlerStack[P[_]] extends HasEffectId.Delegate {
@@ -61,7 +61,7 @@ private object HandlerStackCases {
       val lifting2 = new Lifting[? !! U, T[M, ?], F] {
         val stashFunctor = lifting.stashFunctor
         def withLift[A](ff: ThisLiftOps => T[M, F[A]]): A !! U =
-          Penthouse(lifting.withLift { l =>
+          Done(lifting.withLift { l =>
             ff(new ThisLiftOps {
               def run[A](ua: A !! U): T[M, F[A]] = l.run(recur(ua))
               def pureStash[A](a: A): F[A] = l.pureStash(a)
