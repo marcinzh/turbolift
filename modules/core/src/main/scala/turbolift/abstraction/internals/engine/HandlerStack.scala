@@ -1,4 +1,4 @@
-package turbolift.abstraction.internals.interpreter
+package turbolift.abstraction.internals.engine
 import cats.{Id, ~>}
 import turbolift.abstraction.!!
 import turbolift.abstraction.effect.{HasEffectId, Signature}

@@ -3,7 +3,7 @@ import cats.~>
 import turbolift.abstraction.effect.{EffectId, Signature, AltFx, AlternativeEffect}
 import turbolift.abstraction.typeclass.MonadPar
 import turbolift.abstraction.internals.handler.SaturatedHandler
-import turbolift.abstraction.internals.interpreter.Interpreter
+import turbolift.abstraction.internals.engine.MainLoop
 import turbolift.abstraction.internals.aux.{CanRunPure, CanRunImpure, CanHandle}
 import turbolift.abstraction.implicits.{CanRunPure_evidence, CanHandle_evidence}
 import ComputationCases._
@@ -74,8 +74,8 @@ trait ComputationExports {
 
 trait ComputationImplicits extends ComputationInstances {
   implicit class ComputationExtension[A, U](thiz: A !! U) {
-    def run(implicit ev: CanRunPure[U]): A = Interpreter.pure(ev(thiz)).run
-    def runStackUnsafe(implicit ev: CanRunPure[U]): A = Interpreter.pureStackUnsafe[A](ev(thiz))
+    def run(implicit ev: CanRunPure[U]): A = MainLoop.pure(ev(thiz)).run
+    def runStackUnsafe(implicit ev: CanRunPure[U]): A = MainLoop.pureStackUnsafe[A](ev(thiz))
     
     def runWith[H <: Handler](h: H)(implicit ev: CanRunImpure[U, h.Effects]): h.Result[A] =
       h.doHandle[A, Any](ev(thiz)).run

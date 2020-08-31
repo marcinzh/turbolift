@@ -1,4 +1,4 @@
-package turbolift.abstraction.internals.interpreter
+package turbolift.abstraction.internals.engine
 import cats.{Id, ~>}
 import turbolift.abstraction.{!!, ComputationCases}
 import turbolift.abstraction.effect.{EffectId, Signature}
@@ -6,16 +6,16 @@ import turbolift.abstraction.typeclass.MonadPar
 import turbolift.abstraction.internals.handler.PrimitiveHandler
 
 
-final class Interpreter[M[_], U](
+final class MainLoop[M[_], U](
   val theMonad: MonadPar[M],
   val handlerStacks: List[HandlerStack[M]],
   val failEffectId: EffectId,
 ) extends ((? !! U) ~> M) {
-  def push[T[_[_], _], O[_], V](primitive: PrimitiveHandler[T, O]): Interpreter[T[M, ?], U with V] = {
+  def push[T[_[_], _], O[_], V](primitive: PrimitiveHandler[T, O]): MainLoop[T[M, ?], U with V] = {
     val newHead: HandlerStack[T[M, ?]] = HandlerStack.pushFirst(primitive)(this.theMonad)
     val newTail: List[HandlerStack[T[M, ?]]] = this.handlerStacks.map(_.pushNext(primitive))
     val newFailEffectId: EffectId = if (primitive.isFilterable) primitive.effectId else this.failEffectId
-    new Interpreter[T[M, ?], U with V](newHead.outerMonad, newHead :: newTail, newFailEffectId)
+    new MainLoop[T[M, ?], U with V](newHead.outerMonad, newHead :: newTail, newFailEffectId)
   }
 
   override def apply[A](ua: A !! U): M[A] = run(ua, Que.empty)
@@ -71,8 +71,8 @@ final class Interpreter[M[_], U](
   }
 }
 
-object Interpreter {
-  val pure: Interpreter[Trampoline, Any] = apply(TrampolineInstances.monad)
-  val pureStackUnsafe: Interpreter[Id, Any] = apply(MonadPar.identity)
-  def apply[M[_]: MonadPar]: Interpreter[M, Any] = new Interpreter[M, Any](MonadPar[M], Nil, null)
+object MainLoop {
+  val pure: MainLoop[Trampoline, Any] = apply(TrampolineInstances.monad)
+  val pureStackUnsafe: MainLoop[Id, Any] = apply(MonadPar.identity)
+  def apply[M[_]: MonadPar]: MainLoop[M, Any] = new MainLoop[M, Any](MonadPar[M], Nil, null)
 }
