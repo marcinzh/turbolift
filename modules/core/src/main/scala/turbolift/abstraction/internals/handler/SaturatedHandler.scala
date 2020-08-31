@@ -1,6 +1,6 @@
 package turbolift.abstraction.internals.handler
 import turbolift.abstraction.{!!, HandlerCases}
-import turbolift.abstraction.ComputationCases.PushHandler
+import turbolift.abstraction.ComputationCases.Scope
 
 
 private[abstraction] sealed trait SaturatedHandler extends HandlerCases.Unsealed {
@@ -10,7 +10,7 @@ private[abstraction] sealed trait SaturatedHandler extends HandlerCases.Unsealed
   def prime[M[_], A](tma: Trans[M, A]): M[Result[A]]
 
   final def doHandle[A, U](eff: A !! U with Effects): Result[A] !! U = 
-    new PushHandler[A, U, this.type](eff, this)
+    new Scope[A, U, this.type](eff, this)
 }
 
 

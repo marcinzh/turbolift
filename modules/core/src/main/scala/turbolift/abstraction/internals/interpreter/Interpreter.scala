@@ -41,7 +41,7 @@ final class Interpreter[M[_], U](
       case FlatMap(ux, k) => run(castU(ux), SeqStep(k, que))
       case ZipPar(ux, uy) => run(castU(ux), ParStepLeft(castU(uy), que))
       case Dispatch(id, op) => run(castS(op)(findSig(id)), que)
-      case PushHandler(ux, h) => run(Done(castM(h.prime(push(h.primitive).apply(ux)))), que)
+      case Scope(ux, h) => run(Done(castM(h.prime(push(h.primitive).apply(ux)))), que)
     }
   }
 
