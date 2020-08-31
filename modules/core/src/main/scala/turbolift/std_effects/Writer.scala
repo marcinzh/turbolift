@@ -15,11 +15,11 @@ trait WriterSig[U, W] extends Signature[U] {
 
 
 trait Writer[W] extends Effect[WriterSig[?, W]] {
-  def tell(w: W): Unit !! this.type = encodeFO(_.tell(w))
-  def tell[X](x: X)(implicit ev: Accum[X, W]): Unit !! this.type = tell(ev.one(x))
-  def listen[A, U](scope: A !! U): (W, A) !! U with this.type = encodeHO[U](_.listen(scope))
-  def censor[A, U](scope: A !! U)(f: W => W): A !! U with this.type = encodeHO[U](_.censor(scope)(f))
-  def clear[A, U](scope: A !! U): A !! U with this.type = encodeHO[U](_.clear(scope))
+  final def tell(w: W): Unit !! this.type = encodeFO(_.tell(w))
+  final def tell[X](x: X)(implicit ev: Accum[X, W]): Unit !! this.type = tell(ev.one(x))
+  final def listen[A, U](scope: A !! U): (W, A) !! U with this.type = encodeHO[U](_.listen(scope))
+  final def censor[A, U](scope: A !! U)(f: W => W): A !! U with this.type = encodeHO[U](_.censor(scope)(f))
+  final def clear[A, U](scope: A !! U): A !! U with this.type = encodeHO[U](_.clear(scope))
 
   def handler(implicit W: Monoid[W]) = DefaultWriterHandler[W, this.type](this).apply(W.empty)
 }

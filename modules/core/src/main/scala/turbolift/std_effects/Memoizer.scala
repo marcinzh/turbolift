@@ -10,8 +10,8 @@ trait MemoizerSig[U, K, V] extends Signature[U] {
 }
 
 trait Memoizer[K, V] extends Effect[MemoizerSig[?, K, V]] {
-  def memo[U](fun: K => V !! U)(k: K): V !! U with this.type = encodeHO[U](_.memo(fun)(k))
-  def snapshot: Map[K, V] !! this.type = encodeFO(_.snapshot)
+  final def memo[U](fun: K => V !! U)(k: K): V !! U with this.type = encodeHO[U](_.memo(fun)(k))
+  final def snapshot: Map[K, V] !! this.type = encodeFO(_.snapshot)
 
   val handler = DefaultMemoizerHandler[K, V, this.type](this)
 }

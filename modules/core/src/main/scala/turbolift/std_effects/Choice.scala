@@ -10,9 +10,9 @@ trait ChoiceSig[U] extends AlternativeSig[U] {
 
 
 trait Choice extends Effect.Alternative[ChoiceSig] {
-  def each[A](as: Iterable[A]) = encodeFO(_.each(as))
-  
-  def fromEach[A](as: A*) = each(as.toVector)
+  final def each[A](as: Iterable[A]) = encodeFO(_.each(as))
+
+  final def fromEach[A](as: A*) = each(as.toVector)
 
   val handler = DefaultChoiceHandler(this)
 }

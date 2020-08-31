@@ -13,11 +13,11 @@ trait ValidationSig[U, E] extends Signature[U] {
 
 
 trait Validation[E] extends Effect[ValidationSig[?, E]] {
-  def invalid(e: E): Nothing !! this.type = encodeFO(_.invalid(e))
-  def invalid[X](x: X)(implicit ev: Accum[X, E]): Nothing !! this.type = invalid(ev.one(x))
-  def validate[A, U](scope: A !! U)(recover: E => A !! U): A !! U with this.type = encodeHO[U](_.validate(scope)(recover))
+  final def invalid(e: E): Nothing !! this.type = encodeFO(_.invalid(e))
+  final def invalid[X](x: X)(implicit ev: Accum[X, E]): Nothing !! this.type = invalid(ev.one(x))
+  final def validate[A, U](scope: A !! U)(recover: E => A !! U): A !! U with this.type = encodeHO[U](_.validate(scope)(recover))
 
-  def from[A](x: Either[E, A]): A !! this.type = x match {
+  final def from[A](x: Either[E, A]): A !! this.type = x match {
     case Right(a) => pure(a)
     case Left(e) => invalid(e)
   }
