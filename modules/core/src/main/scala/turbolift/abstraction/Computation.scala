@@ -1,10 +1,11 @@
 package turbolift.abstraction
 import cats.~>
-import turbolift.abstraction.effect.{EffectId, Signature, AltFx, AlternativeEffect}
+import turbolift.abstraction.effect.{EffectId, Signature, AnyChoice}
 import turbolift.abstraction.typeclass.MonadPar
 import turbolift.abstraction.internals.handler.SaturatedHandler
 import turbolift.abstraction.internals.engine.MainLoop
 import turbolift.abstraction.internals.aux.{CanRunPure, CanRunImpure, CanHandle}
+import turbolift.std_effects.Choice
 import ComputationCases._
 
 
@@ -25,9 +26,10 @@ sealed trait Computation[+A, -U] {
   final def &![B, V](that: B !! V): B !! U with V = this *>! that
   final def &&![B, V](that: => B !! V): B !! U with V = this **>! that
 
-  final def +![B >: A, V](that: => B !! V): B !! U with V with AltFx = AlternativeEffect.plus(this, that)
+  final def |![B >: A, V](that: B !! V): B !! U with V with Choice = ??? //@#@
+  final def ||![B >: A, V](that: => B !! V): B !! U with V with Choice = AnyChoice.plus(this, that)
 
-  final def withFilter(f: A => Boolean): A !! U with AltFx = flatMap(a => if (f(a)) !!.pure(a) else !!.empty)
+  final def withFilter(f: A => Boolean): A !! U with Choice = flatMap(a => if (f(a)) !!.pure(a) else !!.fail)
 
   final def void: Unit !! U = map(_ => ())
   final def upCast[V <: U] = this: A !! V
@@ -40,7 +42,7 @@ object Computation extends ComputationExtensions with ComputationInstances {
   def pure[A](a: A): A !! Any = Pure(a)
   def defer[A, U](ua: => A !! U): A !! U = Defer(() => ua)
   def eval[A](a: => A): A !! Any = Defer(() => Pure(a))
-  def empty: Nothing !! AltFx = AlternativeEffect.empty
+  def fail: Nothing !! Choice = AnyChoice.empty
 }
 
 

@@ -36,7 +36,7 @@ class ChoiceTest extends Specification {
     case object FxC extends Choice
     case object FxE extends Except[Int]
 
-    val eff = !!.pure(1) +! FxE.raise(2)
+    val eff = !!.pure(1) ||! FxE.raise(2)
 
     def testCE = eff.runWith(FxC.handler <<<! FxE.handler) must_== Vector(Right(1), Left(2))
     def testEC = eff.runWith(FxE.handler <<<! FxC.handler) must_== Left(2)

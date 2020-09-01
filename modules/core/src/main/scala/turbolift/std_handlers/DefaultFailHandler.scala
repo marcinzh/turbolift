@@ -39,6 +39,12 @@ object DefaultFailHandler {
               l.run(rhs)
           }
         }
+
+      def each[A](as: Iterable[A]): A !! U =
+        if (as.isEmpty)
+          empty
+        else
+          plus(!!.pure(as.head), each(as.tail))
     }
   }.self
 }

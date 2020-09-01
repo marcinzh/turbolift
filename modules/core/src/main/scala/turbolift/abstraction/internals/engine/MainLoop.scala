@@ -2,9 +2,9 @@ package turbolift.abstraction.internals.engine
 import cats.{Id, ~>}
 import turbolift.abstraction.{!!, ComputationCases}
 import turbolift.abstraction.effect.{EffectId, Signature}
-import turbolift.abstraction.effect.{AlternativeSig}
 import turbolift.abstraction.typeclass.MonadPar
 import turbolift.abstraction.internals.handler.PrimitiveHandler
+import turbolift.std_effects.ChoiceSig
 
 
 final class MainLoop[M[_], U](
@@ -52,7 +52,7 @@ final class MainLoop[M[_], U](
       newStack,
       _.effectId,
       _.decoder(newLoop),
-      _.isInstanceOf[AlternativeSig[_]]
+      _.isInstanceOf[ChoiceSig[_]]
     )
     newLoop
   }
