@@ -1,7 +1,6 @@
 package turbolift.abstraction
 import cats.{Id, ~>}
 import turbolift.abstraction.internals.aux.CanHandle
-import turbolift.abstraction.implicits._
 
 
 sealed trait Handler {
@@ -27,7 +26,7 @@ sealed trait Handler {
 }
 
 
-object Handler {
+object Handler extends HandlerExtensions {
   type Apply[F[_], U] = Handler {
     type Result[A] = F[A]
     type Effects = U
@@ -68,8 +67,8 @@ trait HandlerExports {
 }
 
 
-trait HandlerImplicits {
-  implicit class HandlerExtension[S, U](val thiz: Handler.Apply[(S, ?), U]) {
+trait HandlerExtensions {
+  implicit class HandlerExtension_Pair[S, U](val thiz: Handler.Apply[(S, ?), U]) {
     type Const[X] = S
 
     def eval: Handler.Apply[Id, U] = thiz.map(new ((S, ?) ~> Id) {

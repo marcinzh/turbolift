@@ -3,7 +3,7 @@ import cats.Monoid
 import cats.instances.tuple._
 import turbolift.abstraction.!!
 import turbolift.abstraction.typeclass.{MonadPar, AccumZero}
-import turbolift.abstraction.implicits.{AccumSyntax, MonadParSyntax}
+import turbolift.abstraction.Implicits.{AccumSyntax, MonadParSyntax}
 import turbolift.std_effects.{AccumulatorSig, Accumulator}
 
 

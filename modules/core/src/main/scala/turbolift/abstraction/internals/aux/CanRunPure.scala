@@ -16,9 +16,7 @@ object CanRunPure {
   private[abstraction] val singleton = new CanRunPure[Any] {
     def apply[A](eff: A !! Any): A !! Any = eff
   }
-}
 
-trait CanRunPureImplicits {
   implicit def CanRunPure_evidence[U](implicit ev: U =:= Any): CanRunPure[U] =
     CanRunPure.singleton.asInstanceOf[CanRunPure[U]]
 }

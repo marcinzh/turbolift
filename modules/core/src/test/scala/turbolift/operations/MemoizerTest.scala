@@ -1,7 +1,7 @@
 package turbolift.operations
 import cats.implicits._
 import turbolift.abstraction.!!
-import turbolift.abstraction.implicits._
+import turbolift.abstraction.Implicits._ //@#@ just TraverseImplicits
 import turbolift.std_effects.{Memoizer, Writer}
 import org.specs2._
 

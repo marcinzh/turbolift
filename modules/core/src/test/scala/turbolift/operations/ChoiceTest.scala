@@ -1,6 +1,5 @@
 package turbolift.operations
 import turbolift.abstraction.!!
-import turbolift.abstraction.implicits._
 import turbolift.std_effects.{Choice, Except}
 import org.specs2._
 

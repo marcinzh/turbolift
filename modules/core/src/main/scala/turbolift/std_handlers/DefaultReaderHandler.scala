@@ -2,7 +2,7 @@ package turbolift.std_handlers
 import cats.Id
 import turbolift.abstraction.!!
 import turbolift.abstraction.typeclass.MonadPar
-import turbolift.abstraction.implicits.MonadParSyntax
+import turbolift.abstraction.Implicits.MonadParSyntax
 import turbolift.std_effects.{ReaderSig, Reader}
 
 

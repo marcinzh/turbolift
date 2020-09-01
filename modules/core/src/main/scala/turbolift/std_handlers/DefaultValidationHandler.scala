@@ -4,7 +4,7 @@ import cats.syntax.semigroup._
 import cats.instances.either._
 import turbolift.abstraction.!!
 import turbolift.abstraction.typeclass.{MonadPar, Accum}
-import turbolift.abstraction.implicits.MonadParSyntax
+import turbolift.abstraction.Implicits.MonadParSyntax
 import turbolift.std_effects.{ValidationSig, Validation}
 
 

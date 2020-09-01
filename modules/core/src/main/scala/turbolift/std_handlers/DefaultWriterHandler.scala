@@ -5,7 +5,7 @@ import cats.syntax.functor._
 import cats.instances.tuple._
 import turbolift.abstraction.!!
 import turbolift.abstraction.typeclass.{MonadPar, Accum}
-import turbolift.abstraction.implicits.MonadParSyntax
+import turbolift.abstraction.Implicits.MonadParSyntax
 import turbolift.std_effects.{WriterSig, Writer}
 
 

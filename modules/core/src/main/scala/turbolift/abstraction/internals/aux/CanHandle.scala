@@ -22,9 +22,7 @@ object CanHandle {
   private[abstraction] val singleton = new CanHandle[Any, Any, Any] {
     def apply[A](eff: A !! Any): A !! Any = eff
   }
-}
 
-trait CanHandleImplicits {
   implicit def CanHandle_evidence[U, V, W](implicit ev: (W with U) <:< V): CanHandle[U, V, W] =
     CanHandle.singleton.asInstanceOf[CanHandle[U, V, W]]
 }

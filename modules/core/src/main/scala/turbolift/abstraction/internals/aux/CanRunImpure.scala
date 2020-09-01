@@ -19,9 +19,7 @@ object CanRunImpure {
   private[abstraction] val singleton = new CanRunImpure[Any, Any] {
     def apply[A](eff: A !! Any): A !! Any = eff
   }
-}
 
-trait CanRunImpureImplicits {
   implicit def CanRunImpure_evidence[U, V](implicit ev: V <:< U): CanRunImpure[U, V] =
     CanRunImpure.singleton.asInstanceOf[CanRunImpure[U, V]]
 }

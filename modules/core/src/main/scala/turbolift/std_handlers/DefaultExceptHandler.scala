@@ -2,7 +2,7 @@ package turbolift.std_handlers
 import cats.instances.either._
 import turbolift.abstraction.!!
 import turbolift.abstraction.typeclass.MonadPar
-import turbolift.abstraction.implicits.MonadParSyntax
+import turbolift.abstraction.Implicits.MonadParSyntax
 import turbolift.std_effects.{ExceptSig, Except}
 
 

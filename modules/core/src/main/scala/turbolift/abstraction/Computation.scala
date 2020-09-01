@@ -5,7 +5,6 @@ import turbolift.abstraction.typeclass.MonadPar
 import turbolift.abstraction.internals.handler.SaturatedHandler
 import turbolift.abstraction.internals.engine.MainLoop
 import turbolift.abstraction.internals.aux.{CanRunPure, CanRunImpure, CanHandle}
-import turbolift.abstraction.implicits.{CanRunPure_evidence, CanHandle_evidence}
 import ComputationCases._
 
 
@@ -35,7 +34,7 @@ sealed trait Computation[+A, -U] {
 }
 
 
-object Computation {
+object Computation extends ComputationExtensions with ComputationInstances {
   private val pureUnit = Pure(())
   def pure(): Unit !! Any = pureUnit
   def pure[A](a: A): A !! Any = Pure(a)
@@ -72,8 +71,10 @@ trait ComputationExports {
 }
 
 
-trait ComputationImplicits extends ComputationInstances {
-  implicit class ComputationExtension[A, U](thiz: A !! U) {
+trait ComputationExtensions {
+
+  implicit class ComputationExtension[A, U](thiz: Computation[A, U]) {
+  // implicit class ComputationExtension[A, U](thiz: A !! U) {
     def run(implicit ev: CanRunPure[U]): A = MainLoop.pure(ev(thiz)).run
     def runStackUnsafe(implicit ev: CanRunPure[U]): A = MainLoop.pureStackUnsafe[A](ev(thiz))
     
@@ -92,7 +93,7 @@ trait ComputationImplicits extends ComputationInstances {
     def downCast[V >: U] = thiz.asInstanceOf[Computation[A, V]]
   }
 
-  implicit class ComputationOfPairExtension[A, B, U](thiz: (A, B) !! U) {
+  implicit class ComputationOfPairExtension[A, B, U](thiz: Computation[(A, B), U]) {
     def map2[C](f: (A, B) => C): C !! U = thiz.map(f.tupled)
     def flatMap2[C, V](f: (A, B) => C !! V): C !! U with V = thiz.flatMap(f.tupled)
   }

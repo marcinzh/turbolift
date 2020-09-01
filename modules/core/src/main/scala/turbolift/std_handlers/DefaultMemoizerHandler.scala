@@ -3,7 +3,7 @@ import cats.Id
 import cats.instances.tuple._
 import turbolift.abstraction.{!!, Handler}
 import turbolift.abstraction.typeclass.MonadPar
-import turbolift.abstraction.implicits._
+import turbolift.abstraction.Implicits.MonadParSyntax
 import turbolift.std_effects.{MemoizerSig, Memoizer}
 
 
