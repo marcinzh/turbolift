@@ -10,8 +10,6 @@ object PrimitiveHandler_toplevel {
 }
 
 trait PrimitiveHandlerStub extends HasEffectId.Delegate {
-  val isFilterable: Boolean
-
   type ThisSignature[U] <: Signature[U]
 }
 

@@ -2,6 +2,7 @@ package turbolift.abstraction.internals.engine
 import cats.{Id, ~>}
 import turbolift.abstraction.{!!, ComputationCases}
 import turbolift.abstraction.effect.{EffectId, Signature}
+import turbolift.abstraction.effect.{AlternativeSig}
 import turbolift.abstraction.typeclass.MonadPar
 import turbolift.abstraction.internals.handler.PrimitiveHandler
 
@@ -9,15 +10,8 @@ import turbolift.abstraction.internals.handler.PrimitiveHandler
 final class MainLoop[M[_], U](
   val theMonad: MonadPar[M],
   val handlerStacks: List[HandlerStack[M]],
-  val failEffectId: EffectId,
+  val vmt: Array[AnyRef],
 ) extends ((? !! U) ~> M) {
-  def push[T[_[_], _], O[_], V](primitive: PrimitiveHandler[T, O]): MainLoop[T[M, ?], U with V] = {
-    val newHead: HandlerStack[T[M, ?]] = HandlerStack.pushFirst(primitive)(this.theMonad)
-    val newTail: List[HandlerStack[T[M, ?]]] = this.handlerStacks.map(_.pushNext(primitive))
-    val newFailEffectId: EffectId = if (primitive.isFilterable) primitive.effectId else this.failEffectId
-    new MainLoop[T[M, ?], U with V](newHead.outerMonad, newHead :: newTail, newFailEffectId)
-  }
-
   override def apply[A](ua: A !! U): M[A] = run(ua, Que.empty)
 
   private def run[A](ua: A !! U, que: Que[M, U]): M[A] = {
@@ -40,39 +34,33 @@ final class MainLoop[M[_], U](
       case Defer(th) => theMonad.defer(run(th(), que))
       case FlatMap(ux, k) => run(castU(ux), SeqStep(k, que))
       case ZipPar(ux, uy) => run(castU(ux), ParStepLeft(castU(uy), que))
-      case Dispatch(id, op) => run(castS(op)(findSig(id)), que)
+      case Dispatch(id, op) => run(castS(op)(lookup(id)), que)
       case Scope(ux, h) => run(Done(castM(h.prime(push(h.primitive).apply(ux)))), que)
     }
   }
 
-  private def findSig(effectId: EffectId): Signature[U] =
-    lookup(effectId).asInstanceOf[Signature[U]]
-  
-  private def lookup(key: AnyRef): AnyRef = {
-    def loop(idx: Int): AnyRef = {
-      if (vmt(idx) eq key)
-        vmt(idx+1)
-      else
-        loop(idx+2)
-    }
-    loop(0)
-  }
+  private def lookup(id: EffectId): Signature[U] = Vmt.lookup(vmt, id).asInstanceOf[Signature[U]]
 
-  private val vmt: Array[AnyRef] = {
-    val n = handlerStacks.size
-    val arr = new Array[AnyRef]((n + 1) * 2)
-    for ((hh, i) <- handlerStacks.iterator.zipWithIndex) {
-      arr(i*2) = hh.effectId
-      arr(i*2+1) = hh.decoder(this)
-    }
-    arr(n*2) = null
-    arr(n*2+1) = if (failEffectId == null) null else arr(arr.indexOf(failEffectId) + 1)
-    arr
+  def push[T[_[_], _], O[_], V](primitive: PrimitiveHandler[T, O]): MainLoop[T[M, ?], U with V] = {
+    val newHead: HandlerStack[T[M, ?]] = HandlerStack.pushFirst(primitive)(this.theMonad)
+    val newTail: List[HandlerStack[T[M, ?]]] = this.handlerStacks.map(_.pushNext(primitive))
+    val newStack: List[HandlerStack[T[M, ?]]] = newHead :: newTail
+    val newVmt = Vmt.prealloc(newStack.size)
+    val newLoop = new MainLoop[T[M, ?], U with V](newHead.outerMonad, newStack, newVmt)
+    Vmt.fill[EffectId, Signature[U with V], HandlerStack[T[M, ?]]](
+      newVmt,
+      newStack,
+      _.effectId,
+      _.decoder(newLoop),
+      _.isInstanceOf[AlternativeSig[_]]
+    )
+    newLoop
   }
 }
+
 
 object MainLoop {
   val pure: MainLoop[Trampoline, Any] = apply(TrampolineInstances.monad)
   val pureStackUnsafe: MainLoop[Id, Any] = apply(MonadPar.identity)
-  def apply[M[_]: MonadPar]: MainLoop[M, Any] = new MainLoop[M, Any](MonadPar[M], Nil, null)
+  def apply[M[_]: MonadPar]: MainLoop[M, Any] = new MainLoop[M, Any](MonadPar[M], Nil, Vmt.empty)
 }

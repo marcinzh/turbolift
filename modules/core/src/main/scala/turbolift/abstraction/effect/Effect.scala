@@ -24,10 +24,6 @@ sealed trait AnyEffect[Z[U] <: Signature[U]] extends EffectEncoding[Z] with HasE
 
 
 trait Effect[Z[U] <: Signature[U]] extends AnyEffect[Z] {
-  trait ThisHandler extends super.ThisHandler {
-    final override val isFilterable = false
-  }
-
   abstract class Nullary[O[_]: Functor] extends super.Nullary[O] with ThisHandler
   abstract class Unary[S, O[_]: Functor] extends super.Unary[S, O] with ThisHandler
 }
@@ -35,10 +31,6 @@ trait Effect[Z[U] <: Signature[U]] extends AnyEffect[Z] {
 
 object Effect {
   trait Alternative[Z[U] <: AlternativeSig[U]] extends AnyEffect[Z] with AlternativeEffectEncoding[Z] {
-    trait ThisHandler extends super.ThisHandler {
-      final override val isFilterable = true
-    }
-
     abstract class Nullary[O[_]: Functor] extends super.Nullary[O] with ThisHandler
     abstract class Unary[S, O[_]: Functor] extends super.Unary[S, O] with ThisHandler
   }
