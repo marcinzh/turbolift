@@ -1,4 +1,4 @@
-package turbolift.abstraction.effect
+package turbolift.abstraction.internals.effect
 import cats.~>
 import turbolift.abstraction.!!
 import turbolift.abstraction.ComputationCases.Dispatch

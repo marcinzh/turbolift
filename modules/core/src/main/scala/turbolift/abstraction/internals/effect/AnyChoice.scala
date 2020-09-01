@@ -1,4 +1,4 @@
-package turbolift.abstraction.effect
+package turbolift.abstraction.internals.effect
 import turbolift.abstraction.!!
 import turbolift.std_effects.{Choice, ChoiceSig}
 

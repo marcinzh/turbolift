@@ -1,4 +1,4 @@
-package turbolift.abstraction.effect
+package turbolift.abstraction.internals.effect
 
 
 sealed trait EffectId extends AnyRef

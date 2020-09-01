@@ -1,7 +1,7 @@
 package turbolift.abstraction.internals.handler
 import cats.{Functor, ~>}
 import turbolift.abstraction.!!
-import turbolift.abstraction.effect.{Signature, HasEffectId}
+import turbolift.abstraction.internals.effect.{Signature, HasEffectId}
 import turbolift.abstraction.typeclass.MonadPar
 
 import PrimitiveHandler_toplevel._

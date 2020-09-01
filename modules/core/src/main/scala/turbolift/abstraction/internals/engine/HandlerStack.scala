@@ -1,7 +1,7 @@
 package turbolift.abstraction.internals.engine
 import cats.{Id, ~>}
 import turbolift.abstraction.!!
-import turbolift.abstraction.effect.{HasEffectId, Signature}
+import turbolift.abstraction.internals.effect.{HasEffectId, Signature}
 import turbolift.abstraction.internals.handler.{PrimitiveHandler, Lifting, Context}
 import turbolift.abstraction.typeclass.MonadPar
 import turbolift.abstraction.ComputationCases.Done

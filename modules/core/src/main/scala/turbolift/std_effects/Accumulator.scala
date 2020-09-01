@@ -1,7 +1,7 @@
 package turbolift.std_effects
 import cats.Monoid
-import turbolift.abstraction.!!
-import turbolift.abstraction.effect.{Effect, Signature}
+import turbolift.abstraction.{!!, Effect}
+import turbolift.abstraction.internals.effect.Signature
 import turbolift.abstraction.typeclass.AccumZero
 import turbolift.std_handlers.DefaultAccumulatorHandler
 

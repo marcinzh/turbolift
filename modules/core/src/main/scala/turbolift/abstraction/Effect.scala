@@ -1,5 +1,6 @@
-package turbolift.abstraction.effect
+package turbolift.abstraction
 import cats.Functor
+import turbolift.abstraction.internals.effect.{HasEffectId, EffectEncoding, Signature}
 import turbolift.abstraction.internals.handler.{PrimitiveHandlerStub, SaturatedHandler}
 
 

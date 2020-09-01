@@ -1,7 +1,7 @@
 package turbolift.abstraction
 import cats.~>
-import turbolift.abstraction.effect.{EffectId, Signature, AnyChoice}
 import turbolift.abstraction.typeclass.MonadPar
+import turbolift.abstraction.internals.effect.{EffectId, Signature, AnyChoice}
 import turbolift.abstraction.internals.handler.SaturatedHandler
 import turbolift.abstraction.internals.engine.MainLoop
 import turbolift.abstraction.internals.aux.{CanRunPure, CanRunImpure, CanHandle}
