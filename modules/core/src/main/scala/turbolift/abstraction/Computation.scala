@@ -1,7 +1,7 @@
 package turbolift.abstraction
 import cats.~>
 import turbolift.abstraction.typeclass.MonadPar
-import turbolift.abstraction.internals.effect.{EffectId, Signature, AnyChoice}
+import turbolift.abstraction.internals.effect.{EffectId, AnyChoice}
 import turbolift.abstraction.internals.handler.SaturatedHandler
 import turbolift.abstraction.internals.engine.MainLoop
 import turbolift.abstraction.internals.aux.{CanRunPure, CanRunImpure, CanHandle}
@@ -52,7 +52,7 @@ private[abstraction] object ComputationCases {
   final case class Defer[A, U](thunk: () => A !! U) extends Computation[A, U]
   final case class FlatMap[A, B, U](that: A !! U, k: A => B !! U) extends Computation[B, U]
   final case class ZipPar[A, B, U](lhs: A !! U, rhs: B !! U) extends Computation[(A, B), U]
-  final case class Dispatch[A, U, Z[V] <: Signature[V]](effectId: EffectId, op: Z[U] => A !! U) extends Computation[A, U]
+  final case class Dispatch[A, U, Z[_]](effectId: EffectId, op: Z[U] => A !! U) extends Computation[A, U]
   final case class Scope[A, U, H <: SaturatedHandler](scope: A !! U with H#Effects, h: H) extends Computation[H#Result[A], U]
 }
 

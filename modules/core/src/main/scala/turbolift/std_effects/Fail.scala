@@ -1,6 +1,5 @@
 package turbolift.std_effects
 import turbolift.abstraction.{!!, Effect}
-import turbolift.abstraction.internals.effect.Signature
 import turbolift.std_handlers.DefaultFailHandler
 
 

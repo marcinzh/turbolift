@@ -1,9 +1,9 @@
 package turbolift.abstraction.internals.engine
 import cats.{Id, ~>}
 import turbolift.abstraction.{!!, ComputationCases}
-import turbolift.abstraction.internals.effect.{EffectId, Signature}
+import turbolift.abstraction.internals.effect.{EffectId}
 import turbolift.abstraction.typeclass.MonadPar
-import turbolift.abstraction.internals.handler.PrimitiveHandler
+import turbolift.abstraction.internals.handler.{PrimitiveHandler, Signature}
 import turbolift.std_effects.ChoiceSig
 
 

@@ -1,10 +1,9 @@
 package turbolift.std_effects
 import turbolift.abstraction.{!!, Effect}
-import turbolift.abstraction.internals.effect.Signature
 import turbolift.std_handlers.DefaultReaderHandler
 
 
-trait ReaderSig[U, R] extends Signature[U] {
+trait ReaderSig[U, R] {
   def ask: R !! U
   def local[A](mod: R => R)(scope: A !! U): A !! U
 }

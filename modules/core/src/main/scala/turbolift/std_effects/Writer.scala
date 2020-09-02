@@ -1,12 +1,11 @@
 package turbolift.std_effects
 import cats.Monoid
 import turbolift.abstraction.{!!, Effect}
-import turbolift.abstraction.internals.effect.Signature
 import turbolift.abstraction.typeclass.{Accum}
 import turbolift.std_handlers.DefaultWriterHandler
 
 
-trait WriterSig[U, W] extends Signature[U] {
+trait WriterSig[U, W] {
   def tell(w: W): Unit !! U
   def listen[A](scope: A !! U): (W, A) !! U
   def censor[A](scope: A !! U)(mod: W => W): A !! U

@@ -1,10 +1,9 @@
 package turbolift.std_effects
 import turbolift.abstraction.{!!, Effect}
-import turbolift.abstraction.internals.effect.Signature
 import turbolift.std_handlers.DefaultMemoizerHandler
 
 
-trait MemoizerSig[U, K, V] extends Signature[U] {
+trait MemoizerSig[U, K, V] {
   def memo(fun: K => V !! U)(k: K): V !! U
   def snapshot: Map[K, V] !! U
 }

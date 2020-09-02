@@ -1,12 +1,11 @@
 package turbolift.std_effects
 import cats.Monoid
 import turbolift.abstraction.{!!, Effect}
-import turbolift.abstraction.internals.effect.Signature
 import turbolift.abstraction.typeclass.AccumZero
 import turbolift.std_handlers.DefaultAccumulatorHandler
 
 
-trait AccumulatorSig[U, E] extends Signature[U] {
+trait AccumulatorSig[U, E] {
   def tell(e: E): Unit !! U
   def clear[A](scope: A !! U): A !! U
 }

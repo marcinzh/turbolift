@@ -1,12 +1,11 @@
 package turbolift.std_effects
 import cats.Semigroup
 import turbolift.abstraction.{!!, Effect}
-import turbolift.abstraction.internals.effect.Signature
 import turbolift.abstraction.typeclass.Accum
 import turbolift.std_handlers.DefaultValidationHandler
 
 
-trait ValidationSig[U, E] extends Signature[U] {
+trait ValidationSig[U, E] {
   def invalid[A](e: E): A !! U
   def validate[A](scope: A !! U)(recover: E => A !! U): A !! U
 }

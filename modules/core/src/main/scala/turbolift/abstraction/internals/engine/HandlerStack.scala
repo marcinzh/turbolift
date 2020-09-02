@@ -1,8 +1,8 @@
 package turbolift.abstraction.internals.engine
 import cats.{Id, ~>}
 import turbolift.abstraction.!!
-import turbolift.abstraction.internals.effect.{HasEffectId, Signature}
-import turbolift.abstraction.internals.handler.{PrimitiveHandler, Lifting, Context}
+import turbolift.abstraction.internals.effect.HasEffectId
+import turbolift.abstraction.internals.handler.{PrimitiveHandler, Lifting, Context, Signature}
 import turbolift.abstraction.typeclass.MonadPar
 import turbolift.abstraction.ComputationCases.Done
 
@@ -80,7 +80,7 @@ private object HandlerStackCases {
           override val lifting: Lifting[? !! U, Main, Stash] = lifting2
         }
 
-      primitive.specialOps(context)
+      primitive.specialOps(context).toSignature
     }
   }
 }

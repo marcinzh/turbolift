@@ -1,7 +1,7 @@
 package turbolift.abstraction.internals.handler
 import cats.{Functor, ~>}
 import turbolift.abstraction.!!
-import turbolift.abstraction.internals.effect.{Signature, HasEffectId}
+import turbolift.abstraction.internals.effect.HasEffectId
 import turbolift.abstraction.typeclass.MonadPar
 
 import PrimitiveHandler_toplevel._
@@ -9,8 +9,9 @@ object PrimitiveHandler_toplevel {
   val ~> = cats.arrow.FunctionK
 }
 
+
 trait PrimitiveHandlerStub extends HasEffectId.Delegate {
-  type ThisSignature[U] <: Signature[U]
+  type ThisSignature[U] <: AnyRef
 }
 
 
@@ -32,12 +33,14 @@ sealed trait PrimitiveHandler[T[_[_], _], O[_]] extends PrimitiveHandlerStub {
 
   def specialOps[M[_], U](context: ThisContext[M, U]): SpecialOps[M, U]
 
-  abstract class SpecialOps[M[_], U](val context: ThisContext[M, U]) extends Signature[U] { this: ThisSignature[U] =>
+  abstract class SpecialOps[M[_], U](val context: ThisContext[M, U]) { this: ThisSignature[U] =>
     final type Stash[A] = context.Stash[A]
 
     final implicit def innerMonad: MonadPar[M] = context.innerMonad
     final /******/ def mainMonad: MonadPar[T[M, ?]] = context.mainMonad
     final implicit def stashFunctor: Functor[Stash] = context.lifting.stashFunctor
+
+    final def toSignature: Signature[U] = this
 
     final def pureInner[A](a: A): M[A] = context.innerMonad.pure(a)
 

@@ -1,10 +1,9 @@
 package turbolift.std_effects
 import turbolift.abstraction.{!!, Effect}
-import turbolift.abstraction.internals.effect.Signature
 import turbolift.std_handlers.DefaultExceptHandler
 
 
-trait ExceptSig[U, E] extends Signature[U] {
+trait ExceptSig[U, E] {
   def raise[A](e: E): A !! U
   def katch[A](scope: A !! U)(recover: E => A !! U): A !! U
 }

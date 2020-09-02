@@ -4,7 +4,7 @@ import turbolift.abstraction.!!
 import turbolift.abstraction.ComputationCases.Dispatch
 
 
-trait Embedding[Z[U] <: Signature[U]] extends HasEffectId.Unsealed {
+trait Embedding[Z[_]] extends HasEffectId.Unsealed {
   type ThisEffect
 
   final def embedFO[A](f: Z[ThisEffect] => A !! ThisEffect): A !! ThisEffect = new Dispatch(effectId, f)
