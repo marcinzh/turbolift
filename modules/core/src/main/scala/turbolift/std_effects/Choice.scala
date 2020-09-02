@@ -12,9 +12,9 @@ trait ChoiceSig[U] extends Signature[U] {
 
 
 trait Choice extends Effect[ChoiceSig] {
-  final val empty: Nothing !! this.type = encodeFO(_.empty)
-  final def plus[A, U](lhs: A !! U, rhs: => A !! U): A !! U with this.type = encodeHO[U](_.plus(lhs, rhs))
-  final def each[A](as: Iterable[A]): A !! this.type = encodeFO(_.each(as))
+  final val empty: Nothing !! this.type = embedFO(_.empty)
+  final def plus[A, U](lhs: A !! U, rhs: => A !! U): A !! U with this.type = embedHO[U](_.plus(lhs, rhs))
+  final def each[A](as: Iterable[A]): A !! this.type = embedFO(_.each(as))
 
   //@#@ rename to apply?
   final def fromEach[A](as: A*): A !! this.type = each(as.toVector)

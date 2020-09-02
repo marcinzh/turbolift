@@ -1,10 +1,10 @@
 package turbolift.abstraction
 import cats.Functor
-import turbolift.abstraction.internals.effect.{HasEffectId, EffectEncoding, Signature}
+import turbolift.abstraction.internals.effect.{HasEffectId, Embedding, Signature}
 import turbolift.abstraction.internals.handler.{PrimitiveHandlerStub, SaturatedHandler}
 
 
-trait Effect[Z[U] <: Signature[U]] extends EffectEncoding[Z] with HasEffectId.Self {
+trait Effect[Z[U] <: Signature[U]] extends Embedding[Z] with HasEffectId.Self {
   final override type ThisEffect = this.type
 
   trait ThisHandler extends PrimitiveHandlerStub {

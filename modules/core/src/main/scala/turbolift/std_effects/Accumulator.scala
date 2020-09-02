@@ -12,8 +12,8 @@ trait AccumulatorSig[U, E] extends Signature[U] {
 }
 
 trait Accumulator[E] extends Effect[AccumulatorSig[?, E]] { thiz =>
-  final def tell(e: E): Unit !! this.type = encodeFO(_.tell(e))
-  final def clear[A, U](scope: A !! U): A !! U with this.type = encodeHO[U](_.clear(scope))
+  final def tell(e: E): Unit !! this.type = embedFO(_.tell(e))
+  final def clear[A, U](scope: A !! U): A !! U with this.type = embedHO[U](_.clear(scope))
 
   object handler {
     def apply[W](implicit W: AccumZero[E, W]) = DefaultAccumulatorHandler[E, W, thiz.type](thiz).apply(W.zero)

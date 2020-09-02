@@ -11,8 +11,8 @@ trait ExceptSig[U, E] extends Signature[U] {
 
 
 trait Except[E] extends Effect[ExceptSig[?, E]] {
-  final def raise(e: E): Nothing !! this.type = encodeFO(_.raise(e))
-  final def katch[A, U](scope: A !! U)(recover: E => A !! U): A !! U with this.type = encodeHO[U](_.katch(scope)(recover))
+  final def raise(e: E): Nothing !! this.type = embedFO(_.raise(e))
+  final def katch[A, U](scope: A !! U)(recover: E => A !! U): A !! U with this.type = embedHO[U](_.katch(scope)(recover))
 
   final def from[A](x: Either[E, A]): A !! this.type = x match {
     case Right(a) => pure(a)

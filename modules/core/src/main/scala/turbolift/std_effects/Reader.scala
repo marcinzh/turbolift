@@ -10,9 +10,9 @@ trait ReaderSig[U, R] extends Signature[U] {
 }
 
 trait Reader[R] extends Effect[ReaderSig[?, R]] {
-  final val ask: R !! this.type = encodeFO(_.ask)
+  final val ask: R !! this.type = embedFO(_.ask)
   final def asks[A](f: R => A): A !! this.type = ask.map(f)
-  final def local[A, U](mod: R => R)(scope: A !! U): A !! U with this.type = encodeHO[U](_.local(mod)(scope))
+  final def local[A, U](mod: R => R)(scope: A !! U): A !! U with this.type = embedHO[U](_.local(mod)(scope))
 
   val handler = DefaultReaderHandler[R, this.type](this)
 }

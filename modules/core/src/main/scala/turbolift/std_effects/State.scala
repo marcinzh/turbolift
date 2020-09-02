@@ -11,9 +11,9 @@ trait StateSig[U, S] extends Signature[U] {
 }
 
 trait State[S] extends Effect[StateSig[?, S]] {
-  final val get: S !! this.type = encodeFO(_.get)
-  final def put(s: S): Unit !! this.type = encodeFO(_.put(s))
-  final def mod(f: S => S): Unit !! this.type = encodeFO(_.mod(f))
+  final val get: S !! this.type = embedFO(_.get)
+  final def put(s: S): Unit !! this.type = embedFO(_.put(s))
+  final def mod(f: S => S): Unit !! this.type = embedFO(_.mod(f))
 
   val handler = DefaultStateHandler[S, this.type](this)
 }
