@@ -8,7 +8,7 @@ private[engine] object Vmt {
     new Array[AnyRef]((n + 1) * 2)
   }
   
-  //// must be a separate step, because creating `isChoice` ties the knot
+  //// must be a separate step, because creating `makeValue` ties the knot
   def fill[K <: AnyRef, V <: AnyRef, X](
     arr: Array[AnyRef],
     items: Iterable[X],
