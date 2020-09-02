@@ -9,12 +9,12 @@ sealed trait Handler {
   final type This = Handler.Apply[Result, Effects]
   final type Into[F[_]] = Result ~> F
 
-  final def run[A](eff: A !! Effects): Result[A] = handle[Any](eff).run
+  final def run[A](comp: A !! Effects): Result[A] = handle[Any](comp).run
 
   final def handle[V] = new HandleApply[V]
   final class HandleApply[V] {
-    def apply[A, W](eff: A !! W)(implicit ev: CanHandle[V, W, Effects]): Result[A] !! V =
-      doHandle[A, V](ev(eff))
+    def apply[A, W](comp: A !! W)(implicit ev: CanHandle[V, W, Effects]): Result[A] !! V =
+      doHandle[A, V](ev(comp))
   }
 
   final def <<<![H <: Handler](that: H) = HandlerCases.Composed[This, H](this, that)
@@ -22,7 +22,7 @@ sealed trait Handler {
 
   final def map[F[_]](f: Result ~> F): Handler.Apply[F, Effects] = HandlerCases.Mapped[This, F](this)(f)
 
-  protected[abstraction] def doHandle[A, U](eff: A !! U with Effects): Result[A] !! U
+  protected[abstraction] def doHandle[A, U](comp: A !! U with Effects): Result[A] !! U
 }
 
 
@@ -41,9 +41,9 @@ object HandlerCases {
     override type Effects = lhs.Effects with rhs.Effects
     override type Result[A] = lhs.Result[rhs.Result[A]]
 
-    protected[abstraction] override def doHandle[A, U](eff: A !! U with Effects): Result[A] !! U =
+    protected[abstraction] override def doHandle[A, U](comp: A !! U with Effects): Result[A] !! U =
       lhs.doHandle[rhs.Result[A], U](
-        rhs.doHandle[A, U with lhs.Effects](eff)
+        rhs.doHandle[A, U with lhs.Effects](comp)
       )
   }
 
@@ -51,8 +51,8 @@ object HandlerCases {
     override type Result[A] = F[A]
     override type Effects = that.Effects
 
-    protected[abstraction] override def doHandle[A, U](eff: A !! U with Effects): Result[A] !! U =
-      that.doHandle[A, U](eff).map(fun(_))
+    protected[abstraction] override def doHandle[A, U](comp: A !! U with Effects): Result[A] !! U =
+      that.doHandle[A, U](comp).map(fun(_))
   }
 }
 

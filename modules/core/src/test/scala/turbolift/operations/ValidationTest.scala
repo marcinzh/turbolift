@@ -31,7 +31,7 @@ class ValidationTest extends Specification with CanLaunchTheMissiles {
     def mkEff = {
       val missile1 = Missile()
       val missile2 = Missile()
-      val eff = FxV.validate {
+      val comp = FxV.validate {
         for {
           _ <- FxW.tell(42)
           _ <- FxV.invalid("x") *! missile1.launch_! *! FxV.invalid("y") *! FxV.invalid("z")
@@ -40,20 +40,20 @@ class ValidationTest extends Specification with CanLaunchTheMissiles {
           _ <- missile2.launch_!
         } yield "???"
       } (str => !!.pure(str.toUpperCase))
-      (eff, missile1, missile2)
+      (comp, missile1, missile2)
     }
 
     val testVS = {
-      val (eff, missile1, missile2) = mkEff
-      val result = eff.runWith(FxV.handler <<<! FxW.handler)
+      val (comp, missile1, missile2) = mkEff
+      val result = comp.runWith(FxV.handler <<<! FxW.handler)
       result must_== Right((0, "XYZ")) and
       missile1.mustHaveLaunchedOnce and
       missile2.mustNotHaveLaunched
     }
 
     val testSV = {
-      val (eff, missile1, missile2) = mkEff
-      val result = eff.runWith(FxW.handler <<<! FxV.handler)
+      val (comp, missile1, missile2) = mkEff
+      val result = comp.runWith(FxW.handler <<<! FxV.handler)
       result must_== ((42, Right("XYZ"))) and
       missile1.mustHaveLaunchedOnce and
       missile2.mustNotHaveLaunched

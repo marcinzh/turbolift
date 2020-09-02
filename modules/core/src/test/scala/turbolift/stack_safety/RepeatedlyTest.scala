@@ -20,15 +20,15 @@ class RepeatedlyTest extends Specification with CanStackOverflow {
     type Fx
     type This = Case0 { type Fx = outer.Fx }
     val name: String
-    val eff: Any !! Fx
+    val comp: Any !! Fx
     def mapEff(mapper: Mapper): This
     def run: Any
   }
 
-  case class Case[U](name: String, h: Handler { type Effects = U }, eff: Any !! U) extends Case0 {
+  case class Case[U](name: String, h: Handler { type Effects = U }, comp: Any !! U) extends Case0 {
     type Fx = U
-    def mapEff(f: Mapper) = copy(eff = f(eff))
-    def run = h run eff
+    def mapEff(f: Mapper) = copy(comp = f(comp))
+    def run = h run comp
   }
 
   case object FxR extends Reader[Int]
@@ -44,20 +44,20 @@ class RepeatedlyTest extends Specification with CanStackOverflow {
   )
 
   abstract class Mapper(val name: String) {
-    def apply[U](eff: Any !! U): _ !! U
+    def apply[U](comp: Any !! U): _ !! U
   }
 
   val mappers = {
-    def many[A, U](eff: A !! U) = Vector.fill(TooBigForStack)(eff)
+    def many[A, U](comp: A !! U) = Vector.fill(TooBigForStack)(comp)
     List(
       new Mapper("sequentially") {
-        def apply[U](eff: Any !! U) = many(eff).reduce(_ &&! _)
+        def apply[U](comp: Any !! U) = many(comp).reduce(_ &&! _)
       },
       new Mapper("parallelly") {
-        def apply[U](eff: Any !! U) = many(eff).reduce(_ &! _)
+        def apply[U](comp: Any !! U) = many(comp).reduce(_ &! _)
       },
       new Mapper("both sequentially and parallelly") {
-        def apply[U](eff: Any !! U) = many(eff).grouped(2).map(_.reduce(_ &! _)).reduce(_ &&! _)
+        def apply[U](comp: Any !! U) = many(comp).grouped(2).map(_.reduce(_ &! _)).reduce(_ &&! _)
       },
     )
   }

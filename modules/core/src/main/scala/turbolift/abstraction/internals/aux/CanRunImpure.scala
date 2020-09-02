@@ -12,12 +12,12 @@ import turbolift.abstraction.!!
 )
 //// asserts U <= V
 sealed trait CanRunImpure[U, V] {
-  def apply[A](eff: A !! U): A !! V
+  def apply[A](comp: A !! U): A !! V
 }
 
 object CanRunImpure {
   private[abstraction] val singleton = new CanRunImpure[Any, Any] {
-    def apply[A](eff: A !! Any): A !! Any = eff
+    def apply[A](comp: A !! Any): A !! Any = comp
   }
 
   implicit def CanRunImpure_evidence[U, V](implicit ev: V <:< U): CanRunImpure[U, V] =

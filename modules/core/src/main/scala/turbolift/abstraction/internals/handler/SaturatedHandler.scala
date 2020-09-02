@@ -9,8 +9,8 @@ private[abstraction] sealed trait SaturatedHandler extends HandlerCases.Unsealed
   val primitive: PrimitiveHandler[Trans, Result]
   def prime[M[_], A](tma: Trans[M, A]): M[Result[A]]
 
-  final def doHandle[A, U](eff: A !! U with Effects): Result[A] !! U = 
-    new Scope[A, U, this.type](eff, this)
+  final def doHandle[A, U](comp: A !! U with Effects): Result[A] !! U = 
+    new Scope[A, U, this.type](comp, this)
 }
 
 

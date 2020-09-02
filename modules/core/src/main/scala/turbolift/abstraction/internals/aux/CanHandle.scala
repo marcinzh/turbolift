@@ -15,12 +15,12 @@ import turbolift.abstraction.!!
 )
 //// asserts U = V \ W
 sealed trait CanHandle[U, V, W] {
-  def apply[A](eff: A !! V): A !! W with U
+  def apply[A](comp: A !! V): A !! W with U
 }
 
 object CanHandle {
   private[abstraction] val singleton = new CanHandle[Any, Any, Any] {
-    def apply[A](eff: A !! Any): A !! Any = eff
+    def apply[A](comp: A !! Any): A !! Any = comp
   }
 
   implicit def CanHandle_evidence[U, V, W](implicit ev: (W with U) <:< V): CanHandle[U, V, W] =
