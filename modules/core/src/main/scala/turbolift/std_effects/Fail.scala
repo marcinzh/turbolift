@@ -9,5 +9,5 @@ trait FailSig[U] extends ChoiceSig[U]
 trait Fail extends Effect[FailSig] {
   final val fail: Nothing !! this.type = embedFO(_.empty)
   
-  val handler = DefaultFailHandler(this)
+  val handler: ThisHandler[Option] = DefaultFailHandler(this)
 }

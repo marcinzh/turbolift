@@ -19,14 +19,14 @@ class PartialHandlerTest extends Specification {
 
   def good21 = typecheck {"""
     any[Eff123]
-    .handleWith[Fx3.type](any[H1 <<<! H2])
+    .handleWith[Fx3.type](any[H21])
     .handleWith[Any](any[H3])
     .run
   """} must succeed	
 
   def good3 = typecheck {"""
     any[Eff123]
-    .handleWith[Any](any[H1 <<<! H2 <<<! H3])
+    .handleWith[Any](any[H321])
     .run
   """} must succeed	
 

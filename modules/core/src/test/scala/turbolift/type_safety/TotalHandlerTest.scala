@@ -7,9 +7,6 @@ import Dummies._
 
 
 class TotalHandlerTest extends Specification {
-  type H12 = H1 <<<! H2
-  type H21 = H2 <<<! H1
-
   def is = br ^ "Total handler's effects should be superset of handled computation's effects" ! List(
     typecheck {"any[H12] run any[Eff1]"}   must succeed,
     typecheck {"any[H12] run any[Eff2]"}   must succeed,

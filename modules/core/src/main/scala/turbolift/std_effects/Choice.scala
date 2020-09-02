@@ -18,5 +18,5 @@ trait Choice extends Effect[ChoiceSig] {
   //@#@ rename to apply?
   final def fromEach[A](as: A*): A !! this.type = each(as.toVector)
 
-  val handler = DefaultChoiceHandler(this)
+  val handler: ThisHandler[Vector] = DefaultChoiceHandler(this)
 }

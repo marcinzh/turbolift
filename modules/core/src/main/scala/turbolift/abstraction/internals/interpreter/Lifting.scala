@@ -1,4 +1,4 @@
-package turbolift.abstraction.internals.handler
+package turbolift.abstraction.internals.interpreter
 import cats.{Functor, Id}
 
 

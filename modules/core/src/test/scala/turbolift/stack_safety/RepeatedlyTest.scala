@@ -25,7 +25,7 @@ class RepeatedlyTest extends Specification with CanStackOverflow {
     def run: Any
   }
 
-  case class Case[U](name: String, h: Handler { type Effects = U }, comp: Any !! U) extends Case0 {
+  case class Case[F[_], U](name: String, h: Handler[F, U], comp: Any !! U) extends Case0 {
     type Fx = U
     def mapEff(f: Mapper) = copy(comp = f(comp))
     def run = h run comp

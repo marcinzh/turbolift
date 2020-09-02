@@ -1,6 +1,6 @@
 package turbolift.type_safety
 import cats.implicits._
-import turbolift.abstraction.!!
+import turbolift.abstraction.{!!, Handler}
 import turbolift.std_effects.{Reader, Writer, State}
 
 
@@ -16,6 +16,10 @@ object Dummies {
   type H1 = h1.type
   type H2 = h2.type
   type H3 = h3.type
+
+  type H12 = Handler[Lambda[X => (Double, (String, X))], Fx1.type with Fx2.type]
+  type H21 = Handler[Lambda[X => (String, (Double, X))], Fx1.type with Fx2.type]
+  type H321 = Handler[Lambda[X => (String, (Double, X))], Fx1.type with Fx2.type with Fx3.type]
 
   class Whatever
   def any[T] : T = ???

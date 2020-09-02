@@ -14,5 +14,5 @@ trait State[S] extends Effect[StateSig[?, S]] {
   final def put(s: S): Unit !! this.type = embedFO(_.put(s))
   final def mod(f: S => S): Unit !! this.type = embedFO(_.mod(f))
 
-  val handler = DefaultStateHandler[S, this.type](this)
+  def handler(initial: S): ThisHandler[(S, ?)] = DefaultStateHandler(this, initial)
 }

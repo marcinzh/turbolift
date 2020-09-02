@@ -21,5 +21,5 @@ trait Validation[E] extends Effect[ValidationSig[?, E]] {
     case Left(e) => invalid(e)
   }
 
-  def handler(implicit E: Semigroup[E]) = DefaultValidationHandler[E, this.type](this)
+  def handler(implicit E: Semigroup[E]): ThisHandler[Either[E, ?]] = DefaultValidationHandler[E, this.type](this)
 }

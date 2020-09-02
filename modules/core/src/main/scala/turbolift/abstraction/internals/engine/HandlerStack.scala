@@ -2,20 +2,20 @@ package turbolift.abstraction.internals.engine
 import cats.{Id, ~>}
 import turbolift.abstraction.!!
 import turbolift.abstraction.internals.effect.HasEffectId
-import turbolift.abstraction.internals.handler.{PrimitiveHandler, Lifting, Context, Signature}
+import turbolift.abstraction.internals.interpreter.{MonadTransformer, Lifting, Context, AnySignature}
 import turbolift.abstraction.typeclass.MonadPar
 import turbolift.abstraction.ComputationCases.Done
 
 
 sealed trait HandlerStack[P[_]] extends HasEffectId.Delegate {
   def outerMonad: MonadPar[P]
-  def decoder[U](recur: (? !! U) ~> P): Signature[U]
-  def pushNext[T[_[_], _], O[_]](primitive: PrimitiveHandler[T, O]): HandlerStack[T[P, ?]]
+  def decoder[U](recur: (? !! U) ~> P): AnySignature[U]
+  def pushNext[T[_[_], _], O[_]](primitive: MonadTransformer[T, O]): HandlerStack[T[P, ?]]
 }
 
 
 object HandlerStack {
-  def pushFirst[T[_[_], _], O[_], M[_]: MonadPar](primitive: PrimitiveHandler[T, O]): HandlerStack[T[M, ?]] =
+  def pushFirst[T[_[_], _], O[_], M[_]: MonadPar](primitive: MonadTransformer[T, O]): HandlerStack[T[M, ?]] =
     HandlerStackCases.PushFirst(primitive)    
 }
 
@@ -25,10 +25,10 @@ private object HandlerStackCases {
     def lifting: Lifting[P, Q, F]
     def canDecode: CanDecode[Q]
 
-    final override def decoder[U](recur: (? !! U) ~> P): Signature[U] =
+    final override def decoder[U](recur: (? !! U) ~> P): AnySignature[U] =
       canDecode.makeDecoder(recur, lifting)(outerMonad)
 
-    final override def pushNext[T[_[_], _], O[_]](primitive: PrimitiveHandler[T, O]): HandlerStack[T[P, ?]] =
+    final override def pushNext[T[_[_], _], O[_]](primitive: MonadTransformer[T, O]): HandlerStack[T[P, ?]] =
       PushNext(this, primitive, canDecode)
   }
 
@@ -37,13 +37,13 @@ private object HandlerStackCases {
     final override def lifting = Lifting.identity[Q]
     final override def canDecode: CanDecode[Q] = this
 
-    def makeDecoder[P[_]: MonadPar, F[_], U](recur: (? !! U) ~> P, lifting: Lifting[P, Q, F]): Signature[U]
+    def makeDecoder[P[_]: MonadPar, F[_], U](recur: (? !! U) ~> P, lifting: Lifting[P, Q, F]): AnySignature[U]
   }
 
 
   final case class PushNext[T[_[_], _], O[_], P[_], Q[_], F[_]](
     that: CanLift[P, Q, F],
-    primitive: PrimitiveHandler[T, O],
+    primitive: MonadTransformer[T, O],
     override val canDecode: CanDecode[Q],
   ) extends CanLift[T[P, ?], Q, Lambda[X => F[O[X]]]] {
     private val commonOps = primitive.commonOps[P](that.outerMonad)
@@ -53,11 +53,11 @@ private object HandlerStackCases {
   }
 
 
-  final case class PushFirst[T[_[_], _], O[_], M[_]: MonadPar](primitive: PrimitiveHandler[T, O]) extends CanDecode[T[M, ?]] { outer =>
+  final case class PushFirst[T[_[_], _], O[_], M[_]: MonadPar](primitive: MonadTransformer[T, O]) extends CanDecode[T[M, ?]] { outer =>
     override def effectIdDelegate: HasEffectId = primitive
     override def outerMonad: MonadPar[T[M, ?]] = primitive.commonOps[M]
 
-    override def makeDecoder[P[_]: MonadPar, F[_], U](recur: (? !! U) ~> P, lifting: Lifting[P, T[M, ?], F]): Signature[U] = {
+    override def makeDecoder[P[_]: MonadPar, F[_], U](recur: (? !! U) ~> P, lifting: Lifting[P, T[M, ?], F]): AnySignature[U] = {
       val lifting2 = new Lifting[? !! U, T[M, ?], F] {
         val stashFunctor = lifting.stashFunctor
         def withLift[A](ff: ThisLiftOps => T[M, F[A]]): A !! U =

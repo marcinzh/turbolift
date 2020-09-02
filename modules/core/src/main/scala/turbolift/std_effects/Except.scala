@@ -18,5 +18,5 @@ trait Except[E] extends Effect[ExceptSig[?, E]] {
     case Left(e) => raise(e)
   }
 
-  val handler = DefaultExceptHandler[E, this.type](this)
+  val handler: ThisHandler[Either[E, ?]] = DefaultExceptHandler[E, this.type](this)
 }
