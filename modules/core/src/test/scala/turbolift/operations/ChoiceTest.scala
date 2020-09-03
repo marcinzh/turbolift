@@ -15,7 +15,7 @@ class ChoiceTest extends Specification {
       c <- Fx.each('a' to 'b')
     } yield s"$i$c"
 
-    comp.runWith(Fx.handler) must_== Vector("1a", "1b", "2a", "2b"),
+    comp.runWith(Fx.handler) must_== Vector("1a", "1b", "2a", "2b")
   }
 
 
@@ -28,7 +28,7 @@ class ChoiceTest extends Specification {
       c <- Fx.each('a' to 'c')
     } yield s"$i$c"
 
-    comp.runWith(Fx.handler) must_== Vector("1a", "1b", "1c", "3a", "3b", "3c"),
+    comp.runWith(Fx.handler) must_== Vector("1a", "1b", "1c", "3a", "3b", "3c")
   }
 
 

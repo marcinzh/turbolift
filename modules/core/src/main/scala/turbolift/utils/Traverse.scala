@@ -1,6 +1,7 @@
 package turbolift.utils
 import turbolift.abstraction.!!
-import scala.collection.generic.CanBuildFrom
+// import scala.collection.generic.CanBuildFrom
+import scala.collection.BuildFrom
 
 
 trait TraverseImplicits {
@@ -19,7 +20,8 @@ trait TraverseImplicits {
   }
 
 
-  implicit class IterableOfComputationCBFExtension[+A, -U, S[+X] <: Iterable[X]](thiz: S[A !! U])(implicit cbf: CanBuildFrom[S[A !! U], A, S[A]]) {
+  // implicit class IterableOfComputationCBFExtension[+A, -U, S[+X] <: Iterable[X]](thiz: S[A !! U])(implicit cbf: CanBuildFrom[S[A !! U], A, S[A]]) {
+  implicit class IterableOfComputationCBFExtension[+A, -U, S[+X] <: Iterable[X]](thiz: S[A !! U])(implicit bf: BuildFrom[S[A !! U], A, S[A]]) {
     def traverse: S[A] !! U = {
       def loop(as: Iterable[A !! U]): Vector[A] !! U =
         as.size match {
@@ -30,7 +32,8 @@ trait TraverseImplicits {
             (loop(as1) *! loop(as2)).map { case (xs, ys) => xs ++ ys }
         }
       loop(thiz)
-      .map(as => (cbf() ++= as).result())
+      // .map(as => (cbf() ++= as).result())
+      .map(as => (bf.newBuilder(thiz) ++= as).result())
     }
 
     def traverseShort: S[A] !! U = {
@@ -41,7 +44,8 @@ trait TraverseImplicits {
           todos.head.flatMap(a => loop(todos.tail, accum :+ a))
 
       loop(thiz, Vector())
-      .map(as => (cbf() ++= as).result())
+      // .map(as => (cbf() ++= as).result())
+      .map(as => (bf.newBuilder(thiz) ++= as).result())
     }
   }
 

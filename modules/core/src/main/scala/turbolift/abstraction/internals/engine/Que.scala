@@ -5,7 +5,7 @@ sealed trait Que[M[_], U]
 
 object Que {
   def empty[M[_], U] = empty_.asInstanceOf[Que[M, U]]
-  private val empty_ = QueCases.Empty[Lambda[X => X], Any]
+  private val empty_ = QueCases.Empty[Lambda[X => X], Any]()
 }
 
 object QueCases {

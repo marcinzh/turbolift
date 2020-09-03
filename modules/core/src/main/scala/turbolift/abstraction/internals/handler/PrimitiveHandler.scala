@@ -18,9 +18,9 @@ trait PrimitiveHandlerStub extends HasEffectId.Delegate {
 sealed trait PrimitiveHandler[T[_[_], _], O[_]] extends PrimitiveHandlerStub {
   def theFunctor: Functor[O]
 
-  def commonOps[M[_]: MonadPar] : CommonOps[M]
+  def commonOps[M[_]: MonadPar] : SuperCommonOps[M]
 
-  abstract class CommonOps[M[_]: MonadPar] extends MonadPar[T[M, ?]] with Lifting[T[M, ?], M, O] {
+  abstract class SuperCommonOps[M[_]: MonadPar] extends MonadPar[T[M, ?]] with Lifting[T[M, ?], M, O] {
     final def mainMonad: MonadPar[T[M, ?]] = this
     final def innerMonad: MonadPar[M] = MonadPar[M]
     final val stashFunctor: Functor[O] = theFunctor
@@ -31,9 +31,9 @@ sealed trait PrimitiveHandler[T[_[_], _], O[_]] extends PrimitiveHandlerStub {
     type Inner[A] = M[A]
   }
 
-  def specialOps[M[_], U](context: ThisContext[M, U]): SpecialOps[M, U]
+  def specialOps[M[_], U](context: ThisContext[M, U]): SuperSpecialOps[M, U]
 
-  abstract class SpecialOps[M[_], U](val context: ThisContext[M, U]) { this: ThisSignature[U] =>
+  abstract class SuperSpecialOps[M[_], U](val context: ThisContext[M, U]) { this: ThisSignature[U] =>
     final type Stash[A] = context.Stash[A]
 
     final implicit def innerMonad: MonadPar[M] = context.innerMonad
@@ -52,7 +52,7 @@ sealed trait PrimitiveHandler[T[_[_], _], O[_]] extends PrimitiveHandlerStub {
 
 object PrimitiveHandler {
   trait Nullary[O[_]] extends PrimitiveHandler[Lambda[(`M[_]`, A) => M[O[A]]], O] {
-    abstract class CommonOps[M[_]](implicit M: MonadPar[M]) extends super.CommonOps[M] {
+    abstract class CommonOps[M[_]](implicit M: MonadPar[M]) extends SuperCommonOps[M] {
       def purer[A](a: A): O[A]
       final override def pure[A](a: A): M[O[A]] = M.pure(purer(a))
       final override def defer[A](tma: => M[O[A]]): M[O[A]] = M.defer(tma)
@@ -66,14 +66,14 @@ object PrimitiveHandler {
       }
     }
 
-    abstract class SpecialOps[M[_], U](ctx: ThisContext[M, U]) extends super.SpecialOps(ctx) { this: ThisSignature[U] =>
+    abstract class SpecialOps[M[_], U](ctx: ThisContext[M, U]) extends SuperSpecialOps(ctx) { this: ThisSignature[U] =>
       final override type ThisLiftOps = LiftOps[? !! U, Lambda[X => M[O[X]]], Stash]
       final override def withLift[A](ff: ThisLiftOps => M[O[Stash[A]]]): A !! U = context.lifting.withLift(ff)
     }
   }
 
   trait Unary[S, O[_]] extends PrimitiveHandler[Lambda[(`M[_]`, A) => S => M[O[A]]], O] {
-    abstract class CommonOps[M[_]](implicit M: MonadPar[M]) extends super.CommonOps[M] {
+    abstract class CommonOps[M[_]](implicit M: MonadPar[M]) extends SuperCommonOps[M] {
       def purer[A](s: S, a: A): O[A]
       final override def pure[A](a: A): S => M[O[A]] = s => M.pure(purer(s, a))
       final override def defer[A](tma: => S => M[O[A]]): S => M[O[A]] = s => M.defer(tma(s))
@@ -85,7 +85,7 @@ object PrimitiveHandler {
         })
     }
 
-    abstract class SpecialOps[M[_], U](ctx: ThisContext[M, U]) extends super.SpecialOps(ctx) { this: ThisSignature[U] =>
+    abstract class SpecialOps[M[_], U](ctx: ThisContext[M, U]) extends SuperSpecialOps(ctx) { this: ThisSignature[U] =>
       final override type ThisLiftOps = LiftOps[? !! U, Lambda[X => S => M[O[X]]], Stash]
       final override def withLift[A](ff: ThisLiftOps => S => M[O[Stash[A]]]): A !! U = context.lifting.withLift(ff)
     }

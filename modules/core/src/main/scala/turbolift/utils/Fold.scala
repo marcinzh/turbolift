@@ -3,9 +3,9 @@ import turbolift.abstraction.!!
 
 
 trait FoldImplicits {
-  implicit class Fold_TraversableOnceOfComputationExtension[A, C[X] <: TraversableOnce[X]](thiz: C[A]) {
+  implicit class Fold_IterableOnceOfComputationExtension[A, C[X] <: IterableOnce[X]](thiz: C[A]) {
     def foldLeft_!![U, B](z: B)(op: (B, A) => B !! U): B !! U =
-      thiz.foldLeft(!!.pure(z).upCast[U]) {
+      thiz.iterator.foldLeft(!!.pure(z).upCast[U]) {
         case (b_!, a) => for {
           b <- b_!
           b2 <- op(b, a)
@@ -13,13 +13,13 @@ trait FoldImplicits {
       }
 
     def reduceLeft_!![U](op: (A, A) => A !! U): A !! U = {
-      val it = thiz.toIterator
+      val it = thiz.iterator
       val z = it.next()
       it.foldLeft_!!(z)(op)
     }
 
     def reduceLeftOption_!![U](op: (A, A) => A !! U): Option[A] !! U =
-      if (thiz.isEmpty)
+      if (thiz.iterator.isEmpty)
         !!.pure(None) 
       else 
         reduceLeft_!!(op).map(Some(_))
