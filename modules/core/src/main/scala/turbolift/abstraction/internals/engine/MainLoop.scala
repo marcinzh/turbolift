@@ -9,7 +9,7 @@ import turbolift.std_effects.ChoiceSig
 
 final class MainLoop[M[_], U](
   val theMonad: MonadPar[M],
-  val handlerStacks: List[HandlerStack[M]],
+  val transStacks: List[TransformerStack[M]],
   val vmt: Array[AnyRef],
 ) extends ((? !! U) ~> M) {
   override def apply[A](ua: A !! U): M[A] = loop(ua, Que.empty)
@@ -42,12 +42,12 @@ final class MainLoop[M[_], U](
   private def lookup(id: EffectId): AnySignature[U] = Vmt.lookup(vmt, id).asInstanceOf[AnySignature[U]]
 
   def push[T[_[_], _], O[_], V](transformer: MonadTransformer[T, O]): MainLoop[T[M, ?], U with V] = {
-    val newHead: HandlerStack[T[M, ?]] = HandlerStack.pushFirst(transformer)(this.theMonad)
-    val newTail: List[HandlerStack[T[M, ?]]] = this.handlerStacks.map(_.pushNext(transformer))
-    val newStack: List[HandlerStack[T[M, ?]]] = newHead :: newTail
+    val newHead: TransformerStack[T[M, ?]] = TransformerStack.pushFirst(transformer)(this.theMonad)
+    val newTail: List[TransformerStack[T[M, ?]]] = this.transStacks.map(_.pushNext(transformer))
+    val newStack: List[TransformerStack[T[M, ?]]] = newHead :: newTail
     val newVmt = Vmt.prealloc(newStack.size)
     val newLoop = new MainLoop[T[M, ?], U with V](newHead.outerMonad, newStack, newVmt)
-    Vmt.fill[EffectId, AnySignature[U with V], HandlerStack[T[M, ?]]](
+    Vmt.fill[EffectId, AnySignature[U with V], TransformerStack[T[M, ?]]](
       newVmt,
       newStack,
       _.effectId,
