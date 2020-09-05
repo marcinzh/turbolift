@@ -1,50 +1,18 @@
 package turbolift.std_effects
 import cats.Id
-// import cats.implicits._
-// import cats.instances.functor._
-import turbolift.abstraction.!!
-import turbolift.abstraction.effect.{Effect, Signature}
-import turbolift.abstraction.typeclass.MonadPar
-import turbolift.abstraction.implicits.MonadParSyntax
+import turbolift.abstraction.{!!, Effect}
+import turbolift.std_handlers.DefaultReaderHandler
 
 
-trait ReaderSig[P[_], R] extends Signature[P] {
-  def ask: P[R]
-  def local[A](mod: R => R)(scope: P[A]): P[A]
+trait ReaderSig[U, R] {
+  def ask: R !! U
+  def local[A](mod: R => R)(scope: A !! U): A !! U
 }
 
+trait Reader[R] extends Effect[ReaderSig[?, R]] {
+  final val ask: R !! this.type = embedFO(_.ask)
+  final def asks[A](f: R => A): A !! this.type = ask.map(f)
+  final def local[A, U](mod: R => R)(scope: A !! U): A !! U with this.type = embedHO[U](_.local(mod)(scope))
 
-trait Reader[R] extends Effect[ReaderSig[?[_], R]] {
-  val ask: R !! this.type = encodeFO(_.ask)
-  def asks[A](f: R => A): A !! this.type = ask.map(f)
-  def local[A, U](mod: R => R)(scope: A !! U): A !! U with this.type = encodeHO[U](run => _.local(mod)(run(scope)))
-
-  val handler = DefaultReaderHandler[R, this.type](this)
-}
-
-
-object DefaultReaderHandler {
-  def apply[R, Fx <: Reader[R]](fx: Fx) = new fx.Unary[R, Id] {
-    def commonOps[M[_]](implicit M: MonadPar[M]) = new CommonOps[M] {
-      def purer[A](r: R, a: A): A = a
-
-      def flatMap[A, B](tma: R => M[A])(f: A => R => M[B]): R => M[B] =
-        r => tma(r).flatMap(a => f(a)(r))
-
-      def zipPar[A, B](tma: R => M[A], tmb: R => M[B]): R => M[(A, B)] =
-        r => tma(r) *! tmb(r)
-    }
-
-    def specialOps[M[_], P[_]](context: ThisContext[M, P]) = new SpecialOps(context) with ReaderSig[P, R] {
-      val ask: P[R] =
-        withLift { l => r =>
-          pureInner(l.pureStash(r))
-        }
-
-      def local[A](mod: R => R)(scope: P[A]): P[A] =
-        withLift { l => r =>
-          l.run(scope)(mod(r))
-        }
-    }
-  }.self
+  def handler(initial: R): ThisHandler[Id] = DefaultReaderHandler(this, initial)
 }

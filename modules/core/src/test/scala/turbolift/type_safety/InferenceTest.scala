@@ -14,7 +14,7 @@ class InferenceTest extends Specification {
   case object Fx4 extends Choice
 
   def is = {
-    val eff = for {
+    val comp = for {
       _ <- !!.pure()
       workaround <- Fx1.get *! Fx3.ask
       (a, b) = workaround
@@ -25,6 +25,6 @@ class InferenceTest extends Specification {
 
     type Expected = Unit !! Fx1.type with Fx2.type with Fx3.type with Fx4.type
 
-    typecheck {"implicitly[eff.type <:< Expected]"} must succeed
+    typecheck {"implicitly[comp.type <:< Expected]"} must succeed
   }
 }

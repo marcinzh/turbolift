@@ -1,4 +1,4 @@
-package turbolift.abstraction.internals.interpreter
+package turbolift.abstraction.internals.engine
 import scala.annotation.tailrec
 import turbolift.abstraction.typeclass.MonadPar
 import TrampolineCases._

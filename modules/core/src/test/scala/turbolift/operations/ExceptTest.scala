@@ -1,6 +1,5 @@
 package turbolift.operations
 import turbolift.abstraction.!!
-import turbolift.abstraction.implicits._
 import turbolift.std_effects.{Except, State}
 import org.specs2._
 
@@ -15,17 +14,17 @@ class ExceptTest extends Specification with CanLaunchTheMissiles {
       val missile1 = Missile()
       val missile2 = Missile()
       val missile3 = Missile()
-      val eff = 
+      val comp = 
         for {
           i <- !!.pure(123)
           _ <- missile1.launch_! *! Fx.raise("turn") *! missile2.launch_!
           _ <- missile3.launch_!
         } yield i
-      (eff, missile1, missile2, missile3)
+      (comp, missile1, missile2, missile3)
     }
     
-    val (eff, missile1, missile2, missile3) = mkEff
-    eff.runWith(Fx.handler) must_== Left("turn") and 
+    val (comp, missile1, missile2, missile3) = mkEff
+    comp.runWith(Fx.handler) must_== Left("turn") and 
     missile1.mustHaveLaunchedOnce and
     missile2.mustHaveLaunchedOnce and
     missile3.mustNotHaveLaunched
@@ -37,7 +36,7 @@ class ExceptTest extends Specification with CanLaunchTheMissiles {
 
     def mkEff = {
       val missile = Missile()
-      val eff = FxE.katch {
+      val comp = FxE.katch {
         for {
           _ <- FxS.put(42)
           _ <- FxE.raise("OMG")
@@ -45,19 +44,19 @@ class ExceptTest extends Specification with CanLaunchTheMissiles {
           _ <- missile.launch_!
         } yield true
       } (_ => !!.pure(false))
-      (eff, missile)
+      (comp, missile)
     }
 
     val testES = {
-      val (eff, missile) = mkEff
-      val result = eff.runWith(FxE.handler <<<! FxS.handler(0))
+      val (comp, missile) = mkEff
+      val result = comp.runWith(FxE.handler <<<! FxS.handler(0))
       result must_== Right((0, false)) and
       missile.mustNotHaveLaunched
     }
 
     val testSE = {
-      val (eff, missile) = mkEff
-      val result = eff.runWith(FxS.handler(0) <<<! FxE.handler)
+      val (comp, missile) = mkEff
+      val result = comp.runWith(FxS.handler(0) <<<! FxE.handler)
       result must_== ((42, Right(false))) and
       missile.mustNotHaveLaunched
     }

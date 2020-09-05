@@ -24,7 +24,7 @@ object AccumZeroImpl {
 
   trait AccumZeroFromMonoid[L] extends AccumZero[L, L] with AccumFromSemigroup[L] {
     def Monoid: Monoid[L]
-  	override def Semigroup: Semigroup[L] = Monoid
+    override def Semigroup: Semigroup[L] = Monoid
     def zero: L = Monoid.empty
   }
 

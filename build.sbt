@@ -1,9 +1,11 @@
 sourcesInBase := false
 
+autoStartServer := false
+
 lazy val commonSettings = Seq(
   organization := "com.github.marcinzh",
-  version := "0.3.0",
-  scalaVersion := "2.12.10",
+  version := "0.5.0-SNAPSHOT",
+  scalaVersion := "2.13.3",
   crossScalaVersions := Seq(scalaVersion.value),
   scalacOptions ++= Seq(
     "-language:implicitConversions",
@@ -11,23 +13,23 @@ lazy val commonSettings = Seq(
     "-unchecked", 
     "-feature", 
     "-deprecation",
-    "-Ypartial-unification",
+    // "-Ypartial-unification",
     // "-Ywarn-unused:imports,privates,-patvars,-locals,params,-implicits"
     // "-Ywarn-unused:privates,-patvars,-locals,params,-implicits"
   ),
   resolvers += Resolver.sonatypeRepo("releases"),
-  libraryDependencies += compilerPlugin("org.typelevel" % "kind-projector" % "0.10.0" cross CrossVersion.binary),
-  libraryDependencies += "org.typelevel" %% "simulacrum" % "1.0.0",
+  libraryDependencies += compilerPlugin("org.typelevel" %% "kind-projector" % "0.11.0" cross CrossVersion.full),
+  // libraryDependencies += "org.typelevel" %% "simulacrum" % "1.0.0",
   libraryDependencies += "org.typelevel" %% "cats-core" % "2.0.0",
 )
 
-lazy val commonExceptCoreSettings = Seq(
-  libraryDependencies += compilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.0"),
-)
+// lazy val commonExceptCoreSettings = Seq(
+//   libraryDependencies += compilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.0"),
+// )
 
 lazy val testSettings = Seq(
-  libraryDependencies += "org.specs2" %% "specs2-core" % "4.3.4" % "test",
-  libraryDependencies += "org.specs2" %% "specs2-matcher-extra" % "4.3.4" % "test",
+  libraryDependencies += "org.specs2" %% "specs2-core" % "4.10.0" % "test",
+  libraryDependencies += "org.specs2" %% "specs2-matcher-extra" % "4.10.0" % "test",
   parallelExecution in Test := false,
   scalacOptions in Test += "-Yrangepos",
 )
@@ -51,4 +53,4 @@ lazy val core = project
   .settings(name := "turbolift-core")
   .settings(commonSettings: _*)
   .settings(testSettings: _*)
-  .settings(libraryDependencies += compilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full))
+  // .settings(libraryDependencies += compilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full))

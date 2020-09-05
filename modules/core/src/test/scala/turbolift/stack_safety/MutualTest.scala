@@ -1,6 +1,5 @@
 package turbolift.stack_safety
 import turbolift.abstraction.!!
-import turbolift.abstraction.implicits._
 import org.specs2._
 
 
