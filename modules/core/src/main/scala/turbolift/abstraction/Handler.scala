@@ -1,6 +1,6 @@
 package turbolift.abstraction
 import cats.{Id, ~>}
-import turbolift.abstraction.internals.aux.CanHandle
+import turbolift.abstraction.internals.aux.CanPartiallyHandle
 import turbolift.abstraction.internals.interpreter.MonadTransformer
 
 
@@ -9,7 +9,7 @@ sealed trait Handler[Result[_], Elim] {
 
   final def handle[V] = new HandleApply[V]
   final class HandleApply[V] {
-    def apply[A, W](comp: A !! W)(implicit ev: CanHandle[V, W, Elim]): Result[A] !! V =
+    def apply[A, W](comp: A !! W)(implicit ev: CanPartiallyHandle[V, W, Elim]): Result[A] !! V =
       doHandle[A, V](ev(comp))
   }
 

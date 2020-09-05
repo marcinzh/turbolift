@@ -3,7 +3,7 @@ import cats.~>
 import turbolift.abstraction.typeclass.MonadPar
 import turbolift.abstraction.internals.effect.{EffectId, AnyChoice}
 import turbolift.abstraction.internals.engine.MainLoop
-import turbolift.abstraction.internals.aux.{CanRunPure, CanRunImpure, CanHandle}
+import turbolift.abstraction.internals.aux.{CanRun, CanTotallyHandle, CanPartiallyHandle}
 import turbolift.std_effects.Choice
 import HandlerCases.Primitive
 import ComputationCases._
@@ -75,18 +75,18 @@ trait ComputationExports {
 
 trait ComputationExtensions {
   implicit class ComputationExtension[A, U](thiz: Computation[A, U]) {
-    def run(implicit ev: CanRunPure[U]): A = MainLoop.pure(ev(thiz)).run
-    def runStackUnsafe(implicit ev: CanRunPure[U]): A = MainLoop.pureStackUnsafe[A](ev(thiz))
+    def run(implicit ev: CanRun[U]): A = MainLoop.pure(ev(thiz)).run
+    def runStackUnsafe(implicit ev: CanRun[U]): A = MainLoop.pureStackUnsafe[A](ev(thiz))
     
-    def runWith[F[_], L](h: Handler[F, L])(implicit ev: CanRunImpure[U, L]): F[A] =
+    def runWith[F[_], L](h: Handler[F, L])(implicit ev: CanTotallyHandle[U, L]): F[A] =
       h.doHandle[A, Any](ev(thiz)).run
 
-    def runStackUnsafeWith[F[_], L](h: Handler[F, L])(implicit ev: CanRunImpure[U, L]): F[A] =
+    def runStackUnsafeWith[F[_], L](h: Handler[F, L])(implicit ev: CanTotallyHandle[U, L]): F[A] =
       h.doHandle[A, Any](ev(thiz)).runStackUnsafe
 
     def handleWith[V] : HandleWithApply[V] = new HandleWithApply[V]
     class HandleWithApply[V] {
-      def apply[F[_], L](h: Handler[F, L])(implicit ev: CanHandle[V, U, L]): F[A] !! V =
+      def apply[F[_], L](h: Handler[F, L])(implicit ev: CanPartiallyHandle[V, U, L]): F[A] !! V =
         h.doHandle[A, V](ev(thiz))
     }
 
