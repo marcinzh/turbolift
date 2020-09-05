@@ -12,9 +12,9 @@ object DefaultMemoizerHandler {
   def apply[K, V, Fx <: Memoizer[K, V]](fx: Fx): fx.ThisHandler[Id] =
     new fx.Unary[Map[K, V], (Map[K, V], ?)] {
       private type S = Map[K, V]
-      def commonOps[M[_]](implicit M: MonadPar[M]) = new CommonOps[M] {
-        def purer[A](s: S, a: A): (S, A) = (s, a)
+      override def purer[A](s: S, a: A): (S, A) = (s, a)
 
+      override def transform[M[_]: MonadPar] = new Transformed[M] {
         def flatMap[A, B](tma: S => M[(S, A)])(f: A => S => M[(S, B)]): S => M[(S, B)] =
           s0 => tma(s0).flatMap {
             case (s1, a) => f(a)(s1)
@@ -28,21 +28,21 @@ object DefaultMemoizerHandler {
           }
       }
 
-      def specialOps[M[_], U](context: ThisContext[M, U]) = new SpecialOps(context) with MemoizerSig[U, K, V] {
+      override def interpret[M[_], F[_], U](implicit ctx: ThisContext[M, F, U]) = new MemoizerSig[U, K, V] {
         val snapshot: S !! U =
-          withLift { l => m =>
-            pureInner((m, l.pureStash(m)))
+          ctx.withLift { lift => m =>
+            ctx.pureInner((m, lift.pureStash(m)))
           }
 
         def memo(fun: K => V !! U)(k: K): V !! U =
-          withLift { l => m0 =>
+          ctx.withLift { lift => m0 =>
             m0.get(k) match {
-              case Some(v) => pureInner((m0, l.pureStash(v)))
+              case Some(v) => ctx.pureInner((m0, lift.pureStash(v)))
               case None =>
-                l.run(!!.defer(fun(k)).flatMap { v =>
-                  withLift { l => m =>
+                lift.run(!!.defer(fun(k)).flatMap { v =>
+                  ctx.withLift { lift => m =>
                     val m2 = m.updated(k, v)
-                    pureInner((m2, l.pureStash(v)))
+                    ctx.pureInner((m2, lift.pureStash(v)))
                   }
                 })(m0)
             }

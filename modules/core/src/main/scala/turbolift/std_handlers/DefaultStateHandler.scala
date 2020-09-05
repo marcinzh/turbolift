@@ -9,9 +9,9 @@ import turbolift.std_effects.{StateSig, State}
 object DefaultStateHandler {
   def apply[S, Fx <: State[S]](fx: Fx, initial: S): fx.ThisHandler[(S, ?)] =
     new fx.Unary[S, (S, ?)] {
-      def commonOps[M[_]](implicit M: MonadPar[M]) = new CommonOps[M] {
-        def purer[A](s: S, a: A): (S, A) = (s, a)
+      override def purer[A](s: S, a: A): (S, A) = (s, a)
 
+      override def transform[M[_]: MonadPar] = new Transformed[M] {
         def flatMap[A, B](tma: S => M[(S, A)])(f: A => S => M[(S, B)]): S => M[(S, B)] =
           s0 => tma(s0).flatMap {
             case (s1, a) => f(a)(s1)
@@ -25,20 +25,20 @@ object DefaultStateHandler {
           }
       }
 
-      def specialOps[M[_], U](context: ThisContext[M, U]) = new SpecialOps(context) with StateSig[U, S] {
+      override def interpret[M[_], F[_], U](implicit ctx: ThisContext[M, F, U]) = new StateSig[U, S] {
         val get: S !! U =
-          withLift { l => s =>
-            pureInner((s, l.pureStash(s)))
+          ctx.withLift { lift => s =>
+            ctx.pureInner((s, lift.pureStash(s)))
           }
 
         def put(s: S): Unit !! U =
-          withLift { l => _ =>
-            pureInner((s, l.unitStash()))
+          ctx.withLift { lift => _ =>
+            ctx.pureInner((s, lift.unitStash()))
           }
         
         override def mod(f: S => S): Unit !! U =
-          withLift { l => s =>
-            pureInner((f(s), l.unitStash()))
+          ctx.withLift { lift => s =>
+            ctx.pureInner((f(s), lift.unitStash()))
           }
       }
     }.toHandler(initial)

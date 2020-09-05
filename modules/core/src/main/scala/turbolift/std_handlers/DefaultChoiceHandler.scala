@@ -9,9 +9,9 @@ import turbolift.std_effects.{ChoiceSig, Choice}
 object DefaultChoiceHandler {
   def apply[Fx <: Choice](fx: Fx): fx.ThisHandler[Vector] =
     new fx.Nullary[Vector] {
-      def commonOps[M[_]](implicit M: MonadPar[M]) = new CommonOps[M] {
-        def purer[A](a: A): Vector[A] = Vector(a)
+      override def purer[A](a: A): Vector[A] = Vector(a)
 
+      override def transform[M[_]: MonadPar] = new Transformed[M] {
         def flatMap[A, B](tma: M[Vector[A]])(f: A => M[Vector[B]]): M[Vector[B]] = {
           def loop(as: Vector[A]): M[Vector[B]] = as match {
             case Vector() => MonadPar[M].pure(Vector())
@@ -35,22 +35,22 @@ object DefaultChoiceHandler {
           }
       }
 
-      def specialOps[M[_], U](context: ThisContext[M, U]) = new SpecialOps(context) with ChoiceSig[U] {
+      override def interpret[M[_], F[_], U](implicit ctx: ThisContext[M, F, U]) = new ChoiceSig[U] {
         def empty[A]: A !! U =
-          withLift { l =>
-            pureInner(Vector.empty[Stash[A]])
+          ctx.withLift { lift =>
+            ctx.pureInner(Vector.empty[F[A]])
           }
 
         def plus[A](lhs: A !! U, rhs: => A !! U): A !! U =
-          withLift { l =>
-            (l.run(lhs) *! l.run(rhs)).map {
+          ctx.withLift { lift =>
+            (lift.run(lhs) *! lift.run(rhs)).map {
               case (xs, ys) => xs ++ ys
             }
           }
 
         def each[A](as: Iterable[A]): A !! U =
-          withLift { l =>
-            pureInner(as.iterator.map(l.pureStash).toVector)
+          ctx.withLift { lift =>
+            ctx.pureInner(as.iterator.map(lift.pureStash).toVector)
           }
       }
     }.toHandler

@@ -9,9 +9,9 @@ import turbolift.std_effects.{ExceptSig, Except}
 object DefaultExceptHandler {
   def apply[E, Fx <: Except[E]](fx: Fx): fx.ThisHandler[Either[E, ?]] =
     new fx.Nullary[Either[E, ?]] {
-      def commonOps[M[_]](implicit M: MonadPar[M]) = new CommonOps[M] {
-        def purer[A](a: A): Either[E, A] = Right(a)
+      override def purer[A](a: A): Either[E, A] = Right(a)
 
+      override def transform[M[_]: MonadPar] = new Transformed[M] {
         def flatMap[A, B](tma: M[Either[E, A]])(f: A => M[Either[E, B]]): M[Either[E, B]] =
           tma.flatMap {
             case Right(a) => f(a)
@@ -26,17 +26,17 @@ object DefaultExceptHandler {
           }
       }
 
-      def specialOps[M[_], U](context: ThisContext[M, U]) = new SpecialOps(context) with ExceptSig[U, E] {
+      override def interpret[M[_], F[_], U](implicit ctx: ThisContext[M, F, U]) = new ExceptSig[U, E] {
         def raise[A](e: E): A !! U =
-          withLift { l =>
-            pureInner(Left(e): Either[E, Stash[A]])
+          ctx.withLift { lift =>
+            ctx.pureInner(Left(e): Either[E, F[A]])
           }
 
         def katch[A](scope: A !! U)(recover: E => A !! U): A !! U =
-          withLift { l =>
-            l.run(scope).flatMap {
-              case Right(fa) => pureInner(Right(fa): Either[E, Stash[A]])
-              case Left(e) => l.run(recover(e))
+          ctx.withLift { lift =>
+            lift.run(scope).flatMap {
+              case Right(fa) => ctx.pureInner(Right(fa): Either[E, F[A]])
+              case Left(e) => lift.run(recover(e))
             }
           }
       }

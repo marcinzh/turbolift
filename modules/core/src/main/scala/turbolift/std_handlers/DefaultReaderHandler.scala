@@ -9,9 +9,9 @@ import turbolift.std_effects.{ReaderSig, Reader}
 object DefaultReaderHandler {
   def apply[R, Fx <: Reader[R]](fx: Fx, initial: R): fx.ThisHandler[Id] =
     new fx.Unary[R, Id] {
-      def commonOps[M[_]](implicit M: MonadPar[M]) = new CommonOps[M] {
-        def purer[A](r: R, a: A): A = a
+      override def purer[A](r: R, a: A): A = a
 
+      override def transform[M[_]: MonadPar] = new Transformed[M] {
         def flatMap[A, B](tma: R => M[A])(f: A => R => M[B]): R => M[B] =
           r => tma(r).flatMap(a => f(a)(r))
 
@@ -19,15 +19,15 @@ object DefaultReaderHandler {
           r => tma(r) *! tmb(r)
       }
 
-      def specialOps[M[_], U](context: ThisContext[M, U]) = new SpecialOps(context) with ReaderSig[U, R] {
+      override def interpret[M[_], F[_], U](implicit ctx: ThisContext[M, F, U]) = new ReaderSig[U, R] {
         val ask: R !! U =
-          withLift { l => r =>
-            pureInner(l.pureStash(r))
+          ctx.withLift { lift => r =>
+            ctx.pureInner(lift.pureStash(r))
           }
 
         def local[A](mod: R => R)(scope: A !! U): A !! U =
-          withLift { l => r =>
-            l.run(scope)(mod(r))
+          ctx.withLift { lift => r =>
+            lift.run(scope)(mod(r))
           }
       }
     }.toHandler(initial)

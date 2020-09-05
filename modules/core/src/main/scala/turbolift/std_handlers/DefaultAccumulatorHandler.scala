@@ -10,9 +10,9 @@ import turbolift.std_effects.{AccumulatorSig, Accumulator}
 object DefaultAccumulatorHandler {
   def apply[E, W, Fx <: Accumulator[E]](fx: Fx)(implicit W: AccumZero[E, W]): fx.ThisHandler[(W, ?)] =
     new fx.Unary[W, (W, ?)] {
-      def commonOps[M[_]](implicit M: MonadPar[M]) = new CommonOps[M] {
-        def purer[A](w: W, a: A): (W, A) = (w, a)
+      override def purer[A](w: W, a: A): (W, A) = (w, a)
 
+      override def transform[M[_]: MonadPar] = new Transformed[M] {
         def flatMap[A, B](tma: W => M[(W, A)])(f: A => W => M[(W, B)]): W => M[(W, B)] =
           w0 => tma(w0).flatMap {
             case (w1, a) => f(a)(w1)
@@ -24,15 +24,15 @@ object DefaultAccumulatorHandler {
           }
       }
 
-      def specialOps[M[_], U](context: ThisContext[M, U]) = new SpecialOps(context) with AccumulatorSig[U, E] {
+      override def interpret[M[_], F[_], U](implicit ctx: ThisContext[M, F, U]) = new AccumulatorSig[U, E] {
         def tell(e: E): Unit !! U =
-          withLift { l => w0 =>
-            pureInner((w0 |+ e, l.unitStash()))
+          ctx.withLift { lift => w0 =>
+            ctx.pureInner((w0 |+ e, lift.unitStash()))
           }
 
         def clear[A](scope: A !! U): A !! U =
-          withLift { l => w0 =>
-            l.run(scope)(W.zero).map { case (_, fa) => (w0, fa) }
+          ctx.withLift { lift => w0 =>
+            lift.run(scope)(W.zero).map { case (_, fa) => (w0, fa) }
           }
       }
     }.toHandler(W.zero)
