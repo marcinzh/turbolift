@@ -27,29 +27,19 @@ object DefaultStateHandler {
 
       override def interpret[M[_], F[_], U](implicit ctx: ThisContext[M, F, U]) = new StateSig[U, S] {
         val get: S !! U =
-          ctx.withLift { lift => s =>
-            ctx.pureInner((s, lift.pureStash(s)))
-          }
+          ctx.withLift(lift => s => ctx.pureInner((s, lift.pureStash(s))))
 
         def gets[A](f: S => A): A !! U =
-          ctx.withLift { lift => s =>
-            ctx.pureInner((s, lift.pureStash(f(s))))
-          }
+          ctx.withLift(lift => s => ctx.pureInner((s, lift.pureStash(f(s)))))
 
         def put(s: S): Unit !! U =
-          ctx.withLift { lift => _ =>
-            ctx.pureInner((s, lift.unitStash()))
-          }
+          ctx.withLift(lift => _ => ctx.pureInner((s, lift.unitStash())))
 
         def swap(s2: S): S !! U =
-          ctx.withLift { lift => s1 =>
-            ctx.pureInner((s2, lift.pureStash(s1)))
-          }
+          ctx.withLift(lift => s1 => ctx.pureInner((s2, lift.pureStash(s1))))
 
         def modify(f: S => S): Unit !! U =
-          ctx.withLift { lift => s =>
-            ctx.pureInner((f(s), lift.unitStash()))
-          }
+          ctx.withLift(lift => s => ctx.pureInner((f(s), lift.unitStash())))
 
         def update[A](f: S => (S, A)): A !! U =
           ctx.withLift { lift => s1 =>

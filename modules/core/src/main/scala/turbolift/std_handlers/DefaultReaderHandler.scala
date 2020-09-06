@@ -21,24 +21,16 @@ object DefaultReaderHandler {
 
       override def interpret[M[_], F[_], U](implicit ctx: ThisContext[M, F, U]) = new ReaderSig[U, R] {
         val ask: R !! U =
-          ctx.withLift { lift => r =>
-            ctx.pureInner(lift.pureStash(r))
-          }
+          ctx.withLift(lift => r => ctx.pureInner(lift.pureStash(r)))
 
         def asks[A](f: R => A): A !! U =
-          ctx.withLift { lift => r =>
-            ctx.pureInner(lift.pureStash(f(r)))
-          }
+          ctx.withLift(lift => r => ctx.pureInner(lift.pureStash(f(r))))
 
         def local[A](r: R)(scope: A !! U): A !! U =
-          ctx.withLift { lift => _ =>
-            lift.run(scope)(r)
-          }
+          ctx.withLift(lift => _ => lift.run(scope)(r))
 
         def localModify[A](mod: R => R)(scope: A !! U): A !! U =
-          ctx.withLift { lift => r =>
-            lift.run(scope)(mod(r))
-          }
+          ctx.withLift(lift => r => lift.run(scope)(mod(r)))
       }
     }.toHandler(initial)
 }

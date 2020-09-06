@@ -26,13 +26,13 @@ object DefaultAccumulatorHandler {
 
       override def interpret[M[_], F[_], U](implicit ctx: ThisContext[M, F, U]) = new AccumulatorSig[U, E] {
         def tell(e: E): Unit !! U =
-          ctx.withLift { lift => w0 =>
-            ctx.pureInner((w0 |+ e, lift.unitStash()))
-          }
+          ctx.withLift(lift => w0 => ctx.pureInner((w0 |+ e, lift.unitStash())))
 
         def clear[A](scope: A !! U): A !! U =
           ctx.withLift { lift => w0 =>
-            lift.run(scope)(W.zero).map { case (_, fa) => (w0, fa) }
+            lift.run(scope)(W.zero).map {
+              case (_, fa) => (w0, fa)
+            }
           }
       }
     }.toHandler(W.zero)

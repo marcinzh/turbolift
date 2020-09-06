@@ -30,9 +30,7 @@ object DefaultMemoizerHandler {
 
       override def interpret[M[_], F[_], U](implicit ctx: ThisContext[M, F, U]) = new MemoizerSig[U, K, V] {
         val snapshot: S !! U =
-          ctx.withLift { lift => m =>
-            ctx.pureInner((m, lift.pureStash(m)))
-          }
+          ctx.withLift(lift => m => ctx.pureInner((m, lift.pureStash(m))))
 
         def memo(fun: K => V !! U)(k: K): V !! U =
           ctx.withLift { lift => m0 =>

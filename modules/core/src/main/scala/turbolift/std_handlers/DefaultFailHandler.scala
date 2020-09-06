@@ -27,9 +27,7 @@ object DefaultFailHandler {
 
       override def interpret[M[_], F[_], U](implicit ctx: ThisContext[M, F, U]) = new FailSig[U] {
         def empty[A]: A !! U =
-          ctx.withLift { lift =>
-            ctx.pureInner(None: Option[F[A]])
-          }
+          ctx.withLift(lift => ctx.pureInner(None: Option[F[A]]))
 
         def plus[A](lhs: A !! U, rhs: => A !! U): A !! U =
           ctx.withLift { lift =>

@@ -37,9 +37,10 @@ object DefaultChoiceHandler {
 
       override def interpret[M[_], F[_], U](implicit ctx: ThisContext[M, F, U]) = new ChoiceSig[U] {
         def empty[A]: A !! U =
-          ctx.withLift { lift =>
-            ctx.pureInner(Vector.empty[F[A]])
-          }
+          ctx.withLift(lift => ctx.pureInner(Vector.empty[F[A]]))
+
+        def each[A](as: Iterable[A]): A !! U =
+          ctx.withLift(lift => ctx.pureInner(as.iterator.map(lift.pureStash).toVector))
 
         def plus[A](lhs: A !! U, rhs: => A !! U): A !! U =
           ctx.withLift { lift =>
@@ -48,10 +49,6 @@ object DefaultChoiceHandler {
             }
           }
 
-        def each[A](as: Iterable[A]): A !! U =
-          ctx.withLift { lift =>
-            ctx.pureInner(as.iterator.map(lift.pureStash).toVector)
-          }
       }
     }.toHandler
 }

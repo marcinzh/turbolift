@@ -28,9 +28,7 @@ object DefaultExceptHandler {
 
       override def interpret[M[_], F[_], U](implicit ctx: ThisContext[M, F, U]) = new ExceptSig[U, E] {
         def raise[A](e: E): A !! U =
-          ctx.withLift { lift =>
-            ctx.pureInner(Left(e).withRight[F[A]])
-          }
+          ctx.withLift(lift => ctx.pureInner(Left(e).withRight[F[A]]))
 
         def katch[A](scope: A !! U)(recover: E => A !! U): A !! U =
           ctx.withLift { lift =>

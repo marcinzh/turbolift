@@ -28,23 +28,27 @@ object DefaultWriterHandler {
 
       override def interpret[M[_], F[_], U](implicit ctx: ThisContext[M, F, U]) = new WriterSig[U, W] {
         def tell(w: W): Unit !! U =
-          ctx.withLift { lift => w0 =>
-            ctx.pureInner((w0 |+| w, lift.unitStash()))
-          }
+          ctx.withLift(lift => w0 => ctx.pureInner((w0 |+| w, lift.unitStash())))
 
         def listen[A](scope: A !! U): (W, A) !! U =
           ctx.withLift { lift => w0 =>
-            lift.run(scope)(W.empty).map { case (w, fa) => (w0 |+| w, fa.map((w, _))) }
+            lift.run(scope)(W.empty).map {
+              case (w, fa) => (w0 |+| w, fa.map((w, _)))
+            }
           }
 
         def censor[A](scope: A !! U)(mod: W => W): A !! U =
           ctx.withLift { lift => w0 =>
-            lift.run(scope)(W.empty).map { case (w, fa) => (w0 |+| mod(w), fa) }
+            lift.run(scope)(W.empty).map {
+              case (w, fa) => (w0 |+| mod(w), fa)
+            }
           }
 
         def clear[A](scope: A !! U): A !! U =
           ctx.withLift { lift => w0 =>
-            lift.run(scope)(W.empty).map { case (_, fa) => (w0, fa) }
+            lift.run(scope)(W.empty).map {
+              case (_, fa) => (w0, fa)
+            }
           }
       }
     }.toHandler(W.empty)
