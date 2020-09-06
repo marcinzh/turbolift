@@ -7,7 +7,7 @@ import turbolift.std_effects.{ChoiceSig, Choice}
 
 
 object DefaultChoiceHandler {
-  def apply[Fx <: Choice](fx: Fx): fx.ThisHandler[Vector] =
+  def apply[Fx <: Choice](fx: Fx): fx.ThisIHandler[Vector] =
     new fx.Nullary[Vector] {
       override def purer[A](a: A): Vector[A] = Vector(a)
 

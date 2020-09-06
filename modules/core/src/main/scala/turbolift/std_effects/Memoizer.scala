@@ -13,5 +13,5 @@ trait Memoizer[K, V] extends Effect[MemoizerSig[?, K, V]] {
   final def memo[U](fun: K => V !! U)(k: K): V !! U with this.type = embedHO[U](_.memo(fun)(k))
   final def snapshot: Map[K, V] !! this.type = embedFO(_.snapshot)
 
-  def handler: ThisHandler[Id] = DefaultMemoizerHandler[K, V, this.type](this)
+  def handler: ThisIHandler[Id] = DefaultMemoizerHandler[K, V, this.type](this)
 }

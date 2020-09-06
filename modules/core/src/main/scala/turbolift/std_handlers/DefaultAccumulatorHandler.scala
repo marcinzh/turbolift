@@ -8,7 +8,7 @@ import turbolift.std_effects.{AccumulatorSig, Accumulator}
 
 
 object DefaultAccumulatorHandler {
-  def apply[E, W, Fx <: Accumulator[E]](fx: Fx)(implicit W: AccumZero[E, W]): fx.ThisHandler[(W, ?)] =
+  def apply[E, W, Fx <: Accumulator[E]](fx: Fx)(implicit W: AccumZero[E, W]): fx.ThisIHandler[(W, ?)] =
     new fx.Unary[W, (W, ?)] {
       override def purer[A](w: W, a: A): (W, A) = (w, a)
 

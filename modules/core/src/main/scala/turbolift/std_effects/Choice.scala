@@ -33,5 +33,5 @@ trait Choice extends Effect[ChoiceSig] {
     case _ => empty
   }
 
-  val handler: ThisHandler[Vector] = DefaultChoiceHandler(this)
+  val handler: ThisIHandler[Vector] = DefaultChoiceHandler(this)
 }

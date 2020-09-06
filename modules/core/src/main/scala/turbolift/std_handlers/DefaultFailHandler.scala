@@ -7,7 +7,7 @@ import turbolift.std_effects.{FailSig, Fail}
 
 
 object DefaultFailHandler {
-  def apply[Fx <: Fail](fx: Fx): fx.ThisHandler[Option] =
+  def apply[Fx <: Fail](fx: Fx): fx.ThisIHandler[Option] =
     new fx.Nullary[Option] {
       override def purer[A](a: A): Option[A] = Some(a)
 

@@ -7,7 +7,7 @@ import turbolift.std_effects.{StateSig, State}
 
 
 object DefaultStateHandler {
-  def apply[S, Fx <: State[S]](fx: Fx, initial: S): fx.ThisHandler[(S, ?)] =
+  def apply[S, Fx <: State[S]](fx: Fx, initial: S): fx.ThisIHandler[(S, ?)] =
     new fx.Unary[S, (S, ?)] {
       override def purer[A](s: S, a: A): (S, A) = (s, a)
 

@@ -10,7 +10,7 @@ import turbolift.std_effects.{WriterSig, Writer}
 
 
 object DefaultWriterHandler {
-  def apply[W, Fx <: Writer[W]](fx: Fx)(implicit W: Monoid[W]): fx.ThisHandler[(W, ?)] =
+  def apply[W, Fx <: Writer[W]](fx: Fx)(implicit W: Monoid[W]): fx.ThisIHandler[(W, ?)] =
     new fx.Unary[W, (W, ?)] {
       override def purer[A](w: W, a: A): (W, A) = (w, a)
   

@@ -15,7 +15,7 @@ trait Accumulator[E] extends Effect[AccumulatorSig[?, E]] { thiz =>
   final def clear[A, U](scope: A !! U): A !! U with this.type = embedHO[U](_.clear(scope))
 
   object handler {
-    def apply[W](implicit W: AccumZero[E, W]): ThisHandler[(W, ?)] = DefaultAccumulatorHandler[E, W, thiz.type](thiz)
+    def apply[W](implicit W: AccumZero[E, W]): ThisIHandler[(W, ?)] = DefaultAccumulatorHandler[E, W, thiz.type](thiz)
     def monoid(implicit ev: Monoid[E]) = apply[E]
     def vector = apply[Vector[E]]
     def list = apply[List[E]]

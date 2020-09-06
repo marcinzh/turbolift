@@ -9,7 +9,7 @@ import turbolift.std_effects.{ValidationSig, Validation}
 
 
 object DefaultValidationHandler {
-  def apply[E: Semigroup, Fx <: Validation[E]](fx: Fx): fx.ThisHandler[Either[E, ?]] =
+  def apply[E: Semigroup, Fx <: Validation[E]](fx: Fx): fx.ThisIHandler[Either[E, ?]] =
     new fx.Nullary[Either[E, ?]] {
       override def purer[A](a: A): Either[E, A] = Right(a)
 

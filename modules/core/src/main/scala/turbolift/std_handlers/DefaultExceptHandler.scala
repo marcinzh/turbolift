@@ -7,7 +7,7 @@ import turbolift.std_effects.{ExceptSig, Except}
 
 
 object DefaultExceptHandler {
-  def apply[E, Fx <: Except[E]](fx: Fx): fx.ThisHandler[Either[E, ?]] =
+  def apply[E, Fx <: Except[E]](fx: Fx): fx.ThisIHandler[Either[E, ?]] =
     new fx.Nullary[Either[E, ?]] {
       override def purer[A](a: A): Either[E, A] = Right(a)
 

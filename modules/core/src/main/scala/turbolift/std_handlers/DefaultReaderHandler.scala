@@ -7,7 +7,7 @@ import turbolift.std_effects.{ReaderSig, Reader}
 
 
 object DefaultReaderHandler {
-  def apply[R, Fx <: Reader[R]](fx: Fx, initial: R): fx.ThisHandler[Id] =
+  def apply[R, Fx <: Reader[R]](fx: Fx, initial: R): fx.ThisIHandler[Id] =
     new fx.Unary[R, Id] {
       override def purer[A](r: R, a: A): A = a
 

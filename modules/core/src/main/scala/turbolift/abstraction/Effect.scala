@@ -7,7 +7,8 @@ import turbolift.abstraction.internals.interpreter.{MonadTransformerCases => TC}
 
 trait Effect[Z[_] <: AnyRef] extends Embedding[Z] with HasEffectId.Self {
   final override type ThisEffect = this.type
-  final type ThisHandler[F[_]] = Handler[F, this.type]
+  final type ThisHandler[F[_], N] = Handler[F, this.type, N]
+  final type ThisIHandler[F[_]] = IHandler[F, this.type]
 
   sealed trait ThisInterpreter extends IC.Unsealed {
     final override def effectIdDelegate = Effect.this

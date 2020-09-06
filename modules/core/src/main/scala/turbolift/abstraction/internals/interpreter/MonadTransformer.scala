@@ -1,7 +1,7 @@
 package turbolift.abstraction.internals.interpreter
 import cats.{Functor, ~>}
 import turbolift.abstraction.!!
-import turbolift.abstraction.{Handler, HandlerCases}
+import turbolift.abstraction.{IHandler, HandlerCases}
 import turbolift.abstraction.internals.effect.HasEffectId
 import turbolift.abstraction.typeclass.MonadPar
 
@@ -46,7 +46,7 @@ object MonadTransformerCases {
       }
     }
 
-    final def toHandler: Handler[O, ElimEffect] = HandlerCases.Nullary[O, ElimEffect](this)
+    final def toHandler: IHandler[O, ElimEffect] = HandlerCases.Nullary[O, ElimEffect, Any](this)
   }
 
 
@@ -70,6 +70,6 @@ object MonadTransformerCases {
         })
     }
 
-    final def toHandler(s: S): Handler[O, ElimEffect] = HandlerCases.Unary[S, O, ElimEffect](this, s)
+    final def toHandler(s: S): IHandler[O, ElimEffect] = HandlerCases.Unary[S, O, ElimEffect, Any](this, s)
   }
 }

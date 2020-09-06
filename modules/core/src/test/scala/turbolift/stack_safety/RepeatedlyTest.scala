@@ -1,6 +1,6 @@
 package turbolift.stack_safety
 import cats.implicits._
-import turbolift.abstraction.{!!, Handler}
+import turbolift.abstraction.{!!, IHandler}
 import turbolift.std_effects.{Reader, Writer, State, Choice}
 import org.specs2._
 
@@ -25,7 +25,7 @@ class RepeatedlyTest extends Specification with CanStackOverflow {
     def run: Any
   }
 
-  case class Case[F[_], U](name: String, h: Handler[F, U], comp: Any !! U) extends Case0 {
+  case class Case[F[_], U](name: String, h: IHandler[F, U], comp: Any !! U) extends Case0 {
     type Fx = U
     def mapEff(f: Mapper) = copy(comp = f(comp))
     def run = h run comp

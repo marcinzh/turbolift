@@ -9,7 +9,7 @@ import turbolift.std_effects.{MemoizerSig, Memoizer}
 
 //@#@TODO reuse State effect somehow
 object DefaultMemoizerHandler {
-  def apply[K, V, Fx <: Memoizer[K, V]](fx: Fx): fx.ThisHandler[Id] =
+  def apply[K, V, Fx <: Memoizer[K, V]](fx: Fx): fx.ThisIHandler[Id] =
     new fx.Unary[Map[K, V], (Map[K, V], ?)] {
       private type S = Map[K, V]
       override def purer[A](s: S, a: A): (S, A) = (s, a)

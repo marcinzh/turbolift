@@ -29,5 +29,5 @@ trait Except[E] extends Effect[ExceptSig[?, E]] {
     case Failure(e) => raise(e.asInstanceOf[E])
   }
 
-  val handler: ThisHandler[Either[E, ?]] = DefaultExceptHandler[E, this.type](this)
+  val handler: ThisIHandler[Either[E, ?]] = DefaultExceptHandler[E, this.type](this)
 }

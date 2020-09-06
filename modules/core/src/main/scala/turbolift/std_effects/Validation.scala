@@ -32,5 +32,5 @@ trait Validation[E] extends Effect[ValidationSig[?, E]] {
     case Failure(e) => invalid(e.asInstanceOf[E])
   }
 
-  def handler(implicit E: Semigroup[E]): ThisHandler[Either[E, ?]] = DefaultValidationHandler[E, this.type](this)
+  def handler(implicit E: Semigroup[E]): ThisIHandler[Either[E, ?]] = DefaultValidationHandler[E, this.type](this)
 }
