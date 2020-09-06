@@ -39,7 +39,7 @@ class RepeatedlyTest extends Specification with CanStackOverflow {
   val cases = List[Case0](
     Case("Reader", FxR.handler(0), FxR.ask),
     Case("Writer", FxW.handler, FxW.tell(111)),
-    Case("State", FxS.handler(0), FxS.mod(_ + 1)),
+    Case("State", FxS.handler(0), FxS.modify(_ + 1)),
     Case("Choice", FxC.handler, FxC.each(List(0)))
   )
 

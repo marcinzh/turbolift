@@ -25,7 +25,17 @@ object DefaultReaderHandler {
             ctx.pureInner(lift.pureStash(r))
           }
 
-        def local[A](mod: R => R)(scope: A !! U): A !! U =
+        def asks[A](f: R => A): A !! U =
+          ctx.withLift { lift => r =>
+            ctx.pureInner(lift.pureStash(f(r)))
+          }
+
+        def local[A](r: R)(scope: A !! U): A !! U =
+          ctx.withLift { lift => _ =>
+            lift.run(scope)(r)
+          }
+
+        def localModify[A](mod: R => R)(scope: A !! U): A !! U =
           ctx.withLift { lift => r =>
             lift.run(scope)(mod(r))
           }

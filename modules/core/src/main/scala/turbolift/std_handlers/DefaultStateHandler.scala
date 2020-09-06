@@ -31,14 +31,30 @@ object DefaultStateHandler {
             ctx.pureInner((s, lift.pureStash(s)))
           }
 
+        def gets[A](f: S => A): A !! U =
+          ctx.withLift { lift => s =>
+            ctx.pureInner((s, lift.pureStash(f(s))))
+          }
+
         def put(s: S): Unit !! U =
           ctx.withLift { lift => _ =>
             ctx.pureInner((s, lift.unitStash()))
           }
-        
-        override def mod(f: S => S): Unit !! U =
+
+        def swap(s2: S): S !! U =
+          ctx.withLift { lift => s1 =>
+            ctx.pureInner((s2, lift.pureStash(s1)))
+          }
+
+        def modify(f: S => S): Unit !! U =
           ctx.withLift { lift => s =>
             ctx.pureInner((f(s), lift.unitStash()))
+          }
+
+        def update[A](f: S => (S, A)): A !! U =
+          ctx.withLift { lift => s1 =>
+            val (s2, a) = f(s1)
+            ctx.pureInner((s2, lift.pureStash(a)))
           }
       }
     }.toHandler(initial)
