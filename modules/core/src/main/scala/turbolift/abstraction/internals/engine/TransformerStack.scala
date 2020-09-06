@@ -58,13 +58,13 @@ private object TransformerStackCases {
 
     override def makeDecoder[P[_]: MonadPar, F[_], U](recur: (? !! U) ~> P, lifting: Lifting[P, T[M, ?], F]): AnySignature[U] = {
       val lifting2 = new Lifting[? !! U, T[M, ?], F] {
-        val stashFunctor = lifting.stashFunctor
-        def withLift[A](ff: ThisLiftOps => T[M, F[A]]): A !! U =
+        override val stashFunctor = lifting.stashFunctor
+        override def withLift[A](ff: ThisLiftOps => T[M, F[A]]): A !! U =
           Done(lifting.withLift { l =>
             ff(new ThisLiftOps {
-              def run[A](ua: A !! U): T[M, F[A]] = l.run(recur(ua))
-              def pureStash[A](a: A): F[A] = l.pureStash(a)
-              def unitStash(): F[Unit] = l.unitStash()
+              override def run[A](ua: A !! U): T[M, F[A]] = l.run(recur(ua))
+              override def pureStash[A](a: A): F[A] = l.pureStash(a)
+              override def unitStash(): F[Unit] = l.unitStash()
             })
           })
       }

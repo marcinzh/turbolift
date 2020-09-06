@@ -13,9 +13,9 @@ object LiftOps {
 
   private val identityVal: LiftOps[Id, Id, Id] =
     new LiftOps[Id, Id, Id] {
-      def run[A](a: A): A = a
-      def pureStash[A](a: A): A = a
-      def unitStash(): Unit = ()
+      override def run[A](a: A): A = a
+      override def pureStash[A](a: A): A = a
+      override def unitStash(): Unit = ()
     }
 
   def compose[Outer[_], Middle[_], Inner[_], StashO[_], StashI[_]](
@@ -24,9 +24,9 @@ object LiftOps {
   ): LiftOps[Outer, Inner, Lambda[X => StashI[StashO[X]]]] = {
     type Stash[A] = StashI[StashO[A]]
     new LiftOps[Outer, Inner, Stash] {
-      def run[A](oa: Outer[A]): Inner[Stash[A]] = inner.run(outer.run(oa))
-      def pureStash[A](a: A): Stash[A] = inner.pureStash(outer.pureStash(a))
-      def unitStash(): Stash[Unit] = inner.pureStash(outer.unitStash())
+      override def run[A](oa: Outer[A]): Inner[Stash[A]] = inner.run(outer.run(oa))
+      override def pureStash[A](a: A): Stash[A] = inner.pureStash(outer.pureStash(a))
+      override def unitStash(): Stash[Unit] = inner.pureStash(outer.unitStash())
     }
   }
 }

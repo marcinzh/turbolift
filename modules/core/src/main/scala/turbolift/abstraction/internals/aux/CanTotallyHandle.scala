@@ -17,7 +17,7 @@ sealed trait CanTotallyHandle[U, V] {
 
 object CanTotallyHandle {
   private[abstraction] val singleton = new CanTotallyHandle[Any, Any] {
-    def apply[A](comp: A !! Any): A !! Any = comp
+    override def apply[A](comp: A !! Any): A !! Any = comp
   }
 
   implicit def CanTotallyHandle_evidence[U, V](implicit ev: V <:< U): CanTotallyHandle[U, V] =

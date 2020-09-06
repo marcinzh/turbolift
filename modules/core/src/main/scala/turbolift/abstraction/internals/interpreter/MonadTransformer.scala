@@ -38,12 +38,11 @@ object MonadTransformerCases {
     private[abstraction] final override def lifting[M[_]] = new Lifting[Lambda[X => M[O[X]]], M, O] {
       override val stashFunctor: Functor[O] = theFunctor
       override def withLift[A](ff: ThisLiftOps => M[O[A]]): M[O[A]] = ff(liftOpsVal)
-
       private val unitStashVal = purer(())
       private val liftOpsVal = new ThisLiftOps {
-        def run[A](tma: M[O[A]]): M[O[A]] = tma
-        def pureStash[A](a: A): O[A] = purer(a)
-        def unitStash(): O[Unit] = unitStashVal
+        override def run[A](tma: M[O[A]]): M[O[A]] = tma
+        override def pureStash[A](a: A): O[A] = purer(a)
+        override def unitStash(): O[Unit] = unitStashVal
       }
     }
 
@@ -65,9 +64,9 @@ object MonadTransformerCases {
       override val stashFunctor: Functor[O] = theFunctor
       override def withLift[A](ff: ThisLiftOps => M[O[A]]): S => M[O[A]] =
         s => ff(new ThisLiftOps {
-          def run[A](tma: S => M[O[A]]): M[O[A]] = tma(s)
-          def pureStash[A](a: A): O[A] = purer(s, a)
-          def unitStash(): O[Unit] = purer(s, ())
+          override def run[A](tma: S => M[O[A]]): M[O[A]] = tma(s)
+          override def pureStash[A](a: A): O[A] = purer(s, a)
+          override def unitStash(): O[Unit] = purer(s, ())
         })
     }
 

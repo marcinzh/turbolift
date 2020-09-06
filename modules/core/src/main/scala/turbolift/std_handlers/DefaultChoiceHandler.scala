@@ -12,7 +12,7 @@ object DefaultChoiceHandler {
       override def purer[A](a: A): Vector[A] = Vector(a)
 
       override def transform[M[_]: MonadPar] = new Transformed[M] {
-        def flatMap[A, B](tma: M[Vector[A]])(f: A => M[Vector[B]]): M[Vector[B]] = {
+        override def flatMap[A, B](tma: M[Vector[A]])(f: A => M[Vector[B]]): M[Vector[B]] = {
           def loop(as: Vector[A]): M[Vector[B]] = as match {
             case Vector() => MonadPar[M].pure(Vector())
             case Vector(a) => f(a)
@@ -25,7 +25,7 @@ object DefaultChoiceHandler {
           tma.flatMap(loop)
         }
 
-        def zipPar[A, B](tma: M[Vector[A]], tmb: M[Vector[B]]): M[Vector[(A, B)]] =
+        override def zipPar[A, B](tma: M[Vector[A]], tmb: M[Vector[B]]): M[Vector[(A, B)]] =
           (tma *! tmb).map {
             case (as, bs) =>
               for {
@@ -36,13 +36,13 @@ object DefaultChoiceHandler {
       }
 
       override def interpret[M[_], F[_], U](implicit ctx: ThisContext[M, F, U]) = new ChoiceSig[U] {
-        def empty[A]: A !! U =
+        override def empty[A]: A !! U =
           ctx.withLift(lift => ctx.pureInner(Vector.empty[F[A]]))
 
-        def each[A](as: Iterable[A]): A !! U =
+        override def each[A](as: Iterable[A]): A !! U =
           ctx.withLift(lift => ctx.pureInner(as.iterator.map(lift.pureStash).toVector))
 
-        def plus[A](lhs: A !! U, rhs: => A !! U): A !! U =
+        override def plus[A](lhs: A !! U, rhs: => A !! U): A !! U =
           ctx.withLift { lift =>
             (lift.run(lhs) *! lift.run(rhs)).map {
               case (xs, ys) => xs ++ ys

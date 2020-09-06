@@ -17,7 +17,7 @@ sealed trait CanPartiallyHandle[U, V, W] {
 
 object CanPartiallyHandle {
   private[abstraction] val singleton = new CanPartiallyHandle[Any, Any, Any] {
-    def apply[A](comp: A !! Any): A !! Any = comp
+    override def apply[A](comp: A !! Any): A !! Any = comp
   }
 
   implicit def CanPartiallyHandle_evidence[U, V, W](implicit ev: (W with U) <:< V): CanPartiallyHandle[U, V, W] =

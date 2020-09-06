@@ -15,7 +15,7 @@ sealed trait CanRun[U] {
 
 object CanRun {
   private[abstraction] val singleton = new CanRun[Any] {
-    def apply[A](comp: A !! Any): A !! Any = comp
+    override def apply[A](comp: A !! Any): A !! Any = comp
   }
 
   implicit def CanRun_evidence[U](implicit ev: U =:= Any): CanRun[U] =

@@ -99,19 +99,19 @@ trait HandlerExtensions {
   implicit class HandlerExtension_Option[Elim](thiz: Handler[Option, Elim]) {
     def toEither[E](e : => E): Handler[Either[E, ?], Elim] =
       thiz.map(new (Option ~> Either[E, ?]) {
-        def apply[A](result: Option[A]) = result.toRight(e)
+        override def apply[A](result: Option[A]) = result.toRight(e)
       })
   }
 
   implicit class HandlerExtension_Either[E, Elim](thiz: Handler[Either[E, ?], Elim]) {
     def toOption: Handler[Option, Elim] =
       thiz.map(new (Either[E, ?] ~> Option) {
-        def apply[A](result: Either[E, A]) = result.toOption
+        override def apply[A](result: Either[E, A]) = result.toOption
       })
 
     def toTry(implicit ev: E <:< Throwable): Handler[Try, Elim] = 
       thiz.map(new (Either[E, ?] ~> Try) {
-        def apply[A](result: Either[E, A]) = result.toTry
+        override def apply[A](result: Either[E, A]) = result.toTry
       })
   }
 }
