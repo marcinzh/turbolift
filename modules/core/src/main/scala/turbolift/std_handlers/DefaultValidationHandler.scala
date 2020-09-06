@@ -32,13 +32,13 @@ object DefaultValidationHandler {
       override def interpret[M[_], F[_], U](implicit ctx: ThisContext[M, F, U]) = new ValidationSig[U, E] {
         def invalid[A](e: E): A !! U =
           ctx.withLift { lift =>
-            ctx.pureInner(Left(e): Either[E, F[A]])
+            ctx.pureInner(Left(e).withRight[F[A]])
           }
 
         def validate[A](scope: A !! U)(recover: E => A !! U): A !! U =
           ctx.withLift { lift =>
             lift.run(scope).flatMap {
-              case Right(fa) => ctx.pureInner(Right(fa): Either[E, F[A]])
+              case Right(fa) => ctx.pureInner(Right(fa).withLeft[E])
               case Left(e) => lift.run(recover(e))
             }
           }
