@@ -2,7 +2,7 @@ package turbolift.abstraction
 import scala.util.{Try, Success, Failure}
 import cats.{Id, ~>}
 import turbolift.abstraction.internals.aux.CanPartiallyHandle
-import turbolift.abstraction.internals.interpreter.MonadTransformer
+import turbolift.abstraction.internals.interpreter.Interpreter
 
 
 sealed trait Handler[Result[_], Elim, Intro] {
@@ -36,27 +36,11 @@ object Handler extends HandlerExtensions
 
 
 private[abstraction] object HandlerCases {
-  sealed trait Primitive[Result[_], Elim, Intro] extends Handler[Result, Elim, Intro] {
-    type Trans[M[_], A]
-    def prime[M[_], A](tma: Trans[M, A]): M[Result[A]]
-    def transformer: MonadTransformer[Trans, Result]
-    final override def doHandle[A, U](comp: A !! U with Elim): Result[A] !! U with Intro =
+  final case class Primitive[Result[_], Elim, Intro](
+    interpreter: Interpreter.Saturated[Result, Elim, Intro]
+  ) extends Handler[Result, Elim, Intro] {
+    override def doHandle[A, U](comp: A !! U with Elim): Result[A] !! U with Intro = 
       new ComputationCases.Scope[A, U, Result, Elim, Intro](comp, this)
-  }
-
-  final case class Nullary[Result[_], Elim, Intro](
-    transformer: MonadTransformer[Lambda[(`M[_]`, A) => M[Result[A]]], Result]
-  ) extends Primitive[Result, Elim, Intro] {
-    override type Trans[M[_], A] = M[Result[A]]
-    override def prime[M[_], A](tma: M[Result[A]]): M[Result[A]] = tma
-  }
-
-  final case class Unary[S, Result[_], Elim, Intro](
-    transformer: MonadTransformer[Lambda[(`M[_]`, A) => S => M[Result[A]]], Result],
-    initial: S
-  ) extends Primitive[Result, Elim, Intro] {
-    override type Trans[M[_], A] = S => M[Result[A]]
-    override def prime[M[_], A](tma: S => M[Result[A]]): M[Result[A]] = tma(initial)
   }
 
   final case class Composed[Result1[_], Result2[_], Elim1, Elim2, Intro1, Intro2, Hidden](

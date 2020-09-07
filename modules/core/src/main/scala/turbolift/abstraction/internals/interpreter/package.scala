@@ -1,5 +1,5 @@
 package turbolift.abstraction.internals
 
 package object interpreter {
-  type AnySignature[U] = Interpreter#Signature[U]
+  type AnySignature[U] = HasSignature#Signature[U]
 }

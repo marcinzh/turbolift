@@ -6,15 +6,11 @@ import turbolift.abstraction.internals.effect.HasEffectId
 import turbolift.abstraction.typeclass.MonadPar
 
 
-sealed trait MonadTransformer[T[_[_], _], O[_]] extends InterpreterCases.Independent {
-  final override type Result[A] = O[A]
-
-  private[abstraction] def theFunctor: Functor[O]
-
+sealed trait MonadTransformer[T[_[_], _], O[_]] extends HasSignature {
+  private[abstraction] val theFunctor: Functor[O]
   private[abstraction] def lifting[M[_]]: Lifting[T[M, ?], M, O]
 
   def transform[M[_]: MonadPar]: MonadPar[T[M, ?]]
-
   def interpret[M[_], F[_], U](implicit ctx: ThisContext[M, F, U]): Signature[U]
 
   type ThisContext[M[_], F[_], U] = Context[T, M, F, U]
@@ -25,7 +21,7 @@ sealed trait MonadTransformer[T[_[_], _], O[_]] extends InterpreterCases.Indepen
 
 
 object MonadTransformerCases {
-  trait Nullary[O[_]] extends MonadTransformer[Lambda[(`M[_]`, A) => M[O[A]]], O] {
+ abstract class Nullary[O[_]: Functor] extends MonadTransformer[Lambda[(`M[_]`, A) => M[O[A]]], O] with InterpreterCases.SaturatedNullary[O] {
     def purer[A](a: A): O[A]
 
     override def transform[M[_]: MonadPar]: Transformed[M]
@@ -34,6 +30,9 @@ object MonadTransformerCases {
       final override def pure[A](a: A): M[O[A]] = M.pure(purer(a))
       final override def defer[A](tma: => M[O[A]]): M[O[A]] = M.defer(tma)
     }
+
+    private[abstraction] final override val theFunctor = Functor[O]
+    private[abstraction] final override def transformer: MonadTransformer[Trans, Result] = this
 
     private[abstraction] final override def lifting[M[_]] = new Lifting[Lambda[X => M[O[X]]], M, O] {
       override val stashFunctor: Functor[O] = theFunctor
@@ -46,11 +45,10 @@ object MonadTransformerCases {
       }
     }
 
-    final def toHandler: ThisHandler = HandlerCases.Nullary[O, ElimEffect, Any](this)
   }
 
 
-  trait Unary[S, O[_]] extends MonadTransformer[Lambda[(`M[_]`, A) => S => M[O[A]]], O] {
+  abstract class Unary[S, O[_]: Functor] extends MonadTransformer[Lambda[(`M[_]`, A) => S => M[O[A]]], O] with InterpreterCases.UnsaturatedUnary[S, O]{
     def purer[A](s: S, a: A): O[A]
 
     override def transform[M[_]: MonadPar]: Transformed[M]
@@ -59,6 +57,9 @@ object MonadTransformerCases {
       final override def pure[A](a: A): S => M[O[A]] = s => M.pure(purer(s, a))
       final override def defer[A](tma: => S => M[O[A]]): S => M[O[A]] = s => M.defer(tma(s))
     }
+
+    private[abstraction] final override val theFunctor = Functor[O]
+    private[abstraction] final override def transformer: MonadTransformer[Trans, Result] = this
 
     private[abstraction] final override def lifting[M[_]] = new Lifting[Lambda[X => S => M[O[X]]], M, O] {
       override val stashFunctor: Functor[O] = theFunctor
@@ -69,7 +70,5 @@ object MonadTransformerCases {
           override def unitStash(): O[Unit] = purer(s, ())
         })
     }
-
-    final def toHandler(s: S): ThisHandler = HandlerCases.Unary[S, O, ElimEffect, Any](this, s)
   }
 }
