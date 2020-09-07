@@ -9,6 +9,8 @@ sealed trait Interpreter extends HasEffectId.Delegate {
   type ElimEffect
   type IntroEffect
   type Signature[U] <: AnyRef
+
+  final type ThisHandler = Handler[Result, ElimEffect, IntroEffect]
 }
 
 
@@ -33,6 +35,6 @@ object InterpreterCases {
     
     def interpret[U <: TargetEffect]: Signature[U]
 
-    final def toHandler: Handler[Id, ElimEffect, IntroEffect] = ???
+    final def toHandler: ThisHandler = ???
   }
 }

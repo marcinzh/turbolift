@@ -46,7 +46,7 @@ object MonadTransformerCases {
       }
     }
 
-    final def toHandler: IHandler[O, ElimEffect] = HandlerCases.Nullary[O, ElimEffect, Any](this)
+    final def toHandler: ThisHandler = HandlerCases.Nullary[O, ElimEffect, Any](this)
   }
 
 
@@ -70,6 +70,6 @@ object MonadTransformerCases {
         })
     }
 
-    final def toHandler(s: S): IHandler[O, ElimEffect] = HandlerCases.Unary[S, O, ElimEffect, Any](this, s)
+    final def toHandler(s: S): ThisHandler = HandlerCases.Unary[S, O, ElimEffect, Any](this, s)
   }
 }
