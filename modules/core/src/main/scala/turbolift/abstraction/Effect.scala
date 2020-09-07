@@ -17,12 +17,13 @@ trait Effect[Z[_] <: AnyRef] extends Embedding[Z] with HasEffectId.Self {
   }
 
   abstract class Nullary[O[_]: Functor] extends TC.Nullary[O] with ThisInterpreter {
-    final def self: Nullary[O] = this
     final override val theFunctor = Functor[O]
   }
 
   abstract class Unary[S, O[_]: Functor] extends TC.Unary[S, O] with ThisInterpreter {
-    final def self: Unary[S, O] = this
     final override val theFunctor = Functor[O]
+  }
+
+  abstract class Dependent[Fx] extends IC.Dependent[Fx] with ThisInterpreter {
   }
 }

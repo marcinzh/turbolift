@@ -6,7 +6,7 @@ import turbolift.abstraction.internals.effect.HasEffectId
 import turbolift.abstraction.typeclass.MonadPar
 
 
-sealed trait MonadTransformer[T[_[_], _], O[_]] extends InterpreterCases.Unsealed {
+sealed trait MonadTransformer[T[_[_], _], O[_]] extends InterpreterCases.Independent {
   final override type Result[A] = O[A]
 
   private[abstraction] def theFunctor: Functor[O]

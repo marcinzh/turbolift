@@ -22,6 +22,9 @@ sealed trait Handler[Result[_], Elim, Intro] {
   final def composeWith[ThatResult[_], ThatElim, ThatIntro](that: Handler[ThatResult, ThatElim, ThatIntro]) =
     HandlerCases.Composed[Result, ThatResult, Elim, ThatElim, Intro, ThatIntro, Any](this, that).self
   
+  final def provideWith[ThatResult[_], ThatIntro](that: Handler[ThatResult, Intro, ThatIntro]) =
+    HandlerCases.Composed[Result, ThatResult, Elim, Any, Any, ThatIntro, Intro](Handler.this, that).self
+
   final def <<<![ThatResult[_], ThatElim, ThatIntro](that: Handler[ThatResult, ThatElim, ThatIntro]) = that.composeWith(this)
   final def >>>![ThatResult[_], ThatElim, ThatIntro](that: Handler[ThatResult, ThatElim, ThatIntro]) = this.composeWith(that)
 
@@ -56,15 +59,6 @@ private[abstraction] object HandlerCases {
     override def prime[M[_], A](tma: S => M[Result[A]]): M[Result[A]] = tma(initial)
   }
 
-  // final case class Composed[Result1[_], Result2[_], Elim, Intro1, Elim, Intro2](
-  //   first: Handler[Result1, Elim, Intro1],
-  //   second: Handler[Result2, Elim, Intro2],
-  // ) extends Handler[Lambda[X => Result2[Result1[X]]], Elim, Intro1 with Elim2] {
-  //   override def doHandle[A, U](comp: A !! U with Elim1 with Elim2): Result2[Result1[A]] !! U =
-  //     second.doHandle[Result1[A], U](
-  //       first.doHandle[A, U with Elim2](comp)
-  //     )
-  // }
   final case class Composed[Result1[_], Result2[_], Elim1, Elim2, Intro1, Intro2, Hidden](
     first: Handler[Result1, Elim1, Intro1 with Hidden],
     second: Handler[Result2, Elim2 with Hidden, Intro2],
