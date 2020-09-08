@@ -4,7 +4,7 @@ autoStartServer := false
 
 lazy val commonSettings = Seq(
   organization := "com.github.marcinzh",
-  version := "0.6.0-SNAPSHOT",
+  version := "0.7.0-SNAPSHOT",
   scalaVersion := "2.13.3",
   crossScalaVersions := Seq(scalaVersion.value),
   scalacOptions ++= Seq(
