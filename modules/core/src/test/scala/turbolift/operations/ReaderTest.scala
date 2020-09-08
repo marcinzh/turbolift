@@ -35,8 +35,8 @@ class ReaderTest extends Specification {
         !!.pure()
       else 
         str.head match {
-          case '[' => FxR.local(_ + 1)(loop(str.tail))
-          case ']' => FxR.local(_ - 1)(loop(str.tail))
+          case '[' => FxR.localModify(_ + 1)(loop(str.tail))
+          case ']' => FxR.localModify(_ - 1)(loop(str.tail))
           case x => for { 
             indent <- FxR.ask
             _ <- FxW.tell(("  " * indent) :+ x)

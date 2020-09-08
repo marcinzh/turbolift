@@ -67,9 +67,9 @@ object Trampoline {
 
 object TrampolineInstances {
   def monad: MonadPar[Trampoline] = new MonadPar[Trampoline] {
-    def pure[A](a: A): Trampoline[A] = Done(a)
-    def flatMap[A, B](ma: Trampoline[A])(f: A => Trampoline[B]): Trampoline[B] = ma.flatMap(f)
-    def zipPar[A, B](ma: Trampoline[A], mb: Trampoline[B]): Trampoline[(A, B)] = ma.zipPar(mb)
-    def defer[A](ma: => Trampoline[A]): Trampoline[A] = More(() => ma)
+    override def pure[A](a: A): Trampoline[A] = Done(a)
+    override def flatMap[A, B](ma: Trampoline[A])(f: A => Trampoline[B]): Trampoline[B] = ma.flatMap(f)
+    override def zipPar[A, B](ma: Trampoline[A], mb: Trampoline[B]): Trampoline[(A, B)] = ma.zipPar(mb)
+    override def defer[A](ma: => Trampoline[A]): Trampoline[A] = More(() => ma)
   }
 }

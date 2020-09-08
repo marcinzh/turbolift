@@ -7,12 +7,12 @@ import turbolift.std_effects.{ChoiceSig, Choice}
 
 
 object DefaultChoiceHandler {
-  def apply[Fx <: Choice](fx: Fx): fx.ThisHandler[Vector] =
+  def apply[Fx <: Choice](fx: Fx): fx.ThisIHandler[Vector] =
     new fx.Nullary[Vector] {
-      def commonOps[M[_]](implicit M: MonadPar[M]) = new CommonOps[M] {
-        def purer[A](a: A): Vector[A] = Vector(a)
+      override def purer[A](a: A): Vector[A] = Vector(a)
 
-        def flatMap[A, B](tma: M[Vector[A]])(f: A => M[Vector[B]]): M[Vector[B]] = {
+      override def transform[M[_]: MonadPar] = new Transformed[M] {
+        override def flatMap[A, B](tma: M[Vector[A]])(f: A => M[Vector[B]]): M[Vector[B]] = {
           def loop(as: Vector[A]): M[Vector[B]] = as match {
             case Vector() => MonadPar[M].pure(Vector())
             case Vector(a) => f(a)
@@ -25,7 +25,7 @@ object DefaultChoiceHandler {
           tma.flatMap(loop)
         }
 
-        def zipPar[A, B](tma: M[Vector[A]], tmb: M[Vector[B]]): M[Vector[(A, B)]] =
+        override def zipPar[A, B](tma: M[Vector[A]], tmb: M[Vector[B]]): M[Vector[(A, B)]] =
           (tma *! tmb).map {
             case (as, bs) =>
               for {
@@ -35,23 +35,20 @@ object DefaultChoiceHandler {
           }
       }
 
-      def specialOps[M[_], U](context: ThisContext[M, U]) = new SpecialOps(context) with ChoiceSig[U] {
-        def empty[A]: A !! U =
-          withLift { l =>
-            pureInner(Vector.empty[Stash[A]])
-          }
+      override def interpret[M[_], F[_], U](implicit ctx: ThisContext[M, F, U]) = new ChoiceSig[U] {
+        override def empty[A]: A !! U =
+          ctx.withLift(lift => ctx.pureInner(Vector.empty[F[A]]))
 
-        def plus[A](lhs: A !! U, rhs: => A !! U): A !! U =
-          withLift { l =>
-            (l.run(lhs) *! l.run(rhs)).map {
+        override def each[A](as: Iterable[A]): A !! U =
+          ctx.withLift(lift => ctx.pureInner(as.iterator.map(lift.pureStash).toVector))
+
+        override def plus[A](lhs: A !! U, rhs: => A !! U): A !! U =
+          ctx.withLift { lift =>
+            (lift.run(lhs) *! lift.run(rhs)).map {
               case (xs, ys) => xs ++ ys
             }
           }
 
-        def each[A](as: Iterable[A]): A !! U =
-          withLift { l =>
-            pureInner(as.iterator.map(l.pureStash).toVector)
-          }
       }
     }.toHandler
 }

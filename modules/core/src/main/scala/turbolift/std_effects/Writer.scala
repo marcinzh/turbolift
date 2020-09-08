@@ -20,5 +20,5 @@ trait Writer[W] extends Effect[WriterSig[?, W]] {
   final def censor[A, U](scope: A !! U)(f: W => W): A !! U with this.type = embedHO[U](_.censor(scope)(f))
   final def clear[A, U](scope: A !! U): A !! U with this.type = embedHO[U](_.clear(scope))
 
-  def handler(implicit W: Monoid[W]): ThisHandler[(W, ?)] = DefaultWriterHandler[W, this.type](this)
+  def handler(implicit W: Monoid[W]): ThisIHandler[(W, ?)] = DefaultWriterHandler[W, this.type](this)
 }

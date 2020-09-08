@@ -7,28 +7,30 @@ import turbolift.std_effects.{ReaderSig, Reader}
 
 
 object DefaultReaderHandler {
-  def apply[R, Fx <: Reader[R]](fx: Fx, initial: R): fx.ThisHandler[Id] =
+  def apply[R, Fx <: Reader[R]](fx: Fx, initial: R): fx.ThisIHandler[Id] =
     new fx.Unary[R, Id] {
-      def commonOps[M[_]](implicit M: MonadPar[M]) = new CommonOps[M] {
-        def purer[A](r: R, a: A): A = a
+      override def purer[A](r: R, a: A): A = a
 
-        def flatMap[A, B](tma: R => M[A])(f: A => R => M[B]): R => M[B] =
+      override def transform[M[_]: MonadPar] = new Transformed[M] {
+        override def flatMap[A, B](tma: R => M[A])(f: A => R => M[B]): R => M[B] =
           r => tma(r).flatMap(a => f(a)(r))
 
-        def zipPar[A, B](tma: R => M[A], tmb: R => M[B]): R => M[(A, B)] =
+        override def zipPar[A, B](tma: R => M[A], tmb: R => M[B]): R => M[(A, B)] =
           r => tma(r) *! tmb(r)
       }
 
-      def specialOps[M[_], U](context: ThisContext[M, U]) = new SpecialOps(context) with ReaderSig[U, R] {
-        val ask: R !! U =
-          withLift { l => r =>
-            pureInner(l.pureStash(r))
-          }
+      override def interpret[M[_], F[_], U](implicit ctx: ThisContext[M, F, U]) = new ReaderSig[U, R] {
+        override val ask: R !! U =
+          ctx.withLift(lift => r => ctx.pureInner(lift.pureStash(r)))
 
-        def local[A](mod: R => R)(scope: A !! U): A !! U =
-          withLift { l => r =>
-            l.run(scope)(mod(r))
-          }
+        override def asks[A](f: R => A): A !! U =
+          ctx.withLift(lift => r => ctx.pureInner(lift.pureStash(f(r))))
+
+        override def local[A](r: R)(scope: A !! U): A !! U =
+          ctx.withLift(lift => _ => lift.run(scope)(r))
+
+        override def localModify[A](mod: R => R)(scope: A !! U): A !! U =
+          ctx.withLift(lift => r => lift.run(scope)(mod(r)))
       }
     }.toHandler(initial)
 }

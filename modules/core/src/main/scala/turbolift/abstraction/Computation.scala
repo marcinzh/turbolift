@@ -53,16 +53,16 @@ private[abstraction] object ComputationCases {
   final case class FlatMap[A, B, U](that: A !! U, k: A => B !! U) extends Computation[B, U]
   final case class ZipPar[A, B, U](lhs: A !! U, rhs: B !! U) extends Computation[(A, B), U]
   final case class Dispatch[A, U, Z[_]](effectId: EffectId, op: Z[U] => A !! U) extends Computation[A, U]
-  final case class Scope[A, U, F[_], L](scope: A !! U with L, handler: Primitive[F, L]) extends Computation[F[A], U]
+  final case class Scope[A, U, F[_], L, N](scope: A !! U with L, handler: Primitive[F, L, N]) extends Computation[F[A], U with N]
 }
 
 
 trait ComputationInstances {
   implicit def monad[U]: MonadPar[Computation[?, U]] = new MonadPar[Computation[?, U]] {
-    def pure[A](a: A): A !! U = Pure(a)
-    def flatMap[A, B](ua: A !! U)(f: A => B !! U): B !! U = ua.flatMap(f)
-    def zipPar[A, B](ua: A !! U, ub: B !! U): (A, B) !! U = ua *! ub
-    def defer[A](ua: => A !! U): A !! U = !!.defer(ua)
+    override def pure[A](a: A): A !! U = Pure(a)
+    override def flatMap[A, B](ua: A !! U)(f: A => B !! U): B !! U = ua.flatMap(f)
+    override def zipPar[A, B](ua: A !! U, ub: B !! U): (A, B) !! U = ua *! ub
+    override def defer[A](ua: => A !! U): A !! U = !!.defer(ua)
   }
 }
 
@@ -78,15 +78,15 @@ trait ComputationExtensions {
     def run(implicit ev: CanRun[U]): A = MainLoop.pure(ev(thiz)).run
     def runStackUnsafe(implicit ev: CanRun[U]): A = MainLoop.pureStackUnsafe[A](ev(thiz))
     
-    def runWith[F[_], L](h: Handler[F, L])(implicit ev: CanTotallyHandle[U, L]): F[A] =
+    def runWith[F[_], L](h: IHandler[F, L])(implicit ev: CanTotallyHandle[U, L]): F[A] =
       h.doHandle[A, Any](ev(thiz)).run
 
-    def runStackUnsafeWith[F[_], L](h: Handler[F, L])(implicit ev: CanTotallyHandle[U, L]): F[A] =
+    def runStackUnsafeWith[F[_], L, N](h: IHandler[F, L])(implicit ev: CanTotallyHandle[U, L]): F[A] =
       h.doHandle[A, Any](ev(thiz)).runStackUnsafe
 
     def handleWith[V] : HandleWithApply[V] = new HandleWithApply[V]
     class HandleWithApply[V] {
-      def apply[F[_], L](h: Handler[F, L])(implicit ev: CanPartiallyHandle[V, U, L]): F[A] !! V =
+      def apply[F[_], L, N](h: Handler[F, L, N])(implicit ev: CanPartiallyHandle[V, U, L]): F[A] !! V with N =
         h.doHandle[A, V](ev(thiz))
     }
 
