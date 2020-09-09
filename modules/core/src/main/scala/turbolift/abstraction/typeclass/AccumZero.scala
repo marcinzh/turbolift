@@ -1,46 +1,57 @@
 package turbolift.abstraction.typeclass
-import cats.{Semigroup, Monoid}
+import scala.collection.IterableFactory
+import cats.{Monoid, MonoidK, Alternative}
 
 
-trait AccumZero[E, L] extends Accum[E, L] {
-  def zero: L
+trait AccumZero[W, WW] extends Accum[W, WW] {
+  def zero: WW
+  def toAccum: Accum[W, WW] = this
 }
 
-
-object AccumZero {
-  def apply[E, L](implicit ev: AccumZero[E, L]) = ev
-
-  import AccumZeroImpl._
-  implicit def accumFromMonoid[L](implicit L: Monoid[L]): AccumZero[L, L] = new AccumZeroFromMonoid[L] { def Monoid = L }
-  implicit def accumForString: AccumZero[Char, String] = new AccumZeroForString {}
-  implicit def accumForVector[E]: AccumZero[E, Vector[E]] = new AccumZeroForVector[E] {}
-  implicit def accumForList[E]: AccumZero[E, List[E]] = new AccumZeroForList[E] {}
-  implicit def accumForSet[E]: AccumZero[E, Set[E]] = new AccumZeroForSet[E] {}
+object AccumZero extends AccumZeroInstances2 {
+  def apply[W, WW](implicit ev: AccumZero[W, WW]) = ev
 }
 
+trait AccumZeroInstances1 {
+  implicit def fromMonoid[W](implicit W: Monoid[W]): AccumZero[W, W] =
+    new AccumZero[W, W] {
+      override def zero: W = W.empty
+      override def one(w: W): W = w
+      override def plus(w1: W, w2: W): W = W.combine(w1, w2)
+      override def plus1(w1: W, w2: W): W = W.combine(w1, w2)
+    }
 
-object AccumZeroImpl {
-  import AccumImpl._
+  implicit def fromMonoidK[W, F[_]](implicit W: Alternative[F]): AccumZero[W, F[W]] =
+    new AccumZero[W, F[W]] {
+      override def zero: F[W] = W.empty
+      override def one(w: W): F[W] = W.pure(w)
+      override def plus(fw1: F[W], fw2: F[W]): F[W] = W.combineK(fw1, fw2)
+      override def plus1(fw: F[W], w: W): F[W] = W.combineK(fw, one(w))
+    }
+}
 
-  trait AccumZeroFromMonoid[L] extends AccumZero[L, L] with AccumFromSemigroup[L] {
-    def Monoid: Monoid[L]
-    override def Semigroup: Semigroup[L] = Monoid
-    def zero: L = Monoid.empty
-  }
+trait AccumZeroInstances2 extends AccumZeroInstances1 {
+  implicit def forVector[W] = make[W, Vector](Vector, Vector(_), _ :+ _)
+  implicit def forList[W] = make[W, List](List, List(_), _ :+ _)
+  implicit def forSet[W] = make[W, Set](Set, Set(_), _ + _)
 
-  trait AccumZeroForString extends AccumZero[Char, String] with AccumForString {
-    def zero = ""
-  }
+  implicit def forArray[W: reflect.ClassTag]: AccumZero[W, Array[W]] =
+    new AccumZero[W, Array[W]] {
+      override def zero: Array[W] = Array.empty[W]
+      override def one(w: W): Array[W] = Array[W](w)
+      override def plus(fw1: Array[W], fw2: Array[W]): Array[W] = fw1 ++ fw2
+      override def plus1(fw: Array[W], w: W): Array[W] = fw :+ w
+    }
 
-  trait AccumZeroForVector[E] extends AccumZero[E, Vector[E]] with AccumForVector[E] {
-    def zero = Vector()
-  }
-
-  trait AccumZeroForList[E] extends AccumZero[E, List[E]] with AccumForList[E] {
-    def zero = List()
-  }
-
-  trait AccumZeroForSet[E] extends AccumZero[E, Set[E]] with AccumForSet[E] {
-    def zero = Set()
-  }
+  private def make[W, F[X] <: Iterable[X]](
+    factory: IterableFactory[F],
+    singleton: W => F[W],
+    addOne: (F[W], W) => F[W],
+  ): AccumZero[W, F[W]] = 
+    new AccumZero[W, F[W]] {
+      override def zero: F[W] = factory.empty
+      override def one(w: W): F[W] = singleton(w)
+      override def plus(fw1: F[W], fw2: F[W]): F[W] = factory.concat(fw1, fw2)
+      override def plus1(fw: F[W], w: W): F[W] = addOne(fw, w)
+    }
 }

@@ -6,16 +6,17 @@ import turbolift.abstraction.typeclass.Accum
 import turbolift.std_handlers.DefaultValidationHandler
 
 
-trait ValidationSig[U, E] {
+trait ValidationExtSig[U, E, EE] {
   def invalid[A](e: E): A !! U
-  def validate[A](scope: A !! U)(recover: E => A !! U): A !! U
+  def invalids[A](ee: EE): A !! U
+  def validate[A](scope: A !! U)(recover: EE => A !! U): A !! U
 }
 
 
-trait Validation[E] extends Effect[ValidationSig[?, E]] {
+trait ValidationExt[E, EE] extends Effect[ValidationExtSig[?, E, EE]] {
   final def invalid(e: E): Nothing !! this.type = embedFO(_.invalid(e))
-  final def invalid[X](x: X)(implicit ev: Accum[X, E]): Nothing !! this.type = invalid(ev.one(x))
-  final def validate[A, U](scope: A !! U)(recover: E => A !! U): A !! U with this.type = embedHO[U](_.validate(scope)(recover))
+  final def invalids(ee: EE): Nothing !! this.type = embedFO(_.invalids(ee))
+  final def validate[A, U](scope: A !! U)(recover: EE => A !! U): A !! U with this.type = embedHO[U](_.validate(scope)(recover))
 
   final def fromEither[A](x: Either[E, A]): A !! this.type = x match {
     case Right(a) => pure(a)
@@ -32,5 +33,16 @@ trait Validation[E] extends Effect[ValidationSig[?, E]] {
     case Failure(e) => invalid(e.asInstanceOf[E])
   }
 
-  def handler(implicit E: Semigroup[E]): ThisIHandler[Either[E, ?]] = DefaultValidationHandler[E, this.type](this)
+  def handler(implicit E: Accum[E, EE]): ThisIHandler[Either[EE, ?]] = DefaultValidationHandler[E, EE, this.type](this)
+}
+
+
+trait Validation[E] extends ValidationExt[E, E]
+
+trait ValidationK[E, F[_]] extends ValidationExt[E, F[E]]
+
+trait ValidationExports {
+  type ValidationSig[U, E] = ValidationExtSig[U, E, E]
+
+  type ValidationKSig[U, E, F[_]] = ValidationExtSig[U, E, F[E]]
 }
