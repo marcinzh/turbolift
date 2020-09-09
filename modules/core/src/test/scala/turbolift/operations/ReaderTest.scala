@@ -1,7 +1,7 @@
 package turbolift.operations
 import cats.implicits._
 import turbolift.abstraction.!!
-import turbolift.std_effects.{Reader, Writer}
+import turbolift.std_effects.{Reader, WriterK}
 import org.specs2._
 
 
@@ -28,7 +28,7 @@ class ReaderTest extends Specification {
 
   def local = br ^ "local" ! {
     case object FxR extends Reader[Int]
-    case object FxW extends Writer[Vector[String]]
+    case object FxW extends WriterK[Vector, String]
 
     def loop(str: String): Unit !! FxR.type with FxW.type = {
       if (str.isEmpty)

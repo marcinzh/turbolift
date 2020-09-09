@@ -2,7 +2,7 @@ package turbolift.operations
 import cats.implicits._
 import turbolift.abstraction.!!
 import turbolift.abstraction.Implicits._ //@#@ just TraverseImplicits
-import turbolift.std_effects.{Memoizer, Writer}
+import turbolift.std_effects.{Memoizer, WriterK}
 import org.specs2._
 
 
@@ -38,7 +38,7 @@ class MemoizerTest extends Specification with CanLaunchTheMissiles {
 
   def graphTest = br ^ "graph" ! {
     case object FxMemo extends Memoizer[Int, Vertex]
-    case object FxLog extends Writer[Vector[Int]]
+    case object FxLog extends WriterK[Vector, Int]
 
     case class Vertex(serno: Int, outgoing: List[Edge])
     case class Edge(to: Vertex)
