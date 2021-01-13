@@ -4,7 +4,7 @@ import scala.collection.BuildFrom
 
 
 trait TraverseImplicits {
-  implicit class IterableOnceOfComputationExtension[+A, -U, S[+X] <: IterableOnce[X]](thiz: S[A !! U]) {
+  implicit class TraverseIterableOnceExtension[+A, -U, S[+X] <: IterableOnce[X]](thiz: S[A !! U]) {
     def traverseVoid: Unit !! U =
       thiz.iterator.foldLeft(!!.pure().upCast[U])(_ *<! _)
 
@@ -19,7 +19,7 @@ trait TraverseImplicits {
     }
   }
 
-  implicit class IteratorOfComputationExtension[+A, -U](thiz: Iterator[A !! U]) {
+  implicit class TraverseIteratorExtension[+A, -U](thiz: Iterator[A !! U]) {
     def traverse: Vector[A] !! U =
       thiz.foldLeft(!!.pure(Vector.empty[A]).upCast[U]) { case (mas, ma) => (mas *! ma).map { case (as, a) => as :+ a }}
 
@@ -34,7 +34,7 @@ trait TraverseImplicits {
     }
   }
 
-  implicit class IterableOfComputationBFExtension[+A, -U, S[+X] <: Iterable[X]](thiz: S[A !! U])(implicit bf: BuildFrom[S[A !! U], A, S[A]]) {
+  implicit class TraverseIterableExtension[+A, -U, S[+X] <: Iterable[X]](thiz: S[A !! U])(implicit bf: BuildFrom[S[A !! U], A, S[A]]) {
     def traverse: S[A] !! U = {
       def loop(as: Iterable[A !! U]): Vector[A] !! U =
         as.size match {
@@ -54,7 +54,7 @@ trait TraverseImplicits {
     }
   }
 
-  implicit class OptionOfComputationExtension[+A, -U](thiz: Option[A !! U]) {
+  implicit class TraverseOptionExtension[+A, -U](thiz: Option[A !! U]) {
     def traverse: Option[A] !! U =
       thiz match {
         case Some(ma) => ma.map(Some(_))
@@ -70,7 +70,7 @@ trait TraverseImplicits {
   }
 
 
-  implicit class EitherOfComputationExtension[+A, +T, -U](thiz: Either[T, A !! U]) {
+  implicit class TraverseEitherExtension[+A, +T, -U](thiz: Either[T, A !! U]) {
     def traverse: Either[T, A] !! U =
       thiz match {
         case Right(ma) => ma.map(Right(_))

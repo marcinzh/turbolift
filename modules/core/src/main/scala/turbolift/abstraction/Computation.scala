@@ -43,6 +43,7 @@ object Computation extends ComputationExtensions with ComputationInstances {
   def defer[A, U](ua: => A !! U): A !! U = Defer(() => ua)
   def eval[A](a: => A): A !! Any = Defer(() => Pure(a))
   def fail: Nothing !! Choice = AnyChoice.empty
+  def when[U](cond: Boolean)(body: => Unit !! U): Unit !! U = if (cond) body else !!.pure()
 }
 
 
@@ -96,5 +97,9 @@ trait ComputationExtensions {
   implicit class ComputationOfPairExtension[A, B, U](thiz: Computation[(A, B), U]) {
     def map2[C](f: (A, B) => C): C !! U = thiz.map(f.tupled)
     def flatMap2[C, V](f: (A, B) => C !! V): C !! U with V = thiz.flatMap(f.tupled)
+  }
+
+  implicit class AnyExtension[A](thiz: A) {
+    def pure_!! : A !! Any = !!.pure(thiz)
   }
 }

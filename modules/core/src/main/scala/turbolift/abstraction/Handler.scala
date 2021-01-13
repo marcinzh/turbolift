@@ -29,6 +29,11 @@ sealed trait Handler[Result[_], Elim, Intro] {
   final def >>>![ThatResult[_], ThatElim, ThatIntro](that: Handler[ThatResult, ThatElim, ThatIntro]) = this.composeWith(that)
 
   final def self: Handler[Result, Elim, Intro] = this
+
+  final def void: Handler[Lambda[X => Unit], Elim, Intro] =
+    map[Lambda[X => Unit]](new ~>[Result, Lambda[X => Unit]] {
+      def apply[A](fa: Result[A]): Unit = ()
+    })
 }
 
 
