@@ -1,27 +1,40 @@
 package turbolift.utils
 import turbolift.abstraction.!!
-// import scala.collection.generic.CanBuildFrom
 import scala.collection.BuildFrom
 
 
 trait TraverseImplicits {
-  implicit class IterableOfComputationExtension[+A, -U, S[+X] <: Iterable[X]](thiz: S[A !! U]) {
-    def traverseVoid: Unit !! U = thiz.foldLeft(!!.pure().upCast[U])(_ *<! _)
+  implicit class IterableOnceOfComputationExtension[+A, -U, S[+X] <: IterableOnce[X]](thiz: S[A !! U]) {
+    def traverseVoid: Unit !! U =
+      thiz.iterator.foldLeft(!!.pure().upCast[U])(_ *<! _)
 
     def traverseVoidShort: Unit !! U = {
-      def loop(todos: Iterable[A !! U]): Unit !! U =
-        if (todos.isEmpty)
+      val iter = thiz.iterator
+      def loop(): Unit !! U =
+        if (iter.hasNext)
+          iter.next().flatMap(_ => loop())
+        else
           !!.pure()
-        else 
-          todos.head.flatMap(_ => loop(todos.tail))
-
-      loop(thiz)
+      loop()
     }
   }
 
+  implicit class IteratorOfComputationExtension[+A, -U](thiz: Iterator[A !! U]) {
+    def traverse: Vector[A] !! U =
+      thiz.foldLeft(!!.pure(Vector.empty[A]).upCast[U]) { case (mas, ma) => (mas *! ma).map { case (as, a) => as :+ a }}
 
-  // implicit class IterableOfComputationCBFExtension[+A, -U, S[+X] <: Iterable[X]](thiz: S[A !! U])(implicit cbf: CanBuildFrom[S[A !! U], A, S[A]]) {
-  implicit class IterableOfComputationCBFExtension[+A, -U, S[+X] <: Iterable[X]](thiz: S[A !! U])(implicit bf: BuildFrom[S[A !! U], A, S[A]]) {
+    def traverseShort: Vector[A] !! U = {
+      val iter = thiz.iterator
+      def loop(accum: Vector[A]): Vector[A] !! U =
+        if (iter.hasNext)
+          iter.next().flatMap(a => loop(accum :+ a))
+        else
+          !!.pure(accum)
+      loop(Vector())
+    }
+  }
+
+  implicit class IterableOfComputationBFExtension[+A, -U, S[+X] <: Iterable[X]](thiz: S[A !! U])(implicit bf: BuildFrom[S[A !! U], A, S[A]]) {
     def traverse: S[A] !! U = {
       def loop(as: Iterable[A !! U]): Vector[A] !! U =
         as.size match {
@@ -32,19 +45,11 @@ trait TraverseImplicits {
             (loop(as1) *! loop(as2)).map { case (xs, ys) => xs ++ ys }
         }
       loop(thiz)
-      // .map(as => (cbf() ++= as).result())
       .map(as => (bf.newBuilder(thiz) ++= as).result())
     }
 
     def traverseShort: S[A] !! U = {
-      def loop(todos: Iterable[A !! U], accum: Vector[A]): Vector[A] !! U =
-        if (todos.isEmpty)
-          !!.pure(accum)
-        else 
-          todos.head.flatMap(a => loop(todos.tail, accum :+ a))
-
-      loop(thiz, Vector())
-      // .map(as => (cbf() ++= as).result())
+      thiz.iterator.traverseShort
       .map(as => (bf.newBuilder(thiz) ++= as).result())
     }
   }
