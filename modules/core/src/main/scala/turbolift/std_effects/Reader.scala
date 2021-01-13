@@ -1,7 +1,6 @@
 package turbolift.std_effects
 import cats.Id
 import turbolift.abstraction.{!!, Effect}
-import turbolift.std_handlers.DefaultReaderHandler
 
 
 trait ReaderSig[U, R] {
@@ -17,5 +16,5 @@ trait Reader[R] extends Effect[ReaderSig[?, R]] {
   final def local[A, U](r: R)(scope: A !! U): A !! U with this.type = embedHO[U](_.local(r)(scope))
   final def localModify[A, U](mod: R => R)(scope: A !! U): A !! U with this.type = embedHO[U](_.localModify(mod)(scope))
 
-  def handler(initial: R): ThisIHandler[Id] = DefaultReaderHandler(this, initial)
+  def handler(initial: R): ThisIHandler[Id] = ReaderHandler(this, initial)
 }

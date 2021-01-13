@@ -1,7 +1,6 @@
 package turbolift.std_effects
 import scala.util.{Try, Success}
 import turbolift.abstraction.{!!, Effect}
-import turbolift.std_handlers.DefaultChoiceHandler
 
 
 trait ChoiceSig[U] {
@@ -33,5 +32,5 @@ trait Choice extends Effect[ChoiceSig] {
     case _ => empty
   }
 
-  val handler: ThisIHandler[Vector] = DefaultChoiceHandler(this)
+  val handler: ThisIHandler[Vector] = ChoiceHandler(this)
 }

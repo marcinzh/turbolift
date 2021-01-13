@@ -25,6 +25,17 @@ sealed trait Handler[Result[_], Elim, Intro] {
   final def provideWith[ThatResult[_], ThatIntro](that: Handler[ThatResult, Intro, ThatIntro]) =
     HandlerCases.Composed[Result, ThatResult, Elim, Any, Any, ThatIntro, Intro](Handler.this, that).self
 
+  final def partiallyProvideWith_[ThatResult[_], ThatIntro](that: Handler[ThatResult, Intro, ThatIntro]) =
+    HandlerCases.Composed[Result, ThatResult, Elim, Any, Any, ThatIntro, Intro](Handler.this, that).self
+
+  final def partiallyProvideWith[Remains >: Intro] = new PartiallyProvideWithApply[Remains]
+  class PartiallyProvideWithApply[Remains >: Intro] {
+    def apply[ThatResult[_], ThatElim >: Intro, ThatIntro](that: Handler[ThatResult, ThatElim, ThatIntro]) =
+     HandlerCases.Composed[Result, ThatResult, Elim, Any, Remains, ThatIntro, ThatElim](upCastIntro[Remains with ThatElim], that).self
+  }
+
+  final def upCastIntro[T >: Intro] = asInstanceOf[Handler[Result, Elim, T]]
+
   final def <<<![ThatResult[_], ThatElim, ThatIntro](that: Handler[ThatResult, ThatElim, ThatIntro]) = that.composeWith(this)
   final def >>>![ThatResult[_], ThatElim, ThatIntro](that: Handler[ThatResult, ThatElim, ThatIntro]) = this.composeWith(that)
 

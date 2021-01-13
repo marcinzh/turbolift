@@ -1,7 +1,6 @@
 package turbolift.std_effects
 import turbolift.abstraction.{!!, Effect}
 import turbolift.abstraction.typeclass.AccumZero
-import turbolift.std_handlers.DefaultWriterHandler
 
 
 trait WriterExtSig[U, W, W1] {
@@ -19,7 +18,7 @@ trait WriterExt[W, W1] extends Effect[WriterExtSig[?, W, W1]] {
   final def censor[A, U](scope: A !! U)(f: W => W): A !! U with this.type = embedHO[U](_.censor(scope)(f))
   final def mute[A, U](scope: A !! U): A !! U with this.type = embedHO[U](_.mute(scope))
 
-  def handler(implicit W: AccumZero[W, W1]): ThisIHandler[(W, ?)] = DefaultWriterHandler[W, W1, this.type](this)
+  def handler(implicit W: AccumZero[W, W1]): ThisIHandler[(W, ?)] = WriterHandler[W, W1, this.type](this)
 }
 
 trait Writer[W] extends WriterExt[W, W]

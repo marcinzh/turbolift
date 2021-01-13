@@ -1,7 +1,6 @@
 package turbolift.std_effects
 import scala.util.{Try, Success, Failure}
 import turbolift.abstraction.{!!, Effect}
-import turbolift.std_handlers.DefaultExceptHandler
 
 
 trait ExceptSig[U, E] {
@@ -29,5 +28,5 @@ trait Except[E] extends Effect[ExceptSig[?, E]] {
     case Failure(e) => raise(e.asInstanceOf[E])
   }
 
-  val handler: ThisIHandler[Either[E, ?]] = DefaultExceptHandler[E, this.type](this)
+  val handler: ThisIHandler[Either[E, ?]] = ExceptHandler[E, this.type](this)
 }

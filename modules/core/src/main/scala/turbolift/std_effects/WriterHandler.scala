@@ -1,13 +1,12 @@
-package turbolift.std_handlers
+package turbolift.std_effects
 import cats.syntax.functor._
 import cats.instances.tuple._
 import turbolift.abstraction.!!
 import turbolift.abstraction.typeclass.{MonadPar, AccumZero}
 import turbolift.abstraction.Implicits.{AccumSyntax, MonadParSyntax}
-import turbolift.std_effects.{WriterExtSig, WriterExt}
 
 
-object DefaultWriterHandler {
+object WriterHandler {
   def apply[W, W1, Fx <: WriterExt[W, W1]](fx: Fx)(implicit W: AccumZero[W, W1]): fx.ThisIHandler[(W, ?)] =
     new fx.Unary[W, (W, ?)] {
       override def purer[A](w: W, a: A): (W, A) = (w, a)

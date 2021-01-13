@@ -1,12 +1,11 @@
-package turbolift.std_handlers
+package turbolift.std_effects
 import cats.Id
 import turbolift.abstraction.!!
 import turbolift.abstraction.typeclass.MonadPar
 import turbolift.abstraction.Implicits.MonadParSyntax
-import turbolift.std_effects.{ReaderSig, Reader}
 
 
-object DefaultReaderHandler {
+object ReaderHandler {
   def apply[R, Fx <: Reader[R]](fx: Fx, initial: R): fx.ThisIHandler[Id] =
     new fx.Unary[R, Id] {
       override def purer[A](r: R, a: A): A = a

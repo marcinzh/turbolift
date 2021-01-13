@@ -3,7 +3,6 @@ import scala.util.{Try, Success, Failure}
 import cats.Semigroup
 import turbolift.abstraction.{!!, Effect}
 import turbolift.abstraction.typeclass.Accum
-import turbolift.std_handlers.DefaultValidationHandler
 
 
 trait ValidationExtSig[U, E, E1] {
@@ -33,7 +32,7 @@ trait ValidationExt[E, E1] extends Effect[ValidationExtSig[?, E, E1]] {
     case Failure(e) => invalid(e.asInstanceOf[E1])
   }
 
-  def handler(implicit E: Accum[E, E1]): ThisIHandler[Either[E, ?]] = DefaultValidationHandler[E, E1, this.type](this)
+  def handler(implicit E: Accum[E, E1]): ThisIHandler[Either[E, ?]] = ValidationHandler[E, E1, this.type](this)
 }
 
 
