@@ -2,29 +2,29 @@ package turbolift.abstraction.typeclass
 import cats.{Semigroup, SemigroupK, Applicative}
 
 
-trait Accum[W, WW] {
-  def one(e: W): WW
-  def plus(x: WW, y: WW): WW
-  def plus1(x: WW, e: W): WW // = plus(x, one(e))
+trait Accum[W, W1] {
+  def one(e: W1): W
+  def plus(x: W, y: W): W
+  def plus1(x: W, e: W1): W // = plus(x, one(e))
 }
 
 object Accum extends AccumInstances2 {
-  def apply[W, WW](implicit ev: Accum[W, WW]) = ev
+  def apply[W, W1](implicit ev: Accum[W, W1]) = ev
 }
 
 trait AccumInstances1 {
   implicit def fromSemigroup[W](implicit W: Semigroup[W]): Accum[W, W] =
     new Accum[W, W] {
-      override def one(w: W): W = w
-      override def plus(w1: W, w2: W): W = W.combine(w1, w2)
-      override def plus1(w1: W, w2: W): W = W.combine(w1, w2)
+      override def one(a: W): W = a
+      override def plus(a: W, b: W): W = W.combine(a, b)
+      override def plus1(a: W, b: W): W = W.combine(a, b)
     }
 
-  implicit def fromSemigroupK[W, F[_]](implicit W: SemigroupK[F], Appl: Applicative[F]): Accum[W, F[W]] =
-    new Accum[W, F[W]] {
-      override def one(w: W): F[W] = Appl.pure(w)
-      override def plus(fw1: F[W], fw2: F[W]): F[W] = W.combineK(fw1, fw2)
-      override def plus1(fw: F[W], w: W): F[W] = W.combineK(fw, one(w))
+  implicit def fromSemigroupK[W, F[_]](implicit W: SemigroupK[F], Appl: Applicative[F]): Accum[F[W], W] =
+    new Accum[F[W], W] {
+      override def one(a: W): F[W] = Appl.pure(a)
+      override def plus(a: F[W], b: F[W]): F[W] = W.combineK(a, b)
+      override def plus1(a: F[W], b: W): F[W] = W.combineK(a, one(b))
     }
 }
 
@@ -36,8 +36,8 @@ trait AccumInstances2 extends AccumInstances1 {
 }
 
 trait AccumImplicits {
-  implicit class AccumSyntax[W, WW](x: WW)(implicit WW: Accum[W, WW]) {
-    def |+|(y: WW): WW = WW.plus(x, y)
-    def |+(e: W): WW = WW.plus1(x, e)
+  implicit class AccumSyntax[W, W1](thiz: W)(implicit W: Accum[W, W1]) {
+    def |+|(that: W): W = W.plus(thiz, that)
+    def |+(that: W1): W = W.plus1(thiz, that)
   }
 }

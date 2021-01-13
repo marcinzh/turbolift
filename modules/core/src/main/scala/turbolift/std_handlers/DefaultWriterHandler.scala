@@ -8,47 +8,47 @@ import turbolift.std_effects.{WriterExtSig, WriterExt}
 
 
 object DefaultWriterHandler {
-  def apply[W, WW, Fx <: WriterExt[W, WW]](fx: Fx)(implicit W: AccumZero[W, WW]): fx.ThisIHandler[(WW, ?)] =
-    new fx.Unary[WW, (WW, ?)] {
-      override def purer[A](ww: WW, a: A): (WW, A) = (ww, a)
+  def apply[W, W1, Fx <: WriterExt[W, W1]](fx: Fx)(implicit W: AccumZero[W, W1]): fx.ThisIHandler[(W, ?)] =
+    new fx.Unary[W, (W, ?)] {
+      override def purer[A](w: W, a: A): (W, A) = (w, a)
   
       override def transform[M[_]: MonadPar] = new Transformed[M] {
-        override def flatMap[A, B](tma: WW => M[(WW, A)])(f: A => WW => M[(WW, B)]): WW => M[(WW, B)] =
-          ww0 => tma(ww0).flatMap {
-            case (ww1, a) => f(a)(ww1)
+        override def flatMap[A, B](tma: W => M[(W, A)])(f: A => W => M[(W, B)]): W => M[(W, B)] =
+          w0 => tma(w0).flatMap {
+            case (w, a) => f(a)(w)
           }
 
-        override def zipPar[A, B](tma: WW => M[(WW, A)], tmb: WW => M[(WW, B)]): WW => M[(WW, (A, B))] =
-          ww0 => (tma(W.zero) *! tmb(W.zero)).map {
-            case ((ww1, a), (ww2, b)) => ((ww0 |+| ww1) |+| ww2, (a, b))
+        override def zipPar[A, B](tma: W => M[(W, A)], tmb: W => M[(W, B)]): W => M[(W, (A, B))] =
+          w0 => (tma(W.zero) *! tmb(W.zero)).map {
+            case ((w, a), (w2, b)) => ((w0 |+| w) |+| w2, (a, b))
           }
       }
 
-      override def interpret[M[_], F[_], U](implicit ctx: ThisContext[M, F, U]) = new WriterExtSig[U, W, WW] {
-        override def tell(w: W): Unit !! U =
-          ctx.withLift(lift => ww0 => ctx.pureInner((ww0 |+ w, lift.unitStash())))
+      override def interpret[M[_], F[_], U](implicit ctx: ThisContext[M, F, U]) = new WriterExtSig[U, W, W1] {
+        override def tell(w: W1): Unit !! U =
+          ctx.withLift(lift => w0 => ctx.pureInner((w0 |+ w, lift.unitStash())))
 
-        override def tells(ww: WW): Unit !! U =
-          ctx.withLift(lift => ww0 => ctx.pureInner((ww0 |+| ww, lift.unitStash())))
+        override def tells(w: W): Unit !! U =
+          ctx.withLift(lift => w0 => ctx.pureInner((w0 |+| w, lift.unitStash())))
 
-        override def listen[A](scope: A !! U): (WW, A) !! U =
-          ctx.withLift { lift => ww0 =>
+        override def listen[A](scope: A !! U): (W, A) !! U =
+          ctx.withLift { lift => w0 =>
             lift.run(scope)(W.zero).map {
-              case (ww, fa) => (ww0 |+| ww, fa.map((ww, _)))
+              case (w, fa) => (w0 |+| w, fa.map((w, _)))
             }
           }
 
-        override def censor[A](scope: A !! U)(mod: WW => WW): A !! U =
-          ctx.withLift { lift => ww0 =>
+        override def censor[A](scope: A !! U)(mod: W => W): A !! U =
+          ctx.withLift { lift => w0 =>
             lift.run(scope)(W.zero).map {
-              case (ww, fa) => (ww0 |+| mod(ww), fa)
+              case (w, fa) => (w0 |+| mod(w), fa)
             }
           }
 
         override def mute[A](scope: A !! U): A !! U =
-          ctx.withLift { lift => ww0 =>
+          ctx.withLift { lift => w0 =>
             lift.run(scope)(W.zero).map {
-              case (_, fa) => (ww0, fa)
+              case (_, fa) => (w0, fa)
             }
           }
       }
