@@ -3,7 +3,7 @@ import turbolift.abstraction.!!
 import scala.collection.BuildFrom
 
 
-trait MapFilterImplicits {
+trait MapFilterExtensions {
   implicit class MapFilterIteratorExtension[A](thiz: Iterator[A]) {
     def map_!![B, U](f: A => B !! U): Vector[B] !! U =
       thiz.iterator.foldLeft(!!.pure(Vector.empty[B]).upCast[U]) { (mbs, a) => 

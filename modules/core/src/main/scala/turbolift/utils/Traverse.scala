@@ -3,7 +3,7 @@ import turbolift.abstraction.!!
 import scala.collection.BuildFrom
 
 
-trait TraverseImplicits {
+trait TraverseExtensions {
   implicit class TraverseIterableOnceExtension[+A, -U, S[+X] <: IterableOnce[X]](thiz: S[A !! U]) {
     def traverseVoid: Unit !! U =
       thiz.iterator.foldLeft(!!.pure().upCast[U])(_ *<! _)

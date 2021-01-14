@@ -34,9 +34,18 @@ trait Choice extends Effect[ChoiceSig] {
   }
 
   def handler = handlers.many
-  
+
   object handlers {
     val one: ThisIHandler[Option] = ChoiceHandler_One(Choice.this)
     val many: ThisIHandler[Vector] = ChoiceHandler_Many(Choice.this)
   }
+}
+
+
+case object Each extends Choice {
+  def void = handler.void
+}
+
+trait ChoiceExports {
+  type Each = Each.type
 }
