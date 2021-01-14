@@ -10,7 +10,7 @@ trait ReaderSig[U, R] {
   def localModify[A](mod: R => R)(scope: A !! U): A !! U
 }
 
-trait Reader[R] extends Effect[ReaderSig[?, R]] {
+trait Reader[R] extends Effect[ReaderSig[*, R]] {
   final val ask: R !! this.type = embedFO(_.ask)
   final def asks[A](f: R => A): A !! this.type = embedFO(_.asks(f))
   final def local[A, U](r: R)(scope: A !! U): A !! U with this.type = embedHO[U](_.local(r)(scope))

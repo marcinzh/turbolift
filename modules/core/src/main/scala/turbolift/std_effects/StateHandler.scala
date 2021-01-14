@@ -6,8 +6,8 @@ import turbolift.abstraction.Implicits.MonadParSyntax
 
 
 object StateHandler {
-  def apply[S, Fx <: State[S]](fx: Fx, initial: S): fx.ThisIHandler[(S, ?)] =
-    new fx.Unary[S, (S, ?)] {
+  def apply[S, Fx <: State[S]](fx: Fx, initial: S): fx.ThisIHandler[(S, *)] =
+    new fx.Unary[S, (S, *)] {
       override def purer[A](s: S, a: A): (S, A) = (s, a)
 
       override def transform[M[_]: MonadPar] = new Transformed[M] {

@@ -6,8 +6,8 @@ import turbolift.abstraction.Implicits.MonadParSyntax
 
 
 object ExceptHandler_One {
-  def apply[E, E1, Fx <: ExceptExt[E, E1]](fx: Fx)(implicit E: E1 =:= E): fx.ThisIHandler[Either[E, ?]] =
-    new fx.Nullary[Either[E, ?]] {
+  def apply[E, E1, Fx <: ExceptExt[E, E1]](fx: Fx)(implicit E: E1 =:= E): fx.ThisIHandler[Either[E, *]] =
+    new fx.Nullary[Either[E, *]] {
       override def purer[A](a: A): Either[E, A] = Right(a)
 
       override def transform[M[_]: MonadPar] = new Transformed[M] {

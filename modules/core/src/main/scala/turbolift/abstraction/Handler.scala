@@ -85,16 +85,16 @@ trait HandlerExports {
 
 
 trait HandlerExtensions {
-  implicit class HandlerExtension_Pair[S, L, N](val thiz: Handler[(S, ?), L, N]) {
+  implicit class HandlerExtension_Pair[S, L, N](val thiz: Handler[(S, *), L, N]) {
     type Const[X] = S
 
     def eval: Handler[Id, L, N] =
-      thiz.map(new ((S, ?) ~> Id) {
+      thiz.map(new ((S, *) ~> Id) {
         def apply[A](pair: (S, A)): A = pair._2
       })
 
     def exec: Handler[Const, L, N] =
-      thiz.map[Const](new ((S, ?) ~> Const) {
+      thiz.map[Const](new ((S, *) ~> Const) {
         def apply[A](pair: (S, A)): S = pair._1
       })
 
@@ -103,8 +103,8 @@ trait HandlerExtensions {
   }
 
   implicit class HandlerExtension_Option[L, N](thiz: Handler[Option, L, N]) {
-    def toEither[E](e : => E): Handler[Either[E, ?], L, N] =
-      thiz.map(new (Option ~> Either[E, ?]) {
+    def toEither[E](e : => E): Handler[Either[E, *], L, N] =
+      thiz.map(new (Option ~> Either[E, *]) {
         override def apply[A](result: Option[A]): Either[E, A] = result.toRight(e)
       })
 
@@ -114,19 +114,19 @@ trait HandlerExtensions {
       })
   }
 
-  implicit class HandlerExtension_Either[E, L, N](thiz: Handler[Either[E, ?], L, N]) {
+  implicit class HandlerExtension_Either[E, L, N](thiz: Handler[Either[E, *], L, N]) {
     def toOption: Handler[Option, L, N] =
-      thiz.map(new (Either[E, ?] ~> Option) {
+      thiz.map(new (Either[E, *] ~> Option) {
         override def apply[A](result: Either[E, A]): Option[A] = result.toOption
       })
 
     def toTry(implicit ev: E <:< Throwable): Handler[Try, L, N] = 
-      thiz.map(new (Either[E, ?] ~> Try) {
+      thiz.map(new (Either[E, *] ~> Try) {
         override def apply[A](result: Either[E, A]): Try[A] = result.toTry
       })
 
-    def mapLeft[E2](f: E => E2): Handler[Either[E2, ?], L, N] =
-      thiz.map(new (Either[E, ?] ~> Either[E2, ?]) {
+    def mapLeft[E2](f: E => E2): Handler[Either[E2, *], L, N] =
+      thiz.map(new (Either[E, *] ~> Either[E2, *]) {
         override def apply[A](result: Either[E, A]): Either[E2, A] = result.swap.map(f).swap
       })
   }

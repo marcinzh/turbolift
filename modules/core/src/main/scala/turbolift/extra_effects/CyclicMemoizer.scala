@@ -8,7 +8,7 @@ trait CyclicMemoizerSig[U, K, V] {
   def get: Map[K, V] !! U
 }
 
-trait CyclicMemoizer[K, V] extends Effect[CyclicMemoizerSig[?, K, V]] {
+trait CyclicMemoizer[K, V] extends Effect[CyclicMemoizerSig[*, K, V]] {
   final def memo[U](f: K => V !! U)(k: K): (() => V) !! U with this.type = embedHO[U](_.memo(f)(k))
   final def get: Map[K, V] !! this.type = embedFO(_.get)
 

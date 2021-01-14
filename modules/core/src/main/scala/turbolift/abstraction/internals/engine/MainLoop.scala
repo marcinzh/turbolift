@@ -54,15 +54,15 @@ final class MainLoop[M[_], U](
     }
   }
 
-  def pushTrans[T[_[_], _], O[_], V](transformer: MonadTransformer[T, O]): MainLoop[T[M, ?], U with V] = {
+  def pushTrans[T[_[_], _], O[_], V](transformer: MonadTransformer[T, O]): MainLoop[T[M, *], U with V] = {
     val newTransStack = TransformerStack.pushFirst(transformer)(this.theMonad)
-    val newHead = Trans[T[M, ?], U with V](newTransStack)
-    val newTail: Vector[Item[T[M, ?], U with V]] = effStack.map {
-      case Trans(st) => Trans[T[M, ?], U with V](st.pushNext(transformer))
-      case x => x.asInstanceOf[Item[T[M, ?], U with V]]
+    val newHead = Trans[T[M, *], U with V](newTransStack)
+    val newTail: Vector[Item[T[M, *], U with V]] = effStack.map {
+      case Trans(st) => Trans[T[M, *], U with V](st.pushNext(transformer))
+      case x => x.asInstanceOf[Item[T[M, *], U with V]]
     }
     val newEffStack = newTail :+ newHead
-    val newLoop = new MainLoop[T[M, ?], U with V](newTransStack.outerMonad, newEffStack)
+    val newLoop = new MainLoop[T[M, *], U with V](newTransStack.outerMonad, newEffStack)
     newLoop.vmtTieKnots()
     newLoop.vmtMakeChoice()
     newLoop

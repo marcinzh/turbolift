@@ -11,7 +11,7 @@ trait ExceptExtSig[U, E, E1] {
 }
 
 
-trait ExceptExt[E, E1] extends Effect[ExceptExtSig[?, E, E1]] {
+trait ExceptExt[E, E1] extends Effect[ExceptExtSig[*, E, E1]] {
   final def raise(e: E1): Nothing !! this.type = embedFO(_.raise(e))
   final def raises(e: E): Nothing !! this.type = embedFO(_.raises(e))
   final def katch[A, U](scope: A !! U)(fun: E => A !! U): A !! U with this.type = embedHO[U](_.katch(scope)(fun))
@@ -32,8 +32,8 @@ trait ExceptExt[E, E1] extends Effect[ExceptExtSig[?, E, E1]] {
   }
 
   object handlers {
-    def one(implicit E: E1 =:= E): ThisIHandler[Either[E, ?]] = ExceptHandler_One[E, E1, ExceptExt.this.type](ExceptExt.this)
-    def many(implicit E: Accum[E, E1]): ThisIHandler[Either[E, ?]] = ExceptHandler_Many[E, E1, ExceptExt.this.type](ExceptExt.this)
+    def one(implicit E: E1 =:= E): ThisIHandler[Either[E, *]] = ExceptHandler_One[E, E1, ExceptExt.this.type](ExceptExt.this)
+    def many(implicit E: Accum[E, E1]): ThisIHandler[Either[E, *]] = ExceptHandler_Many[E, E1, ExceptExt.this.type](ExceptExt.this)
   }
 }
 

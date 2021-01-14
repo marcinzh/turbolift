@@ -7,8 +7,8 @@ import turbolift.abstraction.Implicits.{AccumSyntax, MonadParSyntax}
 
 
 object WriterHandler {
-  def apply[W, W1, Fx <: WriterExt[W, W1]](fx: Fx)(implicit W: AccumZero[W, W1]): fx.ThisIHandler[(W, ?)] =
-    new fx.Unary[W, (W, ?)] {
+  def apply[W, W1, Fx <: WriterExt[W, W1]](fx: Fx)(implicit W: AccumZero[W, W1]): fx.ThisIHandler[(W, *)] =
+    new fx.Unary[W, (W, *)] {
       override def purer[A](w: W, a: A): (W, A) = (w, a)
   
       override def transform[M[_]: MonadPar] = new Transformed[M] {

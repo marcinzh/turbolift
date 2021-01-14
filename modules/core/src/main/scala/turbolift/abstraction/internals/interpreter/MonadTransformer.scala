@@ -8,9 +8,9 @@ import turbolift.abstraction.typeclass.MonadPar
 
 sealed trait MonadTransformer[T[_[_], _], O[_]] extends HasSignature {
   private[abstraction] val theFunctor: Functor[O]
-  private[abstraction] def lifting[M[_]]: Lifting[T[M, ?], M, O]
+  private[abstraction] def lifting[M[_]]: Lifting[T[M, *], M, O]
 
-  def transform[M[_]: MonadPar]: MonadPar[T[M, ?]]
+  def transform[M[_]: MonadPar]: MonadPar[T[M, *]]
   def interpret[M[_], F[_], U](implicit ctx: ThisContext[M, F, U]): Signature[U]
 
   type ThisContext[M[_], F[_], U] = Context[T, M, F, U]
