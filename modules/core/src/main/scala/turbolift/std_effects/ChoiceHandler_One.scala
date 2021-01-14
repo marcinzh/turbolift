@@ -5,8 +5,8 @@ import turbolift.abstraction.typeclass.MonadPar
 import turbolift.abstraction.Implicits.MonadParSyntax
 
 
-object FailHandler {
-  def apply[Fx <: Fail](fx: Fx): fx.ThisIHandler[Option] =
+object ChoiceHandler_One {
+  def apply[Fx <: Choice](fx: Fx): fx.ThisIHandler[Option] =
     new fx.Nullary[Option] {
       override def purer[A](a: A): Option[A] = Some(a)
 
@@ -24,7 +24,7 @@ object FailHandler {
           }
       }
 
-      override def interpret[M[_], F[_], U](implicit ctx: ThisContext[M, F, U]) = new FailSig[U] {
+      override def interpret[M[_], F[_], U](implicit ctx: ThisContext[M, F, U]) = new ChoiceSig[U] {
         override def empty[A]: A !! U =
           ctx.withLift(lift => ctx.pureInner(None: Option[F[A]]))
 

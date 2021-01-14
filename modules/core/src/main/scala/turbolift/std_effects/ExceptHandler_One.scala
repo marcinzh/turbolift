@@ -5,8 +5,8 @@ import turbolift.abstraction.typeclass.MonadPar
 import turbolift.abstraction.Implicits.MonadParSyntax
 
 
-object ExceptHandler {
-  def apply[E, Fx <: Except[E]](fx: Fx): fx.ThisIHandler[Either[E, ?]] =
+object ExceptHandler_One {
+  def apply[E, E1, Fx <: ExceptExt[E, E1]](fx: Fx)(implicit E: E1 =:= E): fx.ThisIHandler[Either[E, ?]] =
     new fx.Nullary[Either[E, ?]] {
       override def purer[A](a: A): Either[E, A] = Right(a)
 
@@ -25,15 +25,19 @@ object ExceptHandler {
           }
       }
 
-      override def interpret[M[_], F[_], U](implicit ctx: ThisContext[M, F, U]) = new ExceptSig[U, E] {
-        override def raise[A](e: E): A !! U =
+
+      override def interpret[M[_], F[_], U](implicit ctx: ThisContext[M, F, U]) = new ExceptExtSig[U, E, E1] {
+        override def raise[A](e: E1): A !! U =
+          raises(E(e))
+
+        override def raises[A](e: E): A !! U =
           ctx.withLift(lift => ctx.pureInner(Left(e).withRight[F[A]]))
 
-        override def katch[A](scope: A !! U)(recover: E => A !! U): A !! U =
+        override def katch[A](scope: A !! U)(fun: E => A !! U): A !! U =
           ctx.withLift { lift =>
             lift.run(scope).flatMap {
               case Right(fa) => ctx.pureInner(Right(fa).withLeft[E])
-              case Left(e) => lift.run(recover(e))
+              case Left(e) => lift.run(fun(e))
             }
           }
       }

@@ -5,7 +5,7 @@ import turbolift.abstraction.typeclass.MonadPar
 import turbolift.abstraction.Implicits.MonadParSyntax
 
 
-object ChoiceHandler {
+object ChoiceHandler_Many {
   def apply[Fx <: Choice](fx: Fx): fx.ThisIHandler[Vector] =
     new fx.Nullary[Vector] {
       override def purer[A](a: A): Vector[A] = Vector(a)

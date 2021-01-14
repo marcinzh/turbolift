@@ -7,17 +7,17 @@ import org.specs2._
 
 
 class ValidationTest extends Specification with CanLaunchTheMissiles {
-  def is = List(invalid, validate).reduce(_ ^ _)
+  def is = List(raise, validate).reduce(_ ^ _)
 
-  def invalid = br ^ "invalid" ! {
+  def raise = br ^ "raise" ! {
     case object Fx extends Validation[String]
 
     val missile1 = Missile()
     val missile2 = Missile()
     (for {
-      _ <- Fx.invalid("x") *! missile1.launch_! *! Fx.invalid("y") *! Fx.invalid("z")
+      _ <- Fx.raise("x") *! missile1.launch_! *! Fx.raise("y") *! Fx.raise("z")
       _ <- missile2.launch_!
-      _ <- Fx.invalid("w")
+      _ <- Fx.raise("w")
     } yield ())
     .runWith(Fx.handler) must_== Left("xyz") and
     missile1.mustHaveLaunchedOnce and
@@ -31,11 +31,11 @@ class ValidationTest extends Specification with CanLaunchTheMissiles {
     def mkEff = {
       val missile1 = Missile()
       val missile2 = Missile()
-      val comp = FxV.validate {
+      val comp = FxV.katch {
         for {
           _ <- FxW.tell(42)
-          _ <- FxV.invalid("x") *! missile1.launch_! *! FxV.invalid("y") *! FxV.invalid("z")
-          _ <- FxV.invalid("w")
+          _ <- FxV.raise("x") *! missile1.launch_! *! FxV.raise("y") *! FxV.raise("z")
+          _ <- FxV.raise("w")
           _ <- FxW.tell(1337)
           _ <- missile2.launch_!
         } yield "???"

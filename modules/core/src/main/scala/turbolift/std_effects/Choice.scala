@@ -16,6 +16,7 @@ trait Choice extends Effect[ChoiceSig] {
   final def each[A](as: Iterable[A]): A !! this.type = embedFO(_.each(as))
 
   final def apply[A](as: A*): A !! this.type = each(as.toVector)
+  final def fail = empty
 
   final def fromOption[A](x: Option[A]): A !! this.type = x match {
     case Some(a) => pure(a)
@@ -32,5 +33,10 @@ trait Choice extends Effect[ChoiceSig] {
     case _ => empty
   }
 
-  val handler: ThisIHandler[Vector] = ChoiceHandler(this)
+  def handler = handlers.many
+  
+  object handlers {
+    val one: ThisIHandler[Option] = ChoiceHandler_One(Choice.this)
+    val many: ThisIHandler[Vector] = ChoiceHandler_Many(Choice.this)
+  }
 }
