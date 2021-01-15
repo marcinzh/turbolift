@@ -4,4 +4,4 @@ trait UtilsImplicits
   extends FoldExtensions
   with MapFilterExtensions
   with TraverseExtensions
-  with EachExtensions
+  with MiscExtensions

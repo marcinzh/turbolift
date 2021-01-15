@@ -98,8 +98,4 @@ trait ComputationExtensions {
     def map2[C](f: (A, B) => C): C !! U = thiz.map(f.tupled)
     def flatMap2[C, V](f: (A, B) => C !! V): C !! U with V = thiz.flatMap(f.tupled)
   }
-
-  implicit class AnyExtension[A](thiz: A) {
-    def pure_!! : A !! Any = !!.pure(thiz)
-  }
 }
