@@ -1,5 +1,7 @@
 package turbolift.utils
 
 trait UtilsImplicits 
-  extends FoldImplicits
-  with TraverseImplicits
+  extends FoldExtensions
+  with MapFilterExtensions
+  with TraverseExtensions
+  with MiscExtensions

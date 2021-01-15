@@ -1,6 +1,5 @@
 package turbolift.std_effects
 import turbolift.abstraction.{!!, Effect}
-import turbolift.std_handlers.DefaultStateHandler
 
 
 trait StateSig[U, S] {
@@ -12,7 +11,7 @@ trait StateSig[U, S] {
   def update[A](f: S => (S, A)): A !! U
 }
 
-trait State[S] extends Effect[StateSig[?, S]] {
+trait State[S] extends Effect[StateSig[*, S]] {
   final val get: S !! this.type = embedFO(_.get)
   final def gets[A](f: S => A): A !! this.type = embedFO(_.gets(f))
   final def put(s: S): Unit !! this.type = embedFO(_.put(s))
@@ -20,5 +19,5 @@ trait State[S] extends Effect[StateSig[?, S]] {
   final def modify(f: S => S): Unit !! this.type = embedFO(_.modify(f))
   final def update[A](f: S => (S, A)): A !! this.type = embedFO(_.update(f))
 
-  def handler(initial: S): ThisIHandler[(S, ?)] = DefaultStateHandler(this, initial)
+  def handler(initial: S): ThisIHandler[(S, *)] = StateHandler(this, initial)
 }

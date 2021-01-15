@@ -1,14 +1,13 @@
-package turbolift.std_handlers
+package turbolift.std_effects
 import cats.instances.tuple._
 import turbolift.abstraction.!!
 import turbolift.abstraction.typeclass.MonadPar
 import turbolift.abstraction.Implicits.MonadParSyntax
-import turbolift.std_effects.{StateSig, State}
 
 
-object DefaultStateHandler {
-  def apply[S, Fx <: State[S]](fx: Fx, initial: S): fx.ThisIHandler[(S, ?)] =
-    new fx.Unary[S, (S, ?)] {
+object StateHandler {
+  def apply[S, Fx <: State[S]](fx: Fx, initial: S): fx.ThisIHandler[(S, *)] =
+    new fx.Unary[S, (S, *)] {
       override def purer[A](s: S, a: A): (S, A) = (s, a)
 
       override def transform[M[_]: MonadPar] = new Transformed[M] {

@@ -2,8 +2,8 @@ package turbolift.utils
 import turbolift.abstraction.!!
 
 
-trait FoldImplicits {
-  implicit class Fold_IterableOnceOfComputationExtension[A, C[X] <: IterableOnce[X]](thiz: C[A]) {
+trait FoldExtensions {
+  implicit class FoldIterableOnceExtension[A, S[X] <: IterableOnce[X]](thiz: S[A]) {
     def foldLeft_!![U, B](z: B)(op: (B, A) => B !! U): B !! U =
       thiz.iterator.foldLeft(!!.pure(z).upCast[U]) {
         case (b_!, a) => for {
@@ -26,7 +26,7 @@ trait FoldImplicits {
   }
 
 
-  implicit class Fold_IterableOfComputationExtension[A, C[X] <: Iterable[X]](thiz: C[A]) {
+  implicit class FoldIterableExtension[A, S[X] <: Iterable[X]](thiz: S[A]) {
     def foldRight_!![U, B](z: B)(op: (A, B) => B !! U): B !! U =
       thiz.foldRight(!!.pure(z).upCast[U]) {
         case (a, b_!) => for {

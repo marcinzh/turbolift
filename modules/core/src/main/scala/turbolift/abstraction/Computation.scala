@@ -43,6 +43,7 @@ object Computation extends ComputationExtensions with ComputationInstances {
   def defer[A, U](ua: => A !! U): A !! U = Defer(() => ua)
   def eval[A](a: => A): A !! Any = Defer(() => Pure(a))
   def fail: Nothing !! Choice = AnyChoice.empty
+  def when[U](cond: Boolean)(body: => Unit !! U): Unit !! U = if (cond) body else !!.pure()
 }
 
 
@@ -58,7 +59,7 @@ private[abstraction] object ComputationCases {
 
 
 trait ComputationInstances {
-  implicit def monad[U]: MonadPar[Computation[?, U]] = new MonadPar[Computation[?, U]] {
+  implicit def monad[U]: MonadPar[Computation[*, U]] = new MonadPar[Computation[*, U]] {
     override def pure[A](a: A): A !! U = Pure(a)
     override def flatMap[A, B](ua: A !! U)(f: A => B !! U): B !! U = ua.flatMap(f)
     override def zipPar[A, B](ua: A !! U, ub: B !! U): (A, B) !! U = ua *! ub

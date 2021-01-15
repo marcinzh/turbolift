@@ -1,13 +1,12 @@
-package turbolift.std_handlers
+package turbolift.std_effects
 import cats.instances.option._
 import turbolift.abstraction.!!
 import turbolift.abstraction.typeclass.MonadPar
 import turbolift.abstraction.Implicits.MonadParSyntax
-import turbolift.std_effects.{FailSig, Fail}
 
 
-object DefaultFailHandler {
-  def apply[Fx <: Fail](fx: Fx): fx.ThisIHandler[Option] =
+object ChoiceHandler_One {
+  def apply[Fx <: Choice](fx: Fx): fx.ThisIHandler[Option] =
     new fx.Nullary[Option] {
       override def purer[A](a: A): Option[A] = Some(a)
 
@@ -25,7 +24,7 @@ object DefaultFailHandler {
           }
       }
 
-      override def interpret[M[_], F[_], U](implicit ctx: ThisContext[M, F, U]) = new FailSig[U] {
+      override def interpret[M[_], F[_], U](implicit ctx: ThisContext[M, F, U]) = new ChoiceSig[U] {
         override def empty[A]: A !! U =
           ctx.withLift(lift => ctx.pureInner(None: Option[F[A]]))
 

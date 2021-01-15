@@ -1,12 +1,11 @@
-package turbolift.std_handlers
+package turbolift.std_effects
 import cats.instances.vector._
 import turbolift.abstraction.!!
 import turbolift.abstraction.typeclass.MonadPar
 import turbolift.abstraction.Implicits.MonadParSyntax
-import turbolift.std_effects.{ChoiceSig, Choice}
 
 
-object DefaultChoiceHandler {
+object ChoiceHandler_Many {
   def apply[Fx <: Choice](fx: Fx): fx.ThisIHandler[Vector] =
     new fx.Nullary[Vector] {
       override def purer[A](a: A): Vector[A] = Vector(a)

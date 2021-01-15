@@ -4,8 +4,8 @@ import turbolift.std_effects.{Choice, Except}
 import org.specs2._
 
 
-class ChoiceTest extends Specification {
-  def is = List(withoutGuard, withGuard, withExcept).reduce(_ ^ _)
+class ChoiceTest extends Specification with CanLaunchTheMissiles {
+  def is = List(withoutGuard, withGuard, withExcept, fail).reduce(_ ^ _)
 
   def withoutGuard = br ^ "each: without guard" ! {
     case object Fx extends Choice
@@ -43,5 +43,21 @@ class ChoiceTest extends Specification {
 
     br ^ "each: Choice <<<! Except" ! testCE ^
     br ^ "each: Except <<<! Choice" ! testEC
+  }
+
+
+  def fail = br ^ "fail" ! {
+    case object Fx extends Choice
+
+    val missile1 = Missile()
+    val missile2 = Missile()
+    (for {
+      i <- !!.pure(123)
+      _ <- Fx.fail *! missile1.launch_!
+      _ <- missile2.launch_!
+    } yield i)
+    .runWith(Fx.handlers.one) must_== None and 
+    missile1.mustHaveLaunchedOnce and
+    missile2.mustNotHaveLaunched
   }
 }
