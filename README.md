@@ -9,7 +9,7 @@ TODO: Insert overly enthusiastic introduction to Turbolift 's capabilities.
 # Example
 ```scala
 import turbolift.abstraction.!!
-import turbolift.std_effects.{Reader, Writer, State}
+import turbolift.std_effects.{Reader, State, Except}
 
 object Main extends App {
   // Declare some effects:
