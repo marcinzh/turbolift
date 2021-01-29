@@ -1,5 +1,5 @@
 package turbolift.abstraction
 
 object Implicits
-  extends turbolift.abstraction.typeclass.TypeclassImplicits
-  with turbolift.utils.UtilsImplicits
+  extends turbolift.utils.UtilsImplicits
+  // with turbolift.abstraction.typeclass.TypeclassImplicits

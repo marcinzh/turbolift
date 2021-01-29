@@ -36,8 +36,8 @@ trait AccumInstances2 extends AccumInstances1 {
   implicit def forMap[K, V, V1](implicit V: Accum[V, V1]) = AccumZero.forMap[K, V, V1].toAccum
 }
 
-trait AccumImplicits {
-  implicit class AccumSyntax[W, W1](thiz: W)(implicit W: Accum[W, W1]) {
+trait AccumSyntax {
+  implicit class AccumSyntaxSrsly[W, W1](thiz: W)(implicit W: Accum[W, W1]) {
     def |+|(that: W): W = W.plus(thiz, that)
     def |+(that: W1): W = W.plus1(thiz, that)
   }
