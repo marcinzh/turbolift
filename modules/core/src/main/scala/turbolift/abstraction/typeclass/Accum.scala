@@ -33,6 +33,7 @@ trait AccumInstances2 extends AccumInstances1 {
   implicit def forList[W] = AccumZero.forList[W].toAccum
   implicit def forSet[W] = AccumZero.forSet[W].toAccum
   implicit def forArray[W: reflect.ClassTag] = AccumZero.forArray[W].toAccum
+  implicit def forMap[K, V, V1](implicit V: Accum[V, V1]) = AccumZero.forMap[K, V, V1].toAccum
 }
 
 trait AccumImplicits {
