@@ -100,6 +100,24 @@ trait HandlerExtensions {
 
     def justState = exec
     def dropState = eval
+
+    def mapState[S2](f: S => S2): Handler[(S2, *), L, N] =
+      thiz.map(new ((S, *) ~> (S2, *)) {
+        def apply[A](pair: (S, A)): (S2, A) = {
+          val (s, a) = pair
+          (f(s), a)
+        }
+      })
+  }
+
+  implicit class HandlerExtension_NestedPairs[S1, S2, L, N](val thiz: Handler[Lambda[X => (S1, (S2, X))], L, N]) {
+    def joinStates: Handler[((S1, S2), *), L, N] =
+      thiz.map(new (Lambda[X => (S1, (S2, X))] ~> ((S1, S2), *)) {
+        def apply[A](pairs: (S1, (S2, A))): ((S1, S2), A) = {
+          val (s1, (s2, a)) = pairs
+          ((s1, s2), a)
+        }
+      })
   }
 
   implicit class HandlerExtension_Option[L, N](thiz: Handler[Option, L, N]) {
