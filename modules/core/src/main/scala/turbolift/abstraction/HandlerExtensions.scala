@@ -27,20 +27,19 @@ private [abstraction] trait HandlerExtensions {
           (f(s), a)
         }
       })
-  }
 
-  implicit class HandlerExtension_NestedPairs[S1, S2, L, N](val thiz: Handler[Lambda[X => (S1, (S2, X))], L, N]) {
-    def joinStates: Handler[((S1, S2), *), L, N] =
-      thiz.map(new (Lambda[X => (S1, (S2, X))] ~> ((S1, S2), *)) {
-        def apply[A](pairs: (S1, (S2, A))): ((S1, S2), A) = {
-          val (s1, (s2, a)) = pairs
-          ((s1, s2), a)
+    def ***![S2, L2, N2](that: Handler[(S2, *), L2, N2]) =
+      thiz.composeWith(that)
+      .map(new (Lambda[X => (S2, (S, X))] ~> Lambda[X => ((S, S2), X)]) {
+        def apply[A](pairs: (S2, (S, A))): ((S, S2), A) = {
+          val (s2, (s, a)) = pairs
+          ((s, s2), a)
         }
       })
   }
 
   implicit class HandlerExtension_Option[L, N](thiz: Handler[Option, L, N]) {
-    def toEither[E](e : => E): Handler[Either[E, *], L, N] =
+    def toEither[E](e: => E): Handler[Either[E, *], L, N] =
       thiz.map(new (Option ~> Either[E, *]) {
         override def apply[A](result: Option[A]): Either[E, A] = result.toRight(e)
       })

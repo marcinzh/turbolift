@@ -15,7 +15,6 @@ trait WriterExt[W, W1] extends Effect[WriterExtSig[*, W, W1]] {
   final def tell(w: W1): Unit !! this.type = embedFO(_.tell(w))
   final def tells(w: W): Unit !! this.type = embedFO(_.tells(w))
   final def tell[K, V1](k: K, v: V1)(implicit ev: ((K, V1)) <:< W1): Unit !! this.type = tell(ev((k, v)))
-  final def tells[K, V](k: K, v: V)(implicit ev: ((K, V)) <:< W): Unit !! this.type = tells(ev((k, v)))
   final def listen[A, U](scope: A !! U): (W, A) !! U with this.type = embedHO[U](_.listen(scope))
   final def censor[A, U](scope: A !! U)(f: W => W): A !! U with this.type = embedHO[U](_.censor(scope)(f))
   final def mute[A, U](scope: A !! U): A !! U with this.type = embedHO[U](_.mute(scope))
