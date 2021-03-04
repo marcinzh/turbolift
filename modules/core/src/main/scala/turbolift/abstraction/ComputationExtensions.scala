@@ -7,7 +7,7 @@ private [abstraction] trait ComputationExtensions {
   implicit class ComputationExtension[A, U](thiz: Computation[A, U]) {
     def run(implicit ev: CanRun[U]): A = MainLoop.pure(ev(thiz)).run
     def runStackUnsafe(implicit ev: CanRun[U]): A = MainLoop.pureStackUnsafe[A](ev(thiz))
-    
+
     def runWith[F[_], L](h: IHandler[F, L])(implicit ev: CanTotallyHandle[U, L]): F[A] =
       h.doHandle[A, Any](ev(thiz)).run
 

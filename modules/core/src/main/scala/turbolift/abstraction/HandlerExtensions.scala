@@ -44,7 +44,7 @@ private [abstraction] trait HandlerExtensions {
         override def apply[A](result: Option[A]): Either[E, A] = result.toRight(e)
       })
 
-    def toTry(e: => Throwable): Handler[Try, L, N] = 
+    def toTry(e: => Throwable): Handler[Try, L, N] =
       thiz.map(new (Option ~> Try) {
         override def apply[A](result: Option[A]): Try[A] = result.fold[Try[A]](Failure(e))(Success(_))
       })
@@ -56,7 +56,7 @@ private [abstraction] trait HandlerExtensions {
         override def apply[A](result: Either[E, A]): Option[A] = result.toOption
       })
 
-    def toTry(implicit ev: E <:< Throwable): Handler[Try, L, N] = 
+    def toTry(implicit ev: E <:< Throwable): Handler[Try, L, N] =
       thiz.map(new (Either[E, *] ~> Try) {
         override def apply[A](result: Either[E, A]): Try[A] = result.toTry
       })
