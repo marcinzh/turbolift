@@ -43,6 +43,28 @@ trait AccumZeroInstances2 extends AccumZeroInstances1 {
       override def plus1(a: Array[W], b: W): Array[W] = a :+ b
     }
 
+  implicit def forMap[K, V, V1](implicit V: Accum[V, V1]): AccumZero[Map[K, V], (K, V1)] =
+    new AccumZero[Map[K, V], (K, V1)] {
+      override def zero: Map[K, V] = Map()
+      override def one(kv: (K, V1)): Map[K, V] = Map(kv._1 -> V.one(kv._2))
+
+      override def plus(m1: Map[K, V], m2: Map[K, V]): Map[K, V] =
+        m2.foldLeft(m1) {
+          case (m, (k, v)) => m.updatedWith(k) {
+            case Some(v0) => Some(V.plus(v0, v))
+            case None => Some(v)
+          }
+        }
+
+      override def plus1(m: Map[K, V], kv: (K, V1)): Map[K, V] = {
+        val (k, v) = kv
+        m.updatedWith(k) {
+          case Some(v0) => Some(V.plus1(v0, v))
+          case None => Some(V.one(v))
+        }
+      }
+    }
+
   private def make[F[X] <: Iterable[X], W](
     factory: IterableFactory[F],
     singleton: W => F[W],

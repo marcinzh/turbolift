@@ -33,8 +33,8 @@ object MonadPar {
 }
 
 
-trait MonadParImplicits {
-  implicit class MonadParSyntax[F[_], A](thiz: F[A])(implicit F: MonadPar[F]) {
+trait MonadParSyntax {
+  implicit class MonadParSyntaxSrsly[F[_], A](thiz: F[A])(implicit F: MonadPar[F]) {
     def map[B](f: A => B): F[B] = F.map(thiz)(f)
     def flatMap[B](f: A => F[B]): F[B] = F.flatMap(thiz)(f)
     def flatten(implicit ev: A <:< F[A]): F[A] = F.flatMap(thiz)(ev)

@@ -2,7 +2,7 @@ package turbolift.std_effects
 import cats.instances.vector._
 import turbolift.abstraction.!!
 import turbolift.abstraction.typeclass.MonadPar
-import turbolift.abstraction.Implicits.MonadParSyntax
+import turbolift.abstraction.typeclass.Syntax._
 
 
 object ChoiceHandler_Many {

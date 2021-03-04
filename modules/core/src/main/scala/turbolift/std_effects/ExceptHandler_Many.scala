@@ -2,7 +2,7 @@ package turbolift.std_effects
 import cats.instances.either._
 import turbolift.abstraction.!!
 import turbolift.abstraction.typeclass.{MonadPar, Accum}
-import turbolift.abstraction.Implicits.{AccumSyntax, MonadParSyntax}
+import turbolift.abstraction.typeclass.Syntax._
 
 
 object ExceptHandler_Many {

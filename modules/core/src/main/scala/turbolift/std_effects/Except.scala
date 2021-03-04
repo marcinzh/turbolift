@@ -14,6 +14,8 @@ trait ExceptExtSig[U, E, E1] {
 trait ExceptExt[E, E1] extends Effect[ExceptExtSig[*, E, E1]] {
   final def raise(e: E1): Nothing !! this.type = embedFO(_.raise(e))
   final def raises(e: E): Nothing !! this.type = embedFO(_.raises(e))
+  final def raise[K, V1](k: K, v: V1)(implicit ev: ((K, V1)) <:< E1): Unit !! this.type = raise(ev((k, v)))
+  final def raises[K, V](k: K, v: V)(implicit ev: ((K, V)) <:< E): Unit !! this.type = raises(ev((k, v)))
   final def katch[A, U](scope: A !! U)(fun: E => A !! U): A !! U with this.type = embedHO[U](_.katch(scope)(fun))
 
   final def fromEither[A](x: Either[E1, A]): A !! this.type = x match {
@@ -38,22 +40,40 @@ trait ExceptExt[E, E1] extends Effect[ExceptExtSig[*, E, E1]] {
 }
 
 
-trait Except[E] extends ExceptExt[E, E] {
-  def handler = handlers.one
+object ExceptExt {
+  trait One[E, E1] extends ExceptExt[E, E1] {
+    def handler(implicit E: E1 =:= E): ThisIHandler[Either[E, *]] = handlers.one
+  }
+
+  trait Many[E, E1] extends ExceptExt[E, E1] {
+    def handler(implicit E: Accum[E, E1]): ThisIHandler[Either[E, *]] = handlers.many
+  }
 }
 
-trait ExceptK[F[_], E] extends ExceptExt[F[E], E]
 
-trait Validation[E] extends ExceptExt[E, E] {
-  def handler(implicit E: Accum[E, E]) = handlers.many
-}
+trait Except[E] extends ExceptExt.One[E, E]
 
-trait ValidationK[F[_], E] extends ExceptExt[F[E], E] {
-  def handler(implicit E: Accum[F[E], E]) = handlers.many
-}
+trait ExceptK[F[_], E] extends ExceptExt.One[F[E], E]
+
+trait ExceptG[M[_, _], K, V] extends ExceptExt.One[M[K, V], (K, V)]
+
+trait ExceptGK[M[_, _], F[_], K, V] extends ExceptExt.One[M[K, F[V]], (K, V)]
+
+trait Validation[E] extends ExceptExt.Many[E, E]
+
+trait ValidationK[F[_], E] extends ExceptExt.Many[F[E], E]
+
+trait ValidationG[M[_, _], K, V] extends ExceptExt.Many[M[K, V], (K, V)]
+
+trait ValidationGK[M[_, _], F[_], K, V] extends ExceptExt.Many[M[K, F[V]], (K, V)]
+
 
 trait ExceptExports {
   type ExceptSig[U, E] = ExceptExtSig[U, E, E]
 
   type ExceptKSig[U, F[_], E] = ExceptExtSig[U, F[E], E]
+
+  type ExceptGSig[U, M[_, _], K, V] = ExceptExtSig[U, M[K, V], (K, V)]
+
+  type ExceptGKSig[U, M[_, _], F[_], K, V] = ExceptExtSig[U, M[K, F[V]], (K, V)]
 }

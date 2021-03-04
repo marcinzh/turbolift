@@ -3,7 +3,7 @@ import cats.syntax.functor._
 import cats.instances.tuple._
 import turbolift.abstraction.!!
 import turbolift.abstraction.typeclass.{MonadPar, AccumZero}
-import turbolift.abstraction.Implicits.{AccumSyntax, MonadParSyntax}
+import turbolift.abstraction.typeclass.Syntax._
 
 
 object WriterHandler {
