@@ -4,7 +4,7 @@ import scala.collection.BuildFrom
 
 
 trait MapFilterExtensions {
-  implicit class MapFilterIteratorExtension[A](thiz: Iterator[A]) {
+  implicit class MapFilterExtension_Iterator[A](thiz: Iterator[A]) {
     def map_!![B, U](f: A => B !! U): Vector[B] !! U =
       thiz.iterator.foldLeft(!!.pure(Vector.empty[B]).upCast[U]) { (mbs, a) => 
         for {
@@ -30,18 +30,25 @@ trait MapFilterExtensions {
       }
   }
 
-  implicit class MapIterableExtension[A, B, S[X] <: Iterable[X]](thiz: S[A])(implicit bf: BuildFrom[S[A], B, S[B]]) {
-    def map_!![U](f: A => B !! U): S[B] !! U =
+
+  implicit class MapFilterExtension_IterableOnce[A](thiz: IterableOnce[A]) {
+    def foreach_!![B, U](f: A => Unit !! U): Unit !! U =
+      thiz.iterator.foldLeft(!!.pure(()).upCast[U]) { (mb, a) => mb &! f(a) }
+  }
+
+
+  implicit class MapFilterExtension_Iterable[A, S[X] <: Iterable[X]](thiz: S[A]) {
+    type BF[X] = BuildFrom[S[A], X, S[X]]
+
+    def map_!![B, U](f: A => B !! U)(implicit bf: BF[B]): S[B] !! U =
       thiz.iterator.map_!!(f)
       .map(as => (bf.newBuilder(thiz) ++= as).result())
 
-    def flatMap_!![U](f: A => IterableOnce[B] !! U): S[B] !! U =
+    def flatMap_!![B, U](f: A => IterableOnce[B] !! U)(implicit bf: BF[B]): S[B] !! U =
       thiz.iterator.flatMap_!!(f)
       .map(as => (bf.newBuilder(thiz) ++= as).result())
-  }
 
-  implicit class FilterIterableExtension[A, S[X] <: Iterable[X]](thiz: S[A])(implicit bf: BuildFrom[S[A], A, S[A]]) {
-    def filter_!![U](f: A => Boolean !! U): S[A] !! U =
+    def filter_!![U](f: A => Boolean !! U)(implicit bf: BF[A]): S[A] !! U =
       thiz.iterator.filter_!!(f)
       .map(as => (bf.newBuilder(thiz) ++= as).result())
   }
