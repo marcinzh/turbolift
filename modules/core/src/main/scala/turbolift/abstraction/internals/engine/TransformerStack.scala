@@ -9,7 +9,7 @@ import turbolift.abstraction.ComputationCases.Done
 
 sealed trait TransformerStack[P[_]] extends HasEffectId.Delegate {
   def outerMonad: MonadPar[P]
-  def decoder[U](recur: (? !! U) ~> P): AnySignature[U]
+  def decoder[U](recur: (* !! U) ~> P): AnySignature[U]
   def pushNext[T[_[_], _], O[_]](transformer: MonadTransformer[T, O]): TransformerStack[T[P, *]]
 }
 
@@ -25,7 +25,7 @@ private object TransformerStackCases {
     def lifting: Lifting[P, Q, F]
     def canDecode: CanDecode[Q]
 
-    final override def decoder[U](recur: (? !! U) ~> P): AnySignature[U] =
+    final override def decoder[U](recur: (* !! U) ~> P): AnySignature[U] =
       canDecode.makeDecoder(recur, lifting)(outerMonad)
 
     final override def pushNext[T[_[_], _], O[_]](transformer: MonadTransformer[T, O]): TransformerStack[T[P, *]] =
@@ -37,7 +37,7 @@ private object TransformerStackCases {
     final override def lifting = Lifting.identity[Q]
     final override def canDecode: CanDecode[Q] = this
 
-    def makeDecoder[P[_]: MonadPar, F[_], U](recur: (? !! U) ~> P, lifting: Lifting[P, Q, F]): AnySignature[U]
+    def makeDecoder[P[_]: MonadPar, F[_], U](recur: (* !! U) ~> P, lifting: Lifting[P, Q, F]): AnySignature[U]
   }
 
 
@@ -56,8 +56,8 @@ private object TransformerStackCases {
     override def effectIdDelegate: HasEffectId = transformer
     override def outerMonad: MonadPar[T[M, *]] = transformer.transform[M]
 
-    override def makeDecoder[P[_]: MonadPar, F[_], U](recur: (? !! U) ~> P, lifting: Lifting[P, T[M, *], F]): AnySignature[U] = {
-      val lifting2 = new Lifting[? !! U, T[M, *], F] {
+    override def makeDecoder[P[_]: MonadPar, F[_], U](recur: (* !! U) ~> P, lifting: Lifting[P, T[M, *], F]): AnySignature[U] = {
+      val lifting2 = new Lifting[* !! U, T[M, *], F] {
         override val stashFunctor = lifting.stashFunctor
         override def withLift[A](ff: ThisLiftOps => T[M, F[A]]): A !! U =
           Done(lifting.withLift { l =>
@@ -72,7 +72,7 @@ private object TransformerStackCases {
       val context = new transformer.ThisContext[M, F, U] {
         override val mainMonad: MonadPar[T[M, *]] = outer.outerMonad
         override val innerMonad: MonadPar[M] = MonadPar[M]
-        override val lifting: Lifting[? !! U, T[M, *], F] = lifting2
+        override val lifting: Lifting[* !! U, T[M, *], F] = lifting2
       }
 
       transformer.interpret(context)

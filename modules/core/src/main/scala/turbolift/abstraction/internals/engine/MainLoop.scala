@@ -16,7 +16,7 @@ case class NotTrans[M[_], U](id: EffectId, sig: AnySignature[U]) extends Item[M,
 final class MainLoop[M[_], U](
   val theMonad: MonadPar[M],
   val effStack: Vector[Item[M, U]],
-) extends ((? !! U) ~> M) {
+) extends ((* !! U) ~> M) {
   override def apply[A](ua: A !! U): M[A] = loop(ua, Que.empty)
 
   private def loop[A](ua: A !! U, que: Que[M, U]): M[A] = {
