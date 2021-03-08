@@ -1,6 +1,6 @@
 ThisBuild / organization := "com.github.marcinzh"
 ThisBuild / version := "0.10.0-SNAPSHOT"
-ThisBuild / scalaVersion := "2.13.4"
+ThisBuild / scalaVersion := "2.13.5"
 ThisBuild / crossScalaVersions := Seq(scalaVersion.value)
 
 ThisBuild / watchBeforeCommand := Watch.clearScreen
@@ -25,7 +25,7 @@ ThisBuild / scalacOptions ++= Seq(
 
 val Deps = {
   object deps {
-    val kind_projector = compilerPlugin("org.typelevel" %% "kind-projector" % "0.11.1" cross CrossVersion.full)
+    val kind_projector = compilerPlugin("org.typelevel" %% "kind-projector" % "0.11.3" cross CrossVersion.full)
     val better_for = libraryDependencies += compilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.0")
     val cats_core = libraryDependencies += "org.typelevel" %% "cats-core" % "2.2.0"
     val specs2_core = libraryDependencies += "org.specs2" %% "specs2-core" % "4.10.0" % "test"
