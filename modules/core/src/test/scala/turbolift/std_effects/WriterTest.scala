@@ -48,8 +48,8 @@ class WriterTest extends Specification {
     .runWith(Fx.handler.justState) must_== Vector(1, -2, -3, 4)
   }
 
-  def writerG = br ^ "WriterG" ! {
-    case object Fx extends WriterGK[Map, Vector, String, Int]
+  def writerG = br ^ "WriterGK" ! {
+    case object Fx extends WriterGK[Map, String, Vector, Int]
     (for {
       _ <- Fx.tell("a", 1)
       _ <- Fx.tell("b", 10)

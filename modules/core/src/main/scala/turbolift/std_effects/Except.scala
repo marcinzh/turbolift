@@ -57,7 +57,7 @@ trait ExceptK[F[_], E] extends ExceptExt.One[F[E], E]
 
 trait ExceptG[M[_, _], K, V] extends ExceptExt.One[M[K, V], (K, V)]
 
-trait ExceptGK[M[_, _], F[_], K, V] extends ExceptExt.One[M[K, F[V]], (K, V)]
+trait ExceptGK[M[_, _], K, F[_], V] extends ExceptExt.One[M[K, F[V]], (K, V)]
 
 trait Validation[E] extends ExceptExt.Many[E, E]
 
@@ -65,7 +65,7 @@ trait ValidationK[F[_], E] extends ExceptExt.Many[F[E], E]
 
 trait ValidationG[M[_, _], K, V] extends ExceptExt.Many[M[K, V], (K, V)]
 
-trait ValidationGK[M[_, _], F[_], K, V] extends ExceptExt.Many[M[K, F[V]], (K, V)]
+trait ValidationGK[M[_, _], K, F[_], V] extends ExceptExt.Many[M[K, F[V]], (K, V)]
 
 
 trait ExceptExports {
@@ -75,5 +75,5 @@ trait ExceptExports {
 
   type ExceptGSig[U, M[_, _], K, V] = ExceptExtSig[U, M[K, V], (K, V)]
 
-  type ExceptGKSig[U, M[_, _], F[_], K, V] = ExceptExtSig[U, M[K, F[V]], (K, V)]
+  type ExceptGKSig[U, M[_, _], K, F[_], V] = ExceptExtSig[U, M[K, F[V]], (K, V)]
 }
