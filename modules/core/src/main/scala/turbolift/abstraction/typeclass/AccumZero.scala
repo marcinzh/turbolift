@@ -10,6 +10,8 @@ trait AccumZero[W, W1] extends Accum[W, W1] {
 
 object AccumZero extends AccumZeroInstances2 {
   def apply[W, W1](implicit ev: AccumZero[W, W1]) = ev
+
+  def collisionlessMap[K, V]: AccumZero[Map[K, V], (K, V)] = forCollisionlessMap[K, V]
 }
 
 trait AccumZeroInstances1 {
@@ -61,6 +63,23 @@ trait AccumZeroInstances2 extends AccumZeroInstances1 {
         m.updatedWith(k) {
           case Some(v0) => Some(V.plus1(v0, v))
           case None => Some(V.one(v))
+        }
+      }
+    }
+
+  def forCollisionlessMap[K, V]: AccumZero[Map[K, V], (K, V)] =
+    new AccumZero[Map[K, V], (K, V)] {
+      override def zero: Map[K, V] = Map()
+      override def one(kv: (K, V)): Map[K, V] = Map(kv)
+
+      override def plus(m1: Map[K, V], m2: Map[K, V]): Map[K, V] =
+        m2.foldLeft(m1)(plus1)
+
+      override def plus1(m: Map[K, V], kv: (K, V)): Map[K, V] = {
+        val (k, v) = kv
+        m.updatedWith(k) {
+          case None => Some(v)
+          case _ => sys.error(s"Duplicate key: ${k}")
         }
       }
     }
