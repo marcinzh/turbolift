@@ -28,7 +28,7 @@ trait WriterK[F[_], W] extends WriterExt[F[W], W]
 
 trait WriterG[M[_, _], K, V] extends WriterExt[M[K, V], (K, V)]
 
-trait WriterGK[M[_, _], F[_], K, V] extends WriterExt[M[K, F[V]], (K, V)]
+trait WriterGK[M[_, _], K, F[_], V] extends WriterExt[M[K, F[V]], (K, V)]
 
 
 trait WriterExports {
@@ -38,5 +38,5 @@ trait WriterExports {
 
   type WriterGSig[U, M[_, _], K, V] = WriterExtSig[U, M[K, V], (K, V)]
 
-  type WriterGKSig[U, M[_, _], F[_], K, V] = WriterExtSig[U, M[K, F[V]], (K, V)]
+  type WriterGKSig[U, M[_, _], K, F[_], V] = WriterExtSig[U, M[K, F[V]], (K, V)]
 }

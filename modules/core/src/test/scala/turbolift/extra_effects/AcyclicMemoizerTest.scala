@@ -17,17 +17,18 @@ class AcyclicMemoizerTest extends Specification with CanLaunchTheMissiles {
       
       case object FxMemo extends AcyclicMemoizer[Int, Int]
 
-      def fib(i: Int): Int !! FxMemo.type =
+      val fib = FxMemo.fix[FxMemo.type] { recur => i =>
         missiles(i).launch_! &&! (
           if (i <= 1) 
             !!.pure(i)
           else
             for {
-              a <- FxMemo(fib)(i - 1) 
-              b <- FxMemo(fib)(i - 2)
+              a <- recur(i - 1)
+              b <- recur(i - 2)
               c = a + b
             } yield c
         )
+      }
 
       (fib(n).runWith(FxMemo.handler), missiles)
     }
@@ -59,19 +60,19 @@ class AcyclicMemoizerTest extends Specification with CanLaunchTheMissiles {
     val missiles = outgoings.map(_ => Missile())
 
 
-    def visit(n: Int): Vertex !! FxMemo.type with FxLog.type = {
+    val visit = FxMemo.fix[FxMemo.type with FxLog.type] { recur => n =>
       for {
         _ <- missiles(n).launch_!
         _ <- FxLog.tell(n)
         edges <- (
           for (i <- outgoings(n))
-            yield for (to <- FxMemo(visit)(i))
+            yield for (to <- recur(i))
               yield Edge(to)
         ).traverse
       } yield Vertex(n, edges)
     }
 
-    val (log, roots) = FxMemo(visit)(0).runWith(FxLog.handler <<<! FxMemo.handler)
+    val (log, roots) = visit(0).runWith(FxLog.handler <<<! FxMemo.handler)
 
     missiles.map(_.mustHaveLaunchedOnce).reduce(_ and _) and
     (log.sorted must_== (0 until outgoings.size))

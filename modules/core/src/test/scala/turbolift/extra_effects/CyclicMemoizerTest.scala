@@ -31,20 +31,20 @@ class CyclicMemoizerTest extends Specification with CanLaunchTheMissiles {
 
     val missiles = outgoings.map(_ => Missile())
 
-    def visit(n: Int): Vertex !! FxMemo.type with FxLog.type = {
+    val visit = FxMemo.fix[FxMemo.type with FxLog.type] { recur => n =>
       for {
         _ <- missiles(n).launch_!
         _ <- FxLog.tell(n)
-        from <- FxMemo(visit)(n)
+        from <- recur(n)
         edges <- (
           for (i <- outgoings(n))
-            yield for (to <- FxMemo(visit)(i))
+            yield for (to <- recur(i))
               yield Edge(from, to)
         ).traverse
       } yield Vertex(n, edges)
     }
 
-    val (log, roots) = FxMemo(visit)(0).runWith(FxLog.handler <<<! FxMemo.handler)
+    val (log, roots) = visit(0).runWith(FxLog.handler <<<! FxMemo.handler)
 
     missiles.map(_.mustHaveLaunchedOnce).reduce(_ and _) and
     (log.sorted must_== (0 until outgoings.size))
