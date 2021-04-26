@@ -10,7 +10,7 @@ trait ChoiceSig[U] {
 }
 
 
-trait Choice extends Effect[ChoiceSig] {
+trait ChoiceExt extends Effect[ChoiceSig] {
   final val empty: Nothing !! this.type = embedFO(_.empty)
   final def plus[A, U](lhs: A !! U, rhs: => A !! U): A !! U with this.type = embedHO[U](_.plus(lhs, rhs))
   final def each[A](as: Iterable[A]): A !! this.type = embedFO(_.each(as))
@@ -33,17 +33,24 @@ trait Choice extends Effect[ChoiceSig] {
     case _ => empty
   }
 
-  def handler = handlers.many
-
   object handlers {
-    val one: ThisIHandler[Option] = ChoiceHandler_One(Choice.this)
-    val many: ThisIHandler[Vector] = ChoiceHandler_Many(Choice.this)
+    val one: ThisIHandler[Option] = ChoiceHandler_One(ChoiceExt.this)
+    val many: ThisIHandler[Vector] = ChoiceHandler_Many(ChoiceExt.this)
   }
 }
 
 
+trait Choice extends ChoiceExt {
+  def handler: ThisIHandler[Vector] = handlers.many
+}
+
+trait Fail extends ChoiceExt {
+  def handler: ThisIHandler[Option] = handlers.one
+}
+
+
 case object Each extends Choice {
-  def void = handler.void
+  def void: ThisIHandler[Lambda[X => Unit]] = handlers.many.void
 }
 
 trait ChoiceExports {

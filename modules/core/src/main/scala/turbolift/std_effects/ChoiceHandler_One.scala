@@ -6,7 +6,7 @@ import turbolift.abstraction.typeclass.Syntax._
 
 
 object ChoiceHandler_One {
-  def apply[Fx <: Choice](fx: Fx): fx.ThisIHandler[Option] =
+  def apply[Fx <: ChoiceExt](fx: Fx): fx.ThisIHandler[Option] =
     new fx.Nullary[Option] {
       override def purer[A](a: A): Option[A] = Some(a)
 
