@@ -46,7 +46,7 @@ private object TransformerStackCases {
     transformer: MonadTransformer[T, O],
     override val canDecode: CanDecode[Q],
   ) extends CanLift[T[P, *], Q, Lambda[X => F[O[X]]]] {
-    override def outerMonad: MonadPar[T[P, *]] = transformer.transform[P](that.outerMonad)
+    override def outerMonad: MonadPar[T[P, *]] = transformer.onTransform[P](that.outerMonad)
     override def effectIdDelegate: HasEffectId = that
     override val lifting = Lifting.compose(transformer.lifting, that.lifting)
   }
@@ -54,7 +54,7 @@ private object TransformerStackCases {
 
   final case class PushFirst[T[_[_], _], O[_], M[_]: MonadPar](transformer: MonadTransformer[T, O]) extends CanDecode[T[M, *]] { outer =>
     override def effectIdDelegate: HasEffectId = transformer
-    override def outerMonad: MonadPar[T[M, *]] = transformer.transform[M]
+    override def outerMonad: MonadPar[T[M, *]] = transformer.onTransform[M]
 
     override def makeDecoder[P[_]: MonadPar, F[_], U](recur: (* !! U) ~> P, lifting: Lifting[P, T[M, *], F]): AnySignature[U] = {
       val lifting2 = new Lifting[* !! U, T[M, *], F] {
@@ -69,13 +69,13 @@ private object TransformerStackCases {
           })
       }
 
-      val context = new transformer.ThisContext[M, F, U] {
+      val control = new transformer.ThisControl[M, F, U] {
         override val mainMonad: MonadPar[T[M, *]] = outer.outerMonad
         override val innerMonad: MonadPar[M] = MonadPar[M]
         override val lifting: Lifting[* !! U, T[M, *], F] = lifting2
       }
 
-      transformer.interpret(context)
+      transformer.onOperation(control)
     }
   }
 }

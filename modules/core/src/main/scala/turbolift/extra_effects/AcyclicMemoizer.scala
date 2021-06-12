@@ -9,10 +9,10 @@ trait AcyclicMemoizerSig[U, K, V] {
 }
 
 trait AcyclicMemoizer[K, V] extends Effect[AcyclicMemoizerSig[*, K, V]] {
-  final def memo[U](f: K => V !! U)(k: K): V !! U with this.type = embedHO[U](_.memo(f)(k))
-  final def get: Map[K, V] !! this.type = embedFO(_.get)
+  final def memo[U <: this.type](f: K => V !! U)(k: K): V !! U = impureHO[U](_.memo(f)(k))
+  final def get: Map[K, V] !! this.type = impureFO(_.get)
 
-  final def apply[U](f: K => V !! U): K => V !! U with this.type = memo(f)(_)
+  final def apply[U <: this.type](f: K => V !! U): K => V !! U = memo(f)(_)
 
   final def fix[U <: this.type](f: (K => V !! U) => (K => V !! U)): K => V !! U = {
     def recur(k: K): V !! U = memo(f(recur))(k)

@@ -55,7 +55,7 @@ private[abstraction] object HandlerCases {
     interpreter: Interpreter.Saturated[Result, Elim, Intro]
   ) extends Handler[Result, Elim, Intro] {
     override def doHandle[A, U](comp: A !! U with Elim): Result[A] !! U with Intro = 
-      new ComputationCases.Scope[A, U, Result, Elim, Intro](comp, this)
+      new ComputationCases.Delimit[A, U, Result, Elim, Intro](comp, this)
   }
 
   final case class Composed[Result1[_], Result2[_], Elim1, Elim2, Intro1, Intro2, Hidden](

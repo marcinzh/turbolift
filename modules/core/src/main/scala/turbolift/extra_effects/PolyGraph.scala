@@ -14,12 +14,12 @@ trait PolyGraphSig[U, K, V] {
 
 trait PolyGraph[K, V] extends Effect[PolyGraphSig[*, K, V]] {
   enclosing =>
-  final def empty(to: K): Unit !! this.type = embedFO(_.empty(to))
-  final def const(to: K, value: V): Unit !! this.type = embedFO(_.const(to, value))
-  final def identity(to: K, from: K): Unit !! this.type = embedFO(_.identity(to, from))
-  final def unary(to: K, from: K)(fun: V => V): Unit !! this.type = embedFO(_.unary(to, from)(fun))
-  final def binary(to: K, from1: K, from2: K)(fun: (V, V) => V): Unit !! this.type = embedFO(_.binary(to, from1, from2)(fun))
-  final def variadic(to: K, froms: Vector[K])(fun: Vector[V] => V): Unit !! this.type = embedFO(_.variadic(to, froms)(fun))
+  final def empty(to: K): Unit !! this.type = impureFO(_.empty(to))
+  final def const(to: K, value: V): Unit !! this.type = impureFO(_.const(to, value))
+  final def identity(to: K, from: K): Unit !! this.type = impureFO(_.identity(to, from))
+  final def unary(to: K, from: K)(fun: V => V): Unit !! this.type = impureFO(_.unary(to, from)(fun))
+  final def binary(to: K, from1: K, from2: K)(fun: (V, V) => V): Unit !! this.type = impureFO(_.binary(to, from1, from2)(fun))
+  final def variadic(to: K, froms: Vector[K])(fun: Vector[V] => V): Unit !! this.type = impureFO(_.variadic(to, froms)(fun))
   final def fold(to: K, froms: Vector[K], initial: V)(fun: (V, V) => V): Unit !! this.type = variadic(to, froms)(_.fold(initial)(fun))
   final def reduce(to: K, froms: Vector[K])(fun: (V, V) => V): Unit !! this.type = variadic(to, froms)(_.reduce(fun))
 

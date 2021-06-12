@@ -3,7 +3,7 @@ import turbolift.abstraction.!!
 import turbolift.abstraction.typeclass.MonadPar
 
 
-trait Context[T[_[_], _], M[_], F[_], U] {
+trait Control[T[_[_], _], M[_], F[_], U] {
   val mainMonad: MonadPar[T[M, *]]
   val innerMonad: MonadPar[M]
   val lifting: Lifting[* !! U, T[M, *], F]

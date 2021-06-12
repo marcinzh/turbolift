@@ -16,13 +16,13 @@ trait MonoGraphSig[U, K, V] {
 
 trait MonoGraph[K, V] extends Effect[MonoGraphSig[*, K, V]] {
   enclosing =>
-  def empty(to: K): Unit !! this.type = embedFO(_.empty(to))
-  def incomingConst(to: K, value: V): Unit !! this.type = embedFO(_.incomingConst(to, value))
-  def outgoingConst(from: K, value: V): Unit !! this.type = embedFO(_.outgoingConst(from, value))
-  def incoming(to: K, from: K): Unit !! this.type = embedFO(_.incoming(to, from))
-  def incomings(to: K, froms: IterableOnce[K]): Unit !! this.type = embedFO(_.incomings(to, froms))
-  def outgoing(from: K, to: K): Unit !! this.type = embedFO(_.outgoing(from, to))
-  def outgoings(from: K, tos: IterableOnce[K]): Unit !! this.type = embedFO(_.outgoings(from, tos))
+  def empty(to: K): Unit !! this.type = impureFO(_.empty(to))
+  def incomingConst(to: K, value: V): Unit !! this.type = impureFO(_.incomingConst(to, value))
+  def outgoingConst(from: K, value: V): Unit !! this.type = impureFO(_.outgoingConst(from, value))
+  def incoming(to: K, from: K): Unit !! this.type = impureFO(_.incoming(to, from))
+  def incomings(to: K, froms: IterableOnce[K]): Unit !! this.type = impureFO(_.incomings(to, froms))
+  def outgoing(from: K, to: K): Unit !! this.type = impureFO(_.outgoing(from, to))
+  def outgoings(from: K, tos: IterableOnce[K]): Unit !! this.type = impureFO(_.outgoings(from, tos))
 
   final def at(k: K): AtApply = new AtApply(k)
   final class AtApply(k: K) {

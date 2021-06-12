@@ -51,8 +51,8 @@ private[abstraction] object ComputationCases {
   final case class Defer[A, U](thunk: () => A !! U) extends Computation[A, U]
   final case class FlatMap[A, B, U](that: A !! U, k: A => B !! U) extends Computation[B, U]
   final case class ZipPar[A, B, U](lhs: A !! U, rhs: B !! U) extends Computation[(A, B), U]
-  final case class Dispatch[A, U, Z[_]](effectId: EffectId, op: Z[U] => A !! U) extends Computation[A, U]
-  final case class Scope[A, U, F[_], L, N](scope: A !! U with L, handler: Primitive[F, L, N]) extends Computation[F[A], U with N]
+  final case class Impure[A, U, Z[_]](effectId: EffectId, op: Z[U] => A !! U) extends Computation[A, U]
+  final case class Delimit[A, U, F[_], L, N](body: A !! U with L, handler: Primitive[F, L, N]) extends Computation[F[A], U with N]
 }
 
 

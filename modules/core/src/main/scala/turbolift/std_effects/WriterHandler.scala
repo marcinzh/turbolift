@@ -8,10 +8,10 @@ import turbolift.abstraction.typeclass.Syntax._
 
 object WriterHandler {
   def apply[W, W1, Fx <: WriterExt[W, W1]](fx: Fx)(implicit W: AccumZero[W, W1]): fx.ThisIHandler[(W, *)] =
-    new fx.Unary[W, (W, *)] {
-      override def purer[A](w: W, a: A): (W, A) = (w, a)
+    new fx.Stateful[W, (W, *)] {
+      override def onReturn[A](w: W, a: A): (W, A) = (w, a)
   
-      override def transform[M[_]: MonadPar] = new Transformed[M] {
+      override def onTransform[M[_]: MonadPar] = new Transformed[M] {
         override def flatMap[A, B](tma: W => M[(W, A)])(f: A => W => M[(W, B)]): W => M[(W, B)] =
           w0 => tma(w0).flatMap {
             case (w, a) => f(a)(w)
@@ -23,30 +23,30 @@ object WriterHandler {
           }
       }
 
-      override def interpret[M[_], F[_], U](implicit ctx: ThisContext[M, F, U]) = new WriterExtSig[U, W, W1] {
+      override def onOperation[M[_], F[_], U](implicit kk: ThisControl[M, F, U]) = new WriterExtSig[U, W, W1] {
         override def tell(w: W1): Unit !! U =
-          ctx.withLift(lift => w0 => ctx.pureInner((w0 |+ w, lift.unitStash())))
+          kk.withLift(lift => w0 => kk.pureInner((w0 |+ w, lift.unitStash())))
 
         override def tells(w: W): Unit !! U =
-          ctx.withLift(lift => w0 => ctx.pureInner((w0 |+| w, lift.unitStash())))
+          kk.withLift(lift => w0 => kk.pureInner((w0 |+| w, lift.unitStash())))
 
-        override def listen[A](scope: A !! U): (W, A) !! U =
-          ctx.withLift { lift => w0 =>
-            lift.run(scope)(W.zero).map {
+        override def listen[A](body: A !! U): (W, A) !! U =
+          kk.withLift { lift => w0 =>
+            lift.run(body)(W.zero).map {
               case (w, fa) => (w0 |+| w, fa.map((w, _)))
             }
           }
 
-        override def censor[A](scope: A !! U)(mod: W => W): A !! U =
-          ctx.withLift { lift => w0 =>
-            lift.run(scope)(W.zero).map {
+        override def censor[A](body: A !! U)(mod: W => W): A !! U =
+          kk.withLift { lift => w0 =>
+            lift.run(body)(W.zero).map {
               case (w, fa) => (w0 |+| mod(w), fa)
             }
           }
 
-        override def mute[A](scope: A !! U): A !! U =
-          ctx.withLift { lift => w0 =>
-            lift.run(scope)(W.zero).map {
+        override def mute[A](body: A !! U): A !! U =
+          kk.withLift { lift => w0 =>
+            lift.run(body)(W.zero).map {
               case (_, fa) => (w0, fa)
             }
           }

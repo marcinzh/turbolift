@@ -7,10 +7,10 @@ import turbolift.abstraction.typeclass.Syntax._
 
 object ChoiceHandler_One {
   def apply[Fx <: ChoiceExt](fx: Fx): fx.ThisIHandler[Option] =
-    new fx.Nullary[Option] {
-      override def purer[A](a: A): Option[A] = Some(a)
+    new fx.Stateless[Option] {
+      override def onReturn[A](a: A): Option[A] = Some(a)
 
-      override def transform[M[_]: MonadPar] = new Transformed[M] {
+      override def onTransform[M[_]: MonadPar] = new Transformed[M] {
         override def flatMap[A, B](tma: M[Option[A]])(f: A => M[Option[B]]): M[Option[B]] =
           tma.flatMap {
             case Some(a) => f(a)
@@ -24,15 +24,15 @@ object ChoiceHandler_One {
           }
       }
 
-      override def interpret[M[_], F[_], U](implicit ctx: ThisContext[M, F, U]) = new ChoiceSig[U] {
+      override def onOperation[M[_], F[_], U](implicit kk: ThisControl[M, F, U]) = new ChoiceSig[U] {
         override def empty[A]: A !! U =
-          ctx.withLift(lift => ctx.pureInner(None: Option[F[A]]))
+          kk.withLift(lift => kk.pureInner(None: Option[F[A]]))
 
         override def plus[A](lhs: A !! U, rhs: => A !! U): A !! U =
-          ctx.withLift { lift =>
+          kk.withLift { lift =>
             lift.run(lhs).flatMap { x =>
               if (x.isDefined)
-                ctx.pureInner(x)
+                kk.pureInner(x)
               else
                 lift.run(rhs)
             }

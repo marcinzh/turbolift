@@ -16,8 +16,8 @@ object PolyGraphHandler {
     def computeConst(value: V): Solution => V = (_ : Solution) => value
     val computeBottom = computeConst(bottom)
 
-    new fx.Dependent[Compute.type with Propagate.type] {
-      override def interpret[U <: Compute.type with Propagate.type] = new PolyGraphSig[U, K, V] {
+    new fx.Proxy[Compute.type with Propagate.type] {
+      override def onOperation[U <: Compute.type with Propagate.type] = new PolyGraphSig[U, K, V] {
         override def empty(to: K): Unit !! U = Compute.tell(to, computeBottom)
 
         override def const(to: K, value: V): Unit !! U = Compute.tell(to, computeConst(value))

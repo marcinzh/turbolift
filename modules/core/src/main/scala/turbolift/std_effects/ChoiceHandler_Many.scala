@@ -7,10 +7,10 @@ import turbolift.abstraction.typeclass.Syntax._
 
 object ChoiceHandler_Many {
   def apply[Fx <: ChoiceExt](fx: Fx): fx.ThisIHandler[Vector] =
-    new fx.Nullary[Vector] {
-      override def purer[A](a: A): Vector[A] = Vector(a)
+    new fx.Stateless[Vector] {
+      override def onReturn[A](a: A): Vector[A] = Vector(a)
 
-      override def transform[M[_]: MonadPar] = new Transformed[M] {
+      override def onTransform[M[_]: MonadPar] = new Transformed[M] {
         override def flatMap[A, B](tma: M[Vector[A]])(f: A => M[Vector[B]]): M[Vector[B]] = {
           def loop(as: Vector[A]): M[Vector[B]] = as match {
             case Vector() => MonadPar[M].pure(Vector())
@@ -34,15 +34,15 @@ object ChoiceHandler_Many {
           }
       }
 
-      override def interpret[M[_], F[_], U](implicit ctx: ThisContext[M, F, U]) = new ChoiceSig[U] {
+      override def onOperation[M[_], F[_], U](implicit kk: ThisControl[M, F, U]) = new ChoiceSig[U] {
         override def empty[A]: A !! U =
-          ctx.withLift(lift => ctx.pureInner(Vector.empty[F[A]]))
+          kk.withLift(lift => kk.pureInner(Vector.empty[F[A]]))
 
         override def each[A](as: Iterable[A]): A !! U =
-          ctx.withLift(lift => ctx.pureInner(as.iterator.map(lift.pureStash).toVector))
+          kk.withLift(lift => kk.pureInner(as.iterator.map(lift.pureStash).toVector))
 
         override def plus[A](lhs: A !! U, rhs: => A !! U): A !! U =
-          ctx.withLift { lift =>
+          kk.withLift { lift =>
             (lift.run(lhs) *! lift.run(rhs)).map {
               case (xs, ys) => xs ++ ys
             }

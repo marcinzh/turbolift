@@ -8,7 +8,7 @@ trait AutoIncSig[U] {
 
 
 trait AutoInc extends Effect[AutoIncSig] {
-  def next: Int !! this.type = embedFO(_.next)
+  def next: Int !! this.type = impureFO(_.next)
 
   def handler: ThisIHandler[(Int, *)] = handler(0)
   def handler(initial: Int): ThisIHandler[(Int, *)] = AutoIncHandler.apply(this, initial)

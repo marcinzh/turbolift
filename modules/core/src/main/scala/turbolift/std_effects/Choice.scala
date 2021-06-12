@@ -11,9 +11,9 @@ trait ChoiceSig[U] {
 
 
 trait ChoiceExt extends Effect[ChoiceSig] {
-  final val empty: Nothing !! this.type = embedFO(_.empty)
-  final def plus[A, U](lhs: A !! U, rhs: => A !! U): A !! U with this.type = embedHO[U](_.plus(lhs, rhs))
-  final def each[A](as: Iterable[A]): A !! this.type = embedFO(_.each(as))
+  final val empty: Nothing !! this.type = impureFO(_.empty)
+  final def plus[A, U <: this.type](lhs: A !! U, rhs: => A !! U): A !! U = impureHO[U](_.plus(lhs, rhs))
+  final def each[A](as: Iterable[A]): A !! this.type = impureFO(_.each(as))
 
   final def apply[A](as: A*): A !! this.type = each(as.toVector)
   final def fail = empty

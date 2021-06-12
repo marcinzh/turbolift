@@ -8,8 +8,8 @@ object AcyclicMemoizerHandler {
   def apply[K, V, Fx <: AcyclicMemoizer[K, V]](fx: Fx): fx.ThisIHandler[Id] = {
     case object Storage extends State[Map[K, V]]
 
-    new fx.Dependent[Storage.type] {
-      override def interpret[U <: Storage.type] = new AcyclicMemoizerSig[U, K, V] {
+    new fx.Proxy[Storage.type] {
+      override def onOperation[U <: Storage.type] = new AcyclicMemoizerSig[U, K, V] {
         override def get: Map[K, V] !! U =
           Storage.get
 

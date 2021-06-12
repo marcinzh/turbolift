@@ -17,40 +17,40 @@ final class MainLoop[M[_], U](
   val theMonad: MonadPar[M],
   val effStack: Vector[Item[M, U]],
 ) extends ((* !! U) ~> M) {
-  override def apply[A](ua: A !! U): M[A] = loop(ua, Que.empty)
+  override def apply[A](ua: A !! U): M[A] = loop(ua, Step.empty)
 
-  private def loop[A](ua: A !! U, que: Que[M, U]): M[A] = {
+  private def loop[A](ua: A !! U, step: Step[M, U]): M[A] = {
     import ComputationCases._
-    import QueCases._
+    import StepCases._
     def castS[Z[U1] <: AnySignature[U1]](f: Z[U] => A !! U) = f.asInstanceOf[AnySignature[U] => A !! U]
     def castU[A1](ua1: A1 !! U) = ua1.asInstanceOf[A !! U]
     def castM[A1](ma1: M[A1]) = ma1.asInstanceOf[M[A]]
 
     ua match {
-      case Pure(a) => loop(Done(theMonad.pure(a)), que)
+      case Pure(a) => loop(Done(theMonad.pure(a)), step)
       case ua: Done[tA, tM, U] =>
         val ma: M[A] = ua.value.asInstanceOf[M[A]]
-        que match {
+        step match {
           case Empty() => ma
           case SeqStep(f, next) => theMonad.flatMap(ma)(a => loop(castU(f(a)), next))
           case ParStepLeft(ux, next) => loop(castU(ux), ParStepRight(ma, next))
           case ParStepRight(mx, next) => loop(Done(castM(theMonad.zipPar(mx, ma))), next)
         }
-      case Defer(th) => theMonad.defer(loop(th(), que))
-      case FlatMap(ux, k) => loop(castU(ux), SeqStep(k, que))
-      case ZipPar(ux, uy) => loop(castU(ux), ParStepLeft(castU(uy), que))
-      case Dispatch(id, op) => loop(castS(op)(lookup(id)), que)
-      case ua: Scope[tA, tU, tF, tL, tN] =>
+      case Defer(th) => theMonad.defer(loop(th(), step))
+      case FlatMap(ux, k) => loop(castU(ux), SeqStep(k, step))
+      case ZipPar(ux, uy) => loop(castU(ux), ParStepLeft(castU(uy), step))
+      case Impure(id, op) => loop(castS(op)(lookup(id)), step)
+      case ua: Delimit[tA, tU, tF, tL, tN] =>
         val interpreter = ua.handler.interpreter
-        val scope = ua.scope
+        val body = ua.body
         val stuff = interpreter match {
-          case st: InterpreterCases.SaturatedTrans => st.prime(pushTrans(st.transformer).apply(scope))
-          // case dep: InterpreterCases.Dependent[U] => pushDep(dep).apply(scope)
+          case st: InterpreterCases.SaturatedTrans => st.prime(pushTrans(st.transformer).apply(body))
+          // case proxy: InterpreterCases.Proxy[U] => pushProxy(proxy).apply(body)
           case _ =>
-            val dep = interpreter.asInstanceOf[InterpreterCases.Dependent[U with tL]]
-            pushDep(dep).apply(scope)
+            val proxy = interpreter.asInstanceOf[InterpreterCases.Proxy[U with tL]]
+            pushProxy(proxy).apply(body)
         }
-        loop(Done(stuff), que)
+        loop(Done(stuff), step)
     }
   }
 
@@ -68,9 +68,9 @@ final class MainLoop[M[_], U](
     newLoop
   }
 
-  def pushDep[V](dependent: InterpreterCases.Dependent[V]): MainLoop[M, U with V] = {
-    val sig: AnySignature[U with V] = dependent.interpret[U with V]
-    val id: EffectId = dependent.effectId
+  def pushProxy[V](proxy: InterpreterCases.Proxy[V]): MainLoop[M, U with V] = {
+    val sig: AnySignature[U with V] = proxy.onOperation[U with V]
+    val id: EffectId = proxy.effectId
     val newHead = NotTrans[M, U with V](id, sig)
     val newTail: Vector[Item[M, U with V]] = effStack.map(_.asInstanceOf[Item[M, U with V]])
     val newEffStack = newTail :+ newHead

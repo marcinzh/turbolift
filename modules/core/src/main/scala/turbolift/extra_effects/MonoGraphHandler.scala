@@ -14,8 +14,8 @@ object MonoGraphHandler {
     case object Propagate extends WriterGK[Map, K, Set, K]
     type Fx3 = IncomingConst.type with OutgoingConst.type with Propagate.type
 
-    new fx.Dependent[Fx3] {
-      override def interpret[U <: Fx3] = new MonoGraphSig[U, K, V] {
+    new fx.Proxy[Fx3] {
+      override def onOperation[U <: Fx3] = new MonoGraphSig[U, K, V] {
         override def empty(k: K): Unit !! U = IncomingConst.tell(k, V.empty)
         override def incomingConst(to: K, value: V): Unit !! U = IncomingConst.tell(to, value)
         override def outgoingConst(from: K, value: V): Unit !! U = OutgoingConst.tell(from, value)
