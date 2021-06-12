@@ -48,6 +48,21 @@ private [abstraction] trait HandlerExtensions {
       thiz.map(new (Option ~> Try) {
         override def apply[A](result: Option[A]): Try[A] = result.fold[Try[A]](Failure(e))(Success(_))
       })
+
+    def getOrElse(default: => Nothing): Handler[Id, L, N] =
+      thiz.map(new (Option ~> Id) {
+        override def apply[A](result: Option[A]): A = result.getOrElse(default)
+      })
+
+    def getOrDie(message: => String): Handler[Id, L, N] =
+      thiz.map(new (Option ~> Id) {
+        override def apply[A](result: Option[A]): A = result.getOrElse(sys.error(message))
+      })
+
+    def unsafeGet: Handler[Id, L, N] =
+      thiz.map(new (Option ~> Id) {
+        override def apply[A](result: Option[A]): A = result.get
+      })
   }
 
   implicit class HandlerExtension_Either[E, L, N](thiz: Handler[Either[E, *], L, N]) {
@@ -59,6 +74,16 @@ private [abstraction] trait HandlerExtensions {
     def toTry(implicit ev: E <:< Throwable): Handler[Try, L, N] =
       thiz.map(new (Either[E, *] ~> Try) {
         override def apply[A](result: Either[E, A]): Try[A] = result.toTry
+      })
+
+    def getOrElse(default: E => Nothing): Handler[Id, L, N] =
+      thiz.map(new (Either[E, *] ~> Id) {
+        override def apply[A](result: Either[E, A]): A = result.fold(default, x => x)
+      })
+
+    def getOrDie(message: E => String): Handler[Id, L, N] =
+      thiz.map(new (Either[E, *] ~> Id) {
+        override def apply[A](result: Either[E, A]): A = result.fold(e => sys.error(message(e)), x => x)
       })
 
     def mapLeft[E2](f: E => E2): Handler[Either[E2, *], L, N] =
