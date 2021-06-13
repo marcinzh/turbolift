@@ -8,25 +8,25 @@ import ComputationCases._
 
 sealed trait Computation[+A, -U] {
   final def map[B](f: A => B): B !! U = new FlatMap(this, f andThen (new Pure(_)))
-  final def flatMap[B, V](f: A => B !! V): B !! U with V = new FlatMap(this, f)
-  final def flatten[B, V](implicit ev: A <:< (B !! V)): B !! U with V = flatMap(ev)
-  final def zipPar[B, V](that: B !! V): (A, B) !! U with V = new ZipPar(this, that)
+  final def flatMap[B, V <: U](f: A => B !! V): B !! V = new FlatMap(this, f)
+  final def flatten[B, V <: U](implicit ev: A <:< (B !! V)): B !! V = flatMap(ev)
+  final def zipPar[B, V <: U](that: B !! V): (A, B) !! V = new ZipPar(this, that)
 
-  final def *![B, V](that: B !! V): (A, B) !! U with V = zipPar(that)
-  final def *<![B, V](that: B !! V): A !! U with V = zipPar(that).map(_._1)
-  final def *>![B, V](that: B !! V): B !! U with V = zipPar(that).map(_._2)
+  final def *![B, V <: U](that: B !! V): (A, B) !! V = zipPar(that)
+  final def *<![B, V <: U](that: B !! V): A !! V = zipPar(that).map(_._1)
+  final def *>![B, V <: U](that: B !! V): B !! V = zipPar(that).map(_._2)
 
-  final def **![B, V](that: => B !! V): (A, B) !! U with V = flatMap(a => that.map((a, _)))
-  final def **<![B, V](that: => B !! V): A !! U with V = flatMap(a => that.map(_ => a))
-  final def **>![B, V](that: => B !! V): B !! U with V = flatMap(_ => that)
+  final def **![B, V <: U](that: => B !! V): (A, B) !! V = flatMap(a => that.map((a, _)))
+  final def **<![B, V <: U](that: => B !! V): A !! V = flatMap(a => that.map(_ => a))
+  final def **>![B, V <: U](that: => B !! V): B !! V = flatMap(_ => that)
 
-  final def &![B, V](that: B !! V): B !! U with V = this *>! that
-  final def &&![B, V](that: => B !! V): B !! U with V = this **>! that
+  final def &![B, V <: U](that: B !! V): B !! V = this *>! that
+  final def &&![B, V <: U](that: => B !! V): B !! V = this **>! that
 
-  final def |![B >: A, V](that: B !! V): B !! U with V with Choice = ??? //@#@
-  final def ||![B >: A, V](that: => B !! V): B !! U with V with Choice = AnyChoice.plus(this, that)
+  final def |![B >: A, V <: U with Choice](that: B !! V): B !! V = ??? //@#@
+  final def ||![B >: A, V <: U with Choice](that: => B !! V): B !! V = AnyChoice.plus(this, that)
 
-  final def withFilter(f: A => Boolean): A !! U with Choice = flatMap(a => if (f(a)) !!.pure(a) else !!.fail)
+  final def withFilter[V <: U with Choice](f: A => Boolean): A !! V = flatMap(a => if (f(a)) !!.pure(a) else !!.fail)
 
   final def void: Unit !! U = map(_ => ())
   final def upCast[V <: U] = this: A !! V
