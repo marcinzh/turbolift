@@ -1,5 +1,5 @@
 ThisBuild / organization := "com.github.marcinzh"
-ThisBuild / version := "0.12.0-SNAPSHOT"
+ThisBuild / version := "0.13.0-SNAPSHOT"
 ThisBuild / scalaVersion := "2.13.5"
 ThisBuild / crossScalaVersions := Seq(scalaVersion.value)
 
