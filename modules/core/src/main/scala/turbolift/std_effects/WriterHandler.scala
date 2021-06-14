@@ -6,12 +6,12 @@ import turbolift.abstraction.typeclass.{MonadPar, AccumZero}
 import turbolift.abstraction.typeclass.Syntax._
 
 
-object WriterHandler {
-  def apply[W, W1, Fx <: WriterExt[W, W1]](fx: Fx)(implicit W: AccumZero[W, W1]): fx.ThisIHandler[(W, *)] =
-    new fx.Stateful[W, (W, *)] {
+object WriterHandler:
+  def apply[W, W1, Fx <: WriterExt[W, W1]](fx: Fx)(implicit W: AccumZero[W, W1]): fx.ThisIHandler[(W, _)] =
+    new fx.Stateful[W, (W, _)]:
       override def onReturn[A](w: W, a: A): (W, A) = (w, a)
   
-      override def onTransform[M[_]: MonadPar] = new Transformed[M] {
+      override def onTransform[M[_]: MonadPar] = new Transformed[M]:
         override def flatMap[A, B](tma: W => M[(W, A)])(f: A => W => M[(W, B)]): W => M[(W, B)] =
           w0 => tma(w0).flatMap {
             case (w, a) => f(a)(w)
@@ -21,9 +21,8 @@ object WriterHandler {
           w0 => (tma(W.zero) *! tmb(W.zero)).map {
             case ((w, a), (w2, b)) => ((w0 |+| w) |+| w2, (a, b))
           }
-      }
-
-      override def onOperation[M[_], F[_], U](implicit kk: ThisControl[M, F, U]) = new WriterExtSig[U, W, W1] {
+      
+      override def onOperation[M[_], F[_], U](implicit kk: ThisControl[M, F, U]) = new WriterExtSig[U, W, W1]:
         override def tell(w: W1): Unit !! U =
           kk.withLift(lift => w0 => kk.pureInner((w0 |+ w, lift.unitStash())))
 
@@ -50,6 +49,5 @@ object WriterHandler {
               case (_, fa) => (w0, fa)
             }
           }
-      }
-    }.toHandler(W.zero)
-}
+
+    .toHandler(W.zero)

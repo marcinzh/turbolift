@@ -1,24 +1,32 @@
-package turbolift.operations
+package turbolift.std_effects
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers._
 import turbolift.abstraction.!!
 import turbolift.std_effects.State
-import org.specs2._
 
 
-class StateTests extends Specification {
-  def is = {
+class StateTests extends AnyFlatSpec:
+
+  "State operations" should "work" in {
     case object Fx extends State[Int]
 
-    (for {
-      a <- Fx.get
-      _ <- Fx.put(a + 99)
-      _ <- Fx.put(a + 10)
-      b <- Fx.get
-      _ <- Fx.put(a + 999)
-      _ <- Fx.put(a + 100)
-      c <- Fx.get
-      _ <- Fx.put(a + 9999)
-      _ <- Fx.put(c + 1000)
-    } yield ())
-    .runWith(Fx.handler(1).exec) must_== 1101
+    Fx.get.runWith(Fx.handler(42).eval) shouldEqual 42
+
+    Fx.put(1337).flatMap(_ => Fx.put(42)).runWith(Fx.handler(-1).exec) shouldEqual 42
+
+    Fx.put(42).flatMap(_ => Fx.get).runWith(Fx.handler(-1)) shouldEqual (42, 42)
+    
+    Fx.modify(_ * 10).runWith(Fx.handler(42).exec) shouldEqual 420
   }
-}
+
+  "Multiple State operations" should "work" in {
+    case object Fx1 extends State[Int]
+    case object Fx2 extends State[Int]
+
+    (for
+      a <- Fx1.get
+      _ <- Fx2.put(a * 10)
+      b <- Fx1.get
+    yield b)
+    .runWith(Fx1.handler(42) ***! Fx2.handler(1337)) shouldEqual ((42, 420), 42)
+  }

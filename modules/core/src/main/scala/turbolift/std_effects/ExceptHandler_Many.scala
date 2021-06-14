@@ -5,12 +5,12 @@ import turbolift.abstraction.typeclass.{MonadPar, Accum}
 import turbolift.abstraction.typeclass.Syntax._
 
 
-object ExceptHandler_Many {
-  def apply[E, E1, Fx <: ExceptExt[E, E1]](fx: Fx)(implicit E: Accum[E, E1]): fx.ThisIHandler[Either[E, *]] =
-    new fx.Stateless[Either[E, *]] {
+object ExceptHandler_Many:
+  def apply[E, E1, Fx <: ExceptExt[E, E1]](fx: Fx)(implicit E: Accum[E, E1]): fx.ThisIHandler[Either[E, _]] =
+    new fx.Stateless[Either[E, _]]:
       override def onReturn[A](a: A): Either[E, A] = Right(a)
 
-      override def onTransform[M[_]: MonadPar] = new Transformed[M] {
+      override def onTransform[M[_]: MonadPar] = new Transformed[M]:
         override def flatMap[A, B](tma: M[Either[E, A]])(f: A => M[Either[E, B]]): M[Either[E, B]] =
           tma.flatMap {
             case Right(a) => f(a)
@@ -24,9 +24,8 @@ object ExceptHandler_Many {
             case (Left(e), _) => Left(e)
             case (_, Left(e)) => Left(e)
           }
-      }
 
-      override def onOperation[M[_], F[_], U](implicit kk: ThisControl[M, F, U]) = new ExceptExtSig[U, E, E1] {
+      override def onOperation[M[_], F[_], U](implicit kk: ThisControl[M, F, U]) = new ExceptExtSig[U, E, E1]:
         override def raise[A](e: E1): A !! U =
           kk.withLift(lift => kk.pureInner(Left(E.one(e)).withRight[F[A]]))
 
@@ -40,6 +39,5 @@ object ExceptHandler_Many {
               case Left(e) => lift.run(fun(e))
             }
           }
-      }
-    }.toHandler
-}
+
+    .toHandler

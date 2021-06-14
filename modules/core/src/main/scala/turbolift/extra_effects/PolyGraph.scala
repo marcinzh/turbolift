@@ -2,17 +2,16 @@ package turbolift.extra_effects
 import turbolift.abstraction.{!!, Effect}
 
 
-trait PolyGraphSig[U, K, V] {
+trait PolyGraphSig[U, K, V]:
   def empty(to: K): Unit !! U
   def const(to: K, value: V): Unit !! U
   def identity(to: K, from: K): Unit !! U
   def unary(to: K, from: K)(fun: V => V): Unit !! U
   def binary(to: K, from1: K, from2: K)(fun: (V, V) => V): Unit !! U
   def variadic(to: K, froms: Vector[K])(fun: Vector[V] => V): Unit !! U
-}
 
 
-trait PolyGraph[K, V] extends Effect[PolyGraphSig[*, K, V]] {
+trait PolyGraph[K, V] extends Effect[PolyGraphSig[_, K, V]]:
   enclosing =>
   final def empty(to: K): Unit !! this.type = impureFO(_.empty(to))
   final def const(to: K, value: V): Unit !! this.type = impureFO(_.const(to, value))
@@ -24,7 +23,7 @@ trait PolyGraph[K, V] extends Effect[PolyGraphSig[*, K, V]] {
   final def reduce(to: K, froms: Vector[K])(fun: (V, V) => V): Unit !! this.type = variadic(to, froms)(_.reduce(fun))
 
   final def at(k: K): AtApply = new AtApply(k)
-  final class AtApply(k: K) {
+  final class AtApply(k: K):
     def empty = enclosing.empty(k)
     def const(value: V) = enclosing.const(k, value)
     def identity(from: K) = enclosing.identity(k, from)
@@ -33,7 +32,5 @@ trait PolyGraph[K, V] extends Effect[PolyGraphSig[*, K, V]] {
     def variadic(froms: Vector[K])(fun: Vector[V] => V) = enclosing.variadic(k, froms)(fun)
     def fold(froms: Vector[K], initial: V)(fun: (V, V) => V) = enclosing.fold(k, froms, initial)(fun)
     def reduce(froms: Vector[K])(fun: (V, V) => V) = enclosing.reduce(k, froms)(fun)
-  }
 
-  def handler: V => ThisIHandler[(Map[K, V], *)] = PolyGraphHandler.apply[K, V, this.type](this)
-}
+  def handler: V => ThisIHandler[(Map[K, V], _)] = PolyGraphHandler.apply[K, V, this.type](this)

@@ -1,49 +1,45 @@
-package turbolift.operations
-import cats.implicits._
+package turbolift.std_effects
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers._
 import turbolift.abstraction.!!
 import turbolift.std_effects.{Reader, WriterK}
-import org.specs2._
 
 
-class ReaderTest extends Specification {
-
-  def is = List(ask, asks, local).reduce(_ ^ _)
-
-  def ask = br ^ "ask" ! {
+class ReaderTest extends AnyFlatSpec:
+  "ask" should "work" in {
     case object Fx extends Reader[Int]
 
-    Fx.ask.runWith(Fx.handler(42)) must_== 42
+    Fx.ask.runWith(Fx.handler(42)) shouldEqual 42
   }
 
-  def asks = br ^ "asks" ! {
+  "asks" should "work" in {
     type Env = (Int, String)
     case object Fx extends Reader[Env]
 
-    (for {
+    (for
       i <- Fx.asks(_._1)
       s <- Fx.asks(_._2)
-    } yield (i, s))
-    .runWith(Fx.handler((42, "foo"))) must_== (42, "foo")
+    yield (i, s))
+    .runWith(Fx.handler((42, "foo"))) shouldEqual (42, "foo")
   }
 
-  def local = br ^ "local" ! {
+  "local" should "work" in {
     case object FxR extends Reader[Int]
     case object FxW extends WriterK[Vector, String]
 
-    def loop(str: String): Unit !! FxR.type with FxW.type = {
-      if (str.isEmpty)
+    def loop(str: String): Unit !! FxR.type with FxW.type =
+      if str.isEmpty then
         !!.pure()
       else 
-        str.head match {
+        str.head match
           case '[' => FxR.localModify(_ + 1)(loop(str.tail))
           case ']' => FxR.localModify(_ - 1)(loop(str.tail))
-          case x => for { 
-            indent <- FxR.ask
-            _ <- FxW.tell(("  " * indent) :+ x)
-            _ <- loop(str.tail) 
-          } yield ()
-        }
-    }
+          case x =>
+            for
+              indent <- FxR.ask
+              _ <- FxW.tell(("  " * indent) :+ x)
+              _ <- loop(str.tail) 
+            yield ()
 
     val lines1 = 
       loop("ab[cd[e]f[]g]h")
@@ -61,6 +57,5 @@ class ReaderTest extends Specification {
       |h
       |""".stripMargin.tail.init
 
-    lines1 must_== lines2
+    lines1 shouldEqual lines2
   }
-}

@@ -1,16 +1,16 @@
 package turbolift.abstraction.internals.engine
 import turbolift.abstraction.!!
 
-sealed trait Step[M[_], U]
 
-object Step {
-  def empty[M[_], U] = empty_.asInstanceOf[Step[M, U]]
-  private val empty_ = StepCases.Empty[Lambda[X => X], Any]()
-}
+sealed trait Step[-A, +B, M[_], U]
 
-object StepCases {
-  case class Empty[M[_], U]() extends Step[M, U]
-  case class SeqStep[M[_], U, A](fun: Any => A !! U, next: Step[M, U]) extends Step[M, U]
-  case class ParStepLeft[M[_], U, A](todoRight: A !! U, next: Step[M, U]) extends Step[M, U]
-  case class ParStepRight[M[_], U, A](doneLeft: M[A], next: Step[M, U]) extends Step[M, U]
-}
+object Step:
+  def empty[A, B, M[_], U] = empty_.asInstanceOf[Step[A, B, M, U]]
+  private val empty_ = StepCases.Empty[Any, [X] =>> X, Any]()
+
+
+object StepCases:
+  final case class Empty[A, M[_], U]() extends Step[A, A, M, U]
+  final case class SeqStep[A, B, C, M[_], U](fun: A => B !! U, next: Step[B, C, M, U]) extends Step[A, C, M, U]
+  final case class ParStepLeft[A, B, C, M[_], U](todoRight: B !! U, next: Step[(A, B), C, M, U]) extends Step[A, C, M, U]
+  final case class ParStepRight[A, B, C, M[_], U](doneLeft: M[A], next: Step[(A, B), C, M, U]) extends Step[B, C, M, U]

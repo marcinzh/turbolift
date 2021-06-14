@@ -1,23 +1,22 @@
 package turbolift.extra_effects
-import cats.implicits._
-import org.specs2._
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers._
 import turbolift.abstraction.!!
 import turbolift.abstraction.Implicits._
 import turbolift.std_effects.WriterK
 import turbolift.extra_effects.AcyclicMemoizer
-import turbolift.operations.CanLaunchTheMissiles
+import turbolift.std_effects.CanLaunchTheMissiles
 
 
-class AcyclicMemoizerTest extends Specification with CanLaunchTheMissiles {
-  def is = List(fibTest, graphTest).reduce(_^_)
+class AcyclicMemoizerTest extends AnyFlatSpec with CanLaunchTheMissiles:
 
-  def fibTest = br ^ "fib" ! {
-    def runFibs(n: Int): (Int, Vector[Missile]) = {
+  "Memoizing recursive function" should "work" in {
+    def runFibs(n: Int): (Int, Vector[Missile]) =
       val missiles = Vector.fill(n + 1)(Missile())
       
       case object FxMemo extends AcyclicMemoizer[Int, Int]
 
-      val fib = FxMemo.fix[FxMemo.type] { recur => i =>
+      val fib = FxMemo.fix { recur => i =>
         missiles(i).launch_! &&! (
           if (i <= 1) 
             !!.pure(i)
@@ -31,15 +30,14 @@ class AcyclicMemoizerTest extends Specification with CanLaunchTheMissiles {
       }
 
       (fib(n).runWith(FxMemo.handler), missiles)
-    }
 
     val (n, missiles) = runFibs(10)
-    (n must_== 55) and 
-    missiles.map(_.mustHaveLaunchedOnce).reduce(_ and _)
+    n shouldEqual 55
+    missiles.foreach(_.mustHaveLaunchedOnce)
   }
 
 
-  def graphTest = br ^ "graph" ! {
+  "Memoizing acyclic graph" should "work" in {
     case object FxMemo extends AcyclicMemoizer[Int, Vertex]
     case object FxLog extends WriterK[Vector, Int]
 
@@ -59,9 +57,8 @@ class AcyclicMemoizerTest extends Specification with CanLaunchTheMissiles {
 
     val missiles = outgoings.map(_ => Missile())
 
-
     val visit = FxMemo.fix[FxMemo.type with FxLog.type] { recur => n =>
-      for {
+      for
         _ <- missiles(n).launch_!
         _ <- FxLog.tell(n)
         edges <- (
@@ -69,12 +66,11 @@ class AcyclicMemoizerTest extends Specification with CanLaunchTheMissiles {
             yield for (to <- recur(i))
               yield Edge(to)
         ).traverse
-      } yield Vertex(n, edges)
+      yield Vertex(n, edges)
     }
 
     val (log, roots) = visit(0).runWith(FxLog.handler <<<! FxMemo.handler)
 
-    missiles.map(_.mustHaveLaunchedOnce).reduce(_ and _) and
-    (log.sorted must_== (0 until outgoings.size))
+    missiles.foreach(_.mustHaveLaunchedOnce)
+    log.sorted shouldEqual (0 until outgoings.size)
   }
-}

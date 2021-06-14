@@ -1,57 +1,57 @@
 package turbolift.stack_safety
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers._
 import turbolift.abstraction.!!
 import turbolift.std_effects.Reader
 import turbolift.extra_effects.{AcyclicMemoizer, CyclicMemoizer}
-import org.specs2._
 
 
-class RecursiveMemoTest extends Specification with CanStackOverflow {
-  def is = List(acyclic, cyclic).reduce(_ ^ _)
-
-  def acyclic = br ^ "acyclic" ! {
+class RecursiveMemoTest extends AnyFlatSpec with CanStackOverflow:
+  "AcyclicMemoizer effect" should "be stack safe" in {
     case object FxMemo extends AcyclicMemoizer[Int, Int]
 
-    object LetRec {
-      val recur = FxMemo(foo)(_)
-      def foo(n: Int): Int !! FxMemo.type =
-        if (n > 0)
-          for {
-            x <- recur(n - 1)
-          } yield x + 1
-        else
-          !!.pure(1)
+    def fun = FxMemo.fix { recur => n =>
+      if n > 0 then
+        for
+          x <- recur(n - 1)
+        yield x + 1
+      else
+        !!.pure(1)
     }
 
-    mustNotStackOverflow {
-      LetRec.recur(TooBigForStack)
+    val cache = mustNotStackOverflow {
+      fun(TooBigForStack - 1)
       .&&!(FxMemo.get)
       .runWith(FxMemo.handler)
     }
+
+    cache.size shouldEqual TooBigForStack
   }
 
-  case class Node(
-    label: Int,
-    prev: () => Node,
-    next: () => Node,
-  )
 
-  def cyclic = br ^ "cyclic" ! {
+  "CyclicMemoizer effect" should "be stack safe" in {
+    case class Node(
+      label: Int,
+      prev: () => Node,
+      next: () => Node,
+    )
+
     case object FxMemo extends CyclicMemoizer[Int, Node]
 
-    object LetRec {
-      val recur = FxMemo(foo(TooBigForStack))(_)
-      def foo(m: Int)(n: Int): Node !! FxMemo.type =
-        for {
-          prev <- recur(if (n > 0) n else m)
-          next <- recur(if (n < m) n else 0)
-          node = Node(label = n, prev = prev, next = next) 
-        } yield node
+    def fun(m: Int) = FxMemo.fix { recur => n =>
+      for
+        prev <- recur(0.max(n - 1))
+        next <- recur(m.min(n + 1))
+        node = Node(label = n, prev = prev, next = next) 
+      yield node
     }
 
-    mustNotStackOverflow {
-      LetRec.recur(0)
+    val cache = mustNotStackOverflow {
+      fun(TooBigForStack - 1)(0)
       .&&!(FxMemo.get)
       .runWith(FxMemo.handler)
     }
+
+    cache.size shouldEqual TooBigForStack
   }
-}
+

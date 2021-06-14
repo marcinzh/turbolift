@@ -11,15 +11,12 @@ import turbolift.abstraction.!!
   "\n    ${V}"
 )
 //// asserts U <= V
-sealed trait CanTotallyHandle[U, V] {
+sealed trait CanTotallyHandle[U, V]:
   def apply[A](comp: A !! U): A !! V
-}
 
-object CanTotallyHandle {
-  private[abstraction] val singleton = new CanTotallyHandle[Any, Any] {
+object CanTotallyHandle:
+  private[abstraction] val singleton = new CanTotallyHandle[Any, Any]:
     override def apply[A](comp: A !! Any): A !! Any = comp
-  }
 
   implicit def CanTotallyHandle_evidence[U, V](implicit ev: V <:< U): CanTotallyHandle[U, V] =
     CanTotallyHandle.singleton.asInstanceOf[CanTotallyHandle[U, V]]
-}

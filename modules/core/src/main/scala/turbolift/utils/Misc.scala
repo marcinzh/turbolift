@@ -3,16 +3,12 @@ import turbolift.abstraction.!!
 import turbolift.std_effects.Each
 
 
-trait MiscExtensions {
-  implicit class MiscIteratorExtension[A](thiz: Iterator[A]) {
+trait MiscExtensions:
+  extension [A](thiz: Iterator[A])
     def each_!! : A !! Each = Each.each(thiz.toVector)
-  }
 
-  implicit class MiscIterableExtension[A](thiz: Iterable[A]) {
+  extension [A](thiz: Iterable[A])
     def each_!! : A !! Each = Each.each(thiz)
-  }
 
-  implicit class MiscAnyExtension[A](thiz: A) {
+  extension [A](thiz: A)
     def pure_!! : A !! Any = !!.pure(thiz)
-  }
-}

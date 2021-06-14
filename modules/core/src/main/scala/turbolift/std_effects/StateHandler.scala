@@ -5,12 +5,12 @@ import turbolift.abstraction.typeclass.MonadPar
 import turbolift.abstraction.typeclass.Syntax._
 
 
-object StateHandler {
-  def apply[S, Fx <: State[S]](fx: Fx, initial: S): fx.ThisIHandler[(S, *)] =
-    new fx.Stateful[S, (S, *)] {
+object StateHandler:
+  def apply[S, Fx <: State[S]](fx: Fx, initial: S): fx.ThisIHandler[(S, _)] =
+    new fx.Stateful[S, (S, _)]:
       override def onReturn[A](s: S, a: A): (S, A) = (s, a)
 
-      override def onTransform[M[_]: MonadPar] = new Transformed[M] {
+      override def onTransform[M[_]: MonadPar] = new Transformed[M]:
         override def flatMap[A, B](tma: S => M[(S, A)])(f: A => S => M[(S, B)]): S => M[(S, B)] =
           s0 => tma(s0).flatMap {
             case (s1, a) => f(a)(s1)
@@ -22,9 +22,8 @@ object StateHandler {
               case (s2, b) => (s2, (a, b))
             }
           }
-      }
-
-      override def onOperation[M[_], F[_], U](implicit kk: ThisControl[M, F, U]) = new StateSig[U, S] {
+      
+      override def onOperation[M[_], F[_], U](implicit kk: ThisControl[M, F, U]) = new StateSig[U, S]:
         override val get: S !! U =
           kk.withLift(lift => s => kk.pureInner((s, lift.pureStash(s))))
 
@@ -45,6 +44,5 @@ object StateHandler {
             val (s2, a) = f(s1)
             kk.pureInner((s2, lift.pureStash(a)))
           }
-      }
-    }.toHandler(initial)
-}
+    
+    .toHandler(initial)

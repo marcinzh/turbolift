@@ -1,42 +1,39 @@
 package turbolift.type_safety
-import turbolift.abstraction._
-import org.specs2._
-import org.specs2.execute._, Typecheck._
-import org.specs2.matcher.TypecheckMatchers._
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers._
 import Dummies._
 
 
-class PartialHandlerTest extends Specification {
-  def is = (good111 and good21 and good3 and bad1 and bad2)
+class PartialHandlerTest extends AnyFlatSpec:
+  "Partial handlers" should "not leak effects" in {
+    assertCompiles {"""
+      any[Eff123]
+      .handleWith[Fx2.type with Fx3.type](any[H1])
+      .handleWith[Fx3.type](any[H2])
+      .handleWith[Any](any[H3])
+      .run
+    """}
 
-  def good111 = typecheck {"""
-    any[Eff123]
-    .handleWith[Fx2.type with Fx3.type](any[H1])
-    .handleWith[Fx3.type](any[H2])
-    .handleWith[Any](any[H3])
-    .run
-  """} must succeed	
+    assertCompiles {"""
+      any[Eff123]
+      .handleWith[Fx3.type](any[H21])
+      .handleWith[Any](any[H3])
+      .run
+    """}
 
-  def good21 = typecheck {"""
-    any[Eff123]
-    .handleWith[Fx3.type](any[H21])
-    .handleWith[Any](any[H3])
-    .run
-  """} must succeed	
+    assertCompiles {"""
+      any[Eff123]
+      .handleWith[Any](any[H321])
+      .run
+    """}
 
-  def good3 = typecheck {"""
-    any[Eff123]
-    .handleWith[Any](any[H321])
-    .run
-  """} must succeed	
+    assertTypeError {"""
+      any[Eff12]
+      .handleWith[Fx3.type](any[H1])
+    """}
 
-  def bad1 = typecheck {"""
-    any[Eff12]
-    .handleWith[Fx3.type](any[H1])
-  """} must not succeed	
-
-  def bad2 = typecheck {"""
-    any[Eff12]
-    .handleWith[Fx1.type](any[H3])
-  """} must not succeed	
-}
+    assertTypeError {"""
+      any[Eff12]
+      .handleWith[Fx1.type](any[H3])
+    """}
+  }

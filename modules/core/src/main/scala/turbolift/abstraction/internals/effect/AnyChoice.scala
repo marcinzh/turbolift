@@ -3,9 +3,8 @@ import turbolift.abstraction.!!
 import turbolift.std_effects.{Choice, ChoiceSig}
 
 
-case object AnyChoice extends ProtoEffect[ChoiceSig] with HasEffectId.Nul {
+case object AnyChoice extends ProtoEffect[ChoiceSig] with HasEffectId.Nul:
   override type ThisEffect = Choice
 
   final val empty: Nothing !! ThisEffect = impureFO(_.empty)
   final def plus[A, U <: ThisEffect](lhs: A !! U, rhs: => A !! U): A !! U = impureHO[U](_.plus(lhs, rhs))
-}
