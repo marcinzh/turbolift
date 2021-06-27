@@ -27,7 +27,7 @@ object ReaderHandler:
         override def localPut[A](r: R)(body: A !! U): A !! U =
           kk.withLift(lift => _ => lift.run(body)(r))
 
-        override def localModify[A](mod: R => R)(body: A !! U): A !! U =
-          kk.withLift(lift => r => lift.run(body)(mod(r)))
+        override def localModify[A](f: R => R)(body: A !! U): A !! U =
+          kk.withLift(lift => r => lift.run(body)(f(r)))
       
     .toHandler(initial)

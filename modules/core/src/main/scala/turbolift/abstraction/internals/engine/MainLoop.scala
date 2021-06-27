@@ -8,9 +8,9 @@ import turbolift.std_effects.ChoiceSig
 import turbolift.abstraction.internals.interpreter.InterpreterCases
 
 
-sealed trait Item[M[_], U]
-case class Trans[M[_], U](transStack: TransformerStack[M]) extends Item[M, U]
-case class Proxy[M[_], U](id: EffectId, sig: AnySignature[U]) extends Item[M, U]
+sealed trait Item[M[_], U] { val effectId: EffectId }
+case class Trans[M[_], U](override val effectId: EffectId, transStack: TransformerStack[M]) extends Item[M, U]
+case class Proxy[M[_], U](override val effectId: EffectId, sig: AnySignature[U]) extends Item[M, U]
 
 
 final class MainLoop[M[_], U](
@@ -46,21 +46,21 @@ final class MainLoop[M[_], U](
 
       case Delimit(ux, h) => h.interpreter match
         case interp: InterpreterCases.SaturatedTrans =>
-          val mx = interp.prime(pushTrans(interp.transformer).run(ux))
+          val mx = interp.prime(pushTrans(interp.effectIds, interp.transformer).run(ux))
           loop(Done(mx), step)
         case proxy: InterpreterCases.Proxy[?] =>
           val mx = pushProxy(proxy).run(ux.asInstanceOf[A !! U])
           loop(Done(mx), step)
 
 
-  def pushTrans[T[_[_], _], O[_], V](transformer: MonadTransformer[T, O]): MainLoop[T[M, _], U with V] =
+  def pushTrans[T[_[_], _], O[_], V](effectIds: Vector[EffectId], transformer: MonadTransformer[T, O]): MainLoop[T[M, _], U with V] =
     val newTransStack = TransformerStack.pushFirst(transformer)(this.theMonad)
-    val newHead = Trans[T[M, _], U with V](newTransStack)
+    val newHeads = effectIds.map(Trans[T[M, _], U with V](_, newTransStack))
     val newTail: Vector[Item[T[M, _], U with V]] = effStack.map {
-      case Trans(st) => Trans[T[M, _], U with V](st.pushNext(transformer))
+      case Trans(id, st) => Trans[T[M, _], U with V](id, st.pushNext(transformer))
       case x => x.asInstanceOf[Item[T[M, _], U with V]]
     }
-    val newEffStack = newTail :+ newHead
+    val newEffStack = newTail ++ newHeads
     val newLoop = new MainLoop[T[M, _], U with V](newTransStack.outerMonad, newEffStack)
     newLoop.vmtTieKnots()
     newLoop.vmtMakeChoice()
@@ -68,10 +68,9 @@ final class MainLoop[M[_], U](
 
   def pushProxy[V](proxy: InterpreterCases.Proxy[V]): MainLoop[M, U with V] =
     val sig: AnySignature[U with V] = proxy.onOperation[U with V]
-    val id: EffectId = proxy.effectId
-    val newHead = Proxy[M, U with V](id, sig)
+    val newHeads = proxy.effectIds.map(Proxy[M, U with V](_, sig))
     val newTail: Vector[Item[M, U with V]] = effStack.map(_.asInstanceOf[Item[M, U with V]])
-    val newEffStack = newTail :+ newHead
+    val newEffStack = newTail ++ newHeads
     val newLoop = new MainLoop[M, U with V](theMonad, newEffStack)
     newLoop.vmtTieKnots()
     newLoop.vmtMakeChoice()
@@ -94,7 +93,7 @@ final class MainLoop[M[_], U](
     val n = effStack.size - 1
     0.to(n).foreach { i =>
       val (k, v) = effStack(n - i) match
-        case Trans(st) => (st.effectId, st.decoder[U]([X] => (comp: X !! U) => run(comp)))
+        case Trans(k, v) => (k, v.decoder[U]([X] => (comp: X !! U) => run(comp)))
         case Proxy(k, v) => (k, v)
       vmt(i*2) = k
       vmt(i*2+1) = v

@@ -1,11 +1,11 @@
 package turbolift.abstraction.internals.effect
 
 
-sealed trait EffectId
+sealed trait EffectId extends AnyRef
 
 
 sealed trait HasEffectId:
-  def effectId: EffectId
+  val effectId: EffectId
   // def effectHash: Int
 
 
@@ -20,7 +20,7 @@ object HasEffectId:
     final override val effectId: EffectId = null
     // final override val effectHash: Int = -1
 
-  trait Delegate extends HasEffectId:
-    final override val effectId: EffectId = effectIdDelegate.effectId
-    // final override val effectHash: Int = effectIdDelegate.effectHash
-    def effectIdDelegate: HasEffectId
+  // trait Delegate extends HasEffectId:
+  //   final override val effectId: EffectId = effectIdDelegate.effectId
+  //   // final override val effectHash: Int = effectIdDelegate.effectHash
+  //   def effectIdDelegate: HasEffectId

@@ -1,5 +1,6 @@
 package turbolift.abstraction.internals.interpreter
 import turbolift.abstraction.{Handler, HandlerCases}
+import turbolift.abstraction.internals.effect.EffectId
 
 
 sealed trait Interpreter extends HasSignature:
@@ -8,6 +9,8 @@ sealed trait Interpreter extends HasSignature:
   type IntroEffect
 
   final type ThisHandler = Handler[Result, ElimEffect, IntroEffect]
+
+  val effectIds: Vector[EffectId]
 
 
 object Interpreter:
@@ -49,7 +52,7 @@ object InterpreterCases:
 
 
   final class SaturatedStateful[S, O[_], L](initial: S, unsaturated: UnsaturatedStateful[S, O]) extends SaturatedTrans:
-    override def effectIdDelegate = unsaturated
+    override val effectIds = unsaturated.effectIds
     override type Result[A] = O[A]
     override type Trans[M[_], A] = S => M[O[A]]
     override type ElimEffect = L

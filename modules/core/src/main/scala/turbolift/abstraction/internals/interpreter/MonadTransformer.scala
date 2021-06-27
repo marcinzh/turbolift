@@ -2,7 +2,6 @@ package turbolift.abstraction.internals.interpreter
 import cats.{Functor, ~>}
 import turbolift.abstraction.!!
 import turbolift.abstraction.{IHandler, HandlerCases}
-import turbolift.abstraction.internals.effect.HasEffectId
 import turbolift.abstraction.typeclass.MonadPar
 
 

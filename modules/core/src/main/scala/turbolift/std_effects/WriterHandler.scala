@@ -36,10 +36,10 @@ object WriterHandler:
             }
           }
 
-        override def censor[A](body: A !! U)(mod: W => W): A !! U =
+        override def censor[A](body: A !! U)(f: W => W): A !! U =
           kk.withLift { lift => w0 =>
             lift.run(body)(W.zero).map {
-              case (w, fa) => (w0 |+| mod(w), fa)
+              case (w, fa) => (w0 |+| f(w), fa)
             }
           }
 

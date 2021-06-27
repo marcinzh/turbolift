@@ -1,6 +1,5 @@
 package turbolift.abstraction.internals.engine
 import turbolift.abstraction.!!
-import turbolift.abstraction.internals.effect.HasEffectId
 import turbolift.abstraction.internals.interpreter.{MonadTransformer, Lifting, AnySignature}
 import turbolift.abstraction.typeclass.MonadPar
 import turbolift.abstraction.ComputationCases.Done
@@ -14,7 +13,7 @@ O[_] - covariant part of T
 F[_] - composed covariant parts of all T's **above** the monad selected as lifting target
 */
 
-sealed trait TransformerStack[P[_]] extends HasEffectId.Delegate:
+sealed trait TransformerStack[P[_]]:
   def outerMonad: MonadPar[P]
   def decoder[U](recur: [X] => X !! U => P[X]): AnySignature[U]
   def pushNext[T[_[_], _], O[_]](transformer: MonadTransformer[T, O]): TransformerStack[T[P, _]]
@@ -50,13 +49,11 @@ private object TransformerStackCases:
     override val canDecode: CanDecode[Q],
   ) extends CanLift[T[P, _], Q, [X] =>> F[O[X]]]:
     override def outerMonad: MonadPar[T[P, _]] = transformer.onTransform[P](that.outerMonad)
-    override def effectIdDelegate: HasEffectId = that
     override val lifting = Lifting.compose(transformer.lifting, that.lifting)
 
 
   final case class PushFirst[T[_[_], _], O[_], M[_]: MonadPar](transformer: MonadTransformer[T, O]) extends CanDecode[T[M, _]]:
     enclosing =>
-    override def effectIdDelegate: HasEffectId = transformer
     override def outerMonad: MonadPar[T[M, _]] = transformer.onTransform[M]
 
     override def makeDecoder[P[_]: MonadPar, F[_], U](recur: [X] => X !! U => P[X], lifting: Lifting[P, T[M, _], F]): AnySignature[U] =

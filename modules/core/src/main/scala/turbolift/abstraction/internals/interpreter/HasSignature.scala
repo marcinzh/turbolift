@@ -1,8 +1,7 @@
 package turbolift.abstraction.internals.interpreter
-import turbolift.abstraction.internals.effect.HasEffectId
 
 
-trait HasSignature extends HasEffectId.Delegate:
+trait HasSignature:
   type Signature[U] <: AnyRef
 
 
