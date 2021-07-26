@@ -3,18 +3,17 @@ import cats.Id
 import turbolift.abstraction.{!!, Effect}
 
 
-trait ReaderSig[U, R] {
+trait ReaderSig[U, R]:
   def ask: R !! U
   def asks[A](f: R => A): A !! U
-  def local[A](r: R)(scope: A !! U): A !! U
-  def localModify[A](mod: R => R)(scope: A !! U): A !! U
-}
+  def localPut[A](r: R)(body: A !! U): A !! U
+  def localModify[A](mod: R => R)(body: A !! U): A !! U
 
-trait Reader[R] extends Effect[ReaderSig[*, R]] {
-  final val ask: R !! this.type = embedFO(_.ask)
-  final def asks[A](f: R => A): A !! this.type = embedFO(_.asks(f))
-  final def local[A, U](r: R)(scope: A !! U): A !! U with this.type = embedHO[U](_.local(r)(scope))
-  final def localModify[A, U](mod: R => R)(scope: A !! U): A !! U with this.type = embedHO[U](_.localModify(mod)(scope))
+
+trait Reader[R] extends Effect[ReaderSig[_, R]]:
+  final val ask: R !! this.type = impureFO(_.ask)
+  final def asks[A](f: R => A): A !! this.type = impureFO(_.asks(f))
+  final def localPut[A, U <: this.type](r: R)(body: A !! U): A !! U = impureHO[U](_.localPut(r)(body))
+  final def localModify[A, U <: this.type](mod: R => R)(body: A !! U): A !! U = impureHO[U](_.localModify(mod)(body))
 
   def handler(initial: R): ThisIHandler[Id] = ReaderHandler(this, initial)
-}

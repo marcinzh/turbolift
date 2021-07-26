@@ -1,33 +1,30 @@
 package turbolift.type_safety
-import turbolift.abstraction._
-import org.specs2._
-import org.specs2.execute._, Typecheck._
-import org.specs2.matcher.TypecheckMatchers._
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers._
 import Dummies._
 
 
-class TotalHandlerTest extends Specification {
-  def is = br ^ "Total handler's effects should be superset of handled computation's effects" ! List(
-    typecheck {"any[H12] run any[Eff1]"}   must succeed,
-    typecheck {"any[H12] run any[Eff2]"}   must succeed,
-    typecheck {"any[H12] run any[Eff12]"}  must succeed,
-    typecheck {"any[H12] run any[Eff3]"}   must not succeed,
-    typecheck {"any[H12] run any[Eff123]"} must not succeed,
-    typecheck {"any[H21] run any[Eff1]"}   must succeed,
-    typecheck {"any[H21] run any[Eff2]"}   must succeed,
-    typecheck {"any[H21] run any[Eff12]"}  must succeed,
-    typecheck {"any[H21] run any[Eff3]"}   must not succeed,
-    typecheck {"any[H21] run any[Eff123]"} must not succeed,
+class TotalHandlerTest extends AnyFlatSpec:
+  "Total handlers" should "not leak effects" in {
+    assertCompiles  {"any[H12] run any[Eff1]"}
+    assertCompiles  {"any[H12] run any[Eff2]"}
+    assertCompiles  {"any[H12] run any[Eff12]"}
+    assertTypeError {"any[H12] run any[Eff3]"}
+    assertTypeError {"any[H12] run any[Eff123]"}
+    assertCompiles  {"any[H21] run any[Eff1]"}
+    assertCompiles  {"any[H21] run any[Eff2]"}
+    assertCompiles  {"any[H21] run any[Eff12]"}
+    assertTypeError {"any[H21] run any[Eff3]"}
+    assertTypeError {"any[H21] run any[Eff123]"}
 
-    typecheck {"any[Eff1] runWith any[H12]"}   must succeed,
-    typecheck {"any[Eff2] runWith any[H12]"}   must succeed,
-    typecheck {"any[Eff12] runWith any[H12]"}  must succeed,
-    typecheck {"any[Eff3] runWith any[H12]"}   must not succeed,
-    typecheck {"any[Eff123] runWith any[H12]"} must not succeed,
-    typecheck {"any[Eff1] runWith any[H21]"}   must succeed,
-    typecheck {"any[Eff2] runWith any[H21]"}   must succeed,
-    typecheck {"any[Eff12] runWith any[H21]"}  must succeed,
-    typecheck {"any[Eff3] runWith any[H21]"}   must not succeed,
-    typecheck {"any[Eff123] runWith any[H21]"} must not succeed
-  ).reduce(_ and _)
-}
+    assertCompiles  {"any[Eff1] runWith any[H12]"}
+    assertCompiles  {"any[Eff2] runWith any[H12]"}
+    assertCompiles  {"any[Eff12] runWith any[H12]"}
+    assertTypeError {"any[Eff3] runWith any[H12]"}
+    assertTypeError {"any[Eff123] runWith any[H12]"}
+    assertCompiles  {"any[Eff1] runWith any[H21]"}
+    assertCompiles  {"any[Eff2] runWith any[H21]"}
+    assertCompiles  {"any[Eff12] runWith any[H21]"}
+    assertTypeError {"any[Eff3] runWith any[H21]"}
+    assertTypeError {"any[Eff123] runWith any[H21]"}
+  }

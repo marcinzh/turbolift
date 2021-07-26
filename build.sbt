@@ -1,14 +1,14 @@
 ThisBuild / organization := "com.github.marcinzh"
-ThisBuild / version := "0.10.0"
-ThisBuild / scalaVersion := "2.13.5"
+ThisBuild / version := "0.13.0-SNAPSHOT"
+ThisBuild / scalaVersion := "3.0.1-RC1"
 ThisBuild / crossScalaVersions := Seq(scalaVersion.value)
 
 ThisBuild / watchBeforeCommand := Watch.clearScreen
 ThisBuild / watchTriggeredMessage := Watch.clearScreenOnTrigger
 ThisBuild / watchForceTriggerOnAnyChange := true
 
-ThisBuild / resolvers += Resolver.sonatypeRepo("releases")
-ThisBuild / libraryDependencies += Deps.kind_projector
+// ThisBuild / resolvers += Resolver.sonatypeRepo("releases")
+// ThisBuild / libraryDependencies += Deps.kind_projector
 
 ThisBuild / resolvers += Resolver.jcenterRepo
 ThisBuild / credentials += Credentials(Path.userHome / ".bintray" / ".credentials")
@@ -17,19 +17,18 @@ ThisBuild / publishTo := Some("Bintray API Realm" at ("https://api.bintray.com/c
 ThisBuild / scalacOptions ++= Seq(
   "-deprecation",
   "-feature",
-  "-language:_",
   "-unchecked",
+  "-Ykind-projector:underscores",
   "-Xfatal-warnings",
-  // "-Ykind-projector",
 )
 
 val Deps = {
   object deps {
-    val kind_projector = compilerPlugin("org.typelevel" %% "kind-projector" % "0.11.3" cross CrossVersion.full)
-    val better_for = libraryDependencies += compilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.0")
-    val cats_core = libraryDependencies += "org.typelevel" %% "cats-core" % "2.2.0"
-    val specs2_core = libraryDependencies += "org.specs2" %% "specs2-core" % "4.10.0" % "test"
-    val specs2_extra = libraryDependencies += "org.specs2" %% "specs2-matcher-extra" % "4.10.0" % "test"
+    val cats_core = libraryDependencies += "org.typelevel" %% "cats-core" % "2.6.1"
+    val scalactic = libraryDependencies += "org.scalactic" %% "scalactic" % "3.2.9"
+    val scalatest = libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.9" % "test"
+    // val specs2_core = libraryDependencies += ("org.specs2" %% "specs2-core" % "4.12.0" % "test").cross(CrossVersion.for3Use2_13)
+    // val specs2_extra = libraryDependencies += ("org.specs2" %% "specs2-matcher-extra" % "4.12.0" % "test").cross(CrossVersion.for3Use2_13)
   }
   deps
 }
@@ -39,10 +38,13 @@ val Deps = {
 // )
 
 lazy val testSettings = Seq(
-  Deps.specs2_core,
-  Deps.specs2_extra,
-  parallelExecution in Test := false,
-  scalacOptions in Test += "-Yrangepos",
+  Deps.scalactic,
+  Deps.scalatest,
+  // Deps.specs2_core,
+  // Deps.specs2_extra,
+  Test / parallelExecution := false,
+  // Test / scalacOptions += "-Yrangepos",
+  // Test / scalacOptions += "-language:postfixOps",
 )
 
 lazy val dontPublishMe = Seq(

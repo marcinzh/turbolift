@@ -1,23 +1,22 @@
 package turbolift.stack_safety
-import org.specs2._
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers._
 
 
-trait CanStackOverflow { this: Specification =>
-  val TooBigForStack = 100000
+trait CanStackOverflow:
+  this: AnyFlatSpec =>
 
-  // def mustNotStackOverflow[A](a: => A) = a must not (throwA[java.lang.StackOverflowError])
-  def mustNotStackOverflow[A](a: => A) = dump(a) must not (throwA[java.lang.StackOverflowError])
-
-  private def dump[A](a: => A): A =
-    try {
+  export CanStackOverflow.TooBigForStack
+  
+  def mustNotStackOverflow[A](a: => A) =
+    try
       a
-    } catch {
+    catch
       case e: java.lang.StackOverflowError =>
         e.printStackTrace(CanStackOverflow.writer)
-        throw e
-    }
-}
+        fail("Stack Overflow")
 
-object CanStackOverflow {
+
+object CanStackOverflow:
+  val TooBigForStack = 100000
   val writer = new java.io.PrintWriter("StackOverflow.log")
-}

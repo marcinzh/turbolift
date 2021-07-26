@@ -2,43 +2,37 @@ package turbolift.abstraction.typeclass
 import cats.{Semigroup, SemigroupK, Applicative}
 
 
-trait Accum[W, W1] {
+trait Accum[W, W1]:
   def one(e: W1): W
   def plus(x: W, y: W): W
   def plus1(x: W, e: W1): W // = plus(x, one(e))
-}
 
-object Accum extends AccumInstances2 {
-  def apply[W, W1](implicit ev: Accum[W, W1]) = ev
-}
 
-trait AccumInstances1 {
-  implicit def fromSemigroup[W](implicit W: Semigroup[W]): Accum[W, W] =
-    new Accum[W, W] {
-      override def one(a: W): W = a
-      override def plus(a: W, b: W): W = W.combine(a, b)
-      override def plus1(a: W, b: W): W = W.combine(a, b)
-    }
+object Accum extends AccumInstances2:
+  def apply[W, W1](using ev: Accum[W, W1]) = ev
 
-  implicit def fromSemigroupK[W, F[_]](implicit W: SemigroupK[F], Appl: Applicative[F]): Accum[F[W], W] =
-    new Accum[F[W], W] {
-      override def one(a: W): F[W] = Appl.pure(a)
-      override def plus(a: F[W], b: F[W]): F[W] = W.combineK(a, b)
-      override def plus1(a: F[W], b: W): F[W] = W.combineK(a, one(b))
-    }
-}
 
-trait AccumInstances2 extends AccumInstances1 {
-  implicit def forVector[W] = AccumZero.forVector[W].toAccum
-  implicit def forList[W] = AccumZero.forList[W].toAccum
-  implicit def forSet[W] = AccumZero.forSet[W].toAccum
-  implicit def forArray[W: reflect.ClassTag] = AccumZero.forArray[W].toAccum
-  implicit def forMap[K, V, V1](implicit V: Accum[V, V1]) = AccumZero.forMap[K, V, V1].toAccum
-}
+trait AccumInstances1:
+  given [W](using W: Semigroup[W]): Accum[W, W] with
+    override def one(a: W): W = a
+    override def plus(a: W, b: W): W = W.combine(a, b)
+    override def plus1(a: W, b: W): W = W.combine(a, b)
 
-trait AccumSyntax {
-  implicit class AccumSyntaxSrsly[W, W1](thiz: W)(implicit W: Accum[W, W1]) {
+  given [W, F[_]](using W: SemigroupK[F], Appl: Applicative[F]): Accum[F[W], W] with
+    override def one(a: W): F[W] = Appl.pure(a)
+    override def plus(a: F[W], b: F[W]): F[W] = W.combineK(a, b)
+    override def plus1(a: F[W], b: W): F[W] = W.combineK(a, one(b))
+
+
+trait AccumInstances2 extends AccumInstances1:
+  given forVector[W]: Accum[Vector[W], W] = AccumZero.forVector[W]
+  given forList[W]: Accum[List[W], W] = AccumZero.forList[W]
+  given forSet[W]: Accum[Set[W], W] = AccumZero.forSet[W]
+  given forArray[W: reflect.ClassTag]: Accum[Array[W], W] = AccumZero.forArray[W]
+  given forMap[K, V, V1](using V: Accum[V, V1]): Accum[Map[K, V], (K, V1)] = AccumZero.forMap[K, V, V1]
+
+
+trait AccumSyntax:
+  extension [W, W1](thiz: W)(using W: Accum[W, W1])
     def |+|(that: W): W = W.plus(thiz, that)
     def |+(that: W1): W = W.plus1(thiz, that)
-  }
-}

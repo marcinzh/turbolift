@@ -1,18 +1,19 @@
 package turbolift.stack_safety
-// import turbolift.abstraction.!!
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers._
 import turbolift.std_effects.Choice
-import org.specs2._
 
 
-class WideTest extends Specification with CanStackOverflow {
-  def is = choice
-
-  def choice = br ^ "Choice from big collection should be stack safe" ! mustNotStackOverflow {
+class WideTest extends AnyFlatSpec with CanStackOverflow:
+  "Choice from big collection" should "be stack safe" in {
     case object Fx extends Choice
 
-    (for {
+    val comp = for
       i <- Fx.each(1 to TooBigForStack)
-    } yield i)
-    .runWith(Fx.handler)
+    yield i
+    
+    mustNotStackOverflow {
+      comp.runWith(Fx.handler)
+    }
   }
-}
+

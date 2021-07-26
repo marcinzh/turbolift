@@ -1,17 +1,15 @@
 package turbolift.extra_effects
-import cats.implicits._
-import org.specs2._
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers._
 import turbolift.abstraction.!!
 import turbolift.abstraction.Implicits._
 import turbolift.std_effects.WriterK
 import turbolift.extra_effects.CyclicMemoizer
-import turbolift.operations.CanLaunchTheMissiles
+import turbolift.std_effects.CanLaunchTheMissiles
 
 
-class CyclicMemoizerTest extends Specification with CanLaunchTheMissiles {
-  def is = graphTest
-
-  def graphTest = br ^ "graph" ! {
+class CyclicMemoizerTest extends AnyFlatSpec with CanLaunchTheMissiles:
+  "Memoizing cyclic graph" should "work" in {
     case object FxMemo extends CyclicMemoizer[Int, Vertex]
     case object FxLog extends WriterK[Vector, Int]
 
@@ -32,7 +30,7 @@ class CyclicMemoizerTest extends Specification with CanLaunchTheMissiles {
     val missiles = outgoings.map(_ => Missile())
 
     val visit = FxMemo.fix[FxMemo.type with FxLog.type] { recur => n =>
-      for {
+      for
         _ <- missiles(n).launch_!
         _ <- FxLog.tell(n)
         from <- recur(n)
@@ -41,12 +39,11 @@ class CyclicMemoizerTest extends Specification with CanLaunchTheMissiles {
             yield for (to <- recur(i))
               yield Edge(from, to)
         ).traverse
-      } yield Vertex(n, edges)
+      yield Vertex(n, edges)
     }
 
     val (log, roots) = visit(0).runWith(FxLog.handler <<<! FxMemo.handler)
 
-    missiles.map(_.mustHaveLaunchedOnce).reduce(_ and _) and
-    (log.sorted must_== (0 until outgoings.size))
+    missiles.foreach(_.mustHaveLaunchedOnce)
+    log.sorted shouldEqual (0 until outgoings.size)
   }
-}

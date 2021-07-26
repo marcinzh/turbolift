@@ -1,15 +1,16 @@
-package turbolift.operations
+package turbolift.std_effects
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers._
 import turbolift.abstraction.!!
-import org.specs2._
 
 
-trait CanLaunchTheMissiles { this: Specification => 
-  case class Missile() { 
+trait CanLaunchTheMissiles:
+  this: AnyFlatSpec =>
+
+  case class Missile():
     private var count = 0 
     def launch() = { count += 1 }
     def launch_! = !!.eval(launch())
     def launchedOnce = count == 1
-    def mustHaveLaunchedOnce = count must_== 1
-    def mustNotHaveLaunched = count must_== 0
-  }
-}
+    def mustHaveLaunchedOnce = assert(count == 1)
+    def mustNotHaveLaunched = assert(count == 0)

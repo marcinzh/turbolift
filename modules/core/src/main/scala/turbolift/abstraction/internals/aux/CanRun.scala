@@ -9,15 +9,12 @@ import turbolift.abstraction.!!
   "\n    ${U}"
 )
 //// asserts U is empty set
-sealed trait CanRun[U] {
+sealed trait CanRun[U]:
   def apply[A](comp: A !! U): A !! Any
-}
 
-object CanRun {
-  private[abstraction] val singleton = new CanRun[Any] {
+object CanRun:
+  private[abstraction] val singleton = new CanRun[Any]:
     override def apply[A](comp: A !! Any): A !! Any = comp
-  }
 
   implicit def CanRun_evidence[U](implicit ev: U =:= Any): CanRun[U] =
     CanRun.singleton.asInstanceOf[CanRun[U]]
-}

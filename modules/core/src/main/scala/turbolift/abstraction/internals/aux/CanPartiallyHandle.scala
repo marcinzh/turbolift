@@ -11,15 +11,12 @@ import turbolift.abstraction.!!
   "\n    ${U}"
 )
 //// asserts: U ⊇ V \ W
-sealed trait CanPartiallyHandle[U, V, W] {
+sealed trait CanPartiallyHandle[U, V, W]:
   def apply[A](comp: A !! V): A !! W with U
-}
 
-object CanPartiallyHandle {
-  private[abstraction] val singleton = new CanPartiallyHandle[Any, Any, Any] {
+object CanPartiallyHandle:
+  private[abstraction] val singleton = new CanPartiallyHandle[Any, Any, Any]:
     override def apply[A](comp: A !! Any): A !! Any = comp
-  }
 
   implicit def CanPartiallyHandle_evidence[U, V, W](implicit ev: (W with U) <:< V): CanPartiallyHandle[U, V, W] =
     CanPartiallyHandle.singleton.asInstanceOf[CanPartiallyHandle[U, V, W]]
-}
