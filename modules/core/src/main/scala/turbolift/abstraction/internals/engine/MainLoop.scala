@@ -35,7 +35,6 @@ final class MainLoop[M[_], U](
           case ParStepLeft(ux, next) => loop(ux, ParStepRight(ma, next))
           case ParStepRight(mx, next) => loop(Done(theMonad.zipPar(mx, ma)), next)
         
-      case Defer(th) => theMonad.defer(loop(th(), step))
       case FlatMap(ux, k) => loop(ux, SeqStep(k, step))
       case ZipPar(ux, uy) => loop(ux, ParStepLeft(uy, step))
 
