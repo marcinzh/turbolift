@@ -13,7 +13,7 @@ object PolyGraphHandler:
     case object Compute extends WriterG[Map, K, Solution => V]
     case object Propagate extends WriterGK[Map, K, Set, K]
 
-    def computeConst(value: V): Solution => V = (_ : Solution) => value
+    def computeConst(value: V): Solution => V = (_: Solution) => value
     val computeBottom = computeConst(bottom)
 
     new fx.Proxy[Compute.type with Propagate.type]:

@@ -37,7 +37,7 @@ sealed trait Handler[Result[_], Elim, Intro]:
 
   final def self: Handler[Result, Elim, Intro] = this
 
-  final def void: Handler[[X] =>> Unit, Elim, Intro] = map([X] => (_ : Result[X]) => ())
+  final def void: Handler[[X] =>> Unit, Elim, Intro] = map([X] => (_: Result[X]) => ())
 
 
 

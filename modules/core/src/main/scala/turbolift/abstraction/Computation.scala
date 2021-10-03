@@ -42,7 +42,7 @@ object Computation extends ComputationExtensions with ComputationInstances:
   def eval[A](a: => A): A !! Any = pureUnit.flatMap(_ => Pure(a))
   def fail: Nothing !! Choice = AnyChoice.empty
   def when[U](cond: Boolean)(body: => Unit !! U): Unit !! U = if cond then body else !!.pure()
-  def repeat[U](n : Int)(body: => Unit !! U): Unit !! U = if n > 0 then body &&! repeat(n - 1)(body) else !!.pure()
+  def repeat[U](n: Int)(body: => Unit !! U): Unit !! U = if n > 0 then body &&! repeat(n - 1)(body) else !!.pure()
 
 
 private[abstraction] object ComputationCases:

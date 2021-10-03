@@ -35,7 +35,7 @@ object ReaderWriterStateHandler:
       inline def w_%(f: W => W): RWS = (r, f(w), s)
       inline def s_%(f: S => S): RWS = (r, w, f(s))
       inline def restore_r(that: RWS): RWS = (r, that.w, that.s)
-      inline def combine_w(that: RWS, f : W => W): RWS = (r, w |+| f(that.w), that.s)
+      inline def combine_w(that: RWS, f: W => W): RWS = (r, w |+| f(that.w), that.s)
 
 
     new fx.Stateful[RWS, (RWS, _)]:
