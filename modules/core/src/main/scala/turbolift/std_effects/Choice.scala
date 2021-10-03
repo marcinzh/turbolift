@@ -17,20 +17,9 @@ trait ChoiceExt extends Effect[ChoiceSig]:
   final def apply[A](as: A*): A !! this.type = each(as.toVector)
   final def fail = empty
 
-  final def fromOption[A](x: Option[A]): A !! this.type =
-    x match
-      case Some(a) => pure(a)
-      case _ => empty
-
-  final def fromEither[E, A](x: Either[E, A]): A !! this.type =
-    x match
-      case Right(a) => pure(a)
-      case _ => empty
-
-  final def fromTry[A](x: Try[A]): A !! this.type =
-    x match
-      case Success(a) => pure(a)
-      case _ => empty
+  final def fromOption[A](x: Option[A]): A !! this.type = x.fold(empty)(pure)
+  final def fromEither[E, A](x: Either[E, A]): A !! this.type = x.fold(_ => empty, pure)
+  final def fromTry[A](x: Try[A]): A !! this.type = x.fold(_ => empty, pure)
 
   object handlers:
     val one: ThisIHandler[Option] = ChoiceHandler_One(ChoiceExt.this)
