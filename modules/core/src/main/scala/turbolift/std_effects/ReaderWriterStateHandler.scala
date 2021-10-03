@@ -28,12 +28,14 @@ object ReaderWriterStateHandler:
       inline def r: R = thiz._1
       inline def w: W = thiz._2
       inline def s: S = thiz._3
-      inline def r_=(r: R): RWS = (r, thiz._2, thiz._3)
-      inline def w_=(w: W): RWS = (thiz._1, w, thiz._3)
-      inline def s_=(s: S): RWS = (thiz._1, thiz._2, s)
-      inline def r_%(f: R => R): RWS = (f(thiz._1), thiz._2, thiz._3)
-      inline def w_%(f: W => W): RWS = (thiz._1, f(thiz._2), thiz._3)
-      inline def s_%(f: S => S): RWS = (thiz._1, thiz._2, f(thiz._3))
+      inline def r_=(r2: R): RWS = (r2, w, s)
+      inline def w_=(w2: W): RWS = (r, w2, s)
+      inline def s_=(s2: S): RWS = (r, w, s2)
+      inline def r_%(f: R => R): RWS = (f(r), w, s)
+      inline def w_%(f: W => W): RWS = (r, f(w), s)
+      inline def s_%(f: S => S): RWS = (r, w, f(s))
+      inline def restore_r(that: RWS): RWS = (r, that.w, that.s)
+      inline def combine_w(that: RWS, f : W => W): RWS = (r, w |+| f(that.w), that.s)
 
 
     new fx.Stateful[RWS, (RWS, _)]:
@@ -42,13 +44,13 @@ object ReaderWriterStateHandler:
       override def onTransform[M[_]: MonadPar] = new Transformed[M]:
         override def flatMap[A, B](tma: RWS => M[(RWS, A)])(f: A => RWS => M[(RWS, B)]): RWS => M[(RWS, B)] =
           rws0 => tma(rws0).flatMap {
-            case (rws1, a) => f(a)(rws1)
+            case (rws1, a) => f(a)(rws0.restore_r(rws1))
           }
 
         override def zipPar[A, B](tma: RWS => M[(RWS, A)], tmb: RWS => M[(RWS, B)]): RWS => M[(RWS, (A, B))] =
           rws0 => tma(rws0).flatMap {
-            case (rws1, a) => tmb(rws1).map {
-              case (rws2, b) => (rws2, (a, b))
+            case (rws1, a) => tmb(rws0.restore_r(rws1)).map {
+              case (rws2, b) => (rws0.restore_r(rws2), (a, b))
             }
           }
       
@@ -78,14 +80,14 @@ object ReaderWriterStateHandler:
         override def listen[A](body: A !! U): (W, A) !! U =
           kk.withLift { lift => rws0 =>
             lift.run(body)(rws0.w = W.zero).map {
-              case (rws1, fa) => (rws1.w_%(rws0.w |+| _), fa.map((rws1.w, _)))
+              case (rws1, fa) => (rws0.combine_w(rws1, w => w), fa.map((rws1.w, _)))
             }
           }
 
         override def censor[A](body: A !! U)(f: W => W): A !! U =
           kk.withLift { lift => rws0 =>
             lift.run(body)(rws0.w = W.zero).map {
-              case (rws1, fa) => (rws1.w_%(w => rws0.w |+| f(w)), fa)
+              case (rws1, fa) => (rws0.combine_w(rws1, f), fa)
             }
           }
 

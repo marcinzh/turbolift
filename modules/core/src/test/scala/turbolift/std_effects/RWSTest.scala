@@ -36,3 +36,62 @@ class RWSTest extends AnyFlatSpec:
       .run
       .shouldEqual(result)
   }
+
+
+  "RWS HO: localPut" should "work" in {
+    case object FxR extends Reader[String]
+    case object FxW extends Writer[String]
+    case object FxS extends State[String]
+
+    val work = for
+      x <- FxR.ask
+      _ <- FxS.modify(_ ++ x)
+      _ <- FxW.tell(x.toUpperCase)
+    yield ()
+
+    val comp = for
+      _ <- work
+      _ <- FxR.localPut("b")(work)
+      _ <- work
+    yield ()
+
+    val result = ("ABA", "aba")
+
+    comp
+      .runWith(FxR.handler("a") <<<! (FxW.handler ***! FxS.handler("")).justState)
+      .shouldEqual(result)
+
+    comp
+      .runWith((FxR &! FxW &! FxS).handler("a", "").justState)
+      .shouldEqual(result)
+  }
+
+
+  "RWS HO: listen" should "work" in {
+    case object FxR extends Reader[String]
+    case object FxW extends Writer[String]
+    case object FxS extends State[String]
+
+    val work = for
+      x <- FxR.ask
+      _ <- FxS.modify(_ ++ x)
+      _ <- FxW.tell(x.toUpperCase)
+    yield ()
+
+    val comp = for
+      _ <- work
+      workaround <- FxW.listen(FxR.localPut("b")(work))
+      (x, _) = workaround
+      _ <- work
+    yield x
+
+    val result = (("ABA", "aba"), "B")
+
+    comp
+      .runWith(FxR.handler("a") <<<! (FxW.handler ***! FxS.handler("")))
+      .shouldEqual(result)
+
+    comp
+      .runWith((FxR &! FxW &! FxS).handler("a", ""))
+      .shouldEqual(result)
+  }
