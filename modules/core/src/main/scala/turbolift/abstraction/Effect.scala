@@ -5,7 +5,7 @@ import turbolift.abstraction.internals.interpreter.{InterpreterCases => IC}
 import turbolift.abstraction.internals.interpreter.{MonadTransformerCases => TC}
 
 
-trait HasSig extends HasEffectId.Self:
+sealed trait HasSig extends HasEffectId.Self:
   type ThisSig[_] <: AnyRef
 
 

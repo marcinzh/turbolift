@@ -7,7 +7,7 @@ import turbolift.abstraction.typeclass.Accum
 trait ExceptExtSig[U, E, E1]:
   def raise[A](e: E1): A !! U
   def raises[A](e: E): A !! U
-  def katch[A](body: A !! U)(fun: E => A !! U): A !! U
+  def katch[A](body: A !! U)(f: E => A !! U): A !! U
 
 
 trait ExceptExt[E, E1] extends Effect[ExceptExtSig[_, E, E1]]:
@@ -15,7 +15,7 @@ trait ExceptExt[E, E1] extends Effect[ExceptExtSig[_, E, E1]]:
   final def raises(e: E): Nothing !! this.type = impureFO(_.raises(e))
   final def raise[K, V1](k: K, v: V1)(implicit ev: ((K, V1)) <:< E1): Unit !! this.type = raise(ev((k, v)))
   final def raises[K, V](k: K, v: V)(implicit ev: ((K, V)) <:< E): Unit !! this.type = raises(ev((k, v)))
-  final def katch[A, U <: this.type](body: A !! U)(fun: E => A !! U): A !! U = impureHO[U](_.katch(body)(fun))
+  final def katch[A, U <: this.type](body: A !! U)(f: E => A !! U): A !! U = impureHO[U](_.katch(body)(f))
 
   final def fromOption[A](x: Option[A])(e: => E1): A !! this.type = x.fold(raise(e))(pure)
   final def fromEither[A](x: Either[E1, A]): A !! this.type = x.fold(raise, pure)

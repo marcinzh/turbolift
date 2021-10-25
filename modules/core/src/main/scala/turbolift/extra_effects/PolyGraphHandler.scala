@@ -26,17 +26,17 @@ object PolyGraphHandler:
           Compute.tell(to, (sol: Solution) => sol(from)) &!
           Propagate.tell(from, to)
 
-        override def unary(to: K, from: K)(fun: V => V): Unit !! U =
-          Compute.tell(to, (sol: Solution) => fun(sol(from))) &!
+        override def unary(to: K, from: K)(f: V => V): Unit !! U =
+          Compute.tell(to, (sol: Solution) => f(sol(from))) &!
           Propagate.tell(from, to)
 
-        override def binary(to: K, from1: K, from2: K)(fun: (V, V) => V): Unit !! U =
-          Compute.tell(to, (sol: Solution) => fun(sol(from1), sol(from2))) &!
+        override def binary(to: K, from1: K, from2: K)(f: (V, V) => V): Unit !! U =
+          Compute.tell(to, (sol: Solution) => f(sol(from1), sol(from2))) &!
           Propagate.tell(from1, to) &!
           Propagate.tell(from2, to)
 
-        override def variadic(to: K, froms: Vector[K])(fun: Vector[V] => V): Unit !! U =
-          Compute.tell(to, (sol: Solution) => fun(froms.map(sol))) &!
+        override def variadic(to: K, froms: Vector[K])(f: Vector[V] => V): Unit !! U =
+          Compute.tell(to, (sol: Solution) => f(froms.map(sol))) &!
           froms.foreach_!!(Propagate.tell(_, to))
 
     .toHandler
