@@ -1,6 +1,6 @@
 ThisBuild / organization := "com.github.marcinzh"
-ThisBuild / version := "0.14.0-SNAPSHOT"
-ThisBuild / scalaVersion := "3.0.1-RC1"
+ThisBuild / version := "0.15.0-SNAPSHOT"
+ThisBuild / scalaVersion := "3.1.0"
 ThisBuild / crossScalaVersions := Seq(scalaVersion.value)
 
 ThisBuild / watchBeforeCommand := Watch.clearScreen
@@ -25,8 +25,8 @@ ThisBuild / scalacOptions ++= Seq(
 val Deps = {
   object deps {
     val cats_core = libraryDependencies += "org.typelevel" %% "cats-core" % "2.6.1"
-    val scalactic = libraryDependencies += "org.scalactic" %% "scalactic" % "3.2.9"
-    val scalatest = libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.9" % "test"
+    val scalactic = libraryDependencies += "org.scalactic" %% "scalactic" % "3.2.10"
+    val scalatest = libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.10" % "test"
     // val specs2_core = libraryDependencies += ("org.specs2" %% "specs2-core" % "4.12.0" % "test").cross(CrossVersion.for3Use2_13)
     // val specs2_extra = libraryDependencies += ("org.specs2" %% "specs2-matcher-extra" % "4.12.0" % "test").cross(CrossVersion.for3Use2_13)
   }
