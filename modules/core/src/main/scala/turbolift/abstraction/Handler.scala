@@ -41,7 +41,9 @@ sealed trait Handler[Result[_], Elim, Intro]:
 
 
 
-object Handler extends HandlerExtensions
+object Handler extends HandlerExtensions:
+  type Id[Elim, Intro] = Handler[[X] =>> X, Elim, Intro]
+  type IId[Elim] = Id[Elim, Any]
 
 
 private[abstraction] object HandlerCases:

@@ -1,17 +1,16 @@
 package turbolift.abstraction
-import cats.Id
 import scala.util.{Try, Success, Failure}
 
 
 private [abstraction] trait HandlerExtensions:
   extension [S, L, N](thiz: Handler[(S, _), L, N])
-    def eval: Handler[Id, L, N] = dropState
+    def eval: Handler.Id[L, N] = dropState
 
     def exec: Handler[[X] =>> S, L, N] = justState
 
     def justState: Handler[[X] =>> S, L, N] = thiz.map([A] => (pair: (S, A)) => pair._1)
 
-    def dropState: Handler[Id, L, N] = thiz.map([A] => (pair: (S, A)) => pair._2)
+    def dropState: Handler.Id[L, N] = thiz.map([A] => (pair: (S, A)) => pair._2)
 
     def mapState[S2](f: S => S2): Handler[(S2, _), L, N] =
       thiz.map([A] => (pair: (S, A)) =>
@@ -33,13 +32,13 @@ private [abstraction] trait HandlerExtensions:
     def toTry(e: => Throwable): Handler[Try, L, N] =
       thiz.map([A] => (result: Option[A]) => result.fold[Try[A]](Failure(e))(Success(_)))
 
-    def getOrElse(default: => Nothing): Handler[Id, L, N] =
+    def getOrElse(default: => Nothing): Handler.Id[L, N] =
       thiz.map([A] => (result: Option[A]) => result.getOrElse(default))
 
-    def getOrDie(message: => String): Handler[Id, L, N] =
-      thiz.map([A] => (result: Option[A]) => result.getOrElse(sys.error(message)))
+    def getOrDie(message: => String): Handler.Id[L, N] =
+      getOrElse(sys.error(message))
 
-    def unsafeGet: Handler[Id, L, N] =
+    def unsafeGet: Handler.Id[L, N] =
       thiz.map([A] => (result: Option[A]) => result.get)
 
 
@@ -50,11 +49,11 @@ private [abstraction] trait HandlerExtensions:
     def toTry(implicit ev: E <:< Throwable): Handler[Try, L, N] =
       thiz.map([A] => (result: Either[E, A]) => result.toTry)
 
-    def getOrElse(default: E => Nothing): Handler[Id, L, N] =
+    def getOrElse(default: E => Nothing): Handler.Id[L, N] =
       thiz.map([A] => (result: Either[E, A]) => result.fold(default, x => x))
 
-    def getOrDie(message: E => String): Handler[Id, L, N] =
-      thiz.map([A] => (result: Either[E, A]) => result.fold(e => sys.error(message(e)), x => x))
+    def getOrDie(message: E => String): Handler.Id[L, N] =
+      getOrElse(e => sys.error(message(e)))
 
     def mapLeft[E2](f: E => E2): Handler[Either[E2, _], L, N] =
       thiz.map([A] => (result: Either[E, A]) => result.swap.map(f).swap)

@@ -1,5 +1,4 @@
 package turbolift.std_effects
-import cats.Id
 import turbolift.abstraction.{!!, Effect}
 
 
@@ -16,4 +15,4 @@ trait Reader[R] extends Effect[ReaderSig[_, R]]:
   final def localPut[A, U <: this.type](r: R)(body: A !! U): A !! U = impureHO[U](_.localPut(r)(body))
   final def localModify[A, U <: this.type](f: R => R)(body: A !! U): A !! U = impureHO[U](_.localModify(f)(body))
 
-  def handler(initial: R): ThisIHandler[Id] = ReaderHandler(this, initial)
+  def handler(initial: R): ThisIIdHandler = ReaderHandler(this, initial)

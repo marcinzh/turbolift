@@ -1,11 +1,10 @@
 package turbolift.extra_effects
-import cats.Id
 import turbolift.abstraction.!!
 import turbolift.std_effects.State
 
 
 object AcyclicMemoizerHandler:
-  def apply[K, V, Fx <: AcyclicMemoizer[K, V]](fx: Fx): fx.ThisIHandler[Id] =
+  def apply[K, V, Fx <: AcyclicMemoizer[K, V]](fx: Fx): fx.ThisIIdHandler =
     case object Storage extends State[Map[K, V]]
 
     new fx.Proxy[Storage.type]:

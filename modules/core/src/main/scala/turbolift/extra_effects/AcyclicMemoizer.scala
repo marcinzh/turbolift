@@ -1,5 +1,4 @@
 package turbolift.extra_effects
-import cats.Id
 import turbolift.abstraction.{!!, Effect}
 
 
@@ -18,4 +17,4 @@ trait AcyclicMemoizer[K, V] extends Effect[AcyclicMemoizerSig[_, K, V]]:
     def recur(k: K): V !! U = memo(f(recur))(k)
     recur
 
-  def handler: ThisIHandler[Id] = AcyclicMemoizerHandler[K, V, this.type](this)
+  def handler: ThisIIdHandler = AcyclicMemoizerHandler[K, V, this.type](this)
