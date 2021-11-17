@@ -5,15 +5,17 @@ import turbolift.abstraction.internals.interpreter.{InterpreterCases => IC}
 import turbolift.abstraction.internals.interpreter.{MonadTransformerCases => TC}
 
 
-trait HasSig extends HasEffectId.Self:
-  type Signature[U] <: AnyRef
+sealed trait HasSig extends HasEffectId.Self:
+  type ThisSig[_] <: AnyRef
 
 
 trait Effect[Z[_] <: AnyRef] extends ProtoEffect[Z] with HasSig:
   final override type ThisEffect = this.type
-  final override type Signature[U] = Z[U]
+  final override type ThisSig[U] = Z[U]
   final type ThisHandler[F[_], N] = Handler[F, this.type, N]
-  final type ThisIHandler[F[_]] = IHandler[F, this.type]
+  final type ThisIHandler[F[_]] = ThisHandler[F, Any]
+  final type ThisIdHandler[N] = ThisHandler[[X] =>> X, N]
+  final type ThisIIdHandler = ThisIdHandler[Any]
 
   sealed trait ThisInterpreter extends IC.Unsealed:
     final override val effectIds: Vector[EffectId] = Vector(Effect.this)
@@ -29,15 +31,15 @@ trait Effect[Z[_] <: AnyRef] extends ProtoEffect[Z] with HasSig:
 
 object Effect:
   class Combine2[Fx1 <: HasSig, Fx2 <: HasSig](val fx1: Fx1, val fx2: Fx2):
-    enclosing =>
     final type ThisHandler[F[_], N] = Handler[F, Fx1 with Fx2, N]
-    final type ThisIHandler[F[_]] = IHandler[F, Fx1 with Fx2]
-    final type Signature[U] = fx1.Signature[U] with fx2.Signature[U]
+    final type ThisIHandler[F[_]] = ThisHandler[F, Any]
+    final type ThisIdHandler[N] = ThisHandler[[X] =>> X, N]
+    final type ThisIIdHandler = ThisIdHandler[Any]
 
     sealed trait ThisInterpreter extends IC.Unsealed:
       final override val effectIds: Vector[EffectId] = Vector(fx1, fx2)
       final override type ElimEffect = Fx1 with Fx2
-      final override type Signature[U] = fx1.Signature[U] with fx2.Signature[U]
+      final override type Signature[U] = fx1.ThisSig[U] with fx2.ThisSig[U]
 
     abstract class Stateless[O[_]: Functor] extends TC.Stateless[O] with ThisInterpreter
     abstract class Stateful[S, O[_]: Functor] extends TC.Stateful[S, O] with ThisInterpreter
@@ -47,15 +49,15 @@ object Effect:
 
 
   class Combine3[Fx1 <: HasSig, Fx2 <: HasSig, Fx3 <: HasSig](val fx1: Fx1, val fx2: Fx2, val fx3: Fx3):
-    enclosing =>
     final type ThisHandler[F[_], N] = Handler[F, Fx1 with Fx2 with Fx3, N]
-    final type ThisIHandler[F[_]] = IHandler[F, Fx1 with Fx2 with Fx3]
-    final type Signature[U] = fx1.Signature[U] with fx2.Signature[U] with fx3.Signature[U]
+    final type ThisIHandler[F[_]] = ThisHandler[F, Any]
+    final type ThisIdHandler[N] = ThisHandler[[X] =>> X, N]
+    final type ThisIIdHandler = ThisIdHandler[Any]
 
     sealed trait ThisInterpreter extends IC.Unsealed:
       final override val effectIds: Vector[EffectId] = Vector(fx1, fx2, fx3)
       final override type ElimEffect = Fx1 with Fx2 with Fx3
-      final override type Signature[U] = fx1.Signature[U] with fx2.Signature[U] with fx3.Signature[U]
+      final override type Signature[U] = fx1.ThisSig[U] with fx2.ThisSig[U] with fx3.ThisSig[U]
 
     abstract class Stateless[O[_]: Functor] extends TC.Stateless[O] with ThisInterpreter
     abstract class Stateful[S, O[_]: Functor] extends TC.Stateful[S, O] with ThisInterpreter
@@ -65,15 +67,15 @@ object Effect:
 
 
   class Combine4[Fx1 <: HasSig, Fx2 <: HasSig, Fx3 <: HasSig, Fx4 <: HasSig](val fx1: Fx1, val fx2: Fx2, val fx3: Fx3, val fx4: Fx4):
-    enclosing =>
     final type ThisHandler[F[_], N] = Handler[F, Fx1 with Fx2 with Fx3 with Fx4, N]
-    final type ThisIHandler[F[_]] = IHandler[F, Fx1 with Fx2 with Fx3 with Fx4]
-    final type Signature[U] = fx1.Signature[U] with fx2.Signature[U] with fx3.Signature[U] with fx4.Signature[U]
+    final type ThisIHandler[F[_]] = ThisHandler[F, Any]
+    final type ThisIdHandler[N] = ThisHandler[[X] =>> X, N]
+    final type ThisIIdHandler = ThisIdHandler[Any]
 
     sealed trait ThisInterpreter extends IC.Unsealed:
       final override val effectIds: Vector[EffectId] = Vector(fx1, fx2, fx3, fx4)
       final override type ElimEffect = Fx1 with Fx2 with Fx3 with Fx4
-      final override type Signature[U] = fx1.Signature[U] with fx2.Signature[U] with fx3.Signature[U] with fx4.Signature[U]
+      final override type Signature[U] = fx1.ThisSig[U] with fx2.ThisSig[U] with fx3.ThisSig[U] with fx4.ThisSig[U]
 
     abstract class Stateless[O[_]: Functor] extends TC.Stateless[O] with ThisInterpreter
     abstract class Stateful[S, O[_]: Functor] extends TC.Stateful[S, O] with ThisInterpreter

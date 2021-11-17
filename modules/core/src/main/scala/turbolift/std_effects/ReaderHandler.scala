@@ -1,13 +1,12 @@
 package turbolift.std_effects
-import cats.Id
 import turbolift.abstraction.!!
 import turbolift.abstraction.typeclass.MonadPar
 import turbolift.abstraction.typeclass.Syntax._
 
 
 object ReaderHandler:
-  def apply[R, Fx <: Reader[R]](fx: Fx, initial: R): fx.ThisIHandler[Id] =
-    new fx.Stateful[R, Id]:
+  def apply[R, Fx <: Reader[R]](fx: Fx, initial: R): fx.ThisIIdHandler =
+    new fx.Stateful[R, [X] =>> X]:
       override def onReturn[A](r: R, a: A): A = a
 
       override def onTransform[M[_]: MonadPar] = new Transformed[M]:

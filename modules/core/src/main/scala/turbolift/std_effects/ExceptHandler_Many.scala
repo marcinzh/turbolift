@@ -32,11 +32,11 @@ object ExceptHandler_Many:
         override def raises[A](e: E): A !! U =
           kk.withLift(lift => kk.pureInner(Left(e).withRight[F[A]]))
 
-        override def katch[A](body: A !! U)(fun: E => A !! U): A !! U =
+        override def katch[A](body: A !! U)(f: E => A !! U): A !! U =
           kk.withLift { lift =>
             lift.run(body).flatMap {
               case Right(fa) => kk.pureInner(Right(fa).withLeft[E])
-              case Left(e) => lift.run(fun(e))
+              case Left(e) => lift.run(f(e))
             }
           }
 

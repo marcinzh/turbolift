@@ -8,7 +8,7 @@ trait WriterExtSig[U, W, W1]:
   def tells(w: W): Unit !! U
   def mute[A](body: A !! U): A !! U
   def listen[A](body: A !! U): (W, A) !! U
-  def censor[A](body: A !! U)(mod: W => W): A !! U
+  def censor[A](body: A !! U)(f: W => W): A !! U
 
 
 trait WriterExt[W, W1] extends Effect[WriterExtSig[_, W, W1]]:

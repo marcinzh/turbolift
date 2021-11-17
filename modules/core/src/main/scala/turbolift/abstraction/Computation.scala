@@ -12,6 +12,8 @@ sealed trait Computation[+A, -U]:
   final def flatten[B, V <: U](implicit ev: A <:< (B !! V)): B !! V = flatMap(ev)
   final def zipPar[B, V <: U](that: B !! V): (A, B) !! V = new ZipPar(this, that)
 
+  final def >>=[B, V <: U](f: A => B !! V): B !! V = flatMap(f)
+
   final def *![B, V <: U](that: B !! V): (A, B) !! V = zipPar(that)
   final def *<![B, V <: U](that: B !! V): A !! V = zipPar(that).map(_._1)
   final def *>![B, V <: U](that: B !! V): B !! V = zipPar(that).map(_._2)
@@ -36,17 +38,16 @@ object Computation extends ComputationExtensions with ComputationInstances:
   private val pureUnit = Pure(())
   def pure(): Unit !! Any = pureUnit
   def pure[A](a: A): A !! Any = Pure(a)
-  def defer[A, U](ua: => A !! U): A !! U = Defer(() => ua)
-  def eval[A](a: => A): A !! Any = Defer(() => Pure(a))
+  def defer[A, U](ua: => A !! U): A !! U = pureUnit.flatMap(_ => ua)
+  def eval[A](a: => A): A !! Any = pureUnit.flatMap(_ => Pure(a))
   def fail: Nothing !! Choice = AnyChoice.empty
   def when[U](cond: Boolean)(body: => Unit !! U): Unit !! U = if cond then body else !!.pure()
-  def repeat[U](n : Int)(body: => Unit !! U): Unit !! U = if n > 0 then body &&! repeat(n - 1)(body) else !!.pure()
+  def repeat[U](n: Int)(body: => Unit !! U): Unit !! U = if n > 0 then body &&! repeat(n - 1)(body) else !!.pure()
 
 
 private[abstraction] object ComputationCases:
   final case class Pure[A](value: A) extends Computation[A, Any]
   final case class Done[A, M[_], U](value: M[A]) extends Computation[A, U]
-  final case class Defer[A, U](thunk: () => A !! U) extends Computation[A, U]
   final case class FlatMap[A, B, U](that: A !! U, k: A => B !! U) extends Computation[B, U]
   final case class ZipPar[A, B, U](lhs: A !! U, rhs: B !! U) extends Computation[(A, B), U]
   final case class Impure[A, U, Z[_]](effectId: EffectId, op: Z[U] => A !! U) extends Computation[A, U]
