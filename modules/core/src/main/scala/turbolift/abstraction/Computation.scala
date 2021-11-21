@@ -47,11 +47,11 @@ object Computation extends ComputationExtensions with ComputationInstances:
 
 private[abstraction] object ComputationCases:
   final case class Pure[A](value: A) extends Computation[A, Any]
-  final case class Done[A, M[_], U](value: M[A]) extends Computation[A, U]
+  final case class Lift[A, M[_], U](value: M[A]) extends Computation[A, U]
   final case class FlatMap[A, B, U](that: A !! U, k: A => B !! U) extends Computation[B, U]
   final case class ZipPar[A, B, U](lhs: A !! U, rhs: B !! U) extends Computation[(A, B), U]
-  final case class Impure[A, U, Z[_]](effectId: EffectId, op: Z[U] => A !! U) extends Computation[A, U]
-  final case class Delimit[A, U, F[_], L, N](body: A !! U with L, handler: Primitive[F, L, N]) extends Computation[F[A], U with N]
+  final case class Impure[A, U, Z <: Signature](effectId: EffectId, op: Z => Any) extends Computation[A, U]
+  final case class Delimit[A, U, F[+_], L, N](body: A !! U with L, handler: Primitive[F, L, N]) extends Computation[F[A], U with N]
 
 
 trait ComputationInstances:
@@ -59,7 +59,6 @@ trait ComputationInstances:
     override def pure[A](a: A): A !! U = Pure(a)
     override def flatMap[A, B](ua: A !! U)(f: A => B !! U): B !! U = ua.flatMap(f)
     override def zipPar[A, B](ua: A !! U, ub: B !! U): (A, B) !! U = ua *! ub
-    override def defer[A](ua: => A !! U): A !! U = !!.defer(ua)
 
 
 type !![+A, -U] = Computation[A, U]

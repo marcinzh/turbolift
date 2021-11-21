@@ -1,24 +1,25 @@
 package turbolift.extra_effects
-import turbolift.abstraction.{!!, Effect}
+import turbolift.abstraction.{!!, Effect, Signature}
 
 
-trait PolyGraphSig[U, K, V]:
-  def empty(to: K): Unit !! U
-  def const(to: K, value: V): Unit !! U
-  def identity(to: K, from: K): Unit !! U
-  def unary(to: K, from: K)(f: V => V): Unit !! U
-  def binary(to: K, from1: K, from2: K)(f: (V, V) => V): Unit !! U
-  def variadic(to: K, froms: Vector[K])(f: Vector[V] => V): Unit !! U
+trait PolyGraphSig[K, V] extends Signature:
+  def empty(to: K): Unit !@! ThisEffect
+  def const(to: K, value: V): Unit !@! ThisEffect
+  def identity(to: K, from: K): Unit !@! ThisEffect
+  def unary(to: K, from: K)(f: V => V): Unit !@! ThisEffect
+  def binary(to: K, from1: K, from2: K)(f: (V, V) => V): Unit !@! ThisEffect
+  def variadic(to: K, froms: Vector[K])(f: Vector[V] => V): Unit !@! ThisEffect
 
 
-trait PolyGraph[K, V] extends Effect[PolyGraphSig[_, K, V]]:
+trait PolyGraph[K, V] extends Effect[PolyGraphSig[K, V]] with PolyGraphSig[K, V]:
   enclosing =>
-  final def empty(to: K): Unit !! this.type = impureFO(_.empty(to))
-  final def const(to: K, value: V): Unit !! this.type = impureFO(_.const(to, value))
-  final def identity(to: K, from: K): Unit !! this.type = impureFO(_.identity(to, from))
-  final def unary(to: K, from: K)(f: V => V): Unit !! this.type = impureFO(_.unary(to, from)(f))
-  final def binary(to: K, from1: K, from2: K)(f: (V, V) => V): Unit !! this.type = impureFO(_.binary(to, from1, from2)(f))
-  final def variadic(to: K, froms: Vector[K])(f: Vector[V] => V): Unit !! this.type = impureFO(_.variadic(to, froms)(f))
+  final override def empty(to: K): Unit !! this.type = impure(_.empty(to))
+  final override def const(to: K, value: V): Unit !! this.type = impure(_.const(to, value))
+  final override def identity(to: K, from: K): Unit !! this.type = impure(_.identity(to, from))
+  final override def unary(to: K, from: K)(f: V => V): Unit !! this.type = impure(_.unary(to, from)(f))
+  final override def binary(to: K, from1: K, from2: K)(f: (V, V) => V): Unit !! this.type = impure(_.binary(to, from1, from2)(f))
+  final override def variadic(to: K, froms: Vector[K])(f: Vector[V] => V): Unit !! this.type = impure(_.variadic(to, froms)(f))
+
   final def fold(to: K, froms: Vector[K], initial: V)(f: (V, V) => V): Unit !! this.type = variadic(to, froms)(_.fold(initial)(f))
   final def reduce(to: K, froms: Vector[K])(f: (V, V) => V): Unit !! this.type = variadic(to, froms)(_.reduce(f))
 

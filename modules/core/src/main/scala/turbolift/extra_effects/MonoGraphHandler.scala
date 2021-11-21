@@ -14,15 +14,14 @@ object MonoGraphHandler:
     case object Propagate extends WriterGK[Map, K, Set, K]
     type Fx3 = IncomingConst.type with OutgoingConst.type with Propagate.type
 
-    new fx.Proxy[Fx3]:
-      override def onOperation[U <: Fx3] = new MonoGraphSig[U, K, V]:
-        override def empty(k: K): Unit !! U = IncomingConst.tell(k, V.empty)
-        override def incomingConst(to: K, value: V): Unit !! U = IncomingConst.tell(to, value)
-        override def outgoingConst(from: K, value: V): Unit !! U = OutgoingConst.tell(from, value)
-        override def outgoing(from: K, to: K): Unit !! U = incoming(to, from)
-        override def incoming(to: K, from: K): Unit !! U = Propagate.tell(from, to)
-        override def incomings(to: K, froms: IterableOnce[K]): Unit !! U = froms.foreach_!!(incoming(to, _))
-        override def outgoings(from: K, tos: IterableOnce[K]): Unit !! U = tos.foreach_!!(outgoing(from, _))
+    new fx.Proxy[Fx3] with MonoGraphSig[K, V]:
+      override def empty(k: K): Unit !@! ThisEffect = IncomingConst.tell(k, V.empty)
+      override def incomingConst(to: K, value: V): Unit !@! ThisEffect = IncomingConst.tell(to, value)
+      override def outgoingConst(from: K, value: V): Unit !@! ThisEffect = OutgoingConst.tell(from, value)
+      override def outgoing(from: K, to: K): Unit !@! ThisEffect = incoming(to, from)
+      override def incoming(to: K, from: K): Unit !@! ThisEffect = Propagate.tell(from, to)
+      override def incomings(to: K, froms: IterableOnce[K]): Unit !@! ThisEffect = froms.foreach_!!(incoming(to, _))
+      override def outgoings(from: K, tos: IterableOnce[K]): Unit !@! ThisEffect = tos.foreach_!!(outgoing(from, _))
 
     .toHandler
     .provideWith(IncomingConst.handler ***! OutgoingConst.handler ***! Propagate.handler)

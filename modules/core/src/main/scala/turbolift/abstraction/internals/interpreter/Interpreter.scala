@@ -1,66 +1,110 @@
 package turbolift.abstraction.internals.interpreter
+import cats.Functor
+import turbolift.abstraction.{!!, Signature}
 import turbolift.abstraction.{Handler, HandlerCases}
 import turbolift.abstraction.internals.effect.EffectId
+import turbolift.abstraction.typeclass.MonadPar
 
 
-sealed trait Interpreter extends HasSignature:
-  type Result[A]
-  type ElimEffect
+sealed trait Interpreter extends Signature:
+  type Result[+A]
   type IntroEffect
 
-  final type ThisHandler = Handler[Result, ElimEffect, IntroEffect]
+  final type ThisHandler = Handler[Result, ThisEffect, IntroEffect]
 
-  val effectIds: Vector[EffectId]
+  private[abstraction] val effectIds: Array[EffectId]
 
 
 object Interpreter:
-  type Saturated[O[_], L, N] = InterpreterCases.Saturated {
-    type Result[A] = O[A]
-    type ElimEffect = L
+  type Apply[F[+_], L, N] = Interpreter {
+    type Result[+A] = F[A]
+    type ThisEffect = L
     type IntroEffect = N
   }
 
 
 object InterpreterCases:
-  trait Unsealed extends Interpreter
+  trait Unsealed extends Interpreter //// subclassed by Effect
 
-  sealed trait Saturated extends Interpreter:
-    final def toHandler: ThisHandler = HandlerCases.Primitive[Result, ElimEffect, IntroEffect](this)
-
-
-  trait Proxy[TargetEffect] extends Saturated:
+  sealed trait Proxy extends Interpreter:
     final override type Result[A] = A
-    final override type IntroEffect = TargetEffect
+    final override type !@![+A, U] = A !! (U & IntroEffect)
+    final def toHandler: ThisHandler = HandlerCases.Primitive[Result, ThisEffect, IntroEffect](this, ())
 
-    def onOperation[U <: TargetEffect]: Signature[U]
+
+  trait ProxyWithParam[Fx] extends Proxy: //// subclassed by Effect
+    final override type IntroEffect = Fx
 
 
-  trait HasTrans extends Interpreter:
+  sealed trait Flow extends Interpreter:
     final override type IntroEffect = Any
-    type Trans[M[_], A]
-    private[abstraction] def transformer: MonadTransformer[Trans, Result]
+    type Initial
+    type Trans[_[_], _]
+
+    final type ThisControlBound[U] = Control_!![Trans, U]
+    type ThisControl[U] >: ThisControlBound[U] <: ThisControlBound[U]
+    final override type !@![A, U] = (kk: ThisControl[U]) ?=> Trans[kk.LowerMonad, kk.UpperFunctor[A]]
+
+    def onReturn[A](a: A): Trans[[X] =>> X, A]
+    def onFlatMap[A, B, M[_]: MonadPar](tma: Trans[M, A])(f: A => Trans[M, B]): Trans[M, B]
+    def onProduct[A, B, M[_]: MonadPar](tma: Trans[M, A], tmb: Trans[M, B]): Trans[M, (A, B)]
+
+    private[abstraction] final def transform[M[_]](M: MonadPar[M]): MonadPar[Trans[M, _]] = new:
+      override def pure[A](a: A): Trans[M, A] = liftish(onReturn(a))(M)
+      override def flatMap[A, B](tma: Trans[M, A])(f: A => Trans[M, B]): Trans[M, B] = onFlatMap(tma)(f)(M)
+      override def zipPar[A, B](tma: Trans[M, A], tmb: Trans[M, B]): Trans[M, (A, B)] = onProduct(tma, tmb)(M)
+
+    private[abstraction] val resultFunctor: Functor[Result]
+    private[abstraction] def prime[M[_], A](initial: Initial, tma: Trans[M, A]): M[Result[A]]
+    private[abstraction] def liftish[M[_], A](ta: Trans[[X] =>> X, A])(M: MonadPar[M]): Trans[M, A]
+    private[abstraction] def layer[I <: InverseControl](that: I): that.Layer[Trans, Result]
+    private[abstraction] final def focus[M[_]](M: MonadPar[M]): InverseControl.Focus[Trans, M] = InverseControl.focus(M)
 
 
-  sealed trait SaturatedTrans extends HasTrans with Saturated:
-    private[abstraction] def prime[M[_], A](tma: Trans[M, A]): M[Result[A]]
+
+  abstract class Stateless[F[+_]: Functor] extends Flow: //// subclassed by Effect
+    final override type Initial = Unit
+    final override type Result[+A] = F[A]
+    final override type Trans[M[_], X] = M[F[X]]
+    final override type ThisControl[U] = Control_!![[M[_], X] =>> M[F[X]], U]
+
+    final def toHandler: ThisHandler = HandlerCases.Primitive[Result, ThisEffect, IntroEffect](this, ())
+
+    private[abstraction] final override val resultFunctor: Functor[F] = summon[Functor[F]]
+    private[abstraction] final override def prime[M[_], A](initial: Unit, tma: Trans[M, A]): M[F[A]] = tma
+    private[abstraction] final override def liftish[M[_], A](fa: F[A])(M: MonadPar[M]): Trans[M, A] = M.pure(fa)
+
+    private[abstraction] final override def layer[I <: InverseControl](that: I): that.Layer[Trans, Result] =
+      new that.LayerImpl[Trans, Result]:
+        override def upperFunctor: Functor[UpperFunctor] = that.upperFunctor compose resultFunctor
+        override def withControl[A](ff: this.ThisControl => FocusMonad[UpperFunctor[A]]): UpperMonad[A] =
+          that.withControl { kk =>
+            ff(new ThisControlImpl:
+              override def inner[A](a: A): UpperFunctor[A] = kk.inner(onReturn(a))
+              override def locally[A](body: UpperMonad[A]): FocusMonad[UpperFunctor[A]] = kk.locally(body)
+            )
+          }
 
 
-  trait SaturatedStateless[O[_]] extends SaturatedTrans:
-    final override type Result[A] = O[A]
-    final override type Trans[M[_], A] = M[O[A]]
-    private[abstraction] final override def prime[M[_], A](tma: M[O[A]]): M[O[A]] = tma
+  abstract class Stateful[S, F[+_]: Functor] extends Flow: //// subclassed by Effect
+    final override type Initial = S
+    final override type Result[+A] = F[A]
+    final override type Trans[M[_], X] = S => M[F[X]]
+    final override type ThisControl[U] = Control_!![[M[_], X] =>> S => M[F[X]], U]
 
+    final def toHandler(initial: S): ThisHandler = HandlerCases.Primitive[Result, ThisEffect, IntroEffect](this, initial)
 
-  final class SaturatedStateful[S, O[_], L](initial: S, unsaturated: UnsaturatedStateful[S, O]) extends SaturatedTrans:
-    override val effectIds = unsaturated.effectIds
-    override type Result[A] = O[A]
-    override type Trans[M[_], A] = S => M[O[A]]
-    override type ElimEffect = L
-    private[abstraction] final override def prime[M[_], A](tma: S => M[O[A]]): M[O[A]] = tma(initial)
-    private[abstraction] final override def transformer: MonadTransformer[Trans, Result] = unsaturated.transformer
+    private[abstraction] final override val resultFunctor: Functor[F] = summon[Functor[F]]
+    private[abstraction] final override def prime[M[_], A](s: S, tma: Trans[M, A]): M[Result[A]] = tma(s)
+    private[abstraction] final override def liftish[M[_], A](ffa: S => F[A])(M: MonadPar[M]): Trans[M, A] = s => M.pure(ffa(s))
 
-
-  trait UnsaturatedStateful[S, O[_]] extends HasTrans:
-    final override type Result[A] = O[A]
-    final override type Trans[M[_], A] = S => M[O[A]]
-    final def toHandler(s: S): ThisHandler = new SaturatedStateful[S, O, ElimEffect](s, this).toHandler
+    private[abstraction] final override def layer[I <: InverseControl](that: I): that.Layer[Trans, Result] =
+      new that.LayerImpl[Trans, Result]:
+        override def upperFunctor: Functor[UpperFunctor] = that.upperFunctor compose resultFunctor
+        override def withControl[A](ff: this.ThisControl => FocusMonad[UpperFunctor[A]]): UpperMonad[A] =
+          s => that.withControl { kk =>
+            ff(new ThisControlImpl:
+              override def inner[A](a: A): UpperFunctor[A] = kk.inner(onReturn(a)(s))
+              override def locally[A](body: UpperMonad[A]): FocusMonad[UpperFunctor[A]] = kk.locally(body(s))
+            )
+          }

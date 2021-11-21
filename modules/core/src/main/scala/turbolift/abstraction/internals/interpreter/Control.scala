@@ -1,13 +1,26 @@
 package turbolift.abstraction.internals.interpreter
+import cats.Functor
 import turbolift.abstraction.!!
 import turbolift.abstraction.typeclass.MonadPar
 
 
-trait Control[T[_[_], _], M[_], F[_], U]:
-  val mainMonad: MonadPar[T[M, _]]
-  val innerMonad: MonadPar[M]
-  val lifting: Lifting[!![_, U], T[M, _], F]
+trait Control[T[_[_], _]]:
+  type UpperFunctor[+_]
+  type UpperMonad[_]
+  type LowerMonad[_]
 
-  final type ThisLiftOps = LiftOps[!![_, U], T[M, _], F]
-  final def withLift[A](ff: ThisLiftOps => T[M, F[A]]): A !! U = lifting.withLift(ff)
-  final def pureInner[A](a: A): M[A] = innerMonad.pure(a)
+  def upperFunctor: Functor[UpperFunctor]
+  def lowerMonad: MonadPar[LowerMonad]
+
+  def inner[A](a: A): UpperFunctor[A]
+  final def inner(): UpperFunctor[Unit] = inner(())
+  final def outer[A](a: A): LowerMonad[A] = lowerMonad.pure(a)
+  def locally[A](body: UpperMonad[A]): T[LowerMonad, UpperFunctor[A]]
+
+
+type Control_!![T[_[_], _], U] = Control[T] { type UpperMonad[X] = X !! U }
+
+
+object Control:
+  given [T[_[_], _]](using C: Control[T]): MonadPar[C.LowerMonad] = C.lowerMonad
+  given [T[_[_], _]](using C: Control[T]): Functor[C.UpperFunctor] = C.upperFunctor

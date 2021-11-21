@@ -38,83 +38,77 @@ object ReaderWriterStateHandler:
       inline def combine_w(that: RWS, f: W => W): RWS = (r, w |+| f(that.w), that.s)
 
 
-    new fx.Stateful[RWS, (RWS, _)]:
-      override def onReturn[A](rws: RWS, a: A): (RWS, A) = (rws, a)
+    new fx.Stateful[RWS, (RWS, _)] with ReaderSig[R] with WriterExtSig[W, W1] with StateSig[S]:
+      override def onReturn[A](a: A): RWS => (RWS, A) = (_, a)
 
-      override def onTransform[M[_]: MonadPar] = new Transformed[M]:
-        override def flatMap[A, B](tma: RWS => M[(RWS, A)])(f: A => RWS => M[(RWS, B)]): RWS => M[(RWS, B)] =
-          rws0 => tma(rws0).flatMap {
-            case (rws1, a) => f(a)(rws0.restore_r(rws1))
-          }
+      override def onFlatMap[A, B, M[_]: MonadPar](tma: RWS => M[(RWS, A)])(f: A => RWS => M[(RWS, B)]): RWS => M[(RWS, B)] =
+        rws0 => tma(rws0).flatMap {
+          case (rws1, a) => f(a)(rws0.restore_r(rws1))
+        }
 
-        override def zipPar[A, B](tma: RWS => M[(RWS, A)], tmb: RWS => M[(RWS, B)]): RWS => M[(RWS, (A, B))] =
-          rws0 => tma(rws0).flatMap {
-            case (rws1, a) => tmb(rws0.restore_r(rws1)).map {
-              case (rws2, b) => (rws0.restore_r(rws2), (a, b))
-            }
+      override def onProduct[A, B, M[_]: MonadPar](tma: RWS => M[(RWS, A)], tmb: RWS => M[(RWS, B)]): RWS => M[(RWS, (A, B))] =
+        rws0 => tma(rws0).flatMap {
+          case (rws1, a) => tmb(rws0.restore_r(rws1)).map {
+            case (rws2, b) => (rws0.restore_r(rws2), (a, b))
           }
+        }
       
-      override def onOperation[M[_], F[_], U](implicit kk: ThisControl[M, F, U]) = new ReaderSig[U, R] with WriterExtSig[U, W, W1] with StateSig[U, S]:
-        //////// Reader:
+      //////// Reader:
 
-        override val ask: R !! U =
-          kk.withLift(lift => rws => kk.pureInner((rws, lift.pureStash(rws.r))))
+      override val ask: R !@! ThisEffect =
+        kk ?=> rws => kk.outer((rws, kk.inner(rws.r)))
 
-        override def asks[A](f: R => A): A !! U =
-          kk.withLift(lift => rws => kk.pureInner((rws, lift.pureStash(f(rws.r)))))
+      override def asks[A](f: R => A): A !@! ThisEffect =
+        kk ?=> rws => kk.outer((rws, kk.inner(f(rws.r))))
 
-        override def localPut[A](r: R)(body: A !! U): A !! U =
-          kk.withLift(lift => rws => lift.run(body)(rws.r = r))
+      override def localPut[A, U <: ThisEffect](r: R)(body: A !! U): A !@! U =
+        kk ?=> rws => kk.locally(body)(rws.r = r)
 
-        override def localModify[A](f: R => R)(body: A !! U): A !! U =
-          kk.withLift(lift => rws => lift.run(body)(rws.r_%(f)))
+      override def localModify[A, U <: ThisEffect](f: R => R)(body: A !! U): A !@! U =
+        kk ?=> rws => kk.locally(body)(rws.r_%(f))
 
-        //////// Writer:
+      //////// Writer:
 
-        override def tell(w: W1): Unit !! U =
-          kk.withLift(lift => rws => kk.pureInner((rws.w_%(_ |+ w), lift.unitStash())))
+      override def tell(w: W1): Unit !@! ThisEffect =
+        kk ?=> rws => kk.outer((rws.w_%(_ |+ w), kk.inner()))
 
-        override def tells(w: W): Unit !! U =
-          kk.withLift(lift => rws => kk.pureInner((rws.w_%(_ |+| w), lift.unitStash())))
+      override def tells(w: W): Unit !@! ThisEffect =
+        kk ?=> rws => kk.outer((rws.w_%(_ |+| w), kk.inner()))
 
-        override def listen[A](body: A !! U): (W, A) !! U =
-          kk.withLift { lift => rws0 =>
-            lift.run(body)(rws0.w = W.zero).map {
-              case (rws1, fa) => (rws0.combine_w(rws1, w => w), fa.map((rws1.w, _)))
-            }
-          }
+      override def listen[A, U <: ThisEffect](body: A !! U): (W, A) !@! U =
+        kk ?=> rws0 => kk.locally(body)(rws0.w = W.zero).map {
+          case (rws1, fa) => (rws0.combine_w(rws1, w => w), fa.map((rws1.w, _)))
+        }
 
-        override def censor[A](body: A !! U)(f: W => W): A !! U =
-          kk.withLift { lift => rws0 =>
-            lift.run(body)(rws0.w = W.zero).map {
-              case (rws1, fa) => (rws0.combine_w(rws1, f), fa)
-            }
-          }
+      override def censor[A, U <: ThisEffect](body: A !! U)(f: W => W): A !@! U =
+        kk ?=> rws0 => kk.locally(body)(rws0.w = W.zero).map {
+          case (rws1, fa) => (rws0.combine_w(rws1, f), fa)
+        }
 
-        override def mute[A](body: A !! U): A !! U = censor(body)(_ => W.zero)
+      override def mute[A, U <: ThisEffect](body: A !! U): A !@! U =
+        kk ?=> rws0 => censor(body)(_ => W.zero)(rws0)
 
-        //////// State:
+      //////// State:
 
-        override val get: S !! U =
-          kk.withLift(lift => rws => kk.pureInner((rws, lift.pureStash(rws.s))))
+      override val get: S !@! ThisEffect =
+        kk ?=> rws => kk.outer((rws, kk.inner(rws.s)))
 
-        override def gets[A](f: S => A): A !! U =
-          kk.withLift(lift => rws => kk.pureInner((rws, lift.pureStash(f(rws.s)))))
+      override def gets[A](f: S => A): A !@! ThisEffect =
+        kk ?=> rws => kk.outer((rws, kk.inner(f(rws.s))))
 
-        override def put(s: S): Unit !! U =
-          kk.withLift(lift => rws => kk.pureInner((rws.s = s, lift.unitStash())))
+      override def put(s: S): Unit !@! ThisEffect =
+        kk ?=> rws => kk.outer((rws.s = s, kk.inner()))
 
-        override def swap(s: S): S !! U =
-          kk.withLift(lift => rws => kk.pureInner((rws.s = s, lift.pureStash(rws.s))))
+      override def swap(s: S): S !@! ThisEffect =
+        kk ?=> rws => kk.outer((rws.s = s, kk.inner(rws.s)))
 
-        override def modify(f: S => S): Unit !! U =
-          kk.withLift(lift => rws => kk.pureInner((rws.s_%(f), lift.unitStash())))
+      override def modify(f: S => S): Unit !@! ThisEffect =
+        kk ?=> rws => kk.outer((rws.s_%(f), kk.inner()))
 
-        override def update[A](f: S => (S, A)): A !! U =
-          kk.withLift { lift => rws =>
-            val (s, a) = f(rws.s)
-            kk.pureInner((rws.s = s, lift.pureStash(a)))
-          }
+      override def update[A](f: S => (S, A)): A !@! ThisEffect =
+        kk ?=> rws =>
+          val (s, a) = f(rws.s)
+          kk.outer((rws.s = s, kk.inner(a)))
 
     .toHandler((initialR, W.zero, initialS))
     .mapState { case (_, w, s) => (w, s) }

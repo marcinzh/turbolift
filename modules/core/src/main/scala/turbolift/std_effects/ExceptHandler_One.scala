@@ -7,36 +7,32 @@ import turbolift.abstraction.typeclass.Syntax._
 
 object ExceptHandler_One:
   def apply[E, E1, Fx <: ExceptExt[E, E1]](fx: Fx)(implicit E: E1 =:= E): fx.ThisIHandler[Either[E, _]] =
-    new fx.Stateless[Either[E, _]]:
+    new fx.Stateless[Either[E, _]] with ExceptExtSig[E, E1]:
       override def onReturn[A](a: A): Either[E, A] = Right(a)
 
-      override def onTransform[M[_]: MonadPar] = new Transformed[M]:
-        override def flatMap[A, B](tma: M[Either[E, A]])(f: A => M[Either[E, B]]): M[Either[E, B]] =
-          tma.flatMap {
-            case Right(a) => f(a)
-            case Left(e) => MonadPar[M].pure(Left(e))
-          }
+      override def onFlatMap[A, B, M[_]: MonadPar](tma: M[Either[E, A]])(f: A => M[Either[E, B]]): M[Either[E, B]] =
+        tma.flatMap {
+          case Right(a) => f(a)
+          case Left(e) => MonadPar[M].pure(Left(e))
+        }
 
-        override def zipPar[A, B](tma: M[Either[E, A]], tmb: M[Either[E, B]]): M[Either[E, (A, B)]] =
-          (tma *! tmb).map {
-            case (Right(a), Right(b)) => Right((a, b))
-            case (Left(e), _) => Left(e)
-            case (_, Left(e)) => Left(e)
-          }
+      override def onProduct[A, B, M[_]: MonadPar](tma: M[Either[E, A]], tmb: M[Either[E, B]]): M[Either[E, (A, B)]] =
+        (tma *! tmb).map {
+          case (Right(a), Right(b)) => Right((a, b))
+          case (Left(e), _) => Left(e)
+          case (_, Left(e)) => Left(e)
+        }
 
-      override def onOperation[M[_], F[_], U](implicit kk: ThisControl[M, F, U]) = new ExceptExtSig[U, E, E1]:
-        override def raise[A](e: E1): A !! U =
-          raises(E(e))
+      override def raise(e: E1): Nothing !@! ThisEffect =
+        kk ?=> kk.outer(Left(E(e)))
 
-        override def raises[A](e: E): A !! U =
-          kk.withLift(lift => kk.pureInner(Left(e).withRight[F[A]]))
+      override def raises(e: E): Nothing !@! ThisEffect =
+        kk ?=> kk.outer(Left(e))
 
-        override def katch[A](body: A !! U)(f: E => A !! U): A !! U =
-          kk.withLift { lift =>
-            lift.run(body).flatMap {
-              case Right(fa) => kk.pureInner(Right(fa).withLeft[E])
-              case Left(e) => lift.run(f(e))
-            }
-          }
+      override def katch[A, U <: ThisEffect](body: A !! U)(f: E => A !! U): A !@! U =
+        kk ?=> kk.locally(body).flatMap {
+          case Right(fa) => kk.outer(Right(fa).withLeft[E])
+          case Left(e) => kk.locally(f(e))
+        }
 
     .toHandler

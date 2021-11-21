@@ -55,4 +55,3 @@ object TrampolineInstances:
     override def pure[A](a: A): Trampoline[A] = Done(a)
     override def flatMap[A, B](ma: Trampoline[A])(f: A => Trampoline[B]): Trampoline[B] = ma.flatMap(f)
     override def zipPar[A, B](ma: Trampoline[A], mb: Trampoline[B]): Trampoline[(A, B)] = ma.zipPar(mb)
-    override def defer[A](ma: => Trampoline[A]): Trampoline[A] = More(() => ma)

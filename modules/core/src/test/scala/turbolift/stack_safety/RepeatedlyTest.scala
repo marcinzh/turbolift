@@ -30,7 +30,7 @@ private object RepeatedlyTest_Stuff:
     def mapEff(mapper: Mapper): This
     def run: Any
 
-  case class Case[F[_], U](name: String, h: IHandler[F, U], comp: Any !! U) extends Case0:
+  case class Case[F[+_], U](name: String, h: IHandler[F, U], comp: Any !! U) extends Case0:
     type Fx = U
     def mapEff(f: Mapper) = copy(comp = f(comp))
     def run = h run comp
