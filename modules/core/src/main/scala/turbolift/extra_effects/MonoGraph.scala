@@ -1,27 +1,27 @@
 package turbolift.extra_effects
 import cats.Monoid
-import turbolift.abstraction.{!!, Effect}
+import turbolift.abstraction.{!!, Effect, Signature}
 
 
-trait MonoGraphSig[U, K, V]:
-  def empty(to: K): Unit !! U
-  def incomingConst(to: K, value: V): Unit !! U
-  def outgoingConst(from: K, value: V): Unit !! U
-  def incoming(to: K, from: K): Unit !! U
-  def incomings(to: K, froms: IterableOnce[K]): Unit !! U
-  def outgoing(from: K, to: K): Unit !! U
-  def outgoings(from: K, tos: IterableOnce[K]): Unit !! U
+trait MonoGraphSig[K, V] extends Signature:
+  def empty(to: K): Unit !@! ThisEffect
+  def incomingConst(to: K, value: V): Unit !@! ThisEffect
+  def outgoingConst(from: K, value: V): Unit !@! ThisEffect
+  def incoming(to: K, from: K): Unit !@! ThisEffect
+  def incomings(to: K, froms: IterableOnce[K]): Unit !@! ThisEffect
+  def outgoing(from: K, to: K): Unit !@! ThisEffect
+  def outgoings(from: K, tos: IterableOnce[K]): Unit !@! ThisEffect
 
 
-trait MonoGraph[K, V] extends Effect[MonoGraphSig[_, K, V]]:
+trait MonoGraph[K, V] extends Effect[MonoGraphSig[K, V]] with MonoGraphSig[K, V]:
   enclosing =>
-  def empty(to: K): Unit !! this.type = impureFO(_.empty(to))
-  def incomingConst(to: K, value: V): Unit !! this.type = impureFO(_.incomingConst(to, value))
-  def outgoingConst(from: K, value: V): Unit !! this.type = impureFO(_.outgoingConst(from, value))
-  def incoming(to: K, from: K): Unit !! this.type = impureFO(_.incoming(to, from))
-  def incomings(to: K, froms: IterableOnce[K]): Unit !! this.type = impureFO(_.incomings(to, froms))
-  def outgoing(from: K, to: K): Unit !! this.type = impureFO(_.outgoing(from, to))
-  def outgoings(from: K, tos: IterableOnce[K]): Unit !! this.type = impureFO(_.outgoings(from, tos))
+  def empty(to: K): Unit !! this.type = impure(_.empty(to))
+  def incomingConst(to: K, value: V): Unit !! this.type = impure(_.incomingConst(to, value))
+  def outgoingConst(from: K, value: V): Unit !! this.type = impure(_.outgoingConst(from, value))
+  def incoming(to: K, from: K): Unit !! this.type = impure(_.incoming(to, from))
+  def incomings(to: K, froms: IterableOnce[K]): Unit !! this.type = impure(_.incomings(to, froms))
+  def outgoing(from: K, to: K): Unit !! this.type = impure(_.outgoing(from, to))
+  def outgoings(from: K, tos: IterableOnce[K]): Unit !! this.type = impure(_.outgoings(from, tos))
 
   final def at(k: K): AtApply = new AtApply(k)
   final class AtApply(k: K):

@@ -1,22 +1,22 @@
 package turbolift.std_effects
-import turbolift.abstraction.{!!, Effect}
+import turbolift.abstraction.{!!, Effect, Signature}
 
 
-trait StateSig[U, S]:
-  def get: S !! U
-  def gets[A](f: S => A): A !! U
-  def put(s: S): Unit !! U
-  def swap(s: S): S !! U
-  def modify(f: S => S): Unit !! U
-  def update[A](f: S => (S, A)): A !! U
+trait StateSig[S] extends Signature:
+  def get: S !@! ThisEffect
+  def gets[A](f: S => A): A !@! ThisEffect
+  def put(s: S): Unit !@! ThisEffect
+  def swap(s: S): S !@! ThisEffect
+  def modify(f: S => S): Unit !@! ThisEffect
+  def update[A](f: S => (S, A)): A !@! ThisEffect
 
 
-trait State[S] extends Effect[StateSig[_, S]]:
-  final val get: S !! this.type = impureFO(_.get)
-  final def gets[A](f: S => A): A !! this.type = impureFO(_.gets(f))
-  final def put(s: S): Unit !! this.type = impureFO(_.put(s))
-  final def swap(s: S): S !! this.type = impureFO(_.swap(s))
-  final def modify(f: S => S): Unit !! this.type = impureFO(_.modify(f))
-  final def update[A](f: S => (S, A)): A !! this.type = impureFO(_.update(f))
+trait State[S] extends Effect[StateSig[S]] with StateSig[S]:
+  final override val get: S !! this.type = impure(_.get)
+  final override def gets[A](f: S => A): A !! this.type = impure(_.gets(f))
+  final override def put(s: S): Unit !! this.type = impure(_.put(s))
+  final override def swap(s: S): S !! this.type = impure(_.swap(s))
+  final override def modify(f: S => S): Unit !! this.type = impure(_.modify(f))
+  final override def update[A](f: S => (S, A)): A !! this.type = impure(_.update(f))
 
   def handler(initial: S): ThisIHandler[(S, _)] = StateHandler(this, initial)

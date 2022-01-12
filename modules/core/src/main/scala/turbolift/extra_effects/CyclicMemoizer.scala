@@ -1,15 +1,15 @@
 package turbolift.extra_effects
-import turbolift.abstraction.{!!, Effect}
+import turbolift.abstraction.{!!, Effect, Signature}
 
 
-trait CyclicMemoizerSig[U, K, V]:
-  def memo(f: K => V !! U)(k: K): (() => V) !! U
-  def get: Map[K, V] !! U
+trait CyclicMemoizerSig[K, V] extends Signature:
+  def memo[U <: ThisEffect](f: K => V !! U)(k: K): (() => V) !@! U
+  def get: Map[K, V] !@! ThisEffect
 
 
-trait CyclicMemoizer[K, V] extends Effect[CyclicMemoizerSig[_, K, V]]:
-  final def memo[U <: this.type](f: K => V !! U)(k: K): (() => V) !! U = impureHO[U](_.memo(f)(k))
-  final def get: Map[K, V] !! this.type = impureFO(_.get)
+trait CyclicMemoizer[K, V] extends Effect[CyclicMemoizerSig[K, V]] with CyclicMemoizerSig[K, V]:
+  final override def memo[U <: this.type](f: K => V !! U)(k: K): (() => V) !! U = impure(_.memo(f)(k))
+  final override def get: Map[K, V] !! this.type = impure(_.get)
 
   final def apply[U <: this.type](f: K => V !! U): K => (() => V) !! U = memo(f)(_)
 
