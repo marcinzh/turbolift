@@ -1,18 +1,11 @@
 ThisBuild / organization := "com.github.marcinzh"
-ThisBuild / version := "0.16.0-SNAPSHOT"
-ThisBuild / scalaVersion := "3.1.0"
+ThisBuild / version := "0.19.0-SNAPSHOT"
+ThisBuild / scalaVersion := "3.1.1"
 ThisBuild / crossScalaVersions := Seq(scalaVersion.value)
 
 ThisBuild / watchBeforeCommand := Watch.clearScreen
 ThisBuild / watchTriggeredMessage := Watch.clearScreenOnTrigger
 ThisBuild / watchForceTriggerOnAnyChange := true
-
-// ThisBuild / resolvers += Resolver.sonatypeRepo("releases")
-// ThisBuild / libraryDependencies += Deps.kind_projector
-
-ThisBuild / resolvers += Resolver.jcenterRepo
-ThisBuild / credentials += Credentials(Path.userHome / ".bintray" / ".credentials")
-ThisBuild / publishTo := Some("Bintray API Realm" at ("https://api.bintray.com/content/marcinzh/maven/turbolift/" ++ version.value))
 
 ThisBuild / scalacOptions ++= Seq(
   "-deprecation",
@@ -24,11 +17,9 @@ ThisBuild / scalacOptions ++= Seq(
 
 val Deps = {
   object deps {
-    val cats_core = libraryDependencies += "org.typelevel" %% "cats-core" % "2.6.1"
-    val scalactic = libraryDependencies += "org.scalactic" %% "scalactic" % "3.2.10"
-    val scalatest = libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.10" % "test"
-    // val specs2_core = libraryDependencies += ("org.specs2" %% "specs2-core" % "4.12.0" % "test").cross(CrossVersion.for3Use2_13)
-    // val specs2_extra = libraryDependencies += ("org.specs2" %% "specs2-matcher-extra" % "4.12.0" % "test").cross(CrossVersion.for3Use2_13)
+    val cats_core = libraryDependencies += "org.typelevel" %% "cats-core" % "2.7.0"
+    val scalactic = libraryDependencies += "org.scalactic" %% "scalactic" % "3.2.11"
+    val scalatest = libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.11" % "test"
   }
   deps
 }
@@ -40,11 +31,7 @@ val Deps = {
 lazy val testSettings = Seq(
   Deps.scalactic,
   Deps.scalatest,
-  // Deps.specs2_core,
-  // Deps.specs2_extra,
   Test / parallelExecution := false,
-  // Test / scalacOptions += "-Yrangepos",
-  // Test / scalacOptions += "-language:postfixOps",
 )
 
 lazy val dontPublishMe = Seq(
