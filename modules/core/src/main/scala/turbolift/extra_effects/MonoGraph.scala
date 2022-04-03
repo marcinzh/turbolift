@@ -1,6 +1,7 @@
 package turbolift.extra_effects
 import cats.Monoid
-import turbolift.abstraction.{!!, Effect, Signature}
+import turbolift.{!!, Effect, Signature}
+import turbolift.extra_effects.default_handlers.MonoGraphHandler
 
 
 trait MonoGraphSig[K, V] extends Signature:
@@ -15,13 +16,13 @@ trait MonoGraphSig[K, V] extends Signature:
 
 trait MonoGraph[K, V] extends Effect[MonoGraphSig[K, V]] with MonoGraphSig[K, V]:
   enclosing =>
-  def empty(to: K): Unit !! this.type = impure(_.empty(to))
-  def incomingConst(to: K, value: V): Unit !! this.type = impure(_.incomingConst(to, value))
-  def outgoingConst(from: K, value: V): Unit !! this.type = impure(_.outgoingConst(from, value))
-  def incoming(to: K, from: K): Unit !! this.type = impure(_.incoming(to, from))
-  def incomings(to: K, froms: IterableOnce[K]): Unit !! this.type = impure(_.incomings(to, froms))
-  def outgoing(from: K, to: K): Unit !! this.type = impure(_.outgoing(from, to))
-  def outgoings(from: K, tos: IterableOnce[K]): Unit !! this.type = impure(_.outgoings(from, tos))
+  def empty(to: K): Unit !! this.type = operate(_.empty(to))
+  def incomingConst(to: K, value: V): Unit !! this.type = operate(_.incomingConst(to, value))
+  def outgoingConst(from: K, value: V): Unit !! this.type = operate(_.outgoingConst(from, value))
+  def incoming(to: K, from: K): Unit !! this.type = operate(_.incoming(to, from))
+  def incomings(to: K, froms: IterableOnce[K]): Unit !! this.type = operate(_.incomings(to, froms))
+  def outgoing(from: K, to: K): Unit !! this.type = operate(_.outgoing(from, to))
+  def outgoings(from: K, tos: IterableOnce[K]): Unit !! this.type = operate(_.outgoings(from, tos))
 
   final def at(k: K): AtApply = new AtApply(k)
   final class AtApply(k: K):
@@ -33,5 +34,5 @@ trait MonoGraph[K, V] extends Effect[MonoGraphSig[K, V]] with MonoGraphSig[K, V]
     def outgoing(to: K) = enclosing.outgoing(k, to)
     def outgoings(tos: IterableOnce[K]) = enclosing.outgoings(k, tos)
 
-  def handler(implicit M: Monoid[V]): ThisIHandler[(Map[K, V], _)] = MonoGraphHandler[K, V, this.type](this)
-  def handler(zero: V, combine: (V, V) => V): ThisIHandler[(Map[K, V], _)] = handler(Monoid.instance(zero, combine))
+  def handler(implicit M: Monoid[V]): ThisHandler.Free[(Map[K, V], _)] = MonoGraphHandler[K, V, this.type](this)
+  def handler(zero: V, combine: (V, V) => V): ThisHandler.Free[(Map[K, V], _)] = handler(Monoid.instance(zero, combine))

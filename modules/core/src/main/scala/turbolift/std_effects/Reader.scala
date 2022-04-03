@@ -1,5 +1,6 @@
 package turbolift.std_effects
-import turbolift.abstraction.{!!, Effect, Signature}
+import turbolift.{!!, Effect, Signature}
+import turbolift.std_effects.default_handlers.ReaderHandler
 
 
 trait ReaderSig[R] extends Signature:
@@ -10,9 +11,9 @@ trait ReaderSig[R] extends Signature:
 
 
 trait Reader[R] extends Effect[ReaderSig[R]] with ReaderSig[R]:
-  final override val ask: R !! this.type = impure(_.ask)
-  final override def asks[A](f: R => A): A !! this.type = impure(_.asks(f))
-  final override def localPut[A, U <: this.type](r: R)(body: A !! U): A !! U = impure(_.localPut(r)(body))
-  final override def localModify[A, U <: this.type](f: R => R)(body: A !! U): A !! U = impure(_.localModify(f)(body))
+  final override val ask: R !! this.type = operate(_.ask)
+  final override def asks[A](f: R => A): A !! this.type = operate(_.asks(f))
+  final override def localPut[A, U <: this.type](r: R)(body: A !! U): A !! U = operate(_.localPut(r)(body))
+  final override def localModify[A, U <: this.type](f: R => R)(body: A !! U): A !! U = operate(_.localModify(f)(body))
 
-  def handler(initial: R): ThisIIdHandler = ReaderHandler(this, initial)
+  def handler(initial: R): ThisHandler.FreeId = ReaderHandler(this, initial)

@@ -1,5 +1,6 @@
 package turbolift.extra_effects
-import turbolift.abstraction.{!!, Effect, Signature}
+import turbolift.{!!, Effect, Signature}
+import turbolift.extra_effects.default_handlers.PolyGraphHandler
 
 
 trait PolyGraphSig[K, V] extends Signature:
@@ -13,12 +14,12 @@ trait PolyGraphSig[K, V] extends Signature:
 
 trait PolyGraph[K, V] extends Effect[PolyGraphSig[K, V]] with PolyGraphSig[K, V]:
   enclosing =>
-  final override def empty(to: K): Unit !! this.type = impure(_.empty(to))
-  final override def const(to: K, value: V): Unit !! this.type = impure(_.const(to, value))
-  final override def identity(to: K, from: K): Unit !! this.type = impure(_.identity(to, from))
-  final override def unary(to: K, from: K)(f: V => V): Unit !! this.type = impure(_.unary(to, from)(f))
-  final override def binary(to: K, from1: K, from2: K)(f: (V, V) => V): Unit !! this.type = impure(_.binary(to, from1, from2)(f))
-  final override def variadic(to: K, froms: Vector[K])(f: Vector[V] => V): Unit !! this.type = impure(_.variadic(to, froms)(f))
+  final override def empty(to: K): Unit !! this.type = operate(_.empty(to))
+  final override def const(to: K, value: V): Unit !! this.type = operate(_.const(to, value))
+  final override def identity(to: K, from: K): Unit !! this.type = operate(_.identity(to, from))
+  final override def unary(to: K, from: K)(f: V => V): Unit !! this.type = operate(_.unary(to, from)(f))
+  final override def binary(to: K, from1: K, from2: K)(f: (V, V) => V): Unit !! this.type = operate(_.binary(to, from1, from2)(f))
+  final override def variadic(to: K, froms: Vector[K])(f: Vector[V] => V): Unit !! this.type = operate(_.variadic(to, froms)(f))
 
   final def fold(to: K, froms: Vector[K], initial: V)(f: (V, V) => V): Unit !! this.type = variadic(to, froms)(_.fold(initial)(f))
   final def reduce(to: K, froms: Vector[K])(f: (V, V) => V): Unit !! this.type = variadic(to, froms)(_.reduce(f))
@@ -34,4 +35,4 @@ trait PolyGraph[K, V] extends Effect[PolyGraphSig[K, V]] with PolyGraphSig[K, V]
     def fold(froms: Vector[K], initial: V)(f: (V, V) => V) = enclosing.fold(k, froms, initial)(f)
     def reduce(froms: Vector[K])(f: (V, V) => V) = enclosing.reduce(k, froms)(f)
 
-  def handler: V => ThisIHandler[(Map[K, V], _)] = PolyGraphHandler.apply[K, V, this.type](this)
+  def handler: V => ThisHandler.Free[(Map[K, V], _)] = PolyGraphHandler.apply[K, V, this.type](this)

@@ -1,32 +1,53 @@
 package turbolift.std_effects
-import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.funspec.AnyFunSpec
 import org.scalatest.matchers.should.Matchers._
-import turbolift.abstraction.!!
+import turbolift.!!
 import turbolift.std_effects.State
 
 
-class StateTests extends AnyFlatSpec:
+class StateTests extends AnyFunSpec:
+  describe("Basic ops") {
+    it("get") {
+      case object Fx extends State[Int]
+      Fx.get
+      .runWith(Fx.handler(1)) shouldEqual ((1, 1))
+    }
 
-  "State operations" should "work" in {
-    case object Fx extends State[Int]
+    it("put") {
+      case object Fx extends State[Int]
+      Fx.put(2)
+      .runWith(Fx.handler(1)) shouldEqual ((2, ()))
+    }
 
-    Fx.get.runWith(Fx.handler(42).eval) shouldEqual 42
-
-    Fx.put(1337).flatMap(_ => Fx.put(42)).runWith(Fx.handler(-1).exec) shouldEqual 42
-
-    Fx.put(42).flatMap(_ => Fx.get).runWith(Fx.handler(-1)) shouldEqual (42, 42)
-    
-    Fx.modify(_ * 10).runWith(Fx.handler(42).exec) shouldEqual 420
+    it("modify") {
+      case object Fx extends State[Int]
+      Fx.modify(_ + 10)
+      .runWith(Fx.handler(1)) shouldEqual ((11, ()))
+    }
   }
 
-  "Multiple State operations" should "work" in {
-    case object Fx1 extends State[Int]
-    case object Fx2 extends State[Int]
-
-    (for
-      a <- Fx1.get
-      _ <- Fx2.put(a * 10)
-      b <- Fx1.get
-    yield b)
-    .runWith(Fx1.handler(42) ***! Fx2.handler(1337)) shouldEqual ((42, 420), 42)
+  describe("Combined ops") {
+    it("put & get") {
+      case object Fx extends State[Int]
+      (for
+        a <- Fx.get
+        _ <- Fx.put(2)
+        b <- Fx.get
+      yield (a, b))
+      .runWith(Fx.handler(1)) shouldEqual ((2, (1, 2)))
+    }
+      
+    it("2 states interleaved") {
+      case object Fx1 extends State[Int]
+      case object Fx2 extends State[Int]
+      (for
+        a <- Fx1.get
+        b <- Fx2.get
+        _ <- Fx1.modify(_ * 10)
+        _ <- Fx2.modify(_ * 10)
+        _ <- Fx1.modify(_ + b)
+        _ <- Fx2.modify(_ + a)
+      yield (a, b))
+      .runWith(Fx1.handler(1) ***! Fx2.handler(2)) shouldEqual (((12, 21), (1, 2)))
+    }
   }

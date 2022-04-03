@@ -1,11 +1,11 @@
 package turbolift.type_safety
-import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.funspec.AnyFunSpec
 import org.scalatest.matchers.should.Matchers._
 import Dummies._
 
 
-class TotalHandlerTest extends AnyFlatSpec:
-  "Total handlers" should "not leak effects" in {
+class TotalHandlerTest extends AnyFunSpec:
+  describe("Total handlers should not leak effects") {
     assertCompiles  {"any[H12] run any[Eff1]"}
     assertCompiles  {"any[H12] run any[Eff2]"}
     assertCompiles  {"any[H12] run any[Eff12]"}

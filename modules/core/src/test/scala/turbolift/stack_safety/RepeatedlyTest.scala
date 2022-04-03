@@ -1,22 +1,23 @@
 package turbolift.stack_safety
-import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.funspec.AnyFunSpec
 import org.scalatest.matchers.should.Matchers._
-import turbolift.abstraction.{!!, IHandler}
+import turbolift.{!!, Handler}
 import turbolift.std_effects.{Reader, Writer, State, Choice}
 
 
-class RepeatedlyTest extends AnyFlatSpec with CanStackOverflow:
+class RepeatedlyTest extends AnyFunSpec with CanStackOverflow:
   import RepeatedlyTest_Stuff.{cases, mappers}
-  for
-    case0 <- cases
-    mapper <- mappers
-    case1 = case0.mapEff(mapper)
-    label = s"${case1.name} effect composed ${mapper.name}"
-  do
-    label should "be stack safe" in {
-      mustNotStackOverflow {
-        case1.run
-      }
+  for case0 <- cases do
+    describe(s"Repeated ${case0.name} ops") {
+      for mapper <- mappers do
+        describe(s"Composed ${mapper.name}") {
+          val case1 = case0.mapEff(mapper)
+            it("should be stack safe") {
+              mustNotStackOverflow {
+                case1.run
+              }
+            }
+        }
     }
 
 
@@ -30,7 +31,7 @@ private object RepeatedlyTest_Stuff:
     def mapEff(mapper: Mapper): This
     def run: Any
 
-  case class Case[F[+_], U](name: String, h: IHandler[F, U], comp: Any !! U) extends Case0:
+  case class Case[F[+_], U](name: String, h: Handler.Free[F, U], comp: Any !! U) extends Case0:
     type Fx = U
     def mapEff(f: Mapper) = copy(comp = f(comp))
     def run = h run comp
@@ -44,7 +45,7 @@ private object RepeatedlyTest_Stuff:
     Case("Reader", FxR.handler(0), FxR.ask),
     Case("Writer", FxW.handler, FxW.tell(111)),
     Case("State", FxS.handler(0), FxS.modify(_ + 1)),
-    Case("Choice", FxC.handler, FxC.each(List(0)))
+    Case("Choice", FxC.handler, FxC.choose(List(0)))
   )
 
   abstract class Mapper(val name: String) {

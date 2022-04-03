@@ -1,16 +1,16 @@
 package turbolift.extra_effects
-import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.funspec.AnyFunSpec
 import org.scalatest.matchers.should.Matchers._
-import turbolift.abstraction.!!
-import turbolift.abstraction.Implicits._
+import turbolift.!!
+import turbolift.Implicits._
 import turbolift.std_effects.WriterK
 import turbolift.extra_effects.AcyclicMemoizer
 import turbolift.std_effects.CanLaunchTheMissiles
 
 
-class AcyclicMemoizerTest extends AnyFlatSpec with CanLaunchTheMissiles:
+class AcyclicMemoizerTest extends AnyFunSpec with CanLaunchTheMissiles:
 
-  "Memoizing recursive function" should "work" in {
+  describe("Memoizing recursive function") {
     def runFibs(n: Int): (Int, Vector[Missile]) =
       val missiles = Vector.fill(n + 1)(Missile())
       
@@ -37,7 +37,7 @@ class AcyclicMemoizerTest extends AnyFlatSpec with CanLaunchTheMissiles:
   }
 
 
-  "Memoizing acyclic graph" should "work" in {
+  describe("Memoizing acyclic graph") {
     case object FxMemo extends AcyclicMemoizer[Int, Vertex]
     case object FxLog extends WriterK[Vector, Int]
 
