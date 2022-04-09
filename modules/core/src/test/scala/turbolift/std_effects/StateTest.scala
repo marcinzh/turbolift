@@ -16,13 +16,13 @@ class StateTests extends AnyFunSpec:
     it("put") {
       case object Fx extends State[Int]
       Fx.put(2)
-      .runWith(Fx.handler(1)) shouldEqual ((2, ()))
+      .runWith(Fx.handler(1)) shouldEqual (((), 2))
     }
 
     it("modify") {
       case object Fx extends State[Int]
       Fx.modify(_ + 10)
-      .runWith(Fx.handler(1)) shouldEqual ((11, ()))
+      .runWith(Fx.handler(1)) shouldEqual (((), 11))
     }
   }
 
@@ -34,7 +34,7 @@ class StateTests extends AnyFunSpec:
         _ <- Fx.put(2)
         b <- Fx.get
       yield (a, b))
-      .runWith(Fx.handler(1)) shouldEqual ((2, (1, 2)))
+      .runWith(Fx.handler(1)) shouldEqual (((1, 2), 2))
     }
       
     it("2 states interleaved") {
@@ -48,6 +48,6 @@ class StateTests extends AnyFunSpec:
         _ <- Fx1.modify(_ + b)
         _ <- Fx2.modify(_ + a)
       yield (a, b))
-      .runWith(Fx1.handler(1) ***! Fx2.handler(2)) shouldEqual (((12, 21), (1, 2)))
+      .runWith(Fx1.handler(1) ***! Fx2.handler(2)) shouldEqual (((1, 2), (12, 21)))
     }
   }

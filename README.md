@@ -38,7 +38,7 @@ object Main extends App {
 
   // Create a handler for the above computation, by composing
   // individual handlers of each requested effect:
-  val handler = MyExcept.handler <<<! MyState.handler(100).exec <<<! MyReader.handler(3)
+  val handler = MyState.handler(100).exec &&&! MyReader.handler(3) &&&! MyExcept.handler
 
   // Execute the computation using the handler:
   val result = computation.runWith(handler)

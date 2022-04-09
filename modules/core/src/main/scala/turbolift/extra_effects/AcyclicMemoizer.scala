@@ -9,8 +9,8 @@ trait AcyclicMemoizerSig[K, V] extends Signature:
 
 
 trait AcyclicMemoizer[K, V] extends Effect[AcyclicMemoizerSig[K, V]] with AcyclicMemoizerSig[K, V]:
-  final override def memo[U <: this.type](f: K => V !! U)(k: K): V !! U = operate(_.memo(f)(k))
-  final override def get: Map[K, V] !! this.type = operate(_.get)
+  final override def memo[U <: this.type](f: K => V !! U)(k: K): V !! U = perform(_.memo(f)(k))
+  final override def get: Map[K, V] !! this.type = perform(_.get)
 
   final def apply[U <: this.type](f: K => V !! U): K => V !! U = memo(f)(_)
 

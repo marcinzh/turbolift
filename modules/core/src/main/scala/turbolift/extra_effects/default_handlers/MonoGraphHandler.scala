@@ -9,7 +9,7 @@ import turbolift.extra_effects.{MonoGraph, MonoGraphSig}
 
 
 private[extra_effects] object MonoGraphHandler:
-  def apply[K, V, Fx <: MonoGraph[K, V]](fx: Fx)(implicit V: Monoid[V]): fx.ThisHandler.Free[(Map[K, V], *)] =
+  def apply[K, V, Fx <: MonoGraph[K, V]](fx: Fx)(implicit V: Monoid[V]): fx.ThisHandler.Free[(_, Map[K, V])] =
     case object IncomingConst extends WriterG[Map, K, V]
     case object OutgoingConst extends WriterG[Map, K, V]
     case object Propagate extends WriterGK[Map, K, Set, K]
@@ -26,7 +26,7 @@ private[extra_effects] object MonoGraphHandler:
 
     .toHandler
     .provideWith(IncomingConst.handler ***! OutgoingConst.handler ***! Propagate.handler)
-    .mapState { case ((in, out), prop) =>
+    .mapState { case (in, out, prop) =>
       solve(
         in.withDefaultValue(V.empty),
         out.withDefaultValue(V.empty),

@@ -42,7 +42,7 @@ class CyclicMemoizerTest extends AnyFunSpec with CanLaunchTheMissiles:
       yield Vertex(n, edges)
     }
 
-    val (log, roots) = visit(0).runWith(FxLog.handler <<<! FxMemo.handler)
+    val (roots, log) = visit(0).runWith(FxMemo.handler &&&! FxLog.handler)
 
     missiles.foreach(_.mustHaveLaunchedOnce)
     log.sorted shouldEqual (0 until outgoings.size)

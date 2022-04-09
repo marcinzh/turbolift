@@ -12,9 +12,9 @@ trait ExceptExtSig[E, E1] extends Signature:
 
 
 trait ExceptExt[E, E1] extends Effect[ExceptExtSig[E, E1]] with ExceptExtSig[E, E1]:
-  final override def raise(e: E1): Nothing !! this.type = operate(_.raise(e))
-  final override def raises(e: E): Nothing !! this.type = operate(_.raises(e))
-  final override def katch[A, U <: this.type](body: A !! U)(f: E => A !! U): A !! U = operate(_.katch(body)(f))
+  final override def raise(e: E1): Nothing !! this.type = perform(_.raise(e))
+  final override def raises(e: E): Nothing !! this.type = perform(_.raises(e))
+  final override def katch[A, U <: this.type](body: A !! U)(f: E => A !! U): A !! U = perform(_.katch(body)(f))
 
   final def raise[K, V1](k: K, v: V1)(implicit ev: ((K, V1)) <:< E1): Unit !! this.type = raise(ev((k, v)))
   final def raises[K, V](k: K, v: V)(implicit ev: ((K, V)) <:< E): Unit !! this.type = raises(ev((k, v)))

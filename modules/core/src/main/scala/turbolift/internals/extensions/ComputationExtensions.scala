@@ -34,3 +34,11 @@ trait ComputationExtensions:
   extension [A, B, U](thiz: Computation[(A, B), U])
     def map2[C](f: (A, B) => C): C !! U = thiz.map(f.tupled)
     def flatMap2[C, V <: U](f: (A, B) => C !! V): C !! V = thiz.flatMap(f.tupled)
+
+
+  extension [U](thiz: Computation[Boolean, U])
+    def while_!![V <: U](body: => Unit !! V): Unit !! V = !!.repeatWhile(thiz)(body)
+    def until_!![V <: U](body: => Unit !! V): Unit !! V = !!.repeatUntil(thiz)(body)
+
+    def if_!![V <: U, W <: V](thenBody: => Unit !! V)(elseBody: => Unit !! W): Unit !! W =
+      thiz.flatMap(if _ then thenBody else elseBody)

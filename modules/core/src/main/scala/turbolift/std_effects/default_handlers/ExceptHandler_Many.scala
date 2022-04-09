@@ -1,5 +1,4 @@
 package turbolift.std_effects.default_handlers
-import cats.instances.either._
 import turbolift.!!
 import turbolift.typeclass.{MonadPar, Accum}
 import turbolift.typeclass.Syntax._

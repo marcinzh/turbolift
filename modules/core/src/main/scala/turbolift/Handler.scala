@@ -30,8 +30,7 @@ sealed trait Handler[Result[+_], Elim, Intro]:
 
   final def upCastIntro[T >: Intro] = asInstanceOf[Handler[Result, Elim, T]]
 
-  final def <<<![ThatResult[+_], ThatElim, ThatIntro](that: Handler[ThatResult, ThatElim, ThatIntro]) = that.composeWith(this)
-  final def >>>![ThatResult[+_], ThatElim, ThatIntro](that: Handler[ThatResult, ThatElim, ThatIntro]) = this.composeWith(that)
+  final def &&&![ThatResult[+_], ThatElim, ThatIntro](that: Handler[ThatResult, ThatElim, ThatIntro]) = this.composeWith(that)
 
   final def self: Handler[Result, Elim, Intro] = this
 

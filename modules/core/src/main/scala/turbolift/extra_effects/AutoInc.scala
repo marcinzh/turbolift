@@ -8,7 +8,7 @@ trait AutoIncSig extends Signature:
 
 
 trait AutoInc extends Effect[AutoIncSig] with AutoIncSig:
-  def next: Int !! this.type = operate(_.next)
+  def next: Int !! this.type = perform(_.next)
 
-  def handler: ThisHandler.Free[(Int, _)] = handler(0)
-  def handler(initial: Int): ThisHandler.Free[(Int, _)] = AutoIncHandler.apply(this, initial)
+  def handler: ThisHandler.Free[(_, Int)] = handler(0)
+  def handler(initial: Int): ThisHandler.Free[(_, Int)] = AutoIncHandler.apply(this, initial)

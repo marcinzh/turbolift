@@ -1,5 +1,4 @@
 package turbolift.std_effects.default_handlers
-import cats.instances.option._
 import turbolift.!!
 import turbolift.typeclass.MonadPar
 import turbolift.typeclass.Syntax._
