@@ -1,15 +1,15 @@
 package turbolift.extra_effects
-import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.funspec.AnyFunSpec
 import org.scalatest.matchers.should.Matchers._
-import turbolift.abstraction.!!
-import turbolift.abstraction.Implicits._
+import turbolift.!!
+import turbolift.Implicits._
 import turbolift.std_effects.WriterK
 import turbolift.extra_effects.CyclicMemoizer
 import turbolift.std_effects.CanLaunchTheMissiles
 
 
-class CyclicMemoizerTest extends AnyFlatSpec with CanLaunchTheMissiles:
-  "Memoizing cyclic graph" should "work" in {
+class CyclicMemoizerTest extends AnyFunSpec with CanLaunchTheMissiles:
+  describe("Memoizing cyclic graph") {
     case object FxMemo extends CyclicMemoizer[Int, Vertex]
     case object FxLog extends WriterK[Vector, Int]
 

@@ -1,5 +1,6 @@
 package turbolift.extra_effects
-import turbolift.abstraction.{!!, Effect, Signature}
+import turbolift.{!!, Effect, Signature}
+import turbolift.extra_effects.default_handlers.CyclicMemoizerHandler
 
 
 trait CyclicMemoizerSig[K, V] extends Signature:
@@ -8,8 +9,8 @@ trait CyclicMemoizerSig[K, V] extends Signature:
 
 
 trait CyclicMemoizer[K, V] extends Effect[CyclicMemoizerSig[K, V]] with CyclicMemoizerSig[K, V]:
-  final override def memo[U <: this.type](f: K => V !! U)(k: K): (() => V) !! U = impure(_.memo(f)(k))
-  final override def get: Map[K, V] !! this.type = impure(_.get)
+  final override def memo[U <: this.type](f: K => V !! U)(k: K): (() => V) !! U = operate(_.memo(f)(k))
+  final override def get: Map[K, V] !! this.type = operate(_.get)
 
   final def apply[U <: this.type](f: K => V !! U): K => (() => V) !! U = memo(f)(_)
 
@@ -17,4 +18,4 @@ trait CyclicMemoizer[K, V] extends Effect[CyclicMemoizerSig[K, V]] with CyclicMe
     def recur(k: K): (() => V) !! U = memo(f(recur))(k)
     recur
 
-  def handler: ThisIIdHandler = CyclicMemoizerHandler[K, V, this.type](this)
+  def handler: ThisHandler.FreeId = CyclicMemoizerHandler[K, V, this.type](this)

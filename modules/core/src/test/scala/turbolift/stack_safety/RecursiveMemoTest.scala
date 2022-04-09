@@ -1,13 +1,13 @@
 package turbolift.stack_safety
-import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.funspec.AnyFunSpec
 import org.scalatest.matchers.should.Matchers._
-import turbolift.abstraction.!!
+import turbolift.!!
 import turbolift.std_effects.Reader
 import turbolift.extra_effects.{AcyclicMemoizer, CyclicMemoizer}
 
 
-class RecursiveMemoTest extends AnyFlatSpec with CanStackOverflow:
-  "AcyclicMemoizer effect" should "be stack safe" in {
+class RecursiveMemoTest extends AnyFunSpec with CanStackOverflow:
+  describe("AcyclicMemoizer effect should be stack safe") {
     case object FxMemo extends AcyclicMemoizer[Int, Int]
 
     def fun = FxMemo.fix { recur => n =>
@@ -29,7 +29,7 @@ class RecursiveMemoTest extends AnyFlatSpec with CanStackOverflow:
   }
 
 
-  "CyclicMemoizer effect" should "be stack safe" in {
+  describe("CyclicMemoizer effect should be stack safe") {
     case class Node(
       label: Int,
       prev: () => Node,

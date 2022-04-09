@@ -1,10 +1,10 @@
 package turbolift.stack_safety
-import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.funspec.AnyFunSpec
 import org.scalatest.matchers.should.Matchers._
 
 
 trait CanStackOverflow:
-  this: AnyFlatSpec =>
+  this: AnyFunSpec =>
 
   export CanStackOverflow.TooBigForStack
   
@@ -15,6 +15,7 @@ trait CanStackOverflow:
       case e: java.lang.StackOverflowError =>
         e.printStackTrace(CanStackOverflow.writer)
         fail("Stack Overflow")
+
 
 
 object CanStackOverflow:

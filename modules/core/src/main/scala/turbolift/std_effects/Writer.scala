@@ -1,6 +1,7 @@
 package turbolift.std_effects
-import turbolift.abstraction.{!!, Effect, Signature}
-import turbolift.abstraction.typeclass.AccumZero
+import turbolift.{!!, Effect, Signature}
+import turbolift.typeclass.AccumZero
+import turbolift.std_effects.default_handlers.WriterHandler
 
 
 trait WriterExtSig[W, W1] extends Signature:
@@ -8,19 +9,20 @@ trait WriterExtSig[W, W1] extends Signature:
   def tells(w: W): Unit !@! ThisEffect
   def mute[A, U <: ThisEffect](body: A !! U): A !@! U
   def listen[A, U <: ThisEffect](body: A !! U): (W, A) !@! U
-  def censor[A, U <: ThisEffect](body: A !! U)(f: W => W): A !@! U
+  def censor[A, U <: ThisEffect](f: W => W)(body: A !! U): A !@! U
 
 
 trait WriterExt[W, W1] extends Effect[WriterExtSig[W, W1]] with WriterExtSig[W, W1]:
-  final override def tell(w: W1): Unit !! this.type = impure(_.tell(w))
-  final override def tells(w: W): Unit !! this.type = impure(_.tells(w))
-  final override def mute[A, U <: this.type](body: A !! U): A !! U = impure(_.mute(body))
-  final override def listen[A, U <: this.type](body: A !! U): (W, A) !! U = impure(_.listen(body))
-  final override def censor[A, U <: this.type](body: A !! U)(f: W => W): A !! U = impure(_.censor(body)(f))
+  final override def tell(w: W1): Unit !! this.type = operate(_.tell(w))
+  final override def tells(w: W): Unit !! this.type = operate(_.tells(w))
+  final override def mute[A, U <: this.type](body: A !! U): A !! U = operate(_.mute(body))
+  final override def listen[A, U <: this.type](body: A !! U): (W, A) !! U = operate(_.listen(body))
+  final override def censor[A, U <: this.type](f: W => W)(body: A !! U): A !! U = operate(_.censor(f)(body))
 
   final def tell[K, V1](k: K, v: V1)(implicit ev: ((K, V1)) <:< W1): Unit !! this.type = tell(ev((k, v)))
 
-  def handler(implicit W: AccumZero[W, W1]): ThisIHandler[(W, _)] = WriterHandler[W, W1, this.type](this)
+  def handler(implicit W: AccumZero[W, W1]): ThisHandler.Free[(W, _)] = WriterHandler[W, W1, this.type](this)
+
 
 trait Writer[W] extends WriterExt[W, W]
 

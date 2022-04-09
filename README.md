@@ -14,7 +14,7 @@ libraryDependencies += "com.github.marcinzh" %% "turbolift-core" % "0.10.0"
 
 # Example
 ```scala
-import turbolift.abstraction.!!
+import turbolift.!!
 import turbolift.std_effects.{Reader, State, Except}
 
 object Main extends App {
@@ -41,7 +41,7 @@ object Main extends App {
   val handler = MyExcept.handler <<<! MyState.handler(100).exec <<<! MyReader.handler(3)
 
   // Execute the computation using the handler:
-  val result = handler.run(computation)
+  val result = computation.runWith(handler)
 
   println(result) // prints "Right(33)"
 }

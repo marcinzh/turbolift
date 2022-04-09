@@ -1,11 +1,11 @@
 package turbolift.type_safety
-import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.funspec.AnyFunSpec
 import org.scalatest.matchers.should.Matchers._
 import Dummies._
 
 
-class PartialHandlerTest extends AnyFlatSpec:
-  "Partial handlers" should "not leak effects" in {
+class PartialHandlerTest extends AnyFunSpec:
+  describe("Partial handlers should not leak effects") {
     assertCompiles {"""
       any[Eff123]
       .handleWith[Fx2.type with Fx3.type](any[H1])

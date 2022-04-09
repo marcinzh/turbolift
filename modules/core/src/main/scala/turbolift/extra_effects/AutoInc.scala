@@ -1,5 +1,6 @@
 package turbolift.extra_effects
-import turbolift.abstraction.{!!, Effect, Signature}
+import turbolift.{!!, Effect, Signature}
+import turbolift.extra_effects.default_handlers.AutoIncHandler
 
 
 trait AutoIncSig extends Signature:
@@ -7,7 +8,7 @@ trait AutoIncSig extends Signature:
 
 
 trait AutoInc extends Effect[AutoIncSig] with AutoIncSig:
-  def next: Int !! this.type = impure(_.next)
+  def next: Int !! this.type = operate(_.next)
 
-  def handler: ThisIHandler[(Int, _)] = handler(0)
-  def handler(initial: Int): ThisIHandler[(Int, _)] = AutoIncHandler.apply(this, initial)
+  def handler: ThisHandler.Free[(Int, _)] = handler(0)
+  def handler(initial: Int): ThisHandler.Free[(Int, _)] = AutoIncHandler.apply(this, initial)
