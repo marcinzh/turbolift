@@ -8,7 +8,7 @@ import turbolift.extra_effects.{PolyGraph, PolyGraphSig}
 
 
 private[extra_effects] object PolyGraphHandler:
-  def apply[K, V, Fx <: PolyGraph[K, V]](fx: Fx)(bottom: V): fx.ThisHandler.Free[(Map[K, V], _)] =
+  def apply[K, V, Fx <: PolyGraph[K, V]](fx: Fx)(bottom: V): fx.ThisHandler.Free[(_, Map[K, V])] =
     type Solution = K => V
 
     case object Compute extends WriterG[Map, K, Solution => V]

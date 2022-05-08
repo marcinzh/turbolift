@@ -97,34 +97,12 @@ class ChoiceTest extends AnyFunSpec with CanLaunchTheMissiles:
           val comp = !!.pure(1) ||! FxE.raise(2)
 
           it("Writer before Choice") {
-            comp.runWith(hE >>>! hC) shouldEqual picker(Vector(Right(1)))((Vector(Right(1), Left(2))))
+            comp.runWith(hE &&&! hC) shouldEqual picker(Vector(Right(1)))((Vector(Right(1), Left(2))))
           }
 
           it("Choice before Writer") {
-            comp.runWith(hC >>>! hE) shouldEqual picker(Right(Vector(1)))(Left(2))
+            comp.runWith(hC &&&! hE) shouldEqual picker(Right(Vector(1)))(Left(2))
           }
         }
       }
   }
-
-
-/*
-
-
-  describe("fail") {
-    case object Fx extends Choice
-
-    val missile1 = Missile()
-    val missile2 = Missile()
-
-    (for
-      i <- !!.pure(123)
-      _ <- Fx.fail *! missile1.launch_!
-      _ <- missile2.launch_!
-    yield i)
-    .runWith(Fx.handlers.one) shouldEqual None
-    
-    missile1.mustHaveLaunchedOnce
-    missile2.mustNotHaveLaunched
-  }
-*/

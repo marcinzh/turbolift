@@ -16,13 +16,13 @@ trait MonoGraphSig[K, V] extends Signature:
 
 trait MonoGraph[K, V] extends Effect[MonoGraphSig[K, V]] with MonoGraphSig[K, V]:
   enclosing =>
-  def empty(to: K): Unit !! this.type = operate(_.empty(to))
-  def incomingConst(to: K, value: V): Unit !! this.type = operate(_.incomingConst(to, value))
-  def outgoingConst(from: K, value: V): Unit !! this.type = operate(_.outgoingConst(from, value))
-  def incoming(to: K, from: K): Unit !! this.type = operate(_.incoming(to, from))
-  def incomings(to: K, froms: IterableOnce[K]): Unit !! this.type = operate(_.incomings(to, froms))
-  def outgoing(from: K, to: K): Unit !! this.type = operate(_.outgoing(from, to))
-  def outgoings(from: K, tos: IterableOnce[K]): Unit !! this.type = operate(_.outgoings(from, tos))
+  def empty(to: K): Unit !! this.type = perform(_.empty(to))
+  def incomingConst(to: K, value: V): Unit !! this.type = perform(_.incomingConst(to, value))
+  def outgoingConst(from: K, value: V): Unit !! this.type = perform(_.outgoingConst(from, value))
+  def incoming(to: K, from: K): Unit !! this.type = perform(_.incoming(to, from))
+  def incomings(to: K, froms: IterableOnce[K]): Unit !! this.type = perform(_.incomings(to, froms))
+  def outgoing(from: K, to: K): Unit !! this.type = perform(_.outgoing(from, to))
+  def outgoings(from: K, tos: IterableOnce[K]): Unit !! this.type = perform(_.outgoings(from, tos))
 
   final def at(k: K): AtApply = new AtApply(k)
   final class AtApply(k: K):
@@ -34,5 +34,5 @@ trait MonoGraph[K, V] extends Effect[MonoGraphSig[K, V]] with MonoGraphSig[K, V]
     def outgoing(to: K) = enclosing.outgoing(k, to)
     def outgoings(tos: IterableOnce[K]) = enclosing.outgoings(k, tos)
 
-  def handler(implicit M: Monoid[V]): ThisHandler.Free[(Map[K, V], _)] = MonoGraphHandler[K, V, this.type](this)
-  def handler(zero: V, combine: (V, V) => V): ThisHandler.Free[(Map[K, V], _)] = handler(Monoid.instance(zero, combine))
+  def handler(implicit M: Monoid[V]): ThisHandler.Free[(_, Map[K, V])] = MonoGraphHandler[K, V, this.type](this)
+  def handler(zero: V, combine: (V, V) => V): ThisHandler.Free[(_, Map[K, V])] = handler(Monoid.instance(zero, combine))

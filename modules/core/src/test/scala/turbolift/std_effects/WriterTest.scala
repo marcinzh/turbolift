@@ -10,19 +10,19 @@ class WriterTest extends AnyFunSpec:
     it("tell") {
       case object Fx extends Writer[Int]
       Fx.tell(1)
-      .runWith(Fx.handler) shouldEqual ((1, ()))
+      .runWith(Fx.handler) shouldEqual (((), 1))
     }
 
     it("listen") {
       case object Fx extends Writer[Int]
       Fx.listen(Fx.tell(1))
-      .runWith(Fx.handler) shouldEqual ((1, (1, ())))
+      .runWith(Fx.handler) shouldEqual ((((), 1), 1))
     }
 
     it("censor") {
       case object Fx extends Writer[Int]
       Fx.censor(_ + 1)(Fx.tell(1))
-      .runWith(Fx.handler) shouldEqual ((2, ()))
+      .runWith(Fx.handler) shouldEqual (((), 2))
     }
   }
 
@@ -38,10 +38,10 @@ class WriterTest extends AnyFunSpec:
       (for
         _ <- Fx.tell("a")
         workaround <- Fx.listen (Fx.tell("b") &&! Fx.tell("c"))
-        (x, _) = workaround
+        ((), x) = workaround
         _ <- Fx.tell("d")
       yield x)
-      .runWith(Fx.handler) shouldEqual ("abcd", "bc")
+      .runWith(Fx.handler) shouldEqual ("bc", "abcd")
     }
   }
 

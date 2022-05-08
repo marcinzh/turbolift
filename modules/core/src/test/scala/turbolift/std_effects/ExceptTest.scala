@@ -52,11 +52,11 @@ class ExceptTest extends AnyFunSpec with CanLaunchTheMissiles:
         val hE = picker.handler(FxE)
         describe("With handler = " + picker.name) {
           it("State before Except") {
-            comp.runWith(hE <<<! hS) shouldEqual Right((0, false))
+            comp.runWith(hS &&&! hE) shouldEqual Right((false, 0))
           }
 
           it("Except before State") {
-            comp.runWith(hS <<<! hE) shouldEqual ((1, Right(false)))
+            comp.runWith(hE &&&! hS) shouldEqual ((Right(false), 1))
           }
         }
     }
@@ -95,13 +95,13 @@ class ExceptTest extends AnyFunSpec with CanLaunchTheMissiles:
           it("Writer before Except") {
             val err = picker("X")("XY")
             val acc = picker("")("")
-            comp.runWith(hW >>>! hE) shouldEqual Right((acc, err))
+            comp.runWith(hW &&&! hE) shouldEqual Right((err, acc))
           }
 
           it("Except before Writer") {
             val err = picker("X")("XY")
             val acc = picker("abc")("abc")
-            comp.runWith(hE >>>! hW) shouldEqual ((acc, Right(err)))
+            comp.runWith(hE &&&! hW) shouldEqual ((Right(err), acc))
           }
         }
       }

@@ -13,5 +13,5 @@ object ReaderWriterState:
       FxW <: WriterExt[W, W1],
       FxS <: State[S]
     ](thiz: Effect.Combine3[FxR, FxW, FxS])
-      def handler(initialR: R, initialS: S)(implicit W: AccumZero[W, W1]): thiz.ThisHandler.Free[((W, S), _)] =
+      def handler(initialR: R, initialS: S)(implicit W: AccumZero[W, W1]): thiz.ThisHandler.Free[(_, (W, S))] =
         ReaderWriterStateHandler.apply(thiz, initialR, initialS)

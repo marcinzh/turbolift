@@ -28,7 +28,7 @@ final class MainLoop[M[_], U](theMonad: MonadPar[M], effectStack: EffectStack):
       case FlatMap(ux, k) => loop(ux, SeqStep(k, step))
       case ZipPar(ux, uy) => loop(ux, ParStepLeft(uy, step))
 
-      case Operate(id, op) =>
+      case Perform(id, op) =>
         val op2 = op.asInstanceOf[Signature => Any]
         val f = vmtLookup(id).asInstanceOf[(Signature => Any) => A !! U]
         loop(f(op2), step)

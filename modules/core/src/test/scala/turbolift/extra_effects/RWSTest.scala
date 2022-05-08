@@ -20,25 +20,26 @@ class RWSTest extends AnyFunSpec:
       _ <- FxS.put(s + r)
     yield s
 
+    val result = (0.5, ("100.5", 10.5))
 
-    val result = (("100.5", 10.5), 0.5)
+    it("R+W+S") {
+      comp
+        .handleWith(FxW.handler ***! FxS.handler(0.5))
+        .handleWith(FxR.handler(10))
+        .run
+        .shouldEqual(result)
+    }
 
-    comp
-      .handleWith(FxS.handler(0.5))
-      .handleWith(FxW.handler)
-      .handleWith(FxR.handler(10))
-      .map { case (a, (b, c)) => ((a, b), c) }
-      .run
-      .shouldEqual(result)
-
-    comp
-      .handleWith((FxR &! FxW &! FxS).handler(10, 0.5))
-      .run
-      .shouldEqual(result)
+    it("RWS") {
+      comp
+        .handleWith((FxR &! FxW &! FxS).handler(10, 0.5))
+        .run
+        .shouldEqual(result)
+    }
   }
 
   describe("RWS HO-ops") {
-    it("localPut") {
+    describe("localPut") {
       case object FxR extends Reader[String]
       case object FxW extends Writer[String]
       case object FxS extends State[String]
@@ -57,17 +58,21 @@ class RWSTest extends AnyFunSpec:
 
       val result = ("ABA", "aba")
 
-      comp
-        .runWith(FxR.handler("a") <<<! (FxW.handler ***! FxS.handler("")).justState)
-        .shouldEqual(result)
+      it("R+W+S") {
+        comp
+          .runWith(FxR.handler("a") &&&! (FxW.handler ***! FxS.handler("")).justState)
+          .shouldEqual(result)
+      }
 
-      comp
-        .runWith((FxR &! FxW &! FxS).handler("a", "").justState)
-        .shouldEqual(result)
+      it("RWS") {
+        comp
+          .runWith((FxR &! FxW &! FxS).handler("a", "").justState)
+          .shouldEqual(result)
+      }
     }
 
 
-    it("listen") {
+    describe("listen") {
       case object FxR extends Reader[String]
       case object FxW extends Writer[String]
       case object FxS extends State[String]
@@ -81,19 +86,23 @@ class RWSTest extends AnyFunSpec:
       val comp = for
         _ <- work
         workaround <- FxW.listen(FxR.localPut("b")(work))
-        (x, _) = workaround
+        ((), x) = workaround
         _ <- work
       yield x
 
-      val result = (("ABA", "aba"), "B")
+      val result = ("B", ("ABA", "aba"))
 
-      comp
-        .runWith(FxR.handler("a") <<<! (FxW.handler ***! FxS.handler("")))
-        .shouldEqual(result)
+      it("R+W+S") {
+        comp
+          .runWith(FxR.handler("a") &&&! (FxW.handler ***! FxS.handler("")))
+          .shouldEqual(result)
+      }
 
-      comp
-        .runWith((FxR &! FxW &! FxS).handler("a", ""))
-        .shouldEqual(result)
+      it("RWS") {
+        comp
+          .runWith((FxR &! FxW &! FxS).handler("a", ""))
+          .shouldEqual(result)
+      }
     }
   }
   

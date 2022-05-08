@@ -1,5 +1,4 @@
 package turbolift.extra_effects.default_handlers
-import cats.instances.tuple._
 import cats.syntax.functor._
 import turbolift.{!!, Effect}
 import turbolift.typeclass.{MonadPar, AccumZero}
@@ -7,6 +6,7 @@ import turbolift.typeclass.Syntax._
 import turbolift.std_effects.{Reader, ReaderSig}
 import turbolift.std_effects.{WriterExt, WriterExtSig}
 import turbolift.std_effects.{State, StateSig}
+import turbolift.std_effects.default_handlers.FlippedPairFunctor.given
 
 
 private[extra_effects] object ReaderWriterStateHandler:
@@ -15,7 +15,7 @@ private[extra_effects] object ReaderWriterStateHandler:
     FxR <: Reader[R],
     FxW <: WriterExt[W, W1],
     FxS <: State[S]
-  ](fx: Effect.Combine3[FxR, FxW, FxS], initialR: R, initialS: S)(implicit W: AccumZero[W, W1]): fx.ThisHandler.Free[((W, S), _)] =
+  ](fx: Effect.Combine3[FxR, FxW, FxS], initialR: R, initialS: S)(implicit W: AccumZero[W, W1]): fx.ThisHandler.Free[(_, (W, S))] =
     type RWS = (R, W, S)
     extension (thiz: RWS)
       inline def r: R = thiz._1
@@ -31,28 +31,28 @@ private[extra_effects] object ReaderWriterStateHandler:
       inline def combine_w(that: RWS, f: W => W): RWS = (r, w |+| f(that.w), that.s)
 
 
-    new fx.Stateful[RWS, (RWS, _)] with ReaderSig[R] with WriterExtSig[W, W1] with StateSig[S]:
-      override def onReturn[A](a: A): RWS => (RWS, A) = (_, a)
+    new fx.Stateful[RWS, (_, RWS)] with ReaderSig[R] with WriterExtSig[W, W1] with StateSig[S]:
+      override def onReturn[A](a: A): RWS => (A, RWS) = (a, _)
 
-      override def onFlatMap[A, B, M[_]: MonadPar](tma: RWS => M[(RWS, A)])(f: A => RWS => M[(RWS, B)]): RWS => M[(RWS, B)] =
+      override def onFlatMap[A, B, M[_]: MonadPar](tma: RWS => M[(A, RWS)])(f: A => RWS => M[(B, RWS)]): RWS => M[(B, RWS)] =
         rws0 => tma(rws0).flatMap {
-          case (rws1, a) => f(a)(rws0.restore_r(rws1))
+          case (a, rws1) => f(a)(rws0.restore_r(rws1))
         }
 
-      override def onProduct[A, B, M[_]: MonadPar](tma: RWS => M[(RWS, A)], tmb: RWS => M[(RWS, B)]): RWS => M[(RWS, (A, B))] =
+      override def onProduct[A, B, M[_]: MonadPar](tma: RWS => M[(A, RWS)], tmb: RWS => M[(B, RWS)]): RWS => M[((A, B), RWS)] =
         rws0 => tma(rws0).flatMap {
-          case (rws1, a) => tmb(rws0.restore_r(rws1)).map {
-            case (rws2, b) => (rws0.restore_r(rws2), (a, b))
+          case (a, rws1) => tmb(rws0.restore_r(rws1)).map {
+            case (b, rws2) => ((a, b), rws0.restore_r(rws2))
           }
         }
       
       //////// Reader:
 
       override val ask: R !@! ThisEffect =
-        kk ?=> rws => kk.outer((rws, kk.inner(rws.r)))
+        kk ?=> rws => kk.outer((kk.inner(rws.r), rws))
 
       override def asks[A](f: R => A): A !@! ThisEffect =
-        kk ?=> rws => kk.outer((rws, kk.inner(f(rws.r))))
+        kk ?=> rws => kk.outer((kk.inner(f(rws.r)), rws))
 
       override def localPut[A, U <: ThisEffect](r: R)(body: A !! U): A !@! U =
         kk ?=> rws => kk.locally(body)(rws.r = r)
@@ -63,19 +63,19 @@ private[extra_effects] object ReaderWriterStateHandler:
       //////// Writer:
 
       override def tell(w: W1): Unit !@! ThisEffect =
-        kk ?=> rws => kk.outer((rws.w_%(_ |+ w), kk.inner()))
+        kk ?=> rws => kk.outer((kk.inner(), rws.w_%(_ |+ w)))
 
       override def tells(w: W): Unit !@! ThisEffect =
-        kk ?=> rws => kk.outer((rws.w_%(_ |+| w), kk.inner()))
+        kk ?=> rws => kk.outer((kk.inner(), rws.w_%(_ |+| w)))
 
-      override def listen[A, U <: ThisEffect](body: A !! U): (W, A) !@! U =
+      override def listen[A, U <: ThisEffect](body: A !! U): (A, W) !@! U =
         kk ?=> rws0 => kk.locally(body)(rws0.w = W.zero).map {
-          case (rws1, fa) => (rws0.combine_w(rws1, w => w), fa.map((rws1.w, _)))
+          case (fa, rws1) => (fa.map((_, rws1.w)), rws0.combine_w(rws1, w => w))
         }
 
       override def censor[A, U <: ThisEffect](f: W => W)(body: A !! U): A !@! U =
         kk ?=> rws0 => kk.locally(body)(rws0.w = W.zero).map {
-          case (rws1, fa) => (rws0.combine_w(rws1, f), fa)
+          case (fa, rws1) => (fa, rws0.combine_w(rws1, f))
         }
 
       override def mute[A, U <: ThisEffect](body: A !! U): A !@! U =
@@ -84,54 +84,54 @@ private[extra_effects] object ReaderWriterStateHandler:
       //////// State:
 
       override val get: S !@! ThisEffect =
-        kk ?=> rws => kk.outer((rws, kk.inner(rws.s)))
+        kk ?=> rws => kk.outer((kk.inner(rws.s), rws))
 
       override def gets[A](f: S => A): A !@! ThisEffect =
-        kk ?=> rws => kk.outer((rws, kk.inner(f(rws.s))))
+        kk ?=> rws => kk.outer((kk.inner(f(rws.s)), rws))
 
       override def put(s: S): Unit !@! ThisEffect =
-        kk ?=> rws => kk.outer((rws.s = s, kk.inner()))
+        kk ?=> rws => kk.outer((kk.inner(), rws.s = s))
 
       override def swap(s: S): S !@! ThisEffect =
-        kk ?=> rws => kk.outer((rws.s = s, kk.inner(rws.s)))
+        kk ?=> rws => kk.outer((kk.inner(rws.s), rws.s = s))
 
       override def modify(f: S => S): Unit !@! ThisEffect =
-        kk ?=> rws => kk.outer((rws.s_%(f), kk.inner()))
+        kk ?=> rws => kk.outer((kk.inner(), rws.s_%(f)))
 
       override def modifyGet(f: S => S): S !@! ThisEffect =
         kk ?=> rws =>
           val s = f(rws.s)
-          kk.outer((rws.s = s, kk.inner(s)))
+          kk.outer((kk.inner(s), rws.s = s))
 
       override def getModify(f: S => S): S !@! ThisEffect =
         kk ?=> rws =>
           val s = f(rws.s)
-          kk.outer((rws.s = s, kk.inner(rws.s)))
+          kk.outer((kk.inner(rws.s), rws.s = s))
 
       override def getModifyGet(f: S => S): (S, S) !@! ThisEffect =
         kk ?=> rws =>
           val s = f(rws.s)
-          kk.outer((rws.s = s, kk.inner((rws.s, s))))
+          kk.outer((kk.inner((s, rws.s)), rws.s = s))
 
-      override def update[A](f: S => (S, A)): A !@! ThisEffect =
+      override def update[A](f: S => (A, S)): A !@! ThisEffect =
         kk ?=> rws =>
-          val (s, a) = f(rws.s)
-          kk.outer((rws.s = s, kk.inner(a)))
+          val (a, s) = f(rws.s)
+          kk.outer((kk.inner(a), rws.s = s))
 
-      override def updateGet[A](f: S => (S, A)): (S, A) !@! ThisEffect =
+      override def updateGet[A](f: S => (A, S)): (A, S) !@! ThisEffect =
         kk ?=> rws =>
-          val sa @ (s, _) = f(rws.s)
-          kk.outer((rws.s = s, kk.inner(sa)))
+          val a_s @ (_, s) = f(rws.s)
+          kk.outer((kk.inner(a_s), rws.s = s))
 
-      override def getUpdate[A](f: S => (S, A)): (S, A) !@! ThisEffect =
+      override def getUpdate[A](f: S => (A, S)): (A, S) !@! ThisEffect =
         kk ?=> rws =>
-          val (s, a) = f(rws.s)
-          kk.outer((rws.s = s, kk.inner((rws.s, a))))
+          val (a, s) = f(rws.s)
+          kk.outer((kk.inner((a, rws.s)), rws.s = s))
 
-      override def getUpdateGet[A](f: S => (S, A)): (S, S, A) !@! ThisEffect =
+      override def getUpdateGet[A](f: S => (A, S)): (A, S, S) !@! ThisEffect =
         kk ?=> rws =>
-          val (s, a) = f(rws.s)
-          kk.outer((rws.s = s, kk.inner((rws.s, s, a))))
+          val (a, s) = f(rws.s)
+          kk.outer((kk.inner((a, rws.s, s)), rws.s = s))
 
     .toHandler((initialR, W.zero, initialS))
     .mapState { case (_, w, s) => (w, s) }

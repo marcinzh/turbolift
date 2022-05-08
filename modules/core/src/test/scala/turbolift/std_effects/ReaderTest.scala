@@ -54,7 +54,7 @@ class ReaderTest extends AnyFunSpec:
 
       val lines1 = 
         loop("ab[cd[e]f[]g]h")
-        .runWith(FxR.handler(0) <<<! FxW.handler.justState)
+        .runWith(FxW.handler.justState &&&! FxR.handler(0))
         .mkString("\n")
 
       val lines2 = """

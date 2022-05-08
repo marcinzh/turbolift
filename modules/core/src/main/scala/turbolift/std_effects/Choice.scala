@@ -11,9 +11,9 @@ trait ChoiceSig extends Signature:
 
 
 trait Choice extends Effect[ChoiceSig] with ChoiceSig:
-  final override val empty: Nothing !! this.type = operate(_.empty)
-  final override def plus[A, U <: this.type](lhs: A !! U, rhs: => A !! U): A !! U = operate(_.plus(lhs, rhs))
-  final override def choose[A](as: Iterable[A]): A !! this.type = operate(_.choose(as))
+  final override val empty: Nothing !! this.type = perform(_.empty)
+  final override def plus[A, U <: this.type](lhs: A !! U, rhs: => A !! U): A !! U = perform(_.plus(lhs, rhs))
+  final override def choose[A](as: Iterable[A]): A !! this.type = perform(_.choose(as))
 
   final def apply[A](as: A*): A !! this.type = choose(as.toVector)
   final def fail = empty
