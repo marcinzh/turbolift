@@ -1,5 +1,5 @@
 package turbolift.std_effects
-import scala.util.{Try, Success}
+import scala.util.Try
 import turbolift.{!!, Effect, Signature}
 import turbolift.std_effects.default_handlers.FailHandler
 
@@ -9,7 +9,7 @@ trait FailSig extends Signature:
   def orElse[A, U <: ThisEffect](lhs: A !! U, rhs: => A !! U): A !@! U
 
 
-trait Fail extends Effect[FailSig] with FailSig:
+trait FailEffect extends Effect[FailSig] with FailSig:
   final override val fail: Nothing !! this.type = perform(_.fail)
   final override def orElse[A, U <: this.type](lhs: A !! U, rhs: => A !! U): A !! U = perform(_.orElse(lhs, rhs))
 
@@ -21,3 +21,7 @@ trait Fail extends Effect[FailSig] with FailSig:
   final def fromTry[A](x: Try[A]): A !! this.type = x.fold(_ => fail, pure)
 
   def handler: ThisHandler.Free[Option] = FailHandler(this)
+
+
+case object Fail extends FailEffect
+type Fail = Fail.type

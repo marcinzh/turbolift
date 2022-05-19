@@ -2,11 +2,11 @@ package turbolift.std_effects.default_handlers
 import turbolift.!!
 import turbolift.typeclass.MonadPar
 import turbolift.typeclass.Syntax._
-import turbolift.std_effects.{Fail, FailSig}
+import turbolift.std_effects.{FailEffect, FailSig}
 
 
 private[std_effects] object FailHandler:
-  def apply[Fx <: Fail](fx: Fx): fx.ThisHandler.Free[Option] =
+  def apply[Fx <: FailEffect](fx: Fx): fx.ThisHandler.Free[Option] =
     new fx.Stateless[Option] with FailSig:
       override def onReturn[A](a: A): Option[A] = Some(a)
 

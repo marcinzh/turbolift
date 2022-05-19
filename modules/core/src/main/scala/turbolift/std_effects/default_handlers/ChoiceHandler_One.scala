@@ -22,10 +22,10 @@ private[std_effects] object ChoiceHandler_One:
           case _ => None
         }
 
-      override def empty: Nothing !@! ThisEffect =
+      override def fail: Nothing !@! ThisEffect =
         kk ?=> kk.outer(None)
 
-      override def plus[A, U <: ThisEffect](lhs: A !! U, rhs: => A !! U): A !@! U =
+      override def orElse[A, U <: ThisEffect](lhs: A !! U, rhs: => A !! U): A !@! U =
         kk ?=> kk.locally(lhs).flatMap { xs =>
           if xs.isDefined
           then kk.outer(xs)
@@ -33,7 +33,7 @@ private[std_effects] object ChoiceHandler_One:
         }
 
       override def choose[A](as: Iterable[A]): A !@! ThisEffect =
-        // plus(!!.pure(as.head), choose(as.tail))
+        // orElse(!!.pure(as.head), choose(as.tail))
         kk ?=> 
           if as.isEmpty
           then kk.outer(None)

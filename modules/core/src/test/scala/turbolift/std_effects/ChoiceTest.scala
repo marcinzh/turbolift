@@ -81,8 +81,7 @@ class ChoiceTest extends AnyFunSpec with CanLaunchTheMissiles:
         it("Nested plus with guard") {
           (for
             n <- !!.pure(1) ||! !!.pure(2)
-            _ <- if n % 2 == 0 then Fx.choose(n to n) else Fx.empty
-            // if n % 2 == 0
+            if n % 2 == 0
             c <- !!.pure('a') ||! !!.pure('b')
           yield s"$n$c")
           .runWith(handler) shouldEqual picker(Vector("2a"))(Vector("2a", "2b"))
