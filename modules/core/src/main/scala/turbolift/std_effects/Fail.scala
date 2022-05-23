@@ -24,4 +24,5 @@ trait FailEffect extends Effect[FailSig] with FailSig:
 
 
 case object Fail extends FailEffect
+
 type Fail = Fail.type

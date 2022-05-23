@@ -17,5 +17,4 @@ case object AnyFail extends ProtoEffect[FailSig] with FailSig with HasEffectId.N
   final def fromEither[E, A](x: Either[E, A]): A !! ThisEffect = x.fold(_ => fail, pure)
   final def fromTry[A](x: Try[A]): A !! ThisEffect = x.fold(_ => fail, pure)
 
-
 type AnyFail = AnyFail.ThisEffect
