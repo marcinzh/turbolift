@@ -1,7 +1,7 @@
 package turbolift.extra_effects
 import turbolift.Effect
 import turbolift.typeclass.AccumZero
-import turbolift.std_effects.{Reader, WriterExt, State}
+import turbolift.std_effects.{Reader, WriterEffect, State}
 import turbolift.extra_effects.default_handlers.ReaderWriterStateHandler
 
 
@@ -10,7 +10,7 @@ object ReaderWriterState:
     extension [
       R, W, W1, S,
       FxR <: Reader[R],
-      FxW <: WriterExt[W, W1],
+      FxW <: WriterEffect[W, W1],
       FxS <: State[S]
     ](thiz: Effect.Combine3[FxR, FxW, FxS])
       def handler(initialR: R, initialS: S)(implicit W: AccumZero[W, W1]): thiz.ThisHandler.Free[(_, (W, S))] =

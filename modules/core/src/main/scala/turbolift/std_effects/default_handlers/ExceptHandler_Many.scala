@@ -2,12 +2,12 @@ package turbolift.std_effects.default_handlers
 import turbolift.!!
 import turbolift.typeclass.{MonadPar, Accum}
 import turbolift.typeclass.Syntax._
-import turbolift.std_effects.{ExceptExt, ExceptExtSig}
+import turbolift.std_effects.{ExceptEffect, ExceptSig}
 
 
 private[std_effects] object ExceptHandler_Many:
-  def apply[E, E1, Fx <: ExceptExt[E, E1]](fx: Fx)(implicit E: Accum[E, E1]): fx.ThisHandler.Free[Either[E, _]] =
-    new fx.Stateless[Either[E, _]] with ExceptExtSig[E, E1]:
+  def apply[E, E1, Fx <: ExceptEffect[E, E1]](fx: Fx)(implicit E: Accum[E, E1]): fx.ThisHandler.Free[Either[E, _]] =
+    new fx.Stateless[Either[E, _]] with ExceptSig[E, E1]:
       override def onReturn[A](a: A): Either[E, A] = Right(a)
 
       override def onFlatMap[A, B, M[_]: MonadPar](tma: M[Either[E, A]])(f: A => M[Either[E, B]]): M[Either[E, B]] =

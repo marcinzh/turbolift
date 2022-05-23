@@ -1,8 +1,8 @@
 package turbolift
 import turbolift.typeclass.MonadPar
-import turbolift.internals.effect.{EffectId, AnyChoice}
+import turbolift.internals.effect.EffectId
 import turbolift.internals.extensions.ComputationExtensions
-import turbolift.std_effects.Choice
+import turbolift.std_effects.AnyFail
 import HandlerCases.Primitive
 import ComputationCases._
 
@@ -27,10 +27,10 @@ sealed trait Computation[+A, -U]:
   final def &<![B, V <: U](that: B !! V): A !! V = zipPar(that).map(_._1)
   final def &&<![B, V <: U](that: => B !! V): A !! V = flatMap(a => that.map(_ => a))
 
-  final def |![B >: A, V <: U & Choice](that: B !! V): B !! V = ??? //@#@
-  final def ||![B >: A, V <: U & Choice](that: => B !! V): B !! V = AnyChoice.plus(this, that)
+  final def |![B >: A, V <: U & AnyFail](that: B !! V): B !! V = ??? //@#@
+  final def ||![B >: A, V <: U & AnyFail](that: => B !! V): B !! V = AnyFail.orElse(this, that)
 
-  final def withFilter[V <: U & Choice](f: A => Boolean): A !! V = flatMap(a => if f(a) then !!.pure(a) else !!.fail)
+  final def withFilter[V <: U & AnyFail](f: A => Boolean): A !! V = flatMap(a => if f(a) then !!.pure(a) else !!.fail)
 
   final def upCast[V <: U] = this: A !! V
 
@@ -41,7 +41,7 @@ object Computation extends ComputationExtensions with ComputationInstances:
   def pure[A](a: A): A !! Any = Pure(a)
   def defer[A, U](ua: => A !! U): A !! U = unit.flatMap(_ => ua)
   def impure[A](a: => A): A !! Any = unit.flatMap(_ => Pure(a))
-  def fail: Nothing !! Choice = AnyChoice.empty
+  def fail: Nothing !! AnyFail = AnyFail.fail
 
   def when[U](cond: Boolean)(body: => Unit !! U): Unit !! U = if cond then body else unit
 

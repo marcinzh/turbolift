@@ -31,13 +31,13 @@ private[std_effects] object ChoiceHandler_Many:
             yield (a, b)
         }
 
-      override def empty: Nothing !@! ThisEffect =
+      override def fail: Nothing !@! ThisEffect =
         kk ?=> kk.outer(Vector.empty)
 
       override def choose[A](as: Iterable[A]): A !@! ThisEffect =
         kk ?=> kk.outer(as.iterator.map(kk.inner).toVector)
 
-      override def plus[A, U <: ThisEffect](lhs: A !! U, rhs: => A !! U): A !@! U =
+      override def orElse[A, U <: ThisEffect](lhs: A !! U, rhs: => A !! U): A !@! U =
         kk ?=> (kk.locally(lhs) *! kk.locally(rhs)).map {
           case (xs, ys) => xs ++ ys
         }

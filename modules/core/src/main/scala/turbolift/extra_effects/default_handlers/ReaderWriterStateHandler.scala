@@ -4,7 +4,7 @@ import turbolift.{!!, Effect}
 import turbolift.typeclass.{MonadPar, AccumZero}
 import turbolift.typeclass.Syntax._
 import turbolift.std_effects.{Reader, ReaderSig}
-import turbolift.std_effects.{WriterExt, WriterExtSig}
+import turbolift.std_effects.{WriterEffect, WriterSig}
 import turbolift.std_effects.{State, StateSig}
 import turbolift.std_effects.default_handlers.FlippedPairFunctor.given
 
@@ -13,7 +13,7 @@ private[extra_effects] object ReaderWriterStateHandler:
   def apply[
     R, W, W1, S,
     FxR <: Reader[R],
-    FxW <: WriterExt[W, W1],
+    FxW <: WriterEffect[W, W1],
     FxS <: State[S]
   ](fx: Effect.Combine3[FxR, FxW, FxS], initialR: R, initialS: S)(implicit W: AccumZero[W, W1]): fx.ThisHandler.Free[(_, (W, S))] =
     type RWS = (R, W, S)
@@ -31,7 +31,7 @@ private[extra_effects] object ReaderWriterStateHandler:
       inline def combine_w(that: RWS, f: W => W): RWS = (r, w |+| f(that.w), that.s)
 
 
-    new fx.Stateful[RWS, (_, RWS)] with ReaderSig[R] with WriterExtSig[W, W1] with StateSig[S]:
+    new fx.Stateful[RWS, (_, RWS)] with ReaderSig[R] with WriterSig[W, W1] with StateSig[S]:
       override def onReturn[A](a: A): RWS => (A, RWS) = (a, _)
 
       override def onFlatMap[A, B, M[_]: MonadPar](tma: RWS => M[(A, RWS)])(f: A => RWS => M[(B, RWS)]): RWS => M[(B, RWS)] =

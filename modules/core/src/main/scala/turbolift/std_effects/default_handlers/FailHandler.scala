@@ -2,12 +2,12 @@ package turbolift.std_effects.default_handlers
 import turbolift.!!
 import turbolift.typeclass.MonadPar
 import turbolift.typeclass.Syntax._
-import turbolift.std_effects.{Choice, ChoiceSig}
+import turbolift.std_effects.{FailEffect, FailSig}
 
 
-private[std_effects] object ChoiceHandler_One:
-  def apply[Fx <: Choice](fx: Fx): fx.ThisHandler.Free[Option] =
-    new fx.Stateless[Option] with ChoiceSig:
+private[std_effects] object FailHandler:
+  def apply[Fx <: FailEffect](fx: Fx): fx.ThisHandler.Free[Option] =
+    new fx.Stateless[Option] with FailSig:
       override def onReturn[A](a: A): Option[A] = Some(a)
 
       override def onFlatMap[A, B, M[_]: MonadPar](tma: M[Option[A]])(f: A => M[Option[B]]): M[Option[B]] =
@@ -31,17 +31,5 @@ private[std_effects] object ChoiceHandler_One:
           then kk.outer(xs)
           else kk.locally(rhs)
         }
-
-      override def choose[A](as: Iterable[A]): A !@! ThisEffect =
-        // orElse(!!.pure(as.head), choose(as.tail))
-        kk ?=> 
-          if as.isEmpty
-          then kk.outer(None)
-          else
-            kk.locally(!!.pure(as.head)).flatMap { xs =>
-              if xs.isDefined
-              then kk.outer(xs)
-              else kk.locally(fx.choose(as.tail))
-            }
       
     .toHandler

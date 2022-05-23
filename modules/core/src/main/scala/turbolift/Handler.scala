@@ -40,8 +40,10 @@ sealed trait Handler[Result[+_], Elim, Intro]:
 
 object Handler extends HandlerExtensions:
   type Id[Elim, Intro] = Handler[[X] =>> X, Elim, Intro]
+  type Const[Result, Elim, Intro] = Handler[[X] =>> Result, Elim, Intro]
   type Free[Result[+_], Elim] = Handler[Result, Elim, Any]
   type FreeId[Elim] = Handler[[X] =>> X, Elim, Any]
+  type FreeConst[Result, Elim] = Handler[[X] =>> Result, Elim, Any]
 
   def flatten[F[+_], L, N1, N2](h: Handler[F, L, N1] !! N2): Handler[F, L, N1 & N2] = HandlerCases.Flattened(h)
 

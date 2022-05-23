@@ -3,7 +3,7 @@ import turbolift.{!!, Signature, ComputationCases, HandlerCases}
 import turbolift.typeclass.MonadPar
 import turbolift.internals.effect.EffectId
 import turbolift.internals.interpreter.{InterpreterCases, InverseControl}
-import turbolift.std_effects.ChoiceSig
+import turbolift.std_effects.FailSig
 
 
 final class MainLoop[M[_], U](theMonad: MonadPar[M], effectStack: EffectStack):
@@ -78,7 +78,7 @@ final class MainLoop[M[_], U](theMonad: MonadPar[M], effectStack: EffectStack):
           (method: Signature => Any) => roof.withControl(method(ip).asInstanceOf[roof.WithControlArg[Any]]) 
         case EffectStackItem.Proxy(ip) => (method: Signature => Any) => method(ip)
       _ = {
-        if esi.interpreter.isInstanceOf[ChoiceSig] then
+        if esi.interpreter.isInstanceOf[FailSig] then
           array(array.size - 1) = fun
       }
       effectId <- esi.interpreter.effectIds

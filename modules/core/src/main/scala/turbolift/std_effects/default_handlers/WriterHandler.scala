@@ -3,13 +3,13 @@ import cats.syntax.functor._
 import turbolift.!!
 import turbolift.typeclass.{MonadPar, AccumZero}
 import turbolift.typeclass.Syntax._
-import turbolift.std_effects.{WriterExt, WriterExtSig}
+import turbolift.std_effects.{WriterEffect, WriterSig}
 import FlippedPairFunctor.given
 
 
 private[std_effects] object WriterHandler:
-  def apply[W, W1, Fx <: WriterExt[W, W1]](fx: Fx)(implicit W: AccumZero[W, W1]): fx.ThisHandler.Free[(_, W)] =
-    new fx.Stateful[W, (_, W)] with WriterExtSig[W, W1]:
+  def apply[W, W1, Fx <: WriterEffect[W, W1]](fx: Fx)(implicit W: AccumZero[W, W1]): fx.ThisHandler.Free[(_, W)] =
+    new fx.Stateful[W, (_, W)] with WriterSig[W, W1]:
       override def onReturn[A](a: A) = (a, _)
 
       override def onFlatMap[A, B, M[_]: MonadPar](tma: W => M[(A, W)])(f: A => W => M[(B, W)]): W => M[(B, W)] =

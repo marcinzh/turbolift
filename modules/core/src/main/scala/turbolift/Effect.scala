@@ -12,8 +12,10 @@ trait Effect[Z <: Signature] extends ProtoEffect[Z] with Effect.Stub:
   final type ThisHandler[F[+_], N] = Handler[F, this.type, N]
   object ThisHandler:
     type Id[N] = Handler.Id[enclosing.type, N]
+    type Const[T, N] = Handler.Const[T, enclosing.type, N]
     type Free[F[+_]] = Handler.Free[F[+_], enclosing.type]
     type FreeId = Handler.FreeId[enclosing.type]
+    type FreeConst[T] = Handler.FreeConst[T, enclosing.type]
 
   sealed trait ThisInterpreter extends IC.Unsealed:
     final override val effectIds: Array[EffectId] = Array(Effect.this)
@@ -39,8 +41,10 @@ object Effect:
     final type ThisHandler[F[+_], N] = Handler[F, Fx, N]
     object ThisHandler:
       type Id[N] = Handler.Id[Fx, N]
+      type Const[T, N] = Handler.Const[T, Fx, N]
       type Free[F[+_]] = Handler.Free[F[+_], Fx]
       type FreeId = Handler.FreeId[Fx]
+      type FreeConst[T] = Handler.FreeConst[T, Fx]
 
 
   final class Combine2[Fx1 <: Stub, Fx2 <: Stub](val fx1: Fx1, val fx2: Fx2) extends Combine[Fx1 & Fx2](fx1, fx2):
