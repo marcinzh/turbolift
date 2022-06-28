@@ -7,11 +7,11 @@ import turbolift.internals.interpreter.InverseControl
 type EffectStack = Array[EffectStackItem]
 
 
-sealed trait EffectStackItem:
+private[engine] sealed trait EffectStackItem:
   val interpreter: Interpreter
 
 
-object EffectStackItem:
+private[engine] object EffectStackItem:
   final case class Proxy(override val interpreter: Interpreter) extends EffectStackItem
 
   final case class Flow(

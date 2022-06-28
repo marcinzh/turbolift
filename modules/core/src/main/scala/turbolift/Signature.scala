@@ -6,5 +6,5 @@ trait Signature:
   type ThisEffect
 
 
-object Signature:
+private[turbolift] object Signature:
   type Apply[U] = Signature { type ThisEffect = U }

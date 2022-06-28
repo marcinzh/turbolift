@@ -4,7 +4,7 @@ import turbolift.typeclass.MonadPar
 import TrampolineCases._
 
 
-sealed trait Trampoline[A]:
+private[engine] sealed trait Trampoline[A]:
   final def map[B](f: A => B): Trampoline[B] = flatMap(a => Done(f(a)))
 
   final def flatMap[B](f: A => Trampoline[B]): Trampoline[B] =

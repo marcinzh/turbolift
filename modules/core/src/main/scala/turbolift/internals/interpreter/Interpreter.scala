@@ -24,7 +24,7 @@ object Interpreter:
 
 
 object InterpreterCases:
-  trait Unsealed extends Interpreter //// subclassed by Effect
+  private[turbolift] trait Unsealed extends Interpreter //// subclassed by Effect
 
   sealed trait Proxy extends Interpreter:
     final override type Result[A] = A
@@ -32,7 +32,7 @@ object InterpreterCases:
     final def toHandler: ThisHandler = HandlerCases.Primitive[Result, ThisEffect, IntroEffect](this, ())
 
 
-  trait ProxyWithParam[Fx] extends Proxy: //// subclassed by Effect
+  private[turbolift] trait ProxyWithParam[Fx] extends Proxy: //// subclassed by Effect
     final override type IntroEffect = Fx
 
 

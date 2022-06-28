@@ -2,7 +2,7 @@ package turbolift.internals.engine
 import turbolift.!!
 
 
-sealed trait Step[-A, +B, M[_], U]
+private[engine] sealed trait Step[-A, +B, M[_], U]
 
 object Step:
   def empty[A, B, M[_], U] = empty_.asInstanceOf[Step[A, B, M, U]]

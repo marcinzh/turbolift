@@ -6,7 +6,7 @@ import turbolift.internals.interpreter.{InterpreterCases, InverseControl}
 import turbolift.std_effects.FailSig
 
 
-final class MainLoop[M[_], U](theMonad: MonadPar[M], effectStack: EffectStack):
+private[engine] final class MainLoop[M[_], U](theMonad: MonadPar[M], effectStack: EffectStack):
   def run[A](ua: A !! U): M[A] = loop(ua, Step.empty)
 
   private def loop[A, B](ua: A !! U, step: Step[A, B, M, U]): M[B] =
@@ -89,7 +89,7 @@ final class MainLoop[M[_], U](theMonad: MonadPar[M], effectStack: EffectStack):
     array
 
 
-object MainLoop:
+private[turbolift] object MainLoop:
   val pure: MainLoop[Trampoline, Any] = fromMonad(TrampolineInstances.monad)
   val pureStackUnsafe: MainLoop[[X] =>> X, Any] = fromMonad(MonadPar[[X] =>> X])
   def fromMonad[M[_]: MonadPar]: MainLoop[M, Any] = new MainLoop[M, Any](MonadPar[M], Array())
