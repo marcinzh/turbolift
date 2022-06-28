@@ -12,7 +12,7 @@ object Accum extends AccumInstances2:
   def apply[W, W1](using ev: Accum[W, W1]) = ev
 
 
-trait AccumInstances1:
+private trait AccumInstances1:
   given [W](using W: Semigroup[W]): Accum[W, W] with
     override def one(a: W): W = a
     override def plus(a: W, b: W): W = W.combine(a, b)
@@ -24,7 +24,7 @@ trait AccumInstances1:
     override def plus1(a: F[W], b: W): F[W] = W.combineK(a, one(b))
 
 
-trait AccumInstances2 extends AccumInstances1:
+private trait AccumInstances2 extends AccumInstances1:
   given forVector[W]: Accum[Vector[W], W] = AccumZero.forVector[W]
   given forList[W]: Accum[List[W], W] = AccumZero.forList[W]
   given forSet[W]: Accum[Set[W], W] = AccumZero.forSet[W]

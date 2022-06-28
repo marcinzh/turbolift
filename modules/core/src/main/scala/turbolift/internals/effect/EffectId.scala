@@ -1,15 +1,15 @@
 package turbolift.internals.effect
 
 
-sealed trait EffectId extends AnyRef
+private[turbolift] sealed trait EffectId extends AnyRef
 
 
-sealed trait HasEffectId:
+private[turbolift] sealed trait HasEffectId:
   val effectId: EffectId
   // def effectHash: Int
 
 
-object HasEffectId:
+private[turbolift] object HasEffectId:
   trait Unsealed extends HasEffectId
   
   trait Self extends HasEffectId with EffectId:

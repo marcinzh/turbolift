@@ -29,11 +29,11 @@ trait Effect[Z <: Signature] extends ProtoEffect[Z] with Effect.Stub:
 
 
 object Effect:
-  sealed trait Stub extends HasEffectId.Self:
+  private[turbolift] sealed trait Stub extends HasEffectId.Self:
     type ThisSignature <: Signature
 
 
-  abstract class Combine[Fx](val ids: EffectId*):
+  private[turbolift] abstract class Combine[Fx](val ids: EffectId*):
     sealed trait ThisInterpreter extends IC.Unsealed:
       final override val effectIds: Array[EffectId] = ids.toArray
       final override type ThisEffect = Fx

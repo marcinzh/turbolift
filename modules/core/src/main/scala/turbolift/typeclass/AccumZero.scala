@@ -13,7 +13,7 @@ object AccumZero extends AccumZeroInstances2:
   def collisionlessMap[K, V]: AccumZero[Map[K, V], (K, V)] = makeCollisionlessMap[K, V]
 
 
-trait AccumZeroInstances1:
+private[turbolift] trait AccumZeroInstances1:
   given [W](using W: Monoid[W]): AccumZero[W, W] with
     override def zero: W = W.empty
     override def one(a: W): W = a
@@ -27,7 +27,7 @@ trait AccumZeroInstances1:
     override def plus1(a: F[W], b: W): F[W] = W.combineK(a, one(b))
 
 
-trait AccumZeroInstances2 extends AccumZeroInstances1:
+private[turbolift] trait AccumZeroInstances2 extends AccumZeroInstances1:
   given forVector[W]: AccumZero[Vector[W], W] = make[Vector, W](Vector, Vector(_), _ :+ _)
   given forList[W]: AccumZero[List[W], W] = make[List, W](List, List(_), _ :+ _)
   given forSet[W]: AccumZero[Set[W], W] = make[Set, W](Set, Set(_), _ + _)
