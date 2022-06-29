@@ -2,7 +2,7 @@ package turbolift.std_effects
 import org.scalatest.funspec.AnyFunSpec
 import org.scalatest.matchers.should.Matchers._
 import turbolift.!!
-import turbolift.std_effects.{Choice, Except}
+import turbolift.std_effects.{Choice, Error}
 
 
 class ChoiceTest extends AnyFunSpec with CanLaunchTheMissiles:
@@ -88,8 +88,8 @@ class ChoiceTest extends AnyFunSpec with CanLaunchTheMissiles:
         }
 
 
-        describe("Choice & Except") {
-          case object FxE extends Except[Int]
+        describe("Choice & Error") {
+          case object FxE extends Error[Int]
           val hE = FxE.handler
           val hC = picker.handler(Fx)
 

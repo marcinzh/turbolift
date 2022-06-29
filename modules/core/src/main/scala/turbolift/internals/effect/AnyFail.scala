@@ -1,10 +1,10 @@
-package turbolift.std_effects
+package turbolift.internals.effect
 import scala.util.Try
 import turbolift.!!
-import turbolift.internals.effect.{ProtoEffect, HasEffectId}
+import turbolift.std_effects.FailSig
 
 
-case object AnyFail extends ProtoEffect[FailSig] with FailSig with HasEffectId.Nul:
+case object AnyFail extends ProtoEffect[FailSig] with FailSig:
   override type ThisEffect >: FailSig
 
   final override val fail: Nothing !! ThisEffect = perform(_.fail)

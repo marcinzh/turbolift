@@ -32,7 +32,7 @@ private trait AccumInstances2 extends AccumInstances1:
   given forMap[K, V, V1](using V: Accum[V, V1]): Accum[Map[K, V], (K, V1)] = AccumZero.forMap[K, V, V1]
 
 
-trait AccumSyntax:
+private trait AccumSyntax:
   extension [W, W1](thiz: W)(using W: Accum[W, W1])
     def |+|(that: W): W = W.plus(thiz, that)
     def |+(that: W1): W = W.plus1(thiz, that)

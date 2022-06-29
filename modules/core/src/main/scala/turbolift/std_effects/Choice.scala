@@ -26,3 +26,9 @@ trait Choice extends Effect[ChoiceSig] with ChoiceSig:
   object handlers:
     val one: ThisHandler.Free[Option] = ChoiceHandler_One(Choice.this)
     val many: ThisHandler.Free[Vector] = ChoiceHandler_Many(Choice.this)
+
+
+case object Each extends Choice:
+  def void: ThisHandler.FreeConst[Unit] = handlers.many.void
+
+type Each = Each.type

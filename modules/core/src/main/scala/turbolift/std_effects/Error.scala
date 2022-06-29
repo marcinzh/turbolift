@@ -2,16 +2,16 @@ package turbolift.std_effects
 import scala.util.{Try, Success, Failure}
 import turbolift.{!!, Effect, Signature}
 import turbolift.typeclass.Accum
-import turbolift.std_effects.default_handlers.{ExceptHandler_One, ExceptHandler_Many} 
+import turbolift.std_effects.default_handlers.{ErrorHandler_One, ErrorHandler_Many} 
 
 
-trait ExceptSig[E, E1] extends Signature:
+trait ErrorSig[E, E1] extends Signature:
   def raise(e: E1): Nothing !@! ThisEffect
   def raises(e: E): Nothing !@! ThisEffect
   def katch[A, U <: ThisEffect](body: A !! U)(f: E => A !! U): A !@! U
 
 
-trait ExceptEffect[E, E1] extends Effect[ExceptSig[E, E1]] with ExceptSig[E, E1]:
+trait ErrorEffect[E, E1] extends Effect[ErrorSig[E, E1]] with ErrorSig[E, E1]:
   final override def raise(e: E1): Nothing !! this.type = perform(_.raise(e))
   final override def raises(e: E): Nothing !! this.type = perform(_.raises(e))
   final override def katch[A, U <: this.type](body: A !! U)(f: E => A !! U): A !! U = perform(_.katch(body)(f))
@@ -26,14 +26,14 @@ trait ExceptEffect[E, E1] extends Effect[ExceptSig[E, E1]] with ExceptSig[E, E1]
   final def handler(implicit E: E1 =:= E): ThisHandler.Free[Either[E, _]] = handlers.one
 
   object handlers:
-    def one(implicit E: E1 =:= E): ThisHandler.Free[Either[E, _]] = ExceptHandler_One[E, E1, ExceptEffect.this.type](ExceptEffect.this)
-    def many(implicit E: Accum[E, E1]): ThisHandler.Free[Either[E, _]] = ExceptHandler_Many[E, E1, ExceptEffect.this.type](ExceptEffect.this)
+    def one(implicit E: E1 =:= E): ThisHandler.Free[Either[E, _]] = ErrorHandler_One[E, E1, ErrorEffect.this.type](ErrorEffect.this)
+    def many(implicit E: Accum[E, E1]): ThisHandler.Free[Either[E, _]] = ErrorHandler_Many[E, E1, ErrorEffect.this.type](ErrorEffect.this)
 
 
-trait Except[E] extends ExceptEffect[E, E]
+trait Error[E] extends ErrorEffect[E, E]
 
-trait ExceptK[F[_], E] extends ExceptEffect[F[E], E]
+trait ErrorK[F[_], E] extends ErrorEffect[F[E], E]
 
-trait ExceptG[M[_, _], K, V] extends ExceptEffect[M[K, V], (K, V)]
+trait ErrorG[M[_, _], K, V] extends ErrorEffect[M[K, V], (K, V)]
 
-trait ExceptGK[M[_, _], K, F[_], V] extends ExceptEffect[M[K, F[V]], (K, V)]
+trait ErrorGK[M[_, _], K, F[_], V] extends ErrorEffect[M[K, F[V]], (K, V)]

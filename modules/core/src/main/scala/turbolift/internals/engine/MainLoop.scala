@@ -1,12 +1,12 @@
 package turbolift.internals.engine
 import turbolift.{!!, Signature, ComputationCases, HandlerCases}
-import turbolift.typeclass.MonadPar
-import turbolift.internals.effect.EffectId
+import turbolift.typeclass.MonadZip
+import turbolift.internals.effect.AnyFail
 import turbolift.internals.interpreter.{InterpreterCases, InverseControl}
 import turbolift.std_effects.FailSig
 
 
-private[engine] final class MainLoop[M[_], U](theMonad: MonadPar[M], effectStack: EffectStack):
+private[engine] final class MainLoop[M[_], U](theMonad: MonadZip[M], effectStack: EffectStack):
   def run[A](ua: A !! U): M[A] = loop(ua, Step.empty)
 
   private def loop[A, B](ua: A !! U, step: Step[A, B, M, U]): M[B] =
@@ -20,17 +20,17 @@ private[engine] final class MainLoop[M[_], U](theMonad: MonadPar[M], effectStack
         // case Lift(ma_) =>
         val ma: M[A] = ua.value//.asInstanceOf[M[A]]
         step match
-          case Empty() => ma.asInstanceOf[M[B]] //@#@
-          case SeqStep(f, next) => theMonad.flatMap(ma)(a => loop(f(a), next))
-          case ParStepLeft(ux, next) => loop(ux, ParStepRight(ma, next))
-          case ParStepRight(mx, next) => loop(Lift(theMonad.zipPar(mx, ma)), next)
+          case Done() => ma.asInstanceOf[M[B]] //@#@
+          case More(f, next) => theMonad.flatMap(ma)(a => loop(f(a), next))
+          case ZipLeft(ux, next) => loop(ux, ZipRight(ma, next))
+          case ZipRight(mx, next) => loop(Lift(theMonad.zip(mx, ma)), next)
 
-      case FlatMap(ux, k) => loop(ux, SeqStep(k, step))
-      case ZipPar(ux, uy) => loop(ux, ParStepLeft(uy, step))
+      case FlatMap(ux, k) => loop(ux, More(k, step))
+      case Zip(ux, uy) => loop(ux, ZipLeft(uy, step))
 
-      case Perform(id, op) =>
+      case Perform(sig, op) =>
         val op2 = op.asInstanceOf[Signature => Any]
-        val f = vmtLookup(id).asInstanceOf[(Signature => Any) => A !! U]
+        val f = vmtLookup(sig).asInstanceOf[(Signature => Any) => A !! U]
         loop(f(op2), step)
 
       case Delimit(ux, h) => h.interpreter match
@@ -65,8 +65,9 @@ private[engine] final class MainLoop[M[_], U](theMonad: MonadPar[M], effectStack
     loop(0)
 
   private val vmt: Array[AnyRef] =
-    val effectIdCount = effectStack.iterator.map(_.interpreter.effectIds.size).sum
-    val array = new Array[AnyRef]((effectIdCount + 1) * 2) //// *2 for KV pair, +1 for Choice
+    val sigCount = effectStack.iterator.map(_.interpreter.signatures.size).sum
+    val array = new Array[AnyRef]((sigCount + 1) * 2) //// *2 for KV pair, +1 for Choice
+    array(array.size - 2) = AnyFail
     var index = 0
     val recur: [A] => (A !! U) => M[A] = [A] => (ua: A !! U) => run(ua)
 
@@ -81,9 +82,9 @@ private[engine] final class MainLoop[M[_], U](theMonad: MonadPar[M], effectStack
         if esi.interpreter.isInstanceOf[FailSig] then
           array(array.size - 1) = fun
       }
-      effectId <- esi.interpreter.effectIds
+      sig <- esi.interpreter.signatures
     do
-      array(index) = effectId
+      array(index) = sig
       array(index + 1) = fun
       index = index + 2
     array
@@ -91,5 +92,5 @@ private[engine] final class MainLoop[M[_], U](theMonad: MonadPar[M], effectStack
 
 private[turbolift] object MainLoop:
   val pure: MainLoop[Trampoline, Any] = fromMonad(TrampolineInstances.monad)
-  val pureStackUnsafe: MainLoop[[X] =>> X, Any] = fromMonad(MonadPar[[X] =>> X])
-  def fromMonad[M[_]: MonadPar]: MainLoop[M, Any] = new MainLoop[M, Any](MonadPar[M], Array())
+  val pureStackUnsafe: MainLoop[[X] =>> X, Any] = fromMonad(MonadZip[[X] =>> X])
+  def fromMonad[M[_]: MonadZip]: MainLoop[M, Any] = new MainLoop[M, Any](MonadZip[M], Array())

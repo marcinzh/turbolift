@@ -2,8 +2,7 @@ package turbolift.internals.interpreter
 import cats.Functor
 import turbolift.{!!, Signature}
 import turbolift.{Handler, HandlerCases}
-import turbolift.internals.effect.EffectId
-import turbolift.typeclass.MonadPar
+import turbolift.typeclass.MonadZip
 
 
 sealed trait Interpreter extends Signature:
@@ -12,7 +11,7 @@ sealed trait Interpreter extends Signature:
 
   final type ThisHandler = Handler[Result, ThisEffect, IntroEffect]
 
-  private[turbolift] val effectIds: Array[EffectId]
+  private[turbolift] val signatures: Array[Signature]
 
 
 object Interpreter:
@@ -45,20 +44,20 @@ object InterpreterCases:
     type ThisControl[U] >: ThisControlBound[U] <: ThisControlBound[U]
     final override type !@![A, U] = (kk: ThisControl[U]) ?=> Trans[kk.LowerMonad, kk.UpperFunctor[A]]
 
-    def onReturn[A](a: A): Trans[[X] =>> X, A]
-    def onFlatMap[A, B, M[_]: MonadPar](tma: Trans[M, A])(f: A => Trans[M, B]): Trans[M, B]
-    def onProduct[A, B, M[_]: MonadPar](tma: Trans[M, A], tmb: Trans[M, B]): Trans[M, (A, B)]
+    def onPure[A](a: A): Trans[[X] =>> X, A]
+    def onFlatMap[A, B, M[_]: MonadZip](tma: Trans[M, A])(f: A => Trans[M, B]): Trans[M, B]
+    def onZip[A, B, M[_]: MonadZip](tma: Trans[M, A], tmb: Trans[M, B]): Trans[M, (A, B)]
 
-    private[turbolift] final def transform[M[_]](M: MonadPar[M]): MonadPar[Trans[M, _]] = new:
-      override def pure[A](a: A): Trans[M, A] = liftish(onReturn(a))(M)
+    private[turbolift] final def transform[M[_]](M: MonadZip[M]): MonadZip[Trans[M, _]] = new:
+      override def pure[A](a: A): Trans[M, A] = liftish(onPure(a))(M)
       override def flatMap[A, B](tma: Trans[M, A])(f: A => Trans[M, B]): Trans[M, B] = onFlatMap(tma)(f)(M)
-      override def zipPar[A, B](tma: Trans[M, A], tmb: Trans[M, B]): Trans[M, (A, B)] = onProduct(tma, tmb)(M)
+      override def zip[A, B](tma: Trans[M, A], tmb: Trans[M, B]): Trans[M, (A, B)] = onZip(tma, tmb)(M)
 
     private[turbolift] val resultFunctor: Functor[Result]
     private[turbolift] def prime[M[_], A](initial: Initial, tma: Trans[M, A]): M[Result[A]]
-    private[turbolift] def liftish[M[_], A](ta: Trans[[X] =>> X, A])(M: MonadPar[M]): Trans[M, A]
+    private[turbolift] def liftish[M[_], A](ta: Trans[[X] =>> X, A])(M: MonadZip[M]): Trans[M, A]
     private[turbolift] def layer[I <: InverseControl](that: I): that.Layer[Trans, Result]
-    private[turbolift] final def focus[M[_]](M: MonadPar[M]): InverseControl.Focus[Trans, M] = InverseControl.focus(M)
+    private[turbolift] final def focus[M[_]](M: MonadZip[M]): InverseControl.Focus[Trans, M] = InverseControl.focus(M)
 
 
 
@@ -72,7 +71,7 @@ object InterpreterCases:
 
     private[turbolift] final override val resultFunctor: Functor[F] = summon[Functor[F]]
     private[turbolift] final override def prime[M[_], A](initial: Unit, tma: Trans[M, A]): M[F[A]] = tma
-    private[turbolift] final override def liftish[M[_], A](fa: F[A])(M: MonadPar[M]): Trans[M, A] = M.pure(fa)
+    private[turbolift] final override def liftish[M[_], A](fa: F[A])(M: MonadZip[M]): Trans[M, A] = M.pure(fa)
 
     private[turbolift] final override def layer[I <: InverseControl](that: I): that.Layer[Trans, Result] =
       new that.LayerImpl[Trans, Result]:
@@ -80,7 +79,7 @@ object InterpreterCases:
         override def withControl[A](ff: this.ThisControl => FocusMonad[UpperFunctor[A]]): UpperMonad[A] =
           that.withControl { kk =>
             ff(new ThisControlImpl:
-              override def inner[A](a: A): UpperFunctor[A] = kk.inner(onReturn(a))
+              override def inner[A](a: A): UpperFunctor[A] = kk.inner(onPure(a))
               override def locally[A](body: UpperMonad[A]): FocusMonad[UpperFunctor[A]] = kk.locally(body)
             )
           }
@@ -96,7 +95,7 @@ object InterpreterCases:
 
     private[turbolift] final override val resultFunctor: Functor[F] = summon[Functor[F]]
     private[turbolift] final override def prime[M[_], A](s: S, tma: Trans[M, A]): M[Result[A]] = tma(s)
-    private[turbolift] final override def liftish[M[_], A](ffa: S => F[A])(M: MonadPar[M]): Trans[M, A] = s => M.pure(ffa(s))
+    private[turbolift] final override def liftish[M[_], A](ffa: S => F[A])(M: MonadZip[M]): Trans[M, A] = s => M.pure(ffa(s))
 
     private[turbolift] final override def layer[I <: InverseControl](that: I): that.Layer[Trans, Result] =
       new that.LayerImpl[Trans, Result]:
@@ -104,7 +103,7 @@ object InterpreterCases:
         override def withControl[A](ff: this.ThisControl => FocusMonad[UpperFunctor[A]]): UpperMonad[A] =
           s => that.withControl { kk =>
             ff(new ThisControlImpl:
-              override def inner[A](a: A): UpperFunctor[A] = kk.inner(onReturn(a)(s))
+              override def inner[A](a: A): UpperFunctor[A] = kk.inner(onPure(a)(s))
               override def locally[A](body: UpperMonad[A]): FocusMonad[UpperFunctor[A]] = kk.locally(body(s))
             )
           }

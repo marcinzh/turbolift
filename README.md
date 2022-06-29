@@ -15,13 +15,13 @@ libraryDependencies += "com.github.marcinzh" %% "turbolift-core" % "0.10.0"
 # Example
 ```scala
 import turbolift.!!
-import turbolift.std_effects.{Reader, State, Except}
+import turbolift.std_effects.{Reader, State, Error}
 
 object Main extends App {
   // Declare some effects:
   case object MyReader extends Reader[Int]
   case object MyState extends State[Int]
-  case object MyExcept extends Except[String]
+  case object MyError extends Error[String]
 
   // Create a monadic computation using those effects:
   val computation = for {
@@ -31,14 +31,14 @@ object Main extends App {
       if (b != 0) 
         !!.pure(a / b)
       else 
-        MyExcept.raise(s"Tried to divide $a by zero")
+        MyError.raise(s"Tried to divide $a by zero")
     }
     _ <- MyState.put(c)
   } yield ()
 
   // Create a handler for the above computation, by composing
   // individual handlers of each requested effect:
-  val handler = MyState.handler(100).exec &&&! MyReader.handler(3) &&&! MyExcept.handler
+  val handler = MyState.handler(100).exec &&&! MyReader.handler(3) &&&! MyError.handler
 
   // Execute the computation using the handler:
   val result = computation.runWith(handler)

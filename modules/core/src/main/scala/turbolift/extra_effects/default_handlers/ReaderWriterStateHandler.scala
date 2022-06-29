@@ -1,7 +1,7 @@
 package turbolift.extra_effects.default_handlers
 import cats.syntax.functor._
 import turbolift.{!!, Effect}
-import turbolift.typeclass.{MonadPar, AccumZero}
+import turbolift.typeclass.{MonadZip, AccumZero}
 import turbolift.typeclass.Syntax._
 import turbolift.std_effects.{Reader, ReaderSig}
 import turbolift.std_effects.{WriterEffect, WriterSig}
@@ -32,14 +32,14 @@ private[extra_effects] object ReaderWriterStateHandler:
 
 
     new fx.Stateful[RWS, (_, RWS)] with ReaderSig[R] with WriterSig[W, W1] with StateSig[S]:
-      override def onReturn[A](a: A): RWS => (A, RWS) = (a, _)
+      override def onPure[A](a: A): RWS => (A, RWS) = (a, _)
 
-      override def onFlatMap[A, B, M[_]: MonadPar](tma: RWS => M[(A, RWS)])(f: A => RWS => M[(B, RWS)]): RWS => M[(B, RWS)] =
+      override def onFlatMap[A, B, M[_]: MonadZip](tma: RWS => M[(A, RWS)])(f: A => RWS => M[(B, RWS)]): RWS => M[(B, RWS)] =
         rws0 => tma(rws0).flatMap {
           case (a, rws1) => f(a)(rws0.restore_r(rws1))
         }
 
-      override def onProduct[A, B, M[_]: MonadPar](tma: RWS => M[(A, RWS)], tmb: RWS => M[(B, RWS)]): RWS => M[((A, B), RWS)] =
+      override def onZip[A, B, M[_]: MonadZip](tma: RWS => M[(A, RWS)], tmb: RWS => M[(B, RWS)]): RWS => M[((A, B), RWS)] =
         rws0 => tma(rws0).flatMap {
           case (a, rws1) => tmb(rws0.restore_r(rws1)).map {
             case (b, rws2) => ((a, b), rws0.restore_r(rws2))
