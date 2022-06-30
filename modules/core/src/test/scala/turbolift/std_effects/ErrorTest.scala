@@ -4,14 +4,14 @@ import org.scalatest.matchers.should.Matchers._
 import org.scalatest.Assertion
 import turbolift.{!!, Handler}
 import turbolift.typeclass.Accum
-import turbolift.std_effects.{Except, State}
+import turbolift.std_effects.{Error, State}
 
 
-class ExceptTest extends AnyFunSpec with CanLaunchTheMissiles:
+class ErrorTest extends AnyFunSpec with CanLaunchTheMissiles:
   private class Picker(round: Boolean):
     def apply[T](a: => T)(b: => T): T = if round then a else b
     def name = apply("one")("many")
-    def handler[T, Fx <: Except[T]](fx: Fx)(using Accum[T, T]): fx.ThisHandler.Free[Either[T, *]] = apply(fx.handlers.one)(fx.handlers.many)
+    def handler[T, Fx <: Error[T]](fx: Fx)(using Accum[T, T]): fx.ThisHandler.Free[Either[T, *]] = apply(fx.handlers.one)(fx.handlers.many)
 
   private object Picker:
     def foreach(f: Picker => Unit): Unit =
@@ -20,7 +20,7 @@ class ExceptTest extends AnyFunSpec with CanLaunchTheMissiles:
 
   describe("Basic ops") {
     it("raise") {
-      case object Fx extends Except[Int]
+      case object Fx extends Error[Int]
       val missile = Missile()
       (Fx.raise(1) &&! missile.launch_!)
       .runWith(Fx.handler) shouldEqual Left(1)
@@ -28,7 +28,7 @@ class ExceptTest extends AnyFunSpec with CanLaunchTheMissiles:
     }
 
     it("katch") {
-      case object Fx extends Except[Int]
+      case object Fx extends Error[Int]
       Fx.katch(Fx.raise(1))(_ => !!.pure(2))
       .runWith(Fx.handler) shouldEqual Right(2)
     }
@@ -36,7 +36,7 @@ class ExceptTest extends AnyFunSpec with CanLaunchTheMissiles:
 
   describe("Combined ops") {
     describe("katch & State") {
-      case object FxE extends Except[String]
+      case object FxE extends Error[String]
       case object FxS extends State[Int]
       val comp =
         FxE.katch {
@@ -51,11 +51,11 @@ class ExceptTest extends AnyFunSpec with CanLaunchTheMissiles:
         val hS = FxS.handler(0)
         val hE = picker.handler(FxE)
         describe("With handler = " + picker.name) {
-          it("State before Except") {
+          it("State before Error") {
             comp.runWith(hS &&&! hE) shouldEqual Right((false, 0))
           }
 
-          it("Except before State") {
+          it("Error before State") {
             comp.runWith(hE &&&! hS) shouldEqual ((Right(false), 1))
           }
         }
@@ -67,7 +67,7 @@ class ExceptTest extends AnyFunSpec with CanLaunchTheMissiles:
     for picker <- Picker do
       describe("With handler = " + picker.name) {
         it("raise") {
-          case object Fx extends Except[Int]
+          case object Fx extends Error[Int]
           val missile = Missile()
           (Fx.raise(1) *! missile.launch_! *! Fx.raise(2))
           .runWith(picker.handler(Fx)) shouldEqual Left(picker(1)(3))
@@ -77,7 +77,7 @@ class ExceptTest extends AnyFunSpec with CanLaunchTheMissiles:
         }
 
         describe("katch & Writer") {
-          case object FxE extends Except[String]
+          case object FxE extends Error[String]
           case object FxW extends Writer[String]
           val comp = 
             FxE.katch {
@@ -92,13 +92,13 @@ class ExceptTest extends AnyFunSpec with CanLaunchTheMissiles:
           val hE = picker.handler(FxE)
           val hW = FxW.handler
 
-          it("Writer before Except") {
+          it("Writer before Error") {
             val err = picker("X")("XY")
             val acc = picker("")("")
             comp.runWith(hW &&&! hE) shouldEqual Right((err, acc))
           }
 
-          it("Except before Writer") {
+          it("Error before Writer") {
             val err = picker("X")("XY")
             val acc = picker("abc")("abc")
             comp.runWith(hE &&&! hW) shouldEqual ((Right(err), acc))

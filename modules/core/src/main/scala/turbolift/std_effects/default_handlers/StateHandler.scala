@@ -1,6 +1,6 @@
 package turbolift.std_effects.default_handlers
 import turbolift.!!
-import turbolift.typeclass.MonadPar
+import turbolift.typeclass.MonadZip
 import turbolift.typeclass.Syntax._
 import turbolift.std_effects.{State, StateSig}
 import FlippedPairFunctor.given
@@ -9,14 +9,14 @@ import FlippedPairFunctor.given
 private[std_effects] object StateHandler:
   def apply[S, Fx <: State[S]](fx: Fx, initial: S): fx.ThisHandler.Free[(_, S)] =
     new fx.Stateful[S, (_, S)] with StateSig[S]:
-      override def onReturn[A](a: A): S => (A, S) = (a, _)
+      override def onPure[A](a: A): S => (A, S) = (a, _)
 
-      override def onFlatMap[A, B, M[_]: MonadPar](tma: S => M[(A, S)])(f: A => S => M[(B, S)]): S => M[(B, S)] =
+      override def onFlatMap[A, B, M[_]: MonadZip](tma: S => M[(A, S)])(f: A => S => M[(B, S)]): S => M[(B, S)] =
         s0 => tma(s0).flatMap {
           case (a, s1) => f(a)(s1)
         }
 
-      override def onProduct[A, B, M[_]: MonadPar](tma: S => M[(A, S)], tmb: S => M[(B, S)]): S => M[((A, B), S)] =
+      override def onZip[A, B, M[_]: MonadZip](tma: S => M[(A, S)], tmb: S => M[(B, S)]): S => M[((A, B), S)] =
         s0 => tma(s0).flatMap {
           case (a, s1) => tmb(s1).map {
             case (b, s2) => ((a, b), s2)

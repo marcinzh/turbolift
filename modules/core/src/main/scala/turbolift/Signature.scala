@@ -1,7 +1,7 @@
 package turbolift
 
 
-trait Signature:
+trait Signature extends AnyRef:
   type !@![A, U]
   type ThisEffect
 

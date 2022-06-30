@@ -1,7 +1,7 @@
 package turbolift.internals.interpreter
 import cats.Functor
 import turbolift.!!
-import turbolift.typeclass.MonadPar
+import turbolift.typeclass.MonadZip
 import turbolift.ComputationCases.Lift
 
 
@@ -16,7 +16,7 @@ private[turbolift] trait InverseControl:
   def withControl[A](ff: ThisControl => FocusMonad[UpperFunctor[A]]): UpperMonad[A]
 
   def upperFunctor: Functor[UpperFunctor]
-  def lowerMonad: MonadPar[LowerMonad]
+  def lowerMonad: MonadZip[LowerMonad]
 
   final type WithControlArg[A] = ThisControl => FocusMonad[UpperFunctor[A]]
 
@@ -31,7 +31,7 @@ private[turbolift] trait InverseControl:
     final override type UpperMonad[X] = enclosing.UpperMonad[X]
     final override type LowerMonad[X] = enclosing.LowerMonad[X]
     final override def upperFunctor: Functor[UpperFunctor] = enclosing.upperFunctor
-    final override def lowerMonad: MonadPar[LowerMonad] = enclosing.lowerMonad
+    final override def lowerMonad: MonadZip[LowerMonad] = enclosing.lowerMonad
 
   type Layer[T[_[_], _], F[+_]] = InverseControl {
     type UpperFunctor[+X] = enclosing.UpperFunctor[F[X]]
@@ -45,7 +45,7 @@ private[turbolift] trait InverseControl:
     final override type UpperMonad[X] = T[enclosing.UpperMonad, X]
     final override type LowerMonad[X] = enclosing.LowerMonad[X]
     final override type FocusTrans[Y[_], X] = enclosing.FocusTrans[Y, X]
-    final override def lowerMonad: MonadPar[LowerMonad] = enclosing.lowerMonad
+    final override def lowerMonad: MonadZip[LowerMonad] = enclosing.lowerMonad
 
   type Roof[U] = InverseControl {
     type UpperFunctor[+X] = enclosing.UpperFunctor[X]
@@ -60,7 +60,7 @@ private[turbolift] trait InverseControl:
       override type UpperMonad[X] = X !! U
       override type LowerMonad[X] = enclosing.LowerMonad[X]
       override type FocusTrans[Y[_], X] = enclosing.FocusTrans[Y, X]
-      override def lowerMonad: MonadPar[LowerMonad] = enclosing.lowerMonad
+      override def lowerMonad: MonadZip[LowerMonad] = enclosing.lowerMonad
       override def upperFunctor: Functor[UpperFunctor] = enclosing.upperFunctor
 
       override def withControl[A](ff: ThisControl => FocusMonad[UpperFunctor[A]]): A !! U =
@@ -80,13 +80,13 @@ object InverseControl:
     type FocusTrans[Y[_], X] = T[Y, X]
   }
 
-  def focus[T[_[_], _], M[_]](M: MonadPar[M]): Focus[T, M] =
+  def focus[T[_[_], _], M[_]](M: MonadZip[M]): Focus[T, M] =
     new InverseControl:
       override type UpperMonad[X] = T[M, X]
       override type UpperFunctor[+X] = X
       override type LowerMonad[X] = M[X]
       override type FocusTrans[Y[_], X] = T[Y, X]
-      override val lowerMonad: MonadPar[LowerMonad] = M
+      override val lowerMonad: MonadZip[LowerMonad] = M
       override val upperFunctor: Functor[UpperFunctor] = Functor[[X] =>> X]
 
       override def withControl[A](ff: ThisControl => FocusMonad[A]): FocusMonad[A] = ff(constControl)

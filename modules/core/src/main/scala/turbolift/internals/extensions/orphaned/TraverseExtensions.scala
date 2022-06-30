@@ -8,7 +8,7 @@ trait TraverseExtensions:
     def traverseVoid: Unit !! U =
       thiz.iterator.foldLeft(!!.pure().upCast[U])(_ &<! _)
 
-    def traverseVoidShort: Unit !! U =
+    def traverseShortVoid: Unit !! U =
       val iter = thiz.iterator
       def loop(): Unit !! U =
         if iter.hasNext
@@ -59,7 +59,7 @@ trait TraverseExtensions:
         case None => !!.pure()
 
     def traverseShort: Option[A] !! U = traverse
-    def traverseVoidShort: Unit !! U = traverseVoid
+    def traverseShortVoid: Unit !! U = traverseVoid
 
 
   extension [A, T, U](thiz: Either[T, A !! U])
@@ -74,4 +74,4 @@ trait TraverseExtensions:
         case Left(_) => !!.pure()
 
     def traverseShort: Either[T, A] !! U = traverse
-    def traverseVoidShort: Unit !! U = traverseVoid
+    def traverseShortVoid: Unit !! U = traverseVoid

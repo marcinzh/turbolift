@@ -1,6 +1,6 @@
 package turbolift.internals.engine
 import scala.annotation.tailrec
-import turbolift.typeclass.MonadPar
+import turbolift.typeclass.MonadZip
 import TrampolineCases._
 
 
@@ -12,22 +12,22 @@ private[engine] sealed trait Trampoline[A]:
       case FlatMap(that, g) => FlatMap(that, x => g(x).flatMap(f))
       case x: DoneOrMore[A] => FlatMap(x, f)
 
-  final def zipPar[B](that: Trampoline[B]): Trampoline[(A, B)] =
+  final def zip[B](that: Trampoline[B]): Trampoline[(A, B)] =
     (resume, that.resume) match
       case (Right(a), Right(b)) => Done((a, b))
-      case (Right(a), Left(fb)) => More(() => fb().zipParR(a))
-      case (Left(fa), Right(b)) => More(() => fa().zipParL(b))
-      case (Left(fa), Left(fb)) => More(() => fa().zipPar(fb()))
+      case (Right(a), Left(fb)) => More(() => fb().zipR(a))
+      case (Left(fa), Right(b)) => More(() => fa().zipL(b))
+      case (Left(fa), Left(fb)) => More(() => fa().zip(fb()))
 
-  final def zipParL[B](b: B): Trampoline[(A, B)] =
+  final def zipL[B](b: B): Trampoline[(A, B)] =
     resume match
       case Right(a) => Done((a, b))
-      case Left(fa) => More(() => fa().zipParL(b))
+      case Left(fa) => More(() => fa().zipL(b))
 
-  final def zipParR[B](b: B): Trampoline[(B, A)] =
+  final def zipR[B](b: B): Trampoline[(B, A)] =
     resume match
       case Right(a) => Done((b, a))
-      case Left(fa) => More(() => fa().zipParR(b))
+      case Left(fa) => More(() => fa().zipR(b))
 
   @tailrec final def run: A =
     resume match
@@ -51,7 +51,7 @@ object TrampolineCases:
 
 
 object TrampolineInstances:
-  def monad: MonadPar[Trampoline] = new MonadPar[Trampoline]:
+  def monad: MonadZip[Trampoline] = new MonadZip[Trampoline]:
     override def pure[A](a: A): Trampoline[A] = Done(a)
     override def flatMap[A, B](ma: Trampoline[A])(f: A => Trampoline[B]): Trampoline[B] = ma.flatMap(f)
-    override def zipPar[A, B](ma: Trampoline[A], mb: Trampoline[B]): Trampoline[(A, B)] = ma.zipPar(mb)
+    override def zip[A, B](ma: Trampoline[A], mb: Trampoline[B]): Trampoline[(A, B)] = ma.zip(mb)

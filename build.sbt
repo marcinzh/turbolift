@@ -1,5 +1,5 @@
 ThisBuild / organization := "io.github.marcinzh"
-ThisBuild / version := "0.23.0-SNAPSHOT"
+ThisBuild / version := "0.25.0-SNAPSHOT"
 ThisBuild / scalaVersion := "3.1.1"
 ThisBuild / scalacOptions ++= Seq(
   "-deprecation",
@@ -33,7 +33,6 @@ lazy val core = project
 //=================================================
 
 lazy val dontPublishMe = Seq(
-  publishTo := None,
   publish := {},
   publishLocal := {},
   publishArtifact := false

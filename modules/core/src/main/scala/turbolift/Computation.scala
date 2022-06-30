@@ -1,38 +1,38 @@
 package turbolift
-import turbolift.typeclass.MonadPar
-import turbolift.internals.effect.EffectId
+import turbolift.typeclass.MonadZip
+import turbolift.std_effects.FailSig
+import turbolift.internals.effect.AnyFail
 import turbolift.internals.extensions.ComputationExtensions
-import turbolift.std_effects.AnyFail
 import HandlerCases.Primitive
 import ComputationCases._
 
 
 sealed trait Computation[+A, -U]:
   final def map[B](f: A => B): B !! U = new FlatMap(this, f andThen (new Pure(_)))
-  final def flatMap[B, V <: U](f: A => B !! V): B !! V = new FlatMap(this, f)
-  final def flatten[B, V <: U](implicit ev: A <:< (B !! V)): B !! V = flatMap(ev)
-  final def zipPar[B, V <: U](that: B !! V): (A, B) !! V = new ZipPar(this, that)
-  final def flatTap[B, V <: U](f: A => B !! V): A !! V = flatMap(a => f(a).as(a))
+  final def flatMap[B, U2 <: U](f: A => B !! U2): B !! U2 = new FlatMap(this, f)
+  final def flatten[B, U2 <: U](implicit ev: A <:< (B !! U2)): B !! U2 = flatMap(ev)
+  final def zip[B, U2 <: U](that: B !! U2): (A, B) !! U2 = new Zip(this, that)
+  final def flatTap[B, U2 <: U](f: A => B !! U2): A !! U2 = flatMap(a => f(a).as(a))
   final def as[B](value: B): B !! U = map(_ => value)
   final def void: Unit !! U = as(())
 
-  final def >>=[B, V <: U](f: A => B !! V): B !! V = flatMap(f)
+  final def >>=[B, U2 <: U](f: A => B !! U2): B !! U2 = flatMap(f)
 
-  final def *![B, V <: U](that: B !! V): (A, B) !! V = zipPar(that)
-  final def **![B, V <: U](that: => B !! V): (A, B) !! V = flatMap(a => that.map((a, _)))
+  final def *![B, U2 <: U](that: B !! U2): (A, B) !! U2 = zip(that)
+  final def **![B, U2 <: U](that: => B !! U2): (A, B) !! U2 = flatMap(a => that.map((a, _)))
 
-  final def &![B, V <: U](that: B !! V): B !! V = zipPar(that).map(_._2)
-  final def &&![B, V <: U](that: => B !! V): B !! V = flatMap(_ => that)
+  final def &![B, U2 <: U](that: B !! U2): B !! U2 = zip(that).map(_._2)
+  final def &&![B, U2 <: U](that: => B !! U2): B !! U2 = flatMap(_ => that)
 
-  final def &<![B, V <: U](that: B !! V): A !! V = zipPar(that).map(_._1)
-  final def &&<![B, V <: U](that: => B !! V): A !! V = flatMap(a => that.map(_ => a))
+  final def &<![B, U2 <: U](that: B !! U2): A !! U2 = zip(that).map(_._1)
+  final def &&<![B, U2 <: U](that: => B !! U2): A !! U2 = flatMap(a => that.map(_ => a))
 
-  final def |![B >: A, V <: U & AnyFail](that: B !! V): B !! V = ??? //@#@
-  final def ||![B >: A, V <: U & AnyFail](that: => B !! V): B !! V = AnyFail.orElse(this, that)
+  final def |![A2 >: A, U2 <: U & FailSig](that: A2 !! U2): A2 !! U2 = ??? //@#@
+  final def ||![A2 >: A, U2 <: U & FailSig](that: => A2 !! U2): A2 !! U2 = AnyFail.orElse(this, that)
 
-  final def withFilter[V <: U & AnyFail](f: A => Boolean): A !! V = flatMap(a => if f(a) then !!.pure(a) else !!.fail)
+  final def withFilter[U2 <: U & FailSig](f: A => Boolean): A !! U2 = flatMap(a => if f(a) then !!.pure(a) else !!.fail)
 
-  final def upCast[V <: U] = this: A !! V
+  final def upCast[U2 <: U] = this: A !! U2
 
 
 object Computation extends ComputationExtensions with ComputationInstances:
@@ -41,7 +41,7 @@ object Computation extends ComputationExtensions with ComputationInstances:
   def pure[A](a: A): A !! Any = Pure(a)
   def defer[A, U](ua: => A !! U): A !! U = unit.flatMap(_ => ua)
   def impure[A](a: => A): A !! Any = unit.flatMap(_ => Pure(a))
-  def fail: Nothing !! AnyFail = AnyFail.fail
+  def fail: Nothing !! FailSig = AnyFail.fail
 
   def when[U](cond: Boolean)(body: => Unit !! U): Unit !! U = if cond then body else unit
 
@@ -54,12 +54,12 @@ object Computation extends ComputationExtensions with ComputationInstances:
       else unit
     loop(n)
 
-  def repeatWhile[U, V <: U](cond: Boolean !! U)(body: => Unit !! V): Unit !! V =
-    def loop: Unit !! V = cond.flatMap(if _ then body &&! loop else unit)
+  def repeatWhile[U, U2 <: U](cond: Boolean !! U)(body: => Unit !! U2): Unit !! U2 =
+    def loop: Unit !! U2 = cond.flatMap(if _ then body &&! loop else unit)
     loop
 
-  def repeatUntil[U, V <: U](cond: Boolean !! U)(body: => Unit !! V): Unit !! V =
-    def loop: Unit !! V = cond.flatMap(if _ then unit else body &&! loop)
+  def repeatUntil[U, U2 <: U](cond: Boolean !! U)(body: => Unit !! U2): Unit !! U2 =
+    def loop: Unit !! U2 = cond.flatMap(if _ then unit else body &&! loop)
     loop
 
   def replicate[A, U](n: Int)(body: => A !! U): Vector[A] !! U =
@@ -105,16 +105,16 @@ private[turbolift] object ComputationCases:
   final case class Pure[A](value: A) extends Computation[A, Any]
   final case class Lift[A, M[_], U](value: M[A]) extends Computation[A, U]
   final case class FlatMap[A, B, U](that: A !! U, k: A => B !! U) extends Computation[B, U]
-  final case class ZipPar[A, B, U](lhs: A !! U, rhs: B !! U) extends Computation[(A, B), U]
-  final case class Perform[A, U, Z <: Signature](effectId: EffectId, op: Z => Any) extends Computation[A, U]
+  final case class Zip[A, B, U](lhs: A !! U, rhs: B !! U) extends Computation[(A, B), U]
+  final case class Perform[A, U, Z <: Signature](sig: Signature, op: Z => Any) extends Computation[A, U]
   final case class Delimit[A, U, F[+_], L, N](body: A !! (U & L), handler: Primitive[F, L, N]) extends Computation[F[A], U & N]
 
 
 trait ComputationInstances:
-  given [U]: MonadPar[Computation[_, U]] with
+  given [U]: MonadZip[Computation[_, U]] with
     override def pure[A](a: A): A !! U = Pure(a)
     override def flatMap[A, B](ua: A !! U)(f: A => B !! U): B !! U = ua.flatMap(f)
-    override def zipPar[A, B](ua: A !! U, ub: B !! U): (A, B) !! U = ua *! ub
+    override def zip[A, B](ua: A !! U, ub: B !! U): (A, B) !! U = ua *! ub
 
 
 type !![+A, -U] = Computation[A, U]

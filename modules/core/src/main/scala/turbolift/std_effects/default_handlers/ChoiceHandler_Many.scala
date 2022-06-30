@@ -1,6 +1,6 @@
 package turbolift.std_effects.default_handlers
 import turbolift.!!
-import turbolift.typeclass.MonadPar
+import turbolift.typeclass.MonadZip
 import turbolift.typeclass.Syntax._
 import turbolift.std_effects.{Choice, ChoiceSig}
 
@@ -8,12 +8,12 @@ import turbolift.std_effects.{Choice, ChoiceSig}
 private[std_effects] object ChoiceHandler_Many:
   def apply[Fx <: Choice](fx: Fx): fx.ThisHandler.Free[Vector] =
     new fx.Stateless[Vector] with ChoiceSig:
-      override def onReturn[A](a: A): Vector[A] = Vector(a)
+      override def onPure[A](a: A): Vector[A] = Vector(a)
 
-      override def onFlatMap[A, B, M[_]: MonadPar](tma: M[Vector[A]])(f: A => M[Vector[B]]): M[Vector[B]] =
+      override def onFlatMap[A, B, M[_]: MonadZip](tma: M[Vector[A]])(f: A => M[Vector[B]]): M[Vector[B]] =
         def loop(as: Vector[A]): M[Vector[B]] =
           as match
-            case Vector() => MonadPar[M].pure(Vector())
+            case Vector() => MonadZip[M].pure(Vector())
             case Vector(a) => f(a)
             case _ =>
               val (as1, as2) = as.splitAt(as.size / 2)
@@ -22,7 +22,7 @@ private[std_effects] object ChoiceHandler_Many:
               }
         tma.flatMap(loop)
 
-      override def onProduct[A, B, M[_]: MonadPar](tma: M[Vector[A]], tmb: M[Vector[B]]): M[Vector[(A, B)]] =
+      override def onZip[A, B, M[_]: MonadZip](tma: M[Vector[A]], tmb: M[Vector[B]]): M[Vector[(A, B)]] =
         (tma *! tmb).map {
           case (as, bs) =>
             for
