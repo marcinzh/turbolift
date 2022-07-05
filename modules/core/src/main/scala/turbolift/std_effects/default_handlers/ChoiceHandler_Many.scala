@@ -2,11 +2,11 @@ package turbolift.std_effects.default_handlers
 import turbolift.!!
 import turbolift.typeclass.MonadZip
 import turbolift.typeclass.Syntax._
-import turbolift.std_effects.{Choice, ChoiceSig}
+import turbolift.std_effects.{ChoiceEffect, ChoiceSig}
 
 
 private[std_effects] object ChoiceHandler_Many:
-  def apply[Fx <: Choice](fx: Fx): fx.ThisHandler.Free[Vector] =
+  def apply[Fx <: ChoiceEffect](fx: Fx): fx.ThisHandler.Free[Vector] =
     new fx.Stateless[Vector] with ChoiceSig:
       override def onPure[A](a: A): Vector[A] = Vector(a)
 

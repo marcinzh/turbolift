@@ -1,7 +1,7 @@
 package turbolift
 import turbolift.typeclass.MonadZip
-import turbolift.std_effects.FailSig
-import turbolift.internals.effect.AnyFail
+import turbolift.std_effects.ChoiceSig
+import turbolift.internals.effect.AnyChoice
 import turbolift.internals.extensions.ComputationExtensions
 import HandlerCases.Primitive
 import ComputationCases._
@@ -27,10 +27,10 @@ sealed trait Computation[+A, -U]:
   final def &<![B, U2 <: U](that: B !! U2): A !! U2 = zip(that).map(_._1)
   final def &&<![B, U2 <: U](that: => B !! U2): A !! U2 = flatMap(a => that.map(_ => a))
 
-  final def |![A2 >: A, U2 <: U & FailSig](that: A2 !! U2): A2 !! U2 = ??? //@#@
-  final def ||![A2 >: A, U2 <: U & FailSig](that: => A2 !! U2): A2 !! U2 = AnyFail.orElse(this, that)
+  final def |![A2 >: A, U2 <: U & ChoiceSig](that: A2 !! U2): A2 !! U2 = ??? //@#@
+  final def ||![A2 >: A, U2 <: U & ChoiceSig](that: => A2 !! U2): A2 !! U2 = AnyChoice.orElse(this, that)
 
-  final def withFilter[U2 <: U & FailSig](f: A => Boolean): A !! U2 = flatMap(a => if f(a) then !!.pure(a) else !!.fail)
+  final def withFilter[U2 <: U & ChoiceSig](f: A => Boolean): A !! U2 = flatMap(a => if f(a) then !!.pure(a) else !!.fail)
 
   final def upCast[U2 <: U] = this: A !! U2
 
@@ -41,7 +41,7 @@ object Computation extends ComputationExtensions with ComputationInstances:
   def pure[A](a: A): A !! Any = Pure(a)
   def defer[A, U](ua: => A !! U): A !! U = unit.flatMap(_ => ua)
   def impure[A](a: => A): A !! Any = unit.flatMap(_ => Pure(a))
-  def fail: Nothing !! FailSig = AnyFail.fail
+  def fail: Nothing !! ChoiceSig = AnyChoice.fail
 
   def when[U](cond: Boolean)(body: => Unit !! U): Unit !! U = if cond then body else unit
 

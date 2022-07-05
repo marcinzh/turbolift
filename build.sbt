@@ -1,5 +1,5 @@
 ThisBuild / organization := "io.github.marcinzh"
-ThisBuild / version := "0.25.0-SNAPSHOT"
+ThisBuild / version := "0.25.0"
 ThisBuild / scalaVersion := "3.1.1"
 ThisBuild / scalacOptions ++= Seq(
   "-deprecation",
@@ -13,7 +13,6 @@ val Deps = {
   object deps {
     val cats_core = "org.typelevel" %% "cats-core" % "2.7.0"
     val scalatest = "org.scalatest" %% "scalatest" % "3.2.11" % "test"
-    val all = Seq(scalatest, cats_core)
   }
   deps
 }
@@ -28,7 +27,7 @@ lazy val root = project
 lazy val core = project
   .in(file("modules/core"))
   .settings(name := "turbolift-core")
-  .settings(libraryDependencies ++= Deps.all)
+  .settings(libraryDependencies ++= Seq(Deps.scalatest, Deps.cats_core))
 
 //=================================================
 

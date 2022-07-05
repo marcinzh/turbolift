@@ -1,9 +1,9 @@
 package turbolift.internals.engine
 import turbolift.{!!, Signature, ComputationCases, HandlerCases}
 import turbolift.typeclass.MonadZip
-import turbolift.internals.effect.AnyFail
+import turbolift.std_effects.ChoiceSig
+import turbolift.internals.effect.AnyChoice
 import turbolift.internals.interpreter.{InterpreterCases, InverseControl}
-import turbolift.std_effects.FailSig
 
 
 private[engine] final class MainLoop[M[_], U](theMonad: MonadZip[M], effectStack: EffectStack):
@@ -67,7 +67,7 @@ private[engine] final class MainLoop[M[_], U](theMonad: MonadZip[M], effectStack
   private val vmt: Array[AnyRef] =
     val sigCount = effectStack.iterator.map(_.interpreter.signatures.size).sum
     val array = new Array[AnyRef]((sigCount + 1) * 2) //// *2 for KV pair, +1 for Choice
-    array(array.size - 2) = AnyFail
+    array(array.size - 2) = AnyChoice
     var index = 0
     val recur: [A] => (A !! U) => M[A] = [A] => (ua: A !! U) => run(ua)
 
@@ -79,7 +79,7 @@ private[engine] final class MainLoop[M[_], U](theMonad: MonadZip[M], effectStack
           (method: Signature => Any) => roof.withControl(method(ip).asInstanceOf[roof.WithControlArg[Any]]) 
         case EffectStackItem.Proxy(ip) => (method: Signature => Any) => method(ip)
       _ = {
-        if esi.interpreter.isInstanceOf[FailSig] then
+        if esi.interpreter.isInstanceOf[ChoiceSig] then
           array(array.size - 1) = fun
       }
       sig <- esi.interpreter.signatures

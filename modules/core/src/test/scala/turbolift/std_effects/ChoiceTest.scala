@@ -14,10 +14,13 @@ class ChoiceTest extends AnyFunSpec with CanLaunchTheMissiles:
 
   private object Picker:
     def foreach(f: Picker => Unit): Unit =
-      f(Picker(false))
-      //@#@TODO
-      // for round <- List(true, false) do
-      //   f(Picker(round))
+      for round <- List(true, false) do
+        if round then
+          ignore("With handler = " + Picker(true).name)(???)
+        else
+          f(Picker(round))
+        //@#@TODO
+        // f(Picker(round))
 
 
   describe("Basic ops") {

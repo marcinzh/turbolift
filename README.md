@@ -8,7 +8,7 @@ TODO: Insert overly enthusiastic introduction to Turbolift 's capabilities.
 
 ```scala
 resolvers += Resolver.jcenterRepo
-libraryDependencies += "com.github.marcinzh" %% "turbolift-core" % "0.10.0"
+libraryDependencies += "io.github.marcinzh" %% "turbolift-core" % "0.25.0"
 ```
 
 
