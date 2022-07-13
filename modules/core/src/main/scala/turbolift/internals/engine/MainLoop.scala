@@ -92,5 +92,4 @@ private[engine] final class MainLoop[M[_], U](theMonad: MonadZip[M], effectStack
 
 private[turbolift] object MainLoop:
   val pure: MainLoop[Trampoline, Any] = fromMonad(TrampolineInstances.monad)
-  val pureStackUnsafe: MainLoop[[X] =>> X, Any] = fromMonad(MonadZip[[X] =>> X])
   def fromMonad[M[_]: MonadZip]: MainLoop[M, Any] = new MainLoop[M, Any](MonadZip[M], Array())
