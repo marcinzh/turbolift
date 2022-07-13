@@ -3,8 +3,8 @@ import cats.syntax.functor._
 import turbolift.!!
 import turbolift.typeclass.{MonadZip, AccumZero}
 import turbolift.typeclass.Syntax._
+import turbolift.typeclass.FlippedPairFunctor.given
 import turbolift.std_effects.{WriterEffect, WriterSig}
-import FlippedPairFunctor.given
 
 
 private[std_effects] object WriterHandler:

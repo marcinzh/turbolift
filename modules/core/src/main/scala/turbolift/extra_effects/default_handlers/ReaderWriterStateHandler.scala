@@ -3,10 +3,10 @@ import cats.syntax.functor._
 import turbolift.{!!, Effect}
 import turbolift.typeclass.{MonadZip, AccumZero}
 import turbolift.typeclass.Syntax._
+import turbolift.typeclass.FlippedPairFunctor.given
 import turbolift.std_effects.{Reader, ReaderSig}
 import turbolift.std_effects.{WriterEffect, WriterSig}
 import turbolift.std_effects.{State, StateSig}
-import turbolift.std_effects.default_handlers.FlippedPairFunctor.given
 
 
 private[extra_effects] object ReaderWriterStateHandler:

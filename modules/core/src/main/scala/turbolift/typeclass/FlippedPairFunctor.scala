@@ -1,4 +1,4 @@
-package turbolift.std_effects.default_handlers
+package turbolift.typeclass
 import cats.Functor
 
 
