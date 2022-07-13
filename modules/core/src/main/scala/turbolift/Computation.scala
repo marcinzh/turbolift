@@ -36,7 +36,7 @@ sealed trait Computation[+A, -U]:
 
 
 object Computation extends ComputationExtensions with ComputationInstances:
-  val unit = Pure(())
+  val unit: Unit !! Any = Pure(())
   def pure(): Unit !! Any = unit
   def pure[A](a: A): A !! Any = Pure(a)
   def defer[A, U](ua: => A !! U): A !! U = unit.flatMap(_ => ua)
