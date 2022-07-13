@@ -3,7 +3,7 @@ import turbolift.!!
 import scala.collection.BuildFrom
 
 
-trait MapFilterExtensions:
+private[turbolift] trait MapFilterExtensions:
   extension [A](thiz: Iterator[A])
     def map_!![B, U](f: A => B !! U): Vector[B] !! U =
       thiz.iterator.foldLeft(!!.pure(Vector.empty[B]).upCast[U]) { (mbs, a) => 

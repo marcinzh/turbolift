@@ -48,16 +48,16 @@ object InterpreterCases:
     def onFlatMap[A, B, M[_]: MonadZip](tma: Trans[M, A])(f: A => Trans[M, B]): Trans[M, B]
     def onZip[A, B, M[_]: MonadZip](tma: Trans[M, A], tmb: Trans[M, B]): Trans[M, (A, B)]
 
-    private[turbolift] final def transform[M[_]](M: MonadZip[M]): MonadZip[Trans[M, _]] = new:
+    private[internals] final def transform[M[_]](M: MonadZip[M]): MonadZip[Trans[M, _]] = new:
       override def pure[A](a: A): Trans[M, A] = liftish(onPure(a))(M)
       override def flatMap[A, B](tma: Trans[M, A])(f: A => Trans[M, B]): Trans[M, B] = onFlatMap(tma)(f)(M)
       override def zip[A, B](tma: Trans[M, A], tmb: Trans[M, B]): Trans[M, (A, B)] = onZip(tma, tmb)(M)
 
-    private[turbolift] val resultFunctor: Functor[Result]
-    private[turbolift] def prime[M[_], A](initial: Initial, tma: Trans[M, A]): M[Result[A]]
-    private[turbolift] def liftish[M[_], A](ta: Trans[[X] =>> X, A])(M: MonadZip[M]): Trans[M, A]
-    private[turbolift] def layer[I <: InverseControl](that: I): that.Layer[Trans, Result]
-    private[turbolift] final def focus[M[_]](M: MonadZip[M]): InverseControl.Focus[Trans, M] = InverseControl.focus(M)
+    private[internals] val resultFunctor: Functor[Result]
+    private[internals] def prime[M[_], A](initial: Initial, tma: Trans[M, A]): M[Result[A]]
+    private[internals] def liftish[M[_], A](ta: Trans[[X] =>> X, A])(M: MonadZip[M]): Trans[M, A]
+    private[internals] def layer[I <: InverseControl](that: I): that.Layer[Trans, Result]
+    private[internals] final def focus[M[_]](M: MonadZip[M]): InverseControl.Focus[Trans, M] = InverseControl.focus(M)
 
 
 
@@ -69,11 +69,11 @@ object InterpreterCases:
 
     final def toHandler: ThisHandler = HandlerCases.Primitive[Result, ThisEffect, IntroEffect](this, ())
 
-    private[turbolift] final override val resultFunctor: Functor[F] = summon[Functor[F]]
-    private[turbolift] final override def prime[M[_], A](initial: Unit, tma: Trans[M, A]): M[F[A]] = tma
-    private[turbolift] final override def liftish[M[_], A](fa: F[A])(M: MonadZip[M]): Trans[M, A] = M.pure(fa)
+    private[internals] final override val resultFunctor: Functor[F] = summon[Functor[F]]
+    private[internals] final override def prime[M[_], A](initial: Unit, tma: Trans[M, A]): M[F[A]] = tma
+    private[internals] final override def liftish[M[_], A](fa: F[A])(M: MonadZip[M]): Trans[M, A] = M.pure(fa)
 
-    private[turbolift] final override def layer[I <: InverseControl](that: I): that.Layer[Trans, Result] =
+    private[internals] final override def layer[I <: InverseControl](that: I): that.Layer[Trans, Result] =
       new that.LayerImpl[Trans, Result]:
         override def upperFunctor: Functor[UpperFunctor] = that.upperFunctor compose resultFunctor
         override def withControl[A](ff: this.ThisControl => FocusMonad[UpperFunctor[A]]): UpperMonad[A] =
@@ -93,11 +93,11 @@ object InterpreterCases:
 
     final def toHandler(initial: S): ThisHandler = HandlerCases.Primitive[Result, ThisEffect, IntroEffect](this, initial)
 
-    private[turbolift] final override val resultFunctor: Functor[F] = summon[Functor[F]]
-    private[turbolift] final override def prime[M[_], A](s: S, tma: Trans[M, A]): M[Result[A]] = tma(s)
-    private[turbolift] final override def liftish[M[_], A](ffa: S => F[A])(M: MonadZip[M]): Trans[M, A] = s => M.pure(ffa(s))
+    private[internals] final override val resultFunctor: Functor[F] = summon[Functor[F]]
+    private[internals] final override def prime[M[_], A](s: S, tma: Trans[M, A]): M[Result[A]] = tma(s)
+    private[internals] final override def liftish[M[_], A](ffa: S => F[A])(M: MonadZip[M]): Trans[M, A] = s => M.pure(ffa(s))
 
-    private[turbolift] final override def layer[I <: InverseControl](that: I): that.Layer[Trans, Result] =
+    private[internals] final override def layer[I <: InverseControl](that: I): that.Layer[Trans, Result] =
       new that.LayerImpl[Trans, Result]:
         override def upperFunctor: Functor[UpperFunctor] = that.upperFunctor compose resultFunctor
         override def withControl[A](ff: this.ThisControl => FocusMonad[UpperFunctor[A]]): UpperMonad[A] =

@@ -3,8 +3,7 @@ import turbolift.!!
 import turbolift.std_effects.Each
 
 
-
-trait MiscExtensions:
+private[turbolift] trait MiscExtensions:
   extension [A](thiz: A)
     def pure_!! : A !! Any = !!.pure(thiz)
 

@@ -110,7 +110,7 @@ private[turbolift] object ComputationCases:
   final case class Delimit[A, U, F[+_], L, N](body: A !! (U & L), handler: Primitive[F, L, N]) extends Computation[F[A], U & N]
 
 
-trait ComputationInstances:
+private[turbolift] trait ComputationInstances:
   given [U]: MonadZip[Computation[_, U]] with
     override def pure[A](a: A): A !! U = Pure(a)
     override def flatMap[A, B](ua: A !! U)(f: A => B !! U): B !! U = ua.flatMap(f)

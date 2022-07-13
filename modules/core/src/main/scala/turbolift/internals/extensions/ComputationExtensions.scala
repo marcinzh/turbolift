@@ -4,7 +4,7 @@ import turbolift.internals.engine.MainLoop
 import turbolift.internals.aux.{CanRun, CanTotallyHandle, CanPartiallyHandle}
 
 
-trait ComputationExtensions:
+private[turbolift] trait ComputationExtensions:
   extension [A, U](thiz: Computation[A, U])
     def run(implicit ev: CanRun[U]): A = MainLoop.pure.run(ev(thiz)).run
 

@@ -9,10 +9,10 @@ import turbolift.!!
   "\n    ${U}"
 )
 //// asserts U is empty set
-sealed trait CanRun[U]:
+private[turbolift] sealed trait CanRun[U]:
   def apply[A](comp: A !! U): A !! Any
 
-object CanRun:
+private[turbolift] object CanRun:
   private[turbolift] val singleton = new CanRun[Any]:
     override def apply[A](comp: A !! Any): A !! Any = comp
 

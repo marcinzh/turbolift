@@ -18,9 +18,9 @@ trait Control[T[_[_], _]]:
   def locally[A](body: UpperMonad[A]): T[LowerMonad, UpperFunctor[A]]
 
 
-type Control_!![T[_[_], _], U] = Control[T] { type UpperMonad[X] = X !! U }
+private[internals] type Control_!![T[_[_], _], U] = Control[T] { type UpperMonad[X] = X !! U }
 
 
-object Control:
+private[internals] object Control:
   given [T[_[_], _]](using C: Control[T]): MonadZip[C.LowerMonad] = C.lowerMonad
   given [T[_[_], _]](using C: Control[T]): Functor[C.UpperFunctor] = C.upperFunctor

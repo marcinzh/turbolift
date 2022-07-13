@@ -4,7 +4,7 @@ import turbolift.typeclass.ExtendTuple
 import scala.util.{Try, Success, Failure}
 
 
-trait HandlerExtensions:
+private[turbolift] trait HandlerExtensions:
   extension [S, L, N](thiz: Handler[(_, S), L, N])
     def eval: Handler.Id[L, N] = dropState
 
