@@ -13,7 +13,7 @@ private[turbolift] trait ComputationExtensions:
 
     def downCast[U2 >: U] = thiz.asInstanceOf[Computation[A, U2]]
   
-    def >>=![F[+_], L, N](f: A => Handler[F, L, N]): Handler[F, L, U & N] = Handler.flatten(thiz.map(f))
+    def >>=![F[+_], L, N](f: A => Handler[F, L, N]): Handler[F, L, U & N] = Handler.flatHandle(thiz.map(f))
 
 
   implicit class ComputationExtensions[A, U](thiz: Computation[A, U]):
@@ -24,7 +24,7 @@ private[turbolift] trait ComputationExtensions:
 
 
   extension [F[+_], L, N](thiz: Computation[Handler[F, L, N], N])
-    def flattenHandler: Handler[F, L, N] = Handler.flatten(thiz)
+    def flattenHandler: Handler[F, L, N] = Handler.flatHandle(thiz)
 
 
   extension [A, B, U](thiz: Computation[(A, B), U])

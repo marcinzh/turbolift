@@ -1,5 +1,5 @@
 package turbolift.internals.extensions
-import turbolift.Handler
+import turbolift.{!!, Handler}
 import turbolift.typeclass.ExtendTuple
 import scala.util.{Try, Success, Failure}
 
@@ -18,6 +18,18 @@ private[turbolift] trait HandlerExtensions:
       thiz.map([A] => (pair: (A, S)) =>
         val (a, s) = pair
         (a, f(s))
+      )
+
+    def flatMapState[S2, U](f: S => S2 !! U): Handler[(_, S2), L, (N & U)] =
+      thiz.flatMap([A] => (pair: (A, S)) =>
+        val (a, s) = pair
+        f(s).map((a, _))
+      )
+
+    def flatTapState[S2, U](f: S => Unit !! U): Handler[(_, S), L, (N & U)] =
+      thiz.flatTap([A] => (pair: (A, S)) =>
+        val (_, s) = pair
+        f(s)
       )
 
     def ***![S2, S3, L2, N2](that: Handler[(_, S2), L2, N2])(using ET: ExtendTuple[S, S2, S3]): Handler[(_, S3), L & L2, N & N2] =

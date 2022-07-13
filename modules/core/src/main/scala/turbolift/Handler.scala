@@ -17,6 +17,12 @@ sealed trait Handler[Result[+_], Elim, Intro]:
   final def map[NewResult[+_]](f: [X] => Result[X] => NewResult[X]): Handler[NewResult, Elim, Intro] =
     HandlerCases.Mapped[Result, NewResult, Elim, Intro](this, f)
 
+  final def flatMap[NewResult[+_], V](f: [X] => Result[X] => NewResult[X] !! V): Handler[NewResult, Elim, Intro & V] =
+    HandlerCases.FlatMapped[Result, NewResult, Elim, Intro, V](this, f)
+
+  final def flatTap[V](f: [X] => Result[X] => Unit !! V): Handler[Result, Elim, Intro & V] =
+    HandlerCases.FlatTapped[Result, Elim, Intro, V](this, f)
+
   final def composeWith[ThatResult[+_], ThatElim, ThatIntro](that: Handler[ThatResult, ThatElim, ThatIntro]) =
     HandlerCases.Composed[Result, ThatResult, Elim, ThatElim, Intro, ThatIntro, Any](this, that).self
   
@@ -45,7 +51,7 @@ object Handler extends HandlerExtensions:
   type FreeId[Elim] = Handler[[X] =>> X, Elim, Any]
   type FreeConst[Result, Elim] = Handler[[X] =>> Result, Elim, Any]
 
-  def flatten[F[+_], L, N1, N2](h: Handler[F, L, N1] !! N2): Handler[F, L, N1 & N2] = HandlerCases.Flattened(h)
+  def flatHandle[F[+_], L, N1, N2](h: Handler[F, L, N1] !! N2): Handler[F, L, N1 & N2] = HandlerCases.FlatHandled(h)
 
 
 private[turbolift] object HandlerCases:
@@ -75,7 +81,23 @@ private[turbolift] object HandlerCases:
       that.doHandle[A, U](comp).map(fun(_))
 
 
-  final case class Flattened[Result[+_], Elim, Intro1, Intro2](
+  final case class FlatMapped[OldResult[+_], NewResult[+_], Elim, Intro1, Intro2](
+    that: Handler[OldResult, Elim, Intro1],
+    fun: [X] => OldResult[X] => NewResult[X] !! Intro2,
+  ) extends Handler[NewResult, Elim, Intro1 & Intro2]:
+    override def doHandle[A, U](comp: A !! (U & Elim)): NewResult[A] !! (U & Intro1 & Intro2) =
+      that.doHandle[A, U](comp).flatMap(fun(_))
+
+
+  final case class FlatTapped[Result[+_], Elim, Intro1, Intro2](
+    that: Handler[Result, Elim, Intro1],
+    fun: [X] => Result[X] => Unit !! Intro2,
+  ) extends Handler[Result, Elim, Intro1 & Intro2]:
+    override def doHandle[A, U](comp: A !! (U & Elim)): Result[A] !! (U & Intro1 & Intro2) =
+      that.doHandle[A, U](comp).flatTap(fun(_))
+
+
+  final case class FlatHandled[Result[+_], Elim, Intro1, Intro2](
     that: Handler[Result, Elim, Intro1] !! Intro2,
   ) extends Handler[Result[+_], Elim, Intro1 & Intro2]:
     override def doHandle[A, U](comp: A !! (U & Elim)): Result[A] !! (U & Intro1 & Intro2) =
