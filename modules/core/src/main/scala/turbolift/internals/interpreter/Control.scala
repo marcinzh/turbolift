@@ -3,7 +3,10 @@ import cats.Functor
 import turbolift.!!
 import turbolift.typeclass.MonadZip
 
-
+/** Interface to lmanipulate Turbolift's internal monad transformer stack.
+  * 
+  * Used by implementations of [[InterpreterCases.Flow Flow Interpreters]]. 
+  */
 trait Control[T[_[_], _]]:
   type UpperFunctor[+_]
   type UpperMonad[_]

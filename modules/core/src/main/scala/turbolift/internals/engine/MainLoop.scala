@@ -48,7 +48,7 @@ private[engine] final class MainLoop[M[_], U](theMonad: MonadZip[M], effectStack
           val mx2 = interpreter.prime(h.initial.asInstanceOf[interpreter.Initial], mx)
           loop(Lift(mx2), step)
 
-        case interpreter: InterpreterCases.Proxy =>
+        case interpreter: InterpreterCases.Proxy[tX] =>
           val effectStack2 = EffectStackItem.Proxy(interpreter) +: effectStack
           val mainLoop2 = MainLoop(theMonad, effectStack2)
           val mx = mainLoop2.run(ux).asInstanceOf[M[A]]

@@ -7,6 +7,39 @@ import HandlerCases.Primitive
 import ComputationCases._
 
 
+/** Monad of extensible effects. Use `!!` infix type alias for it, to write effectful types.
+  *  
+  * Example:
+  * {{{
+  * type MyComputation = String !! (MyState & MyError)
+  * }}}
+  * ...is a type of computation that:
+  * - Returns a `String`
+  * - Reqests 2 effects:
+  *     - `MyState` effect
+  *     - `MyError` effect
+  * 
+  * All requested effects must be handled (discharged from the computation), by using [[Handler]]s, before
+  * the result can be obtained as a plain (non monadic) value.
+  * 
+  * To handle some or all requested effects, use `handleWith` method:
+  * {{{
+  * val myComputation2 = myComputation.handleWith(myHandler)
+  * }}}
+  * 
+  * As soon as all effects are handled, the result can be obtained with `run` method:
+  * {{{
+  * val result = someComputation
+      .handleWith(someHandler1)
+      .handleWith(someHandler2)
+      .handleWith(someHandler3)
+      .run
+  * }}}
+  * 
+  * @tparam A Result type of the computation
+  * @tparam U Type-level set of effects requested by the computation, expressed as an intersection type. `Any` denotes empty set.
+  */
+
 sealed trait Computation[+A, -U]:
   final def map[B](f: A => B): B !! U = new FlatMap(this, f andThen (new Pure(_)))
   final def flatMap[B, U2 <: U](f: A => B !! U2): B !! U2 = new FlatMap(this, f)
@@ -34,6 +67,14 @@ sealed trait Computation[+A, -U]:
 
   final def upCast[U2 <: U] = this: A !! U2
 
+/**
+  * Use `!!` alias to access methods of this companion object.
+  * 
+  * Example:
+  * {{{
+  * val myComputation: Int !! Any = !!.pure(42)
+  * }}}
+  */
 
 object Computation extends ComputationExtensions with ComputationInstances:
   val unit: Unit !! Any = Pure(())
@@ -116,6 +157,10 @@ private[turbolift] trait ComputationInstances:
     override def flatMap[A, B](ua: A !! U)(f: A => B !! U): B !! U = ua.flatMap(f)
     override def zip[A, B](ua: A !! U, ub: B !! U): (A, B) !! U = ua *! ub
 
-
+/** Alias for [[Computation]] type. Meant to be used in infix form. */
 type !![+A, -U] = Computation[A, U]
+
+/** Alias for [[Computation]] companion object.
+ *  
+ */
 def !! = Computation
