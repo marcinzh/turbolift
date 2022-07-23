@@ -18,4 +18,5 @@ trait AcyclicMemoizer[K, V] extends Effect[AcyclicMemoizerSig[K, V]] with Acycli
     def recur(k: K): V !! U = memo(f(recur))(k)
     recur
 
+  /** Default handler for this effect. */
   def handler: ThisHandler.FreeId = AcyclicMemoizerHandler[K, V, this.type](this)

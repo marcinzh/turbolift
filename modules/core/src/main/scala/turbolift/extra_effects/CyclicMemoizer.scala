@@ -18,4 +18,5 @@ trait CyclicMemoizer[K, V] extends Effect[CyclicMemoizerSig[K, V]] with CyclicMe
     def recur(k: K): (() => V) !! U = memo(f(recur))(k)
     recur
 
+  /** Default handler for this effect. */
   def handler: ThisHandler.FreeId = CyclicMemoizerHandler[K, V, this.type](this)

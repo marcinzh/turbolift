@@ -32,4 +32,5 @@ trait State[S] extends Effect[StateSig[S]] with StateSig[S]:
   final override def getUpdate[A](f: S => (A, S)): (A, S) !! this.type = perform(_.getUpdate(f))
   final override def getUpdateGet[A](f: S => (A, S)): (A, S, S) !! this.type = perform(_.getUpdateGet(f))
 
+  /** Default handler for this effect. */
   def handler(initial: S): ThisHandler.Free[(_, S)] = StateHandler(this, initial)

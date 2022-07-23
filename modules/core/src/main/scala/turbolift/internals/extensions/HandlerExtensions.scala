@@ -8,9 +8,9 @@ private[turbolift] trait HandlerExtensions:
   extension [S, L, N](thiz: Handler[(_, S), L, N])
     def eval: Handler.Id[L, N] = dropState
 
-    def exec: Handler[[X] =>> S, L, N] = justState
+    def exec: Handler.Const[S, L, N] = justState
 
-    def justState: Handler[[X] =>> S, L, N] = thiz.map([A] => (pair: (A, S)) => pair._2)
+    def justState: Handler.Const[S, L, N] = thiz.map([A] => (pair: (A, S)) => pair._2)
 
     def dropState: Handler.Id[L, N] = thiz.map([A] => (pair: (A, S)) => pair._1)
 

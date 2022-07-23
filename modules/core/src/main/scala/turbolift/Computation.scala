@@ -7,38 +7,40 @@ import HandlerCases.Primitive
 import ComputationCases._
 
 
-/** Monad of extensible effects. Use `!!` infix type alias for it, to write effectful types.
-  *  
-  * Example:
-  * {{{
-  * type MyComputation = String !! (MyState & MyError)
-  * }}}
-  * ...is a type of computation that:
-  * - Returns a `String`
-  * - Reqests 2 effects:
-  *     - `MyState` effect
-  *     - `MyError` effect
-  * 
-  * All requested effects must be handled (discharged from the computation), by using [[Handler]]s, before
-  * the result can be obtained as a plain (non monadic) value.
-  * 
-  * To handle some or all requested effects, use `handleWith` method:
-  * {{{
-  * val myComputation2 = myComputation.handleWith(myHandler)
-  * }}}
-  * 
-  * As soon as all effects are handled, the result can be obtained with `run` method:
-  * {{{
-  * val result = someComputation
-      .handleWith(someHandler1)
-      .handleWith(someHandler2)
-      .handleWith(someHandler3)
-      .run
-  * }}}
-  * 
-  * @tparam A Result type of the computation
-  * @tparam U Type-level set of effects requested by the computation, expressed as an intersection type. `Any` denotes empty set.
-  */
+/** Monad of extensible effects. Use the `!!` infix type alias instead.
+ *   
+ *  For example:
+ *  {{{
+ *  type MyComputationType1 = String !! (MyState & MyError)
+ *  
+ *  type MyComputationType2 = String !! Any
+ *  }}}
+ *  `MyComputationType1` is a type of computations that return `String` and reqest 2 effects: `MyState` and `MyError`.
+ *  
+ *  `MyComputationType2` is a type of computations that return `String` and reqest no effects (type `Any` means empty set).
+ *  
+ *  ---
+ *  
+ *  All requested effects must be handled (discharged from the computation), by using [[Handler Handlers]], before
+ *  the result can be obtained as a plain (non monadic) value.
+ *  
+ *  To handle some or all requested effects, use [[Computation.handleWith handleWith]]:
+ *  {{{
+ *  val myComputation2 = myComputation.handleWith(myHandler)
+ *  }}}
+ *  
+ *  As soon as all effects are handled, the result can be obtained with [[Computation.run run]]:
+ *  {{{
+ *  val result = someComputation
+ *    .handleWith(someHandler1)
+ *    .handleWith(someHandler2)
+ *    .handleWith(someHandler3)
+ *    .run
+ *  }}}
+ *
+ *  @tparam A Result type of the computation
+ *  @tparam U Type-level set of effects, expressed as an intersection type, that are requested by this computation. Type `Any` means empty set.
+ */
 
 sealed trait Computation[+A, -U]:
   final def map[B](f: A => B): B !! U = new FlatMap(this, f andThen (new Pure(_)))
@@ -68,7 +70,7 @@ sealed trait Computation[+A, -U]:
   final def upCast[U2 <: U] = this: A !! U2
 
 /**
-  * Use `!!` alias to access methods of this companion object.
+  * Use the `!!` alias to access methods of this companion object.
   * 
   * Example:
   * {{{

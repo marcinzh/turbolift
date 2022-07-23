@@ -4,13 +4,15 @@ import turbolift.internals.effect.{CanPerform, CanInterpret, HasSignature => Stu
 /**
  *  Base trait for any user-defined effect.
  *
- *  User-defined subclass of `Effect` serves as a bridge, between effects request and effect handlers.
+ *  An instance of [[Effect]] serves as a bridge, between effects request and effect handlers.
  *
- *  1. For effect requests, `Effect` provides syntax for invoking effect's operations. The syntax is defined using `perform` method. 
+ *  1. For effect requests, [[Effect]] provides syntax for invoking effect's operations. The syntax is defined using [[perform]] method. 
  *
- *  2. For effect handlers, `Effect` provides environment for implementing an [[internals.interpreter.InterpreterCases Interpreter]], which can be subsequently transformed to a [[Handler]].
+ *  2. For effect handlers, [[Effect]] provides environment for implementing an [[internals.interpreter.Interpreter Interpreter]], which can be subsequently transformed to a [[Handler]].
  *
  *  Typically, a custom defined [[Signature]] is 1-1 paired with a custom defined [[Effect]].
+ *
+ *  --- 
  *
  *  # Usage
  *
@@ -22,20 +24,20 @@ import turbolift.internals.effect.{CanPerform, CanInterpret, HasSignature => Stu
  *    def countPicturesOf(topic: String): Int !@! ThisEffect
  *  }}}
  *
- *  ...then, the corresponding `Effect` class should look like this:
+ *  ...then, the corresponding [[Effect]] should look like this:
  *  {{{
  *  import turbolift.{!!, Effect}
  *
- *  class Google extends Effect[GoogleSignature] with GoogleSignature:
+ *  trait Google extends Effect[GoogleSignature] with GoogleSignature:
  *    final override def countPicturesOf(topic: String): Int !! this.type = perform(_.countPicturesOf(topic))
  *  }}}
  *
- *  **Important Note**: `Google` uses its `GoogleSignature` **twice**: first as the type parameter, and second as the super trait.
+ *  ⚠️ `Google` uses its `GoogleSignature` **twice**: first as the type parameter, and second as the super trait.
  *
- *  **Important Note**: `Effect` trait final-overrides `!@!` as `!!`, and `ThisType` as `this.type`. 
+ *  ⚠️ [[Effect]] trait finally-overrides `!@!` as `!!`, and [[Signature.ThisEffect ThisEffect]] as `this.type`. 
  *  The (re)definintion of `countPicturesOf` in `Google` uses those overrides. This is not necessary, but it improves readability of error messages.
  *
- *  `Effect` instance defines unique identity for the effect, both in type and value spaces.
+ *  [[Effect]] instance defines unique identity for the effect, both in type and value spaces.
  *  In order for our `Google` to be usable, such instance must be made accessible. Assuming global scope:
  *  {{{
  *  case object MyGoogle extends Google   // unique value
@@ -48,11 +50,15 @@ import turbolift.internals.effect.{CanPerform, CanInterpret, HasSignature => Stu
  *  val myComputation: Int !! MyGoogle = MyGoogle.countPicturesOf("cat")
  *  }}}
  *   
- *  **Important Note**: Unlike in most effect systems in Scala and Haskell scene, in Turbolift it's allowed
+ *  ⚠️ Unlike in most effect systems in Scala and Haskell scene, in Turbolift it is possible
  *  to have more than 1 instance of given effect, and even use them **simultaneously** in the same computation.
  *  Turbolift's runtime will treat them as completely separate effects, with each expecting a separate handler instance.
  *   
- *  For example:
+ *  **Related reading**: [[https://docs.idris-lang.org/en/latest/effects/state.html#labelled-effects Labelled Effects in Idris]]. In Idris, the label is optional.
+ *  In Turbolift, effects are always "labelled". Scala's dependent typing can be used to write code polymorphic over effect's identity. Such as
+ *  a [[Handler]], that can handle any instance of `Google` effect. This is how default handlers for standard effects (`Reader`, `State`, etc.) are implemented.
+ *  
+ *  Example of 2 instances of our `Google` effect:
  *  {{{
  *  case object MyGoogle1 extends Google
  *  case object MyGoogle2 extends Google
@@ -66,50 +72,60 @@ import turbolift.internals.effect.{CanPerform, CanInterpret, HasSignature => Stu
  *    yield a + b
  *  }}}
  *   
- *  If, for some reasons, this property isn't desirable, we can hardcode the effect to be limited to 1 instance forever. Replace:
+ *  If, for some reasons, this property is undesirable, we can hardcode the effect to be limited to 1 instance forever.
+ *  All we need to do, is to replace `trait Google` with `case object Google`:
  *  {{{
- *  class Google extends Effect[GoogleSignature] with GoogleSignature:
+ *  trait Google extends Effect[GoogleSignature] with GoogleSignature:
  *    final override def countPicturesOf(topic: String): Int !! this.type = perform(_.countPicturesOf(topic))
  *  }}}
  *  ...with:
  *  {{{
- *  type Google = Google.type
- *   
  *  case object Google extends Effect[GoogleSignature] with GoogleSignature:
  *    final override def countPicturesOf(topic: String): Int !! Google = perform(_.countPicturesOf(topic))
+ *
+ *  type Google = Google.type
  *  }}}
  *   
- *  **Important Note**: Even though we have just limited the number of `Google` effect instances to 1, we can still define multiple __handlers__ for `Google`.
- *   
- *  @tparam Z The [[Signature]] of this `Effect`
+ *  ⚠️ Even though we have just limited the number of `Google` effect instances to 1,
+ *  we can still define multiple [[Handler Handlers]] for `Google`.
+ *  
+ *  @tparam Z The [[Signature]] of this effect.
  *   
  */
 
 trait Effect[Z <: Signature] extends CanPerform[Z] with CanInterpret:
   enclosing =>
   final override type ThisEffect = this.type
-  final override type ThisSignature = Z
-  final override def signatures: Array[Signature] = Array(this)
+  private[turbolift] final override type ThisSignature = Z
+  private[turbolift] final override def signatures: Array[Signature] = Array(this)
+  
+  /** Combines with another [[Effect]] instance, so that a single [[Handler]] for 2 effects can be created. */
   final def &![Fx2 <: Stub](fx2: Fx2) = new Effect.Combine2[this.type, Fx2](this, fx2)
 
 
-private[this] object Effect:
-  private[turbolift] sealed abstract class Combine(val sigs: Signature*) extends CanInterpret:
-    final override val signatures: Array[Signature] = sigs.toArray
+object Effect:
+  private[turbolift] sealed abstract class Combine(sigs: Signature*) extends CanInterpret:
+    private[turbolift] final override val signatures: Array[Signature] = sigs.toArray
 
-
+  /** Provides environment for implementing [[Handler Handlers]], that handle 2 [[Effect Effects]] at once. */
   final class Combine2[Fx1 <: Stub, Fx2 <: Stub](val fx1: Fx1, val fx2: Fx2) extends Combine(fx1, fx2):
     override type ThisEffect = fx1.type & fx2.type
-    override type ThisSignature = fx1.ThisSignature & fx2.ThisSignature
+    private[turbolift] override type ThisSignature = fx1.ThisSignature & fx2.ThisSignature
+    
+    /** Combines with another [[Effect]] instance, so that a single [[Handler]] for 3 effects can be created. */
     def &![Fx3 <: Stub](fx3: Fx3) = new Combine3[Fx1, Fx2, Fx3](fx1, fx2, fx3)
 
 
+  /** Provides environment for implementing [[Handler Handlers]], that handle 3 [[Effect Effects]] at once. */
   final class Combine3[Fx1 <: Stub, Fx2 <: Stub, Fx3 <: Stub](val fx1: Fx1, val fx2: Fx2, val fx3: Fx3) extends Combine(fx1, fx2, fx3):
     override type ThisEffect = fx1.type & fx2.type & fx3.type
-    override type ThisSignature = fx1.ThisSignature & fx2.ThisSignature & fx3.ThisSignature
+    private[turbolift] override type ThisSignature = fx1.ThisSignature & fx2.ThisSignature & fx3.ThisSignature
+    
+    /** Combines with another [[Effect]] instance, so that a single [[Handler]] for 4 effects can be created. */
     def &![Fx4 <: Stub](fx4: Fx4) = new Combine4[Fx1, Fx2, Fx3, Fx4](fx1, fx2, fx3, fx4)
 
 
+  /** Provides environment for implementing [[Handler Handlers]], that handle 4 [[Effect Effects]] at once. */
   final class Combine4[Fx1 <: Stub, Fx2 <: Stub, Fx3 <: Stub, Fx4 <: Stub](val fx1: Fx1, val fx2: Fx2, val fx3: Fx3, val fx4: Fx4) extends Combine(fx1, fx2, fx3, fx4):
     override type ThisEffect = fx1.type & fx2.type & fx3.type & fx4.type
-    override type ThisSignature = fx1.ThisSignature & fx2.ThisSignature & fx3.ThisSignature & fx4.ThisSignature
+    private[turbolift] override type ThisSignature = fx1.ThisSignature & fx2.ThisSignature & fx3.ThisSignature & fx4.ThisSignature

@@ -3,4 +3,4 @@ import turbolift.Signature
 
 
 private[turbolift] trait HasSignature extends Signature:
-  type ThisSignature <: Signature
+  private[turbolift] type ThisSignature <: Signature

@@ -34,5 +34,8 @@ trait MonoGraph[K, V] extends Effect[MonoGraphSig[K, V]] with MonoGraphSig[K, V]
     def outgoing(to: K) = enclosing.outgoing(k, to)
     def outgoings(tos: IterableOnce[K]) = enclosing.outgoings(k, tos)
 
+  /** Predefined handler for this effect. */
   def handler(implicit M: Monoid[V]): ThisHandler.Free[(_, Map[K, V])] = MonoGraphHandler[K, V, this.type](this)
+
+  /** Predefined handler for this effect. */
   def handler(zero: V, combine: (V, V) => V): ThisHandler.Free[(_, Map[K, V])] = handler(Monoid.instance(zero, combine))

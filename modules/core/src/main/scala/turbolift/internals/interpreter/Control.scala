@@ -3,9 +3,9 @@ import cats.Functor
 import turbolift.!!
 import turbolift.typeclass.MonadZip
 
-/** Interface to lmanipulate Turbolift's internal monad transformer stack.
+/** Interface to manipulate Turbolift's internal monad transformer stack.
   * 
-  * Used by implementations of [[InterpreterCases.Flow Flow Interpreters]]. 
+  * Used by implementations of [[Interpreter.Flow Flow Interpreters]]. 
   */
 trait Control[T[_[_], _]]:
   type UpperFunctor[+_]
@@ -21,9 +21,8 @@ trait Control[T[_[_], _]]:
   def locally[A](body: UpperMonad[A]): T[LowerMonad, UpperFunctor[A]]
 
 
-private[internals] type Control_!![T[_[_], _], U] = Control[T] { type UpperMonad[X] = X !! U }
+object Control:
+  type Apply[T[_[_], _], U] = Control[T] { type UpperMonad[X] = X !! U }
 
-
-private[internals] object Control:
   given [T[_[_], _]](using C: Control[T]): MonadZip[C.LowerMonad] = C.lowerMonad
   given [T[_[_], _]](using C: Control[T]): Functor[C.UpperFunctor] = C.upperFunctor

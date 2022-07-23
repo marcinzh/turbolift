@@ -3,7 +3,7 @@ import turbolift.{!!, Signature, ComputationCases, HandlerCases}
 import turbolift.typeclass.MonadZip
 import turbolift.std_effects.ChoiceSig
 import turbolift.internals.effect.AnyChoice
-import turbolift.internals.interpreter.{InterpreterCases, InverseControl}
+import turbolift.internals.interpreter.{Interpreter, InverseControl}
 
 
 private[engine] final class MainLoop[M[_], U](theMonad: MonadZip[M], effectStack: EffectStack):
@@ -34,7 +34,7 @@ private[engine] final class MainLoop[M[_], U](theMonad: MonadZip[M], effectStack
         loop(f(op2), step)
 
       case Delimit(ux, h) => h.interpreter match
-        case interpreter: InterpreterCases.Flow =>
+        case interpreter: Interpreter.Flow =>
           val effectStack2 =
             val head = EffectStackItem.Flow(interpreter, InverseControl.focus(theMonad))
             val tail = effectStack.map {
@@ -48,7 +48,7 @@ private[engine] final class MainLoop[M[_], U](theMonad: MonadZip[M], effectStack
           val mx2 = interpreter.prime(h.initial.asInstanceOf[interpreter.Initial], mx)
           loop(Lift(mx2), step)
 
-        case interpreter: InterpreterCases.Proxy[tX] =>
+        case interpreter: Interpreter.Proxy[tX] =>
           val effectStack2 = EffectStackItem.Proxy(interpreter) +: effectStack
           val mainLoop2 = MainLoop(theMonad, effectStack2)
           val mx = mainLoop2.run(ux).asInstanceOf[M[A]]

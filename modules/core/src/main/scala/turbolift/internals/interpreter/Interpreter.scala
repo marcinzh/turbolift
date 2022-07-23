@@ -8,38 +8,37 @@ import turbolift.typeclass.MonadZip
 /** Super trait for any user-defined [[Interpreter Interpreter]].
   *
   * There are 2 kinds of interpreters:
-  * - [[InterpreterCases.Proxy Proxy]] interpreters - The easy way: handle this effect, by simply delegating to other, preexisting effects.
-  * - [[InterpreterCases.Flow Flow]] interpreters - The hard way: implement a monad transformer for this effect. Take full [[Control]].
+  * - [[Interpreter.Proxy Proxy]] interpreters - The easy way: handle this effect in terms of other, preexisting effects (a.k.a. reinterpretation).
+  * - [[Interpreter.Flow Flow]] interpreters - The hard way: implement a monad transformer for this effect. Take full [[Control]].
   *
-  * Interpreters aren't usable directly. A [[turbolift.Handler Handler]] must be created from the interpreter, by calling `toHandler` method.
+  * Interpreters aren't directly usable. A [[turbolift.Handler Handler]] must be created from the interpreter, by calling `toHandler` method.
   */
 sealed trait Interpreter extends Signature:
   type Result[+A]
   type IntroEffect
 
+  /** Alias for [[Handler]], specialized for this interperter. */
   final type ThisHandler = Handler[Result, ThisEffect, IntroEffect]
 
   private[turbolift] val signatures: Array[Signature]
 
 
-private[turbolift] object Interpreter:
-  type Apply[F[+_], L, N] = Interpreter {
+object Interpreter:
+  private[turbolift] type Apply[F[+_], L, N] = Interpreter {
     type Result[+A] = F[A]
     type ThisEffect = L
     type IntroEffect = N
   }
 
-
-object InterpreterCases:
   private[turbolift] trait Unsealed extends Interpreter //// subclassed by Effect
 
   /** Super trait for any user-defined proxy [[Interpreter]].
     *
-    * `Proxy` translates operations of this effect, into operations of some other effects (dependencies).
+    * [[Proxy]] translates operations of this effect, into operations of some other effects (dependencies). This is also known as "reinterpretation" in some effect systems.
     * 
-    * a.k.a Reinterpretation.
+    * Unlike [[Flow]] interpreters, [[Proxy]] interpreters have their [[Result]] type fixed to identity.
     * 
-    * @tparam Fx Type-level set, expressed as an intersection type, specifying dependencies of this proxy interpreter.
+    * @tparam Fx Type-level set of effects, expressed as an intersection type, specifying dependencies of this proxy interpreter.
     */
   trait Proxy[Fx] extends Interpreter:
     final override type Result[A] = A
@@ -56,7 +55,7 @@ object InterpreterCases:
     type Initial
     type Trans[_[_], _]
 
-    final type ThisControlBound[U] = Control_!![Trans, U]
+    private final type ThisControlBound[U] = Control.Apply[Trans, U]
     type ThisControl[U] >: ThisControlBound[U] <: ThisControlBound[U]
     final override type !@![A, U] = (kk: ThisControl[U]) ?=> Trans[kk.LowerMonad, kk.UpperFunctor[A]]
 
@@ -80,8 +79,8 @@ object InterpreterCases:
     * 
     * Works by translating operations of this effect, into a monad, defined by transformer: `T[M, A] = M[F[A]]`.
     * 
-    * Implementor must provide: 
-    * - Definitions for `pure`, `flatMap` and `zip` for the transformed monad.
+    * Implementation must provide: 
+    * - Definitions for `pure`, `flatMap` and `zip` for the transformed monad, given `MonadZip` instance for the inner monad.
     * - `Functor` instance for `F[_]`
     * 
     * @tparam F Part of this interpreter's monad transformer.
@@ -91,7 +90,7 @@ object InterpreterCases:
     final override type Initial = Unit
     final override type Result[+A] = F[A]
     final override type Trans[M[_], X] = M[F[X]]
-    final override type ThisControl[U] = Control_!![[M[_], X] =>> M[F[X]], U]
+    final override type ThisControl[U] = Control.Apply[[M[_], X] =>> M[F[X]], U]
 
     /** Creates a [[turbolift.Handler Handler]] from this interpreter. */
     final def toHandler: ThisHandler = HandlerCases.Primitive[Result, ThisEffect, IntroEffect](this, ())
@@ -115,8 +114,8 @@ object InterpreterCases:
     * 
     * Works by translating operations of this effect, into a monad, defined by transformer: `T[M, A] = S => M[F[A]]`.
     * 
-    * Implementor must provide: 
-    * - Definitions for `pure`, `flatMap` and `zip` for the transformed monad.
+    * Implementation must provide: 
+    * - Definitions for `pure`, `flatMap` and `zip` for the transformed monad, given [[turbolift.typeclass.MonadZip MonadZip]] instance for the inner monad.
     * - `Functor` instance for `F[_]`
     * 
     * @tparam S Part of this interpreter's monad transformer.
@@ -126,7 +125,7 @@ object InterpreterCases:
     final override type Initial = S
     final override type Result[+A] = F[A]
     final override type Trans[M[_], X] = S => M[F[X]]
-    final override type ThisControl[U] = Control_!![[M[_], X] =>> S => M[F[X]], U]
+    final override type ThisControl[U] = Control.Apply[[M[_], X] =>> S => M[F[X]], U]
 
     /** Creates a [[turbolift.Handler Handler]] from this interpreter. */
     final def toHandler(initial: S): ThisHandler = HandlerCases.Primitive[Result, ThisEffect, IntroEffect](this, initial)

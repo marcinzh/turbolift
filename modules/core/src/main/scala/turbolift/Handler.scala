@@ -3,17 +3,25 @@ import turbolift.internals.aux.CanPartiallyHandle
 import turbolift.internals.extensions.HandlerExtensions
 import turbolift.internals.interpreter.Interpreter
 
-/** Object used to transform a [[Computation]], by discharging some or all of its requested effects.
-  *
-  * Handlers can be created in 3 ways:
-  * - By implementing an [[internals.interpreter.Interpreter Interpreter]] for an [[Effect]], and then transforming it into a [[Handler]].
-  * - By transforming a preexisting handler, e.g: `myHandler.map(...)`
-  * - By composing 2 preexisting handlers, e.g: `val myHandler3 = myHandler1 &&&! myHandler2`
-  *  
-  *  
-  * @tparam Result Type constructor (a functor, e.g. `Option[_]`), in which computation's result is wrapped, after application of this handler.
-  * @tparam Elim Type-level set of effects, expressed as an intersection type, that this handler __eliminates__ from the __incoming__ computation.
-  * @tparam Intro Type-level set of effects, expressed as an intersection type, that this handler __introduces__ into the __outgoing__ computation.
+/** Handler is an object used to transform a [[Computation]], by discharging some or all of its requested effects.
+ *
+ *  For example, having:
+ *  {{{
+ *  val myComputation2 = myComputation1.handleWith(myHandler)
+ *  }}}
+ *  ...then, `myComputation2` will have the type of `myComputation1`, modified as follows:
+ *  - [[Elim]] effects will be **removed** from the set of requested effects.
+ *  - [[Intro]] effects (if any) will be **inserted** to the set of requested effects.
+ *  - The result type `A`, will be transformed into `Result[A]`.
+ *  
+ *  Handlers can be obtained in 3 ways:
+ *  - By implementing an [[internals.interpreter.Interpreter Interpreter]] for an [[Effect]], and then transforming it into a [[Handler]].
+ *  - By transforming a preexisting handler, e.g: `val myHandler2 = myHandler1.map(...)`
+ *  - By composing 2 preexisting handlers, e.g: `val myHandler3 = myHandler1 &&&! myHandler2`
+ *  
+ *  @tparam Result Type constructor (e.g. `Option[_]`), in which the computation's result is wrapped, after application of this handler. This is often an identity.
+ *  @tparam Elim Type-level set of effects, expressed as an intersection type, that this handler __eliminates__ from the computation.
+ *  @tparam Intro Type-level set of effects, expressed as an intersection type, that this handler __introduces__ into the computation. This is often an empty set, expressed as `Any`.
  */
 
 sealed trait Handler[Result[+_], Elim, Intro]:
@@ -43,7 +51,7 @@ sealed trait Handler[Result[+_], Elim, Intro]:
 
   /** Like `map`, but the post-processing of `Result[_]` can also introduce effects.
     *
-    * Those effects are then absorbed by the new handler into its own dependencies.
+    * Those effects are then absorbed by the new handler into the effects it introduces.
     */
   final def flatMap[NewResult[+_], V](f: [X] => Result[X] => NewResult[X] !! V): Handler[NewResult, Elim, Intro & V] =
     HandlerCases.FlatMapped[Result, NewResult, Elim, Intro, V](this, f)
@@ -67,14 +75,14 @@ sealed trait Handler[Result[+_], Elim, Intro]:
   
   /** Composes 2 **fully dependent** handlers sequentially. This handler is applied first.
     *
-    * Assumes that **all** effects introduced by this handler (dependencies), are eliminated (satisfied) by `that` handler.
+    * Assumes that **all** effects introduced by this handler, are eliminated by `that` handler.
     */
   final def provideWith[ThatResult[+_], ThatIntro](that: Handler[ThatResult, Intro, ThatIntro]) =
     HandlerCases.Composed[Result, ThatResult, Elim, Any, Any, ThatIntro, Intro](Handler.this, that).self
 
   /** Composes 2 **partially dependent** handlers sequentially. This handler is applied first.
     *
-    * Assumes that **some of** effects introduced by this handler (dependencies), are eliminated (satisfied) by `that` handler.
+    * Assumes that **some of** effects introduced by this handler, are eliminated by `that` handler.
     */
   final def partiallyProvideWith[Remains >: Intro] = new PartiallyProvideWithApply[Remains]
   class PartiallyProvideWithApply[Remains >: Intro]:

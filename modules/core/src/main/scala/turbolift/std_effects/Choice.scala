@@ -23,15 +23,18 @@ sealed trait ChoiceEffect extends Effect[ChoiceSig] with ChoiceSig:
   final def fromEither[E, A](x: Either[E, A]): A !! this.type = x.fold(_ => empty, pure)
   final def fromTry[A](x: Try[A]): A !! this.type = x.fold(_ => empty, pure)
 
+  /** Predefined handlers for this effect. */
   object handlers:
     val one: ThisHandler.Free[Option] = ChoiceHandler_One(ChoiceEffect.this)
     val many: ThisHandler.Free[Vector] = ChoiceHandler_Many(ChoiceEffect.this)
 
 
 trait Choice extends ChoiceEffect:
+  /** Default handler for this effect. */
   def handler: ThisHandler.Free[Vector] = handlers.many
 
 case object Fail extends ChoiceEffect:
+  /** Default handler for this effect. */
   def handler: ThisHandler.Free[Option] = handlers.one
 
 type Fail = Fail.type

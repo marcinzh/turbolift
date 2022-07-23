@@ -16,4 +16,5 @@ trait Reader[R] extends Effect[ReaderSig[R]] with ReaderSig[R]:
   final override def localPut[A, U <: this.type](r: R)(body: A !! U): A !! U = perform(_.localPut(r)(body))
   final override def localModify[A, U <: this.type](f: R => R)(body: A !! U): A !! U = perform(_.localModify(f)(body))
 
+  /** Default handler for this effect. */
   def handler(initial: R): ThisHandler.FreeId = ReaderHandler(this, initial)
