@@ -23,8 +23,10 @@ trait ErrorEffect[E, E1] extends Effect[ErrorSig[E, E1]] with ErrorSig[E, E1]:
   final def fromEither[A](x: Either[E1, A]): A !! this.type = x.fold(raise, pure)
   final def fromTry[A](x: Try[A])(implicit ev: Throwable <:< E1): A !! this.type = x.fold(e => raise(ev(e)), pure)
 
+  /** Default handler for this effect. */
   final def handler(implicit E: E1 =:= E): ThisHandler.Free[Either[E, _]] = handlers.one
 
+  /** Predefined handlers for this effect. */
   object handlers:
     def one(implicit E: E1 =:= E): ThisHandler.Free[Either[E, _]] = ErrorHandler_One[E, E1, ErrorEffect.this.type](ErrorEffect.this)
     def many(implicit E: Accum[E, E1]): ThisHandler.Free[Either[E, _]] = ErrorHandler_Many[E, E1, ErrorEffect.this.type](ErrorEffect.this)

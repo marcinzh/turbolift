@@ -4,7 +4,7 @@ import turbolift.internals.engine.MainLoop
 import turbolift.internals.aux.{CanRun, CanTotallyHandle, CanPartiallyHandle}
 
 
-trait ComputationExtensions:
+private[turbolift] trait ComputationExtensions:
   extension [A, U](thiz: Computation[A, U])
     def run(implicit ev: CanRun[U]): A = MainLoop.pure.run(ev(thiz)).run
 
@@ -13,18 +13,13 @@ trait ComputationExtensions:
 
     def downCast[U2 >: U] = thiz.asInstanceOf[Computation[A, U2]]
   
-    def >>=![F[+_], L, N](f: A => Handler[F, L, N]): Handler[F, L, U & N] = Handler.flatten(thiz.map(f))
+    def >>=![F[+_], L, N](f: A => Handler[F, L, N]): Handler[F, L, U & N] = Handler.flatHandle(thiz.map(f))
 
-
-  implicit class ComputationExtensions[A, U](thiz: Computation[A, U]):
-    def handleWith[V]: HandleWithApply[V] = new HandleWithApply[V]
-    class HandleWithApply[V]:
-      def apply[F[+_], L, N, V2 <: V & N](h: Handler[F, L, N])(implicit ev: CanPartiallyHandle[V, U, L]): F[A] !! V2 =
-        h.doHandle[A, V](ev(thiz))
+    def handleWith[V]: HandleWithApply[A, U, V] = new HandleWithApply[A, U, V](thiz)
 
 
   extension [F[+_], L, N](thiz: Computation[Handler[F, L, N], N])
-    def flattenHandler: Handler[F, L, N] = Handler.flatten(thiz)
+    def flattenHandler: Handler[F, L, N] = Handler.flatHandle(thiz)
 
 
   extension [A, B, U](thiz: Computation[(A, B), U])
@@ -38,3 +33,8 @@ trait ComputationExtensions:
 
     def if_!![U2 <: U](thenBody: => Unit !! U2)(elseBody: => Unit !! U2): Unit !! U2 =
       thiz.flatMap(if _ then thenBody else elseBody)
+
+
+class HandleWithApply[A, U, V](thiz: A !! U):
+  def apply[F[+_], L, N, V2 <: V & N](h: Handler[F, L, N])(implicit ev: CanPartiallyHandle[V, U, L]): F[A] !! V2 =
+    h.doHandle[A, V](ev(thiz))

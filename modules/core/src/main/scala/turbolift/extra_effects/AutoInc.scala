@@ -10,5 +10,8 @@ trait AutoIncSig extends Signature:
 trait AutoInc extends Effect[AutoIncSig] with AutoIncSig:
   def next: Int !! this.type = perform(_.next)
 
+  /** Default handler for this effect. */
   def handler: ThisHandler.Free[(_, Int)] = handler(0)
+  
+  /** Predefined handler for this effect. */
   def handler(initial: Int): ThisHandler.Free[(_, Int)] = AutoIncHandler.apply(this, initial)

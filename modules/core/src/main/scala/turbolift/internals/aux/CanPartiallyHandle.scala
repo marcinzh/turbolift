@@ -11,10 +11,10 @@ import turbolift.!!
   "\n    ${U}"
 )
 //// asserts: U ⊇ V \ W
-sealed trait CanPartiallyHandle[U, V, W]:
+private[turbolift] sealed trait CanPartiallyHandle[U, V, W]:
   def apply[A](comp: A !! V): A !! (W & U)
 
-object CanPartiallyHandle:
+private[turbolift] object CanPartiallyHandle:
   private[turbolift] val singleton = new CanPartiallyHandle[Any, Any, Any]:
     override def apply[A](comp: A !! Any): A !! Any = comp
 

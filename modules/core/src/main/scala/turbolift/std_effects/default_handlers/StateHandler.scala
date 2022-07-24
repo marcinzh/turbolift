@@ -2,8 +2,8 @@ package turbolift.std_effects.default_handlers
 import turbolift.!!
 import turbolift.typeclass.MonadZip
 import turbolift.typeclass.Syntax._
+import turbolift.typeclass.FlippedPairFunctor.given
 import turbolift.std_effects.{State, StateSig}
-import FlippedPairFunctor.given
 
 
 private[std_effects] object StateHandler:

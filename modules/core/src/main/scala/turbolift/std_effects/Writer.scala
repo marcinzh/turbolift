@@ -21,6 +21,7 @@ trait WriterEffect[W, W1] extends Effect[WriterSig[W, W1]] with WriterSig[W, W1]
 
   final def tell[K, V1](k: K, v: V1)(implicit ev: ((K, V1)) <:< W1): Unit !! this.type = tell(ev((k, v)))
 
+  /** Default handler for this effect. */
   def handler(implicit W: AccumZero[W, W1]): ThisHandler.Free[(_, W)] = WriterHandler[W, W1, this.type](this)
 
 

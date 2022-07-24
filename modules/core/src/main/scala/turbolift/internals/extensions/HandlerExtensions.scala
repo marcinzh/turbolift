@@ -1,16 +1,16 @@
 package turbolift.internals.extensions
-import turbolift.Handler
+import turbolift.{!!, Handler}
 import turbolift.typeclass.ExtendTuple
 import scala.util.{Try, Success, Failure}
 
 
-trait HandlerExtensions:
+private[turbolift] trait HandlerExtensions:
   extension [S, L, N](thiz: Handler[(_, S), L, N])
     def eval: Handler.Id[L, N] = dropState
 
-    def exec: Handler[[X] =>> S, L, N] = justState
+    def exec: Handler.Const[S, L, N] = justState
 
-    def justState: Handler[[X] =>> S, L, N] = thiz.map([A] => (pair: (A, S)) => pair._2)
+    def justState: Handler.Const[S, L, N] = thiz.map([A] => (pair: (A, S)) => pair._2)
 
     def dropState: Handler.Id[L, N] = thiz.map([A] => (pair: (A, S)) => pair._1)
 
@@ -18,6 +18,18 @@ trait HandlerExtensions:
       thiz.map([A] => (pair: (A, S)) =>
         val (a, s) = pair
         (a, f(s))
+      )
+
+    def flatMapState[S2, U](f: S => S2 !! U): Handler[(_, S2), L, (N & U)] =
+      thiz.flatMap([A] => (pair: (A, S)) =>
+        val (a, s) = pair
+        f(s).map((a, _))
+      )
+
+    def flatTapState[S2, U](f: S => Unit !! U): Handler[(_, S), L, (N & U)] =
+      thiz.flatTap([A] => (pair: (A, S)) =>
+        val (_, s) = pair
+        f(s)
       )
 
     def ***![S2, S3, L2, N2](that: Handler[(_, S2), L2, N2])(using ET: ExtendTuple[S, S2, S3]): Handler[(_, S3), L & L2, N & N2] =

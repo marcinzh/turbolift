@@ -43,14 +43,14 @@ private[engine] sealed trait Trampoline[A]:
         case More(th) => Left(() => th().flatMap(f))
 
 
-object TrampolineCases:
+private[engine] object TrampolineCases:
   sealed trait DoneOrMore[A] extends Trampoline[A]
   final case class Done[A](value: A) extends DoneOrMore[A]
   final case class More[A](thunk: () => Trampoline[A]) extends DoneOrMore[A]
   final case class FlatMap[A, B](that: DoneOrMore[A], kont: A => Trampoline[B]) extends Trampoline[B]
 
 
-object TrampolineInstances:
+private[engine] object TrampolineInstances:
   def monad: MonadZip[Trampoline] = new MonadZip[Trampoline]:
     override def pure[A](a: A): Trampoline[A] = Done(a)
     override def flatMap[A, B](ma: Trampoline[A])(f: A => Trampoline[B]): Trampoline[B] = ma.flatMap(f)

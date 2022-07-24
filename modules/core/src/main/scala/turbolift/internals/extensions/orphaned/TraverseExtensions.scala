@@ -3,7 +3,7 @@ import turbolift.!!
 import scala.collection.BuildFrom
 
 
-trait TraverseExtensions:
+private[turbolift] trait TraverseExtensions:
   extension [A, U, S[+X] <: IterableOnce[X]](thiz: S[A !! U])
     def traverseVoid: Unit !! U =
       thiz.iterator.foldLeft(!!.pure().upCast[U])(_ &<! _)

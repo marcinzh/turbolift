@@ -7,8 +7,7 @@ A functional effect system. An alternative to both Eff monad and MTL. Supports h
 TODO: Insert overly enthusiastic introduction to Turbolift 's capabilities.
 
 ```scala
-resolvers += Resolver.jcenterRepo
-libraryDependencies += "io.github.marcinzh" %% "turbolift-core" % "0.25.0"
+libraryDependencies += "io.github.marcinzh" %% "turbolift-core" % "0.27.0"
 ```
 
 

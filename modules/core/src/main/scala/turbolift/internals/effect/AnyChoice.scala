@@ -4,7 +4,7 @@ import turbolift.!!
 import turbolift.std_effects.ChoiceSig
 
 
-case object AnyChoice extends CanPerform[ChoiceSig] with ChoiceSig:
+private[turbolift] case object AnyChoice extends CanPerform[ChoiceSig] with ChoiceSig:
   override type ThisEffect >: ChoiceSig
 
   override val fail: Nothing !! ThisEffect = perform(_.fail)

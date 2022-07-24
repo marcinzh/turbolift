@@ -1,10 +1,9 @@
 package turbolift.internals.engine
 import turbolift.internals.interpreter.Interpreter
-import turbolift.internals.interpreter.{InterpreterCases => IC}
 import turbolift.internals.interpreter.InverseControl
 
 
-type EffectStack = Array[EffectStackItem]
+private[engine] type EffectStack = Array[EffectStackItem]
 
 
 private[engine] sealed trait EffectStackItem:

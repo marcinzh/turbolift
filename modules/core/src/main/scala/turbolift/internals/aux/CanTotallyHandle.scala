@@ -11,10 +11,10 @@ import turbolift.!!
   "\n    ${V}"
 )
 //// asserts U <= V
-sealed trait CanTotallyHandle[U, V]:
+private[turbolift] sealed trait CanTotallyHandle[U, V]:
   def apply[A](comp: A !! U): A !! V
 
-object CanTotallyHandle:
+private[turbolift] object CanTotallyHandle:
   private[turbolift] val singleton = new CanTotallyHandle[Any, Any]:
     override def apply[A](comp: A !! Any): A !! Any = comp
 

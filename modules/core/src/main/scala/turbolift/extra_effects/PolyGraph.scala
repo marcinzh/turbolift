@@ -35,4 +35,5 @@ trait PolyGraph[K, V] extends Effect[PolyGraphSig[K, V]] with PolyGraphSig[K, V]
     def fold(froms: Vector[K], initial: V)(f: (V, V) => V) = enclosing.fold(k, froms, initial)(f)
     def reduce(froms: Vector[K])(f: (V, V) => V) = enclosing.reduce(k, froms)(f)
 
+  /** Default handler for this effect. */
   def handler: V => ThisHandler.Free[(_, Map[K, V])] = PolyGraphHandler.apply[K, V, this.type](this)

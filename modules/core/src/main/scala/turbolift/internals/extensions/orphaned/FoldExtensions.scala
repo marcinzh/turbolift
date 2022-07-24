@@ -2,7 +2,7 @@ package turbolift.internals.extensions.orphaned
 import turbolift.!!
 
 
-trait FoldExtensions:
+private[turbolift] trait FoldExtensions:
   extension [A, S[X] <: IterableOnce[X]](thiz: S[A])
     def foldLeft_!![U, B](z: B)(op: (B, A) => B !! U): B !! U =
       thiz.iterator.foldLeft(!!.pure(z).upCast[U]) {

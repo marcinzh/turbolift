@@ -5,7 +5,7 @@ import turbolift.typeclass.MonadZip
 import turbolift.ComputationCases.Lift
 
 
-private[turbolift] trait InverseControl:
+private[internals] sealed trait InverseControl:
   enclosing =>
   type UpperFunctor[+_]
   type UpperMonad[_]
@@ -72,7 +72,7 @@ private[turbolift] trait InverseControl:
         })
 
 
-object InverseControl:
+private[internals] object InverseControl:
   type Focus[T[_[_], _], M[_]] = InverseControl {
     type UpperMonad[X] = T[M, X]
     type UpperFunctor[+X] = X
