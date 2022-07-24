@@ -1,5 +1,7 @@
 :construction: :construction: Work In Progress :construction: :construction:
 
+[![javadoc](https://javadoc.io/badge2/io.github.marcinzh/turbolift-core_3/javadoc.svg)](https://javadoc.io/doc/io.github.marcinzh/turbolift-core_3) 
+
 # Turbolift
 
 A functional effect system. An alternative to both Eff monad and MTL. Supports higher order effects.
@@ -41,6 +43,8 @@ object Main extends App {
 
   // Execute the computation using the handler:
   val result = computation.runWith(handler)
+  
+  
 
   println(result) // prints "Right(33)"
 }
