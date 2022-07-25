@@ -37,7 +37,7 @@ import turbolift.std_effects.{Reader, State, Error}
       _ <- MyState.put(c)
     yield ()
 
-  // Handling the effects and run the computation:
+  // Handle the effects and run the computation:
   val result = computation
     .handleWith(MyState.handler(100).exec)
     .handleWith(MyReader.handler(3))
