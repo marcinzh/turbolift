@@ -27,7 +27,7 @@ import turbolift.std_effects.{Reader, State, Error}
   case object MyState extends State[Int]
   case object MyError extends Error[String]
 
-  val computation =
+  val program =
     for
       a <- MyState.get
       b <- MyReader.ask
@@ -39,7 +39,7 @@ import turbolift.std_effects.{Reader, State, Error}
       _ <- MyState.put(c)
     yield ()
 
-  val result = computation
+  val result = program
     .handleWith(MyState.handler(100).justState)
     .handleWith(MyReader.handler(3))
     .handleWith(MyError.handler)
