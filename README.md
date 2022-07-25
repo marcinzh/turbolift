@@ -18,34 +18,31 @@ libraryDependencies += "io.github.marcinzh" %% "turbolift-core" % "0.27.0"
 import turbolift.!!
 import turbolift.std_effects.{Reader, State, Error}
 
-object Main extends App {
+@main def main =
   // Declare some effects:
   case object MyReader extends Reader[Int]
   case object MyState extends State[Int]
   case object MyError extends Error[String]
 
   // Create a monadic computation using those effects:
-  val computation = for {
-    a <- MyState.get
-    b <- MyReader.ask
-    c <- {
-      if (b != 0) 
-        !!.pure(a / b)
-      else 
-        MyError.raise(s"Tried to divide $a by zero")
-    }
-    _ <- MyState.put(c)
-  } yield ()
+  val computation =
+    for
+      a <- MyState.get
+      b <- MyReader.ask
+      c <- {
+        if b != 0
+        then !!.pure(a / b)
+        else MyError.raise(s"Tried to divide $a by zero")
+      }
+      _ <- MyState.put(c)
+    yield ()
 
-  // Create a handler for the above computation, by composing
-  // individual handlers of each requested effect:
-  val handler = MyState.handler(100).exec &&&! MyReader.handler(3) &&&! MyError.handler
-
-  // Execute the computation using the handler:
-  val result = computation.runWith(handler)
-  
-  
-
+  // Handling the effects and run the computation:
+  val result = computation
+    .handleWith(MyState.handler(100).exec)
+    .handleWith(MyReader.handler(3))
+    .handleWith(MyError.handler)
+    .run
+ 
   println(result) // prints "Right(33)"
-}
 ```
