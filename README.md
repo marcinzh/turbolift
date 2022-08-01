@@ -2,19 +2,33 @@
 
 # Turbolift
 
-:construction: :construction: Work In Progress :construction: :construction:
+Extensible Effect System for Scala 3.
 
-A functional effect system. An alternative to both Eff monad and MTL. Supports higher order effects.
+:construction: WIP :construction:
 
-TODO: Insert overly enthusiastic introduction to Turbolift 's capabilities.
+## Features
+
+- Have the cake, and eat the cake.
+  |  | MTL | Eff monad | ZIO | Turbolift |
+  | :--- | :---: | :---: | :---: | :---: |
+  | Higher order effects | :heavy_check_mark: | :x: | :heavy_check_mark: | :heavy_check_mark: |
+  | Localy handled effects | :x: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+  | Nondeterminism | :heavy_check_mark: | :heavy_check_mark: | :x: | :heavy_check_mark: |
+  | *"One monad, to rule them all"* | :x: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+
+- 🦄 🌈 Extremely rarely supported aspect of modularity: always-on [Effect Labelling](https://docs.idris-lang.org/en/latest/effects/state.html#labelled-effects).
+
+- Lightweight syntax.
+ 
+- High performance.
+
+## Usage
 
 ```scala
 libraryDependencies += "io.github.marcinzh" %% "turbolift-core" % "0.27.0"
 ```
 
----
-
-# Examples
+## Examples
 
 ### Basic example
 
