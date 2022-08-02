@@ -22,12 +22,6 @@ Extensible Effect System for Scala 3.
  
 - High performance.
 
-## Usage
-
-```scala
-libraryDependencies += "io.github.marcinzh" %% "turbolift-core" % "0.27.0"
-```
-
 ## Examples
 
 ### Basic example
@@ -127,13 +121,30 @@ def inMemoryFileSystemHandler[Fx <: FileSystem](fx: Fx): Handler.FreeId[fx.type]
   // prints "Hello world!"
 ```
 
+## Usage
+
+```scala
+libraryDependencies += "io.github.marcinzh" %% "turbolift-core" % "0.27.0"
+```
+
 ## Documentation
 
-See javadoc of the 4 key Turbolift's types:
+Rudimentary, in the form of javadoc for the 4 key Turbolift's types:
 - [Computation](https://javadoc.io/static/io.github.marcinzh/turbolift-core_3/0.27.0/turbolift/Computation.html) (aliased by `!!`)
 - [Signature](https://javadoc.io/static/io.github.marcinzh/turbolift-core_3/0.27.0/turbolift/Signature.html)
 - [Effect](https://javadoc.io/static/io.github.marcinzh/turbolift-core_3/0.27.0/turbolift/Effect.html)
 - [Handler](https://javadoc.io/static/io.github.marcinzh/turbolift-core_3/0.27.0/turbolift/Handler.html)
 
 
+## Why exclusively Scala 3?
+
+- ❤️ The new syntax.
+
+- ❤️❤️ Higher-rank types (`=>>`) and functions. Used mostly by `Handler`.
+
+- ❤️❤️❤️ Undocumented advancements in Scala's type inference made usage of `Handler`s much better.
+When applying `.handleWith`, Scala compiler can now infer subtraction of type-level sets of effects, 
+without any explicit type hints. This even works in chaining `.handleWith`s of handlers, that have internal dependencies between them.
+
+  The ergonomics is similar to that of ZIO 2's `provide`, which relies on reflection and macros.
 
