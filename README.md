@@ -126,3 +126,14 @@ def inMemoryFileSystemHandler[Fx <: FileSystem](fx: Fx): Handler.FreeId[fx.type]
     
   // prints "Hello world!"
 ```
+
+## Documentation
+
+See javadoc of the 4 key Turbolift's types:
+- [Computation](https://javadoc.io/static/io.github.marcinzh/turbolift-core_3/0.27.0/turbolift/Computation.html) (aliased by `!!`)
+- [Signature](https://javadoc.io/static/io.github.marcinzh/turbolift-core_3/0.27.0/turbolift/Signature.html)
+- [Effect](https://javadoc.io/static/io.github.marcinzh/turbolift-core_3/0.27.0/turbolift/Effect.html)
+- [Handler](https://javadoc.io/static/io.github.marcinzh/turbolift-core_3/0.27.0/turbolift/Handler.html)
+
+
+
