@@ -1,4 +1,4 @@
-[![javadoc](https://javadoc.io/badge2/io.github.marcinzh/turbolift-core_3/javadoc.svg)](https://javadoc.io/doc/io.github.marcinzh/turbolift-core_3) 
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.github.marcinzh/turbolift-core_3/badge.svg)](https://maven-badges.herokuapp.com/maven-central/io.github.marcinzh/turbolift-core_3)  [![javadoc](https://javadoc.io/badge2/io.github.marcinzh/turbolift-core_3/javadoc.svg)](https://javadoc.io/doc/io.github.marcinzh/turbolift-core_3)
 
 # Turbolift
 
@@ -16,7 +16,13 @@ Extensible Effect System for Scala 3.
   | Nondeterminism | :heavy_check_mark: | :heavy_check_mark: | :x: | :heavy_check_mark: |
   | *"One monad, to rule them all"* | :x: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 
-- 🦄 🌈 Extremely rarely supported aspect of modularity: always-on [Effect Labelling](https://docs.idris-lang.org/en/latest/effects/state.html#labelled-effects).
+- 🦄 🌈 Extremely rarely[*] supported aspect of modularity: 
+  - In Idris, known as [Effect Labelling](https://docs.idris-lang.org/en/latest/effects/state.html#labelled-effects).
+  - In Helium, known as [Effect Instances](https://www.youtube.com/watch?v=6lv_E-CjGzg).
+  
+  TL;DR: You can use multiple instances of the same kind of effect (e.g. 2 `State` effects) at the same time. Turbolift uses Scala's singleton types to distinguish instances of effects. See the signature of `inMemoryFileSystemHandler` in the example below.
+
+  [*] AFAIK, no effect system in Scala or Haskell supports this. Neither do any of new (research) programming languages with built-in algebraic effects, except Idris and Helium.
 
 - Lightweight syntax.
  
@@ -147,4 +153,16 @@ When applying `.handleWith`, Scala compiler can now infer subtraction of type-le
 without any explicit type hints. This even works in chaining `.handleWith`s of handlers, that have internal dependencies between them.
 
   The ergonomics is similar to that of ZIO 2's `provide`, which relies on reflection and macros.
+
+## The Future
+
+Turbolift's internal engine will abandon monad transformers. Instead, it will use multi prompt delimited continuations, a technique learned from [Scala Effekt](https://github.com/b-studios/scala-effekt). The change won't affect Turbolift's user interface, except for how user defines his/her own `Flow` `Interpreter`s. `Proxy` `Interpreter`s (such as `inMemoryFileSystemHandler` above) will be unaffected.
+
+Anticipated benefits:
+
+- Simpler API for defining [Flow](file:///home/luzer/prog/scala/turbolift/modules/core/target/scala-3.1.1/api/turbolift/internals/interpreter/Interpreter$$Flow.html) effects. Never have to implement `flatMap` again.
+
+- Even better performance.
+
+- Improving Turbolift's behavior with respect to the matters discussed in [The Effect Semantics Zoo](https://github.com/lexi-lambda/eff/blob/master/notes/semantics-zoo.md). Currently, Turbolift exhibits similar limitations to those of other effect systems based on monad transformers.
 
