@@ -1,5 +1,5 @@
 package turbolift
-import turbolift.internals.aux.CanPartiallyHandle
+import turbolift.internals.auxx.CanPartiallyHandle
 import turbolift.internals.extensions.HandlerExtensions
 import turbolift.internals.interpreter.Interpreter
 

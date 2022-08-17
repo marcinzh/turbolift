@@ -1,4 +1,4 @@
-package turbolift.internals.aux
+package turbolift.internals.auxx
 import scala.annotation.implicitNotFound
 import turbolift.!!
 

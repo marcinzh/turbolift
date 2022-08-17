@@ -1,7 +1,7 @@
 package turbolift.internals.extensions
 import turbolift.{!!, Computation, Handler}
 import turbolift.internals.engine.MainLoop
-import turbolift.internals.aux.{CanRun, CanTotallyHandle, CanPartiallyHandle}
+import turbolift.internals.auxx.{CanRun, CanTotallyHandle, CanPartiallyHandle}
 
 
 private[turbolift] trait ComputationExtensions:
