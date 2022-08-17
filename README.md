@@ -146,7 +146,7 @@ Rudimentary, in the form of javadoc for the 4 key Turbolift's types:
 
 - ❤️ The new syntax.
 
-- ❤️❤️ Higher-rank types (`=>>`) and functions. Used mostly by `Handler`.
+- ❤️❤️ Higher-rank types (`[X] => ...`) and functions. Used mostly by `Handler`.
 
 - ❤️❤️❤️ Undocumented advancements in Scala's type inference made usage of `Handler`s much better.
 When applying `.handleWith`, Scala compiler can now infer subtraction of type-level sets of effects, 
