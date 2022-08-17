@@ -1,46 +1,41 @@
 package turbolift.std_effects.default_handlers
 import cats.syntax.functor._
 import turbolift.!!
-import turbolift.typeclass.{MonadZip, AccumZero}
+import turbolift.typeclass.AccumZero
 import turbolift.typeclass.Syntax._
-import turbolift.typeclass.FlippedPairFunctor.given
 import turbolift.std_effects.{WriterEffect, WriterSig}
 
 
-private[std_effects] object WriterHandler:
-  def apply[W, W1, Fx <: WriterEffect[W, W1]](fx: Fx)(implicit W: AccumZero[W, W1]): fx.ThisHandler.Free[(_, W)] =
-    new fx.Stateful[W, (_, W)] with WriterSig[W, W1]:
-      override def onPure[A](a: A) = (a, _)
+extension [W, W1](fx: WriterEffect[W, W1])
+  private[std_effects] def writerHandler(implicit W: AccumZero[W, W1]): fx.ThisHandler.Free[(_, W)] =
+    new fx.Stateful[W, (_, W)] with fx.Parallel.ForkJoin with WriterSig[W, W1]:
+      override def onPure[A](a: A, w: W): (A, W) = (a, w)
 
-      override def onFlatMap[A, B, M[_]: MonadZip](tma: W => M[(A, W)])(f: A => W => M[(B, W)]): W => M[(B, W)] =
-        w0 => tma(w0).flatMap {
-          case (a, w) => f(a)(w)
-        }
+      override def onUnpure[A](a_w: (A, W)): A !! ThisEffect = fx.tells(a_w._2) &&! !!.pure(a_w._1)
 
-      override def onZip[A, B, M[_]: MonadZip](tma: W => M[(A, W)], tmb: W => M[(B, W)]): W => M[((A, B), W)] =
-        w0 => (tma(w0) *! tmb(W.zero)).map {
-          case ((a, w1), (b, w2)) => ((a, b), w1 |+| w2)
-        }
-  
-      override def tell(w: W1): Unit !@! ThisEffect =
-        kk ?=> w0 => kk.outer((kk.inner(), w0 |+ w))
+      override def onZip[A, B, C](a_w: (A, W), b_w: (B, W), k: (A, B) => C): (C, W) = (k(a_w._1, b_w._1), a_w._2 |+| b_w._2)
 
-      override def tells(w: W): Unit !@! ThisEffect =
-        kk ?=> w0 => kk.outer((kk.inner(), w0 |+| w))
+      override def onFork(w: W): (W, W) = (w, W.zero)
+      
+      override def tell(w: W1): Unit !@! ThisEffect = (k, w0) => k((), w0 |+ w)
 
-      override def mute[A, U <: ThisEffect](body: A !! U): A !@! U =
-        kk ?=> w0 => kk.locally(body)(W.zero).map {
-          case (aa, _) => (aa, w0)
-        }
+      override def tells(w: W): Unit !@! ThisEffect = (k, w0) => k((), w0 |+| w)
+
+      override def mute[A, U <: ThisEffect](body: A !! U): A !@! U = censor(_ => W.zero)(body)
 
       override def listen[A, U <: ThisEffect](body: A !! U): (A, W) !@! U =
-        kk ?=> w0 => kk.locally(body)(W.zero).map {
-          case (aa, w) => (aa.map((_, w)), w0 |+| w)
+        (k, _) => k.local(body, W.zero).flatMap {
+          case (a_w @ (_, w), k) => k(a_w, k.get |+| w)
         }
 
       override def censor[A, U <: ThisEffect](f: W => W)(body: A !! U): A !@! U =
-        kk ?=> w0 => kk.locally(body)(W.zero).map {
-          case (aa, w) => (aa, w0 |+| f(w))
+        (k, _) => k.local(body, W.zero).flatMap {
+          case ((a, w), k) => k(a, k.get |+| f(w))
+        }
+
+      override def pass[A, U <: ThisEffect](body: (A, W => W) !! U): A !@! U =
+        (k, _) => k.local(body, W.zero).flatMap {
+          case (((a, f), w), k) => k(a, k.get |+| f(w))
         }
 
     .toHandler(W.zero)

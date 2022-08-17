@@ -1,45 +1,42 @@
 package turbolift.extra_effects
-import org.scalatest.funspec.AnyFunSpec
-import org.scalatest.matchers.should.Matchers._
+import org.specs2.mutable._
+import org.specs2.execute.Result
 import turbolift.!!
-import turbolift.Implicits._
+import turbolift.Extensions._
 import turbolift.std_effects.WriterK
 import turbolift.extra_effects.AcyclicMemoizer
 import turbolift.std_effects.CanLaunchTheMissiles
+import turbolift.mode.ST
 
 
-class AcyclicMemoizerTest extends AnyFunSpec with CanLaunchTheMissiles:
+class AcyclicMemoizerTest extends Specification with CanLaunchTheMissiles:
+  "Memoizing recursive function" >> {
+    case object M extends AcyclicMemoizer[Int, Int]
 
-  describe("Memoizing recursive function") {
-    def runFibs(n: Int): (Int, Vector[Missile]) =
-      val missiles = Vector.fill(n + 1)(Missile())
-      
-      case object FxMemo extends AcyclicMemoizer[Int, Int]
+    def prog(n: Int): (Int, Vector[Missile]) !! M.type =
+      for
+        missiles <- !!.impure(Missile.make(n + 1))
+        fib = M.fix { recur => i =>
+          missiles(i).launch_! &&! (
+            if i <= 1 then
+              !!.pure(i)
+            else
+              (recur(i - 1) *! recur(i - 2)).map(_ + _)
+          )
+        }
+        x <- fib(n)
+      yield (x, missiles)
 
-      val fib = FxMemo.fix { recur => i =>
-        missiles(i).launch_! &&! (
-          if (i <= 1) 
-            !!.pure(i)
-          else
-            for {
-              a <- recur(i - 1)
-              b <- recur(i - 2)
-              c = a + b
-            } yield c
-        )
-      }
+    val (result, missiles) = prog(10).handleWith(M.handler).run
+    result === 55
 
-      (fib(n).runWith(FxMemo.handler), missiles)
-
-    val (n, missiles) = runFibs(10)
-    n shouldEqual 55
-    missiles.foreach(_.mustHaveLaunchedOnce)
+    Result.foreach(missiles)(_.mustHaveLaunchedOnce)
   }
 
 
-  describe("Memoizing acyclic graph") {
-    case object FxMemo extends AcyclicMemoizer[Int, Vertex]
-    case object FxLog extends WriterK[Vector, Int]
+  "Memoizing acyclic graph" >> {
+    case object M extends AcyclicMemoizer[Int, Vertex]
+    case object W extends WriterK[Vector, Int]
 
     case class Vertex(serno: Int, outgoing: List[Edge])
     case class Edge(to: Vertex)
@@ -55,22 +52,27 @@ class AcyclicMemoizerTest extends AnyFunSpec with CanLaunchTheMissiles:
       /*7*/ List()
     )
 
-    val missiles = outgoings.map(_ => Missile())
-
-    val visit = FxMemo.fix[FxMemo.type with FxLog.type] { recur => n =>
+    val prog =
       for
-        _ <- missiles(n).launch_!
-        _ <- FxLog.tell(n)
-        edges <- (
-          for (i <- outgoings(n))
-            yield for (to <- recur(i))
-              yield Edge(to)
-        ).traverse
-      yield Vertex(n, edges)
-    }
+        missiles <- !!.impure(Missile.make(outgoings.size))
 
-    val (roots, log) = visit(0).runWith(FxMemo.handler &&&! FxLog.handler)
+        visit = M.fix[W.type] { recur => n =>
+          for
+            _ <- missiles(n).launch_!
+            _ <- W.tell(n)
+            edges <- (
+              for i <- outgoings(n) yield 
+                for to <- recur(i) yield 
+                  Edge(to)
+            ).traverse
+          yield Vertex(n, edges)
+        }
 
-    missiles.foreach(_.mustHaveLaunchedOnce)
-    log.sorted shouldEqual (0 until outgoings.size)
+        _ <- visit(0)
+      yield missiles
+
+    val (missiles, log) = prog.handleWith(M.handler).handleWith(W.handler).run
+    log.sorted === (0 until outgoings.size)
+    
+    Result.foreach(missiles)(_.mustHaveLaunchedOnce)
   }

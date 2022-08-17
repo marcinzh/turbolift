@@ -1,14 +1,14 @@
 package turbolift.extra_effects.default_handlers
 import scala.util.chaining._
 import turbolift.!!
-import turbolift.Implicits._
+import turbolift.Extensions._
 import turbolift.typeclass.AccumZero
 import turbolift.std_effects.{WriterG, WriterGK}
 import turbolift.extra_effects.{PolyGraph, PolyGraphSig}
 
 
-private[extra_effects] object PolyGraphHandler:
-  def apply[K, V, Fx <: PolyGraph[K, V]](fx: Fx)(bottom: V): fx.ThisHandler.Free[(_, Map[K, V])] =
+extension [K, V](fx: PolyGraph[K, V])
+  private[extra_effects] def polyGraphHandler(bottom: V): fx.ThisHandler.Free[(_, Map[K, V])] =
     type Solution = K => V
 
     case object Compute extends WriterG[Map, K, Solution => V]
@@ -42,7 +42,7 @@ private[extra_effects] object PolyGraphHandler:
     .toHandler
     .provideWith(Propagate.handler ***! Compute.handler(AccumZero.collisionlessMap))
     .mapState { case (prop, comp) =>
-      solve(
+      solvePoly(
         bottom,
         comp.withDefaultValue(computeBottom),
         prop.withDefaultValue(Set.empty)
@@ -50,24 +50,24 @@ private[extra_effects] object PolyGraphHandler:
     }
 
 
-  private def solve[K, V](bottom: V, compute: Map[K, (K => V) => V], propagate: Map[K, Set[K]]): Map[K, V] =
-    def loop(solution: Map[K, V], dirty: Iterable[K]): Map[K, V] =
-      if dirty.isEmpty
-      then solution
-      else
-        dirty.iterator.foldLeft((solution, Set[K]())) {
-          case (accum, k) =>
-            val v = compute(k)(solution)
-            if v == solution(k)
-            then accum
-            else
-              val (solution2, dirty2) = accum
-              (solution2.updated(k, v), dirty2 ++ propagate(k))
-        }
-        .pipe((loop(_, _)).tupled)
+private def solvePoly[K, V](bottom: V, compute: Map[K, (K => V) => V], propagate: Map[K, Set[K]]): Map[K, V] =
+  def loop(solution: Map[K, V], dirty: Iterable[K]): Map[K, V] =
+    if dirty.isEmpty
+    then solution
+    else
+      dirty.iterator.foldLeft((solution, Set[K]())) {
+        case (accum, k) =>
+          val v = compute(k)(solution)
+          if v == solution(k)
+          then accum
+          else
+            val (solution2, dirty2) = accum
+            (solution2.updated(k, v), dirty2 ++ propagate(k))
+      }
+      .pipe((loop(_, _)).tupled)
 
-    val domain = Set[K]() ++ compute.keysIterator ++ propagate.keysIterator
-    val initial = Map[K, V]().withDefaultValue(bottom)
-    val m = loop(initial, domain)
-    m ++ domain.iterator.filter(!m.contains(_)).map(k => k -> bottom)
+  val domain = Set[K]() ++ compute.keysIterator ++ propagate.keysIterator
+  val initial = Map[K, V]().withDefaultValue(bottom)
+  val m = loop(initial, domain)
+  m ++ domain.iterator.filter(!m.contains(_)).map(k => k -> bottom)
 

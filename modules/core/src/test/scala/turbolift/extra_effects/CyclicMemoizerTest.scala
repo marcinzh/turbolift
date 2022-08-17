@@ -1,17 +1,18 @@
 package turbolift.extra_effects
-import org.scalatest.funspec.AnyFunSpec
-import org.scalatest.matchers.should.Matchers._
+import org.specs2.mutable._
+import org.specs2.execute.Result
 import turbolift.!!
-import turbolift.Implicits._
+import turbolift.Extensions._
 import turbolift.std_effects.WriterK
 import turbolift.extra_effects.CyclicMemoizer
 import turbolift.std_effects.CanLaunchTheMissiles
+import turbolift.mode.ST
 
 
-class CyclicMemoizerTest extends AnyFunSpec with CanLaunchTheMissiles:
-  describe("Memoizing cyclic graph") {
-    case object FxMemo extends CyclicMemoizer[Int, Vertex]
-    case object FxLog extends WriterK[Vector, Int]
+class CyclicMemoizerTest extends Specification with CanLaunchTheMissiles:
+  "Memoizing cyclic graph" >> {
+    case object M extends CyclicMemoizer[Int, Vertex]
+    case object W extends WriterK[Vector, Int]
 
     case class Vertex(serno: Int, outgoing: List[Edge])
     case class Edge(from: () => Vertex, to: () => Vertex)
@@ -27,23 +28,28 @@ class CyclicMemoizerTest extends AnyFunSpec with CanLaunchTheMissiles:
       /*7*/ List()
     )
 
-    val missiles = outgoings.map(_ => Missile())
-
-    val visit = FxMemo.fix[FxMemo.type with FxLog.type] { recur => n =>
+    val prog =
       for
-        _ <- missiles(n).launch_!
-        _ <- FxLog.tell(n)
-        from <- recur(n)
-        edges <- (
-          for (i <- outgoings(n))
-            yield for (to <- recur(i))
-              yield Edge(from, to)
-        ).traverse
-      yield Vertex(n, edges)
-    }
+        missiles <- !!.impure(Missile.make(outgoings.size))
 
-    val (roots, log) = visit(0).runWith(FxMemo.handler &&&! FxLog.handler)
+        visit = M.fix[W.type] { recur => n =>
+          for
+            _ <- missiles(n).launch_!
+            _ <- W.tell(n)
+            from <- recur(n)
+            edges <- (
+              for i <- outgoings(n) yield
+                for to <- recur(i) yield
+                  Edge(from, to)
+            ).traverse
+          yield Vertex(n, edges)
+        }
 
-    missiles.foreach(_.mustHaveLaunchedOnce)
-    log.sorted shouldEqual (0 until outgoings.size)
+        _ <- visit(0)
+      yield missiles
+
+    val (missiles, log) = prog.handleWith(M.handler).handleWith(W.handler).run
+    log.sorted === (0 until outgoings.size)
+    
+    Result.foreach(missiles)(_.mustHaveLaunchedOnce)
   }

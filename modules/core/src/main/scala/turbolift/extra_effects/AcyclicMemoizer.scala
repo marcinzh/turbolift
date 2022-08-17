@@ -1,22 +1,27 @@
 package turbolift.extra_effects
 import turbolift.{!!, Effect, Signature}
-import turbolift.extra_effects.default_handlers.AcyclicMemoizerHandler
+import turbolift.extra_effects.default_handlers.acyclicMemoizerHandler
 
 
 trait AcyclicMemoizerSig[K, V] extends Signature:
   def memo[U <: ThisEffect](f: K => V !! U)(k: K): V !@! U
-  def get: Map[K, V] !@! ThisEffect
+  def domain: Set[K] !@! ThisEffect
+  def toMap: Map[K, V] !@! ThisEffect
+  @deprecated final def get = toMap
 
 
 trait AcyclicMemoizer[K, V] extends Effect[AcyclicMemoizerSig[K, V]] with AcyclicMemoizerSig[K, V]:
   final override def memo[U <: this.type](f: K => V !! U)(k: K): V !! U = perform(_.memo(f)(k))
-  final override def get: Map[K, V] !! this.type = perform(_.get)
+  final override def domain: Set[K] !! this.type = perform(_.domain)
+  final override def toMap: Map[K, V] !! this.type = perform(_.toMap)
 
   final def apply[U <: this.type](f: K => V !! U): K => V !! U = memo(f)(_)
 
-  final def fix[U <: this.type](f: (K => V !! U) => (K => V !! U)): K => V !! U =
-    def recur(k: K): V !! U = memo(f(recur))(k)
-    recur
+  final def fix[U] = new FixApply[U]
+  final class FixApply[U]:
+    def apply[U2 <: U & AcyclicMemoizer.this.type](f: (K => V !! U2) => (K => V !! U2)): K => V !! U2 =
+      def recur(k: K): V !! U2 = memo(f(recur))(k)
+      recur
 
   /** Default handler for this effect. */
-  def handler: ThisHandler.FreeId = AcyclicMemoizerHandler[K, V, this.type](this)
+  def handler: ThisHandler.FreeId = this.acyclicMemoizerHandler

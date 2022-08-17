@@ -1,97 +1,152 @@
 package turbolift.std_effects
-import org.scalatest.funspec.AnyFunSpec
-import org.scalatest.matchers.should.Matchers._
+import org.specs2.mutable._
 import turbolift.!!
 import turbolift.std_effects.{Writer, WriterK, WriterGK}
+import turbolift.mode.ST
 
 
-class WriterTest extends AnyFunSpec:
-  describe("Basic ops") {
-    it("tell") {
-      case object Fx extends Writer[Int]
-      Fx.tell(1)
-      .runWith(Fx.handler) shouldEqual (((), 1))
+class WriterTest extends Specification:
+  "Basic ops" >> {
+    case object W extends Writer[Int]
+    val h = W.handler
+
+    "tell" >> {
+      W.tell(1)
+      .handleWith(h)
+      .run === ((), 1)
     }
 
-    it("listen") {
-      case object Fx extends Writer[Int]
-      Fx.listen(Fx.tell(1))
-      .runWith(Fx.handler) shouldEqual ((((), 1), 1))
+    "listen" >> {
+      W.listen(W.tell(1))
+      .handleWith(h)
+      .run === (((), 1), 1)
     }
 
-    it("censor") {
-      case object Fx extends Writer[Int]
-      Fx.censor(_ + 1)(Fx.tell(1))
-      .runWith(Fx.handler) shouldEqual (((), 2))
+    "censor" >> {
+      W.censor(_ + 1)(W.tell(1))
+      .handleWith(h)
+      .run === ((), 2)
+    }
+
+    "mute" >> {
+      W.mute(W.tell(1))
+      .handleWith(h)
+      .run === ((), 0)
+    }
+
+    "pass" >> {
+      W.pass(W.tell(1) **! !!.pure(_ + 2))
+      .handleWith(h)
+      .run === ((), 3)
     }
   }
 
-  describe("Combined ops") {
-    it("tell") {
-      case object Fx extends Writer[String]
-      (Fx.tell("a") &&! Fx.tell("b"))
-      .runWith(Fx.handler.justState) shouldEqual "ab"
+  "Combined ops" >> {
+    "tell x2" >> {
+      case object W extends Writer[String]
+      (W.tell("a") &&! W.tell("b"))
+      .handleWith(W.handler.justState)
+      .run === "ab"
     }
 
-    it("tell & listen") {
-      case object Fx extends Writer[String]
+    "tell & listen" >> {
+      case object W extends Writer[String]
       (for
-        _ <- Fx.tell("a")
-        workaround <- Fx.listen (Fx.tell("b") &&! Fx.tell("c"))
+        _ <- W.tell("a")
+        workaround <- W.listen(W.tell("b") &&! W.tell("c"))
         ((), x) = workaround
-        _ <- Fx.tell("d")
+        _ <- W.tell("d")
       yield x)
-      .runWith(Fx.handler) shouldEqual ("bc", "abcd")
+      .handleWith(W.handler) 
+      .run === ("bc", "abcd")
+    }
+
+    "2 writers" >> {
+      case object W1 extends Writer[Int]
+      case object W2 extends Writer[String]
+      (for
+        _ <- W1.tell(1)
+        _ <- W2.tell("a")
+        _ <- W1.tell(2)
+        _ <- W2.tell("b")
+      yield ())
+      .handleWith(W1.handler)
+      .handleWith(W2.handler)
+      .run === (((), 3), "ab")
     }
   }
 
-  describe("Par ops") {
-    it("tell") {
-      case object Fx extends Writer[String]
-      (Fx.tell("a") &&! (Fx.tell("b") *! Fx.tell("c")) &&! Fx.tell("d"))
-      .runWith(Fx.handler.justState) shouldEqual "abcd"
+  "Par ops" >> {
+    case object W extends Writer[String]
+    val h = W.handler.justState
+
+    "tell x2 using *!" >> {
+      (W.tell("a") *! W.tell("b"))
+      .handleWith(h)
+      .run === "ab"
     }
 
-    it("tell & censor") {
-      case object Fx extends Writer[String]
-      (Fx.tell("a") &&!
-      Fx.censor(x => s"($x)") {
-        Fx.tell("b") *!
-        Fx.censor(x => s"[$x]") { Fx.tell("c") } *!
-        Fx.tell("d") *!
-        Fx.censor(x => s"{$x}") { Fx.tell("e") } *!
-        Fx.tell("f")
+    "tell x2 using &!" >> {
+      (W.tell("a") &! W.tell("b"))
+      .handleWith(h)
+      .run === "ab"
+    }
+
+    "tell x3 using &&!(&!)" >> {
+      (W.tell("a") &&! (W.tell("b") &! W.tell("c")))
+      .handleWith(h)
+      .run === "abc"
+    }
+
+    "tell x3 using &!(&&!)" >> {
+      (W.tell("a") &! (W.tell("b") &&! W.tell("c")))
+      .handleWith(h)
+      .run === "abc"
+    }
+
+    "tell & censor" >> {
+      case object W extends Writer[String]
+      (W.tell("a") &&!
+      W.censor(x => s"($x)") {
+        W.tell("b") *!
+        W.censor(x => s"[$x]") { W.tell("c") } *!
+        W.tell("d") *!
+        W.censor(x => s"{$x}") { W.tell("e") } *!
+        W.tell("f")
       } &&!
-      Fx.tell("g"))
-      .runWith(Fx.handler.justState) shouldEqual "a(b[c]d{e}f)g"
+      W.tell("g"))
+      .handleWith(W.handler.justState)
+      .run === "a(b[c]d{e}f)g"
     }
   }
 
-  describe("Into collections") {
-    it("WriterK") {
-      case object Fx extends WriterK[Vector, Char]
+  "Into collections" >> {
+    "WriterK" >> {
+      case object W extends WriterK[Vector, Char]
       (for
-        _ <- Fx.tell('a')
-        _ <- Fx.tells("bc".toVector)
-        _ <- Fx.tell('d')
+        _ <- W.tell('a')
+        _ <- W.tells("bc".toVector)
+        _ <- W.tell('d')
       yield ())
-      .runWith(Fx.handler.justState) shouldEqual "abcd".toVector
+      .handleWith(W.handler.justState)
+      .run === "abcd".toVector
     }
 
-    it("WriterGK") {
-      case object Fx extends WriterGK[Map, String, Vector, Int]
+    "WriterGK" >> {
+      case object W extends WriterGK[Map, String, Vector, Int]
       (for
-        _ <- Fx.tell("a", 1)
-        _ <- Fx.tell("b", 10)
-        _ <- Fx.tell("a", 2)
-        _ <- Fx.tell("b", 20)
-        _ <- Fx.tell("c", 100)
-        _ <- Fx.tell("c", 200)
-        _ <- Fx.tell("b", 30)
-        _ <- Fx.tell("c", 300)
-        _ <- Fx.tell("a", 3)
+        _ <- W.tell("a", 1)
+        _ <- W.tell("b", 10)
+        _ <- W.tell("a", 2)
+        _ <- W.tell("b", 20)
+        _ <- W.tell("c", 100)
+        _ <- W.tell("c", 200)
+        _ <- W.tell("b", 30)
+        _ <- W.tell("c", 300)
+        _ <- W.tell("a", 3)
       yield ())
-      .runWith(Fx.handler.justState) shouldEqual Map(
+      .handleWith(W.handler.justState)
+      .run === Map(
         "a" -> Vector(1, 2, 3),
         "b" -> Vector(10, 20, 30),
         "c" -> Vector(100, 200, 300),

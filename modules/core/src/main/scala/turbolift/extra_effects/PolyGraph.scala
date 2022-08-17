@@ -1,6 +1,6 @@
 package turbolift.extra_effects
 import turbolift.{!!, Effect, Signature}
-import turbolift.extra_effects.default_handlers.PolyGraphHandler
+import turbolift.extra_effects.default_handlers.polyGraphHandler
 
 
 trait PolyGraphSig[K, V] extends Signature:
@@ -36,4 +36,4 @@ trait PolyGraph[K, V] extends Effect[PolyGraphSig[K, V]] with PolyGraphSig[K, V]
     def reduce(froms: Vector[K])(f: (V, V) => V) = enclosing.reduce(k, froms)(f)
 
   /** Default handler for this effect. */
-  def handler: V => ThisHandler.Free[(_, Map[K, V])] = PolyGraphHandler.apply[K, V, this.type](this)
+  def handler: V => ThisHandler.Free[(_, Map[K, V])] = this.polyGraphHandler

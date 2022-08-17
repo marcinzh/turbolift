@@ -3,63 +3,56 @@ import turbolift.!!
 import scala.collection.BuildFrom
 
 
-private[turbolift] trait TraverseExtensions:
+private[turbolift] trait TraverseExtensions extends AuxExtensions:
   extension [A, U, S[+X] <: IterableOnce[X]](thiz: S[A !! U])
-    def traverseVoid: Unit !! U =
-      thiz.iterator.foldLeft(!!.pure().upCast[U])(_ &<! _)
+    /** Like [[traversePar]], but discards the result. */
+    def traverseVoidPar: Unit !! U =
+      thiz.iterator.foldLeft(unit0[U])((mas, ma) => mas.zipWithPar(ma)(funAddVoid))
 
-    def traverseShortVoid: Unit !! U =
+    /** Like [[traverse]], but discards the result. */
+    def traverseVoid: Unit !! U =
+      // thiz.iterator.foldLeft(unit0[U])((mas, ma) => mas.zipWith(ma)(funAddVoid))
       val iter = thiz.iterator
       def loop(): Unit !! U =
         if iter.hasNext
         then iter.next().flatMap(_ => loop())
-        else !!.pure()
+        else !!.unit
       loop()
 
 
   extension [A, U](thiz: Iterator[A !! U])
+    /** Transforms sequence of computations, into computation of sequence. */
     def traverse: Vector[A] !! U =
-      thiz.foldLeft(!!.pure(Vector.empty[A]).upCast[U]) { case (mas, ma) => (mas *! ma).map { case (as, a) => as :+ a }}
+      thiz.foldLeft(empty0[A, U])((mas, ma) => mas.zipWith(ma)(funAddOne))
 
-    def traverseShort: Vector[A] !! U =
-      val iter = thiz.iterator
-      def loop(accum: Vector[A]): Vector[A] !! U =
-        if iter.hasNext
-        then iter.next().flatMap(a => loop(accum :+ a))
-        else !!.pure(accum)
-      loop(Vector())
+    /** Like [[traverse]], but executed parallelly for each element. */
+    def traversePar: Vector[A] !! U =
+      thiz.foldLeft(empty0[A, U])((mas, ma) => mas.zipWithPar(ma)(funAddOne))
 
 
-  extension [A, U, S[+X] <: Iterable[X]](thiz: S[A !! U])(using bf: BuildFrom[S[A !! U], A, S[A]])
-    def traverse: S[A] !! U =
-      def loop(as: Iterable[A !! U]): Vector[A] !! U =
-        as.size match
-          case 0 => !!.pure(Vector.empty[A])
-          case 1 => as.head.map(Vector(_))
-          case n =>
-            val (as1, as2) = as.splitAt(n / 2)
-            (loop(as1) *! loop(as2)).map { case (xs, ys) => xs ++ ys }
-      loop(thiz)
-      .map(as => (bf.newBuilder(thiz) ++= as).result())
-
-    def traverseShort: S[A] !! U =
-      thiz.iterator.traverseShort
-      .map(as => (bf.newBuilder(thiz) ++= as).result())
+  extension [A, U, S[+X] <: Iterable[X]](thiz: S[A !! U])(using BuildFrom[S[A !! U], A, S[A]])
+    def traverse: S[A] !! U = doBuildFromVector(thiz, thiz.iterator.traverse)
+    def traversePar: S[A] !! U = doBuildFromVector(thiz, thiz.iterator.traversePar)
 
 
   extension [A, U](thiz: Option[A !! U])
+    /** Transforms option of computation, into computation of option. */
     def traverse: Option[A] !! U =
       thiz match
         case Some(ma) => ma.map(Some(_))
         case None => !!.pure(None)
 
+    /** Like [[traverse]]. */
+    def traversePar: Option[A] !! U = traverse
+
+    /** Like [[traverse]], but discards the result. */
     def traverseVoid: Unit !! U =
       thiz match
         case Some(ma) => ma.void
-        case None => !!.pure()
+        case None => !!.unit
 
-    def traverseShort: Option[A] !! U = traverse
-    def traverseShortVoid: Unit !! U = traverseVoid
+    /** Like [[traverseVoid]]. */
+    def traverseVoidPar: Unit !! U = traverseVoid
 
 
   extension [A, T, U](thiz: Either[T, A !! U])
@@ -68,10 +61,13 @@ private[turbolift] trait TraverseExtensions:
         case Right(ma) => ma.map(Right(_))
         case Left(x) => !!.pure(Left(x))
 
+    def traversePar: Either[T, A] !! U = traverse
+
+    /** Like [[traverse]], but discards the result. */
     def traverseVoid: Unit !! U =
       thiz match
         case Right(ma) => ma.void
-        case Left(_) => !!.pure()
+        case Left(_) => !!.unit
 
-    def traverseShort: Either[T, A] !! U = traverse
-    def traverseShortVoid: Unit !! U = traverseVoid
+    /** Like [[traversePar]], but discards the result. */
+    def traverseVoidPar: Unit !! U = traverseVoid

@@ -1,27 +1,35 @@
 package turbolift.type_safety
-import org.scalatest.funspec.AnyFunSpec
-import org.scalatest.matchers.should.Matchers._
+import org.specs2._
+import org.specs2.execute.Typecheck
+import org.specs2.matcher.TypecheckMatchers._
 import turbolift.!!
 import turbolift.std_effects.{Reader, Writer, State, Choice}
+import turbolift.mode.ST
 
 
-class InferenceTest extends AnyFunSpec:
-  describe("Inference of effects types") {
-    case object Fx1 extends State[Double]
-    case object Fx2 extends Writer[String]
-    case object Fx3 extends Reader[Boolean]
-    case object Fx4 extends Choice
+class InferenceTest extends Specification:
+  def is = br ^ "Effect inference" ! stuff
 
-    val comp = for
-      _ <- !!.pure()
-      workaround <- Fx1.get *! Fx3.ask
-      (a, b) = workaround
-      _ <- Fx2.tell("lies")
-      _ <- Fx4.choose(1 to 10)
-      // if c % 3 == 0
-    yield ()
+  def stuff =
+    case object S extends State[Double]
+    case object W extends Writer[String]
+    case object R extends Reader[Boolean]
+    case object C extends Choice
+    type S = S.type
+    type W = W.type
+    type R = R.type
+    type C = C.type
 
-    type Expected = Unit !! Fx1.type with Fx2.type with Fx3.type with Fx4.type
+    val prog =
+      for
+        _ <- !!.unit
+        workaround <- S.get *! R.ask
+        (a, b) = workaround
+        _ <- W.tell("lies")
+        _ <- C.choose(1 to 10)
+        // if c % 3 == 0
+      yield ()
 
-    assertCompiles {"implicitly[comp.type <:< Expected]"}
-  }
+    type Expected = Unit !! (S & W & R & C)
+
+    Typecheck {"implicitly[prog.type <:< Expected]"} must succeed
