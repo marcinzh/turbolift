@@ -1,6 +1,6 @@
 ThisBuild / organization := "io.github.marcinzh"
 ThisBuild / version := "0.27.0"
-ThisBuild / scalaVersion := "3.1.1"
+ThisBuild / scalaVersion := "3.2.0"
 ThisBuild / scalacOptions ++= Seq(
   "-deprecation",
   "-feature",
@@ -28,6 +28,26 @@ lazy val core = project
   .in(file("modules/core"))
   .settings(name := "turbolift-core")
   .settings(libraryDependencies ++= Seq(Deps.scalatest, Deps.cats_core))
+
+lazy val site = (project in file("site"))
+  .settings(dontPublishMe: _*)
+  .enablePlugins(MicrositesPlugin)
+  .enablePlugins(MdocPlugin)
+  .dependsOn(core)
+  .settings(Seq(
+    micrositeName := "Turbolift",
+    micrositeDescription := "Algebraic Effects for Scala 3",
+    micrositeGithubOwner := "marcinzh",
+    micrositeGithubRepo := "turbolift",
+    micrositeUrl := "https://marcinzh.github.io",
+    micrositeBaseUrl := "turbolift",
+    micrositeDocumentationUrl := "/turbolift/docs",
+    micrositeGitterChannel := false,
+    mdocIn := (Compile / sourceDirectory).value / "mdoc",
+    mdocVariables := Map(
+      "VERSION" -> version.value,
+    ),
+  ))
 
 //=================================================
 

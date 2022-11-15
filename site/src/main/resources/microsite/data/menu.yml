@@ -1,0 +1,14 @@
+options:
+  - title: Documentation
+    url: docs/
+    menu_section: docs
+
+    nested_options:
+      - title: Foo
+        url: docs/foo.html
+        menu_section: docs
+
+      - title: Bar
+        url: docs/bar.html
+        menu_section: docs
+
