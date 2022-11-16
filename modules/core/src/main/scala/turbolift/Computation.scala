@@ -15,9 +15,9 @@ import ComputationCases._
  *  
  *  type MyComputationType2 = String !! Any
  *  }}}
- *  `MyComputationType1` is a type of computations that return `String` and reqest 2 effects: `MyState` and `MyError`.
+ *  `MyComputationType1` is a type of computations that return `String` and request 2 effects: `MyState` and `MyError`.
  *  
- *  `MyComputationType2` is a type of computations that return `String` and reqest no effects (type `Any` means empty set).
+ *  `MyComputationType2` is a type of computations that return `String` and request no effects (type `Any` means empty set).
  *  
  *  ---
  *  
