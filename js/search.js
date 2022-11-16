@@ -40,8 +40,8 @@ function prepareIdxAndDocMap() {
     {
       "title": "Documentation",
       "url": "/turbolift/docs/",
-      "content": "The packages are published on Maven Central: libraryDependencies += \"io.github.marcinzh\" %% \"turbolift-core\" % \"0.27.0\""
-    } ,        
+      "content": "libraryDependencies += \"io.github.marcinzh\" %% \"turbolift-core\" % \"0.27.0\""
+    } ,          
   ];
 
   idx = lunr(function () {
