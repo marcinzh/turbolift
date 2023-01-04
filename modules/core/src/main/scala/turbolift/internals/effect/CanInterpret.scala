@@ -1,7 +1,6 @@
 package turbolift.internals.effect
-import cats.Functor
 import turbolift.{Signature, Effect, Handler}
-import turbolift.internals.interpreter.{Interpreter => IC}
+import turbolift.internals.interpreter.{Interpreter => IC, Features}
 
 
 trait CanInterpret extends HasSignature:
@@ -32,11 +31,23 @@ trait CanInterpret extends HasSignature:
     final override type ThisEffect = enclosing.ThisEffect
     private[turbolift] final override val signatures: Array[Signature] = enclosing.signatures
 
-  /** Base class for user-defined [[turbolift.internals.interpreter.Interpreter.Stateless Stateless Interpreter]] for this effect. */
-  abstract class Stateless[F[+_]: Functor] extends IC.Stateless[F] with ThisInterpreter { thiz: ThisSignature => }
+  /** Base class for any user-defined stateless interpreter for this effect.
+   *
+   *  Like [[turbolift.internals.interpreter.Interpreter.Stateless Stateless Interpreter]], but specialized for this effect.
+   */
+  abstract class Stateless[F[+_]] extends IC.Stateless[F] with ThisInterpreter { thiz: ThisSignature => }
 
-  /** Base class for user-defined [[turbolift.internals.interpreter.Interpreter.Stateful Stateful Interpreter]] for this effect. */
-  abstract class Stateful[S, F[+_]: Functor] extends IC.Stateful[S, F] with ThisInterpreter { thiz: ThisSignature => }
+  /** Base class for any user-defined stateful interpreter for this effect.
+   *
+   *  Like [[turbolift.internals.interpreter.Interpreter.Stateful Stateful Interpreter]], but specialized for this effect.
+   */
+  abstract class Stateful[S, F[+_]] extends IC.Stateful[S, F] with ThisInterpreter { thiz: ThisSignature => }
 
-  /** Base class for user-defined [[turbolift.internals.interpreter.Interpreter.Proxy Proxy Interpreter]] for this effect. */
+  /** Base class for any user-defined proxy interpreter for this effect.
+   *
+   *  Like [[turbolift.internals.interpreter.Interpreter.Proxy Proxy Interpreter]], but specialized for this effect.
+   */
   abstract class Proxy[Fx] extends IC.Proxy[Fx] with ThisInterpreter { thiz: ThisSignature => }
+
+
+  export Features.{Sequential, Parallel}

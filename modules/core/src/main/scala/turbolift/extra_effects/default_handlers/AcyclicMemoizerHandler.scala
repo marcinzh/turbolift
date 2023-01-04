@@ -4,13 +4,14 @@ import turbolift.std_effects.State
 import turbolift.extra_effects.{AcyclicMemoizer, AcyclicMemoizerSig}
 
 
-private[extra_effects] object AcyclicMemoizerHandler:
-  def apply[K, V, Fx <: AcyclicMemoizer[K, V]](fx: Fx): fx.ThisHandler.FreeId =
+extension [K, V](fx: AcyclicMemoizer[K, V])
+  private[extra_effects] def acyclicMemoizerHandler: fx.ThisHandler.FreeId =
     case object Storage extends State[Map[K, V]]
 
     new fx.Proxy[Storage.type] with AcyclicMemoizerSig[K, V]:
-      override def get: Map[K, V] !@! ThisEffect =
-        Storage.get
+      override def domain: Set[K] !@! ThisEffect = Storage.gets(_.keySet)
+
+      override def toMap: Map[K, V] !@! ThisEffect = Storage.get
 
       override def memo[U <: ThisEffect](f: K => V !! U)(k: K): V !@! U =
         Storage.get.flatMap { m =>

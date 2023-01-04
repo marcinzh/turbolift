@@ -2,8 +2,7 @@ package turbolift.typeclass
 import cats.{Semigroup, SemigroupK, Applicative}
 
 
-trait Accum[W, W1]:
-  def one(e: W1): W
+trait Accum[W, W1] extends One[W, W1]:
   def plus(x: W, y: W): W
   def plus1(x: W, e: W1): W // = plus(x, one(e))
 

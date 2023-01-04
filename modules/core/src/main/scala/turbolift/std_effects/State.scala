@@ -1,6 +1,6 @@
 package turbolift.std_effects
 import turbolift.{!!, Effect, Signature}
-import turbolift.std_effects.default_handlers.StateHandler
+import turbolift.std_effects.default_handlers.stateHandler
 
 
 trait StateSig[S] extends Signature:
@@ -33,4 +33,4 @@ trait State[S] extends Effect[StateSig[S]] with StateSig[S]:
   final override def getUpdateGet[A](f: S => (A, S)): (A, S, S) !! this.type = perform(_.getUpdateGet(f))
 
   /** Default handler for this effect. */
-  def handler(initial: S): ThisHandler.Free[(_, S)] = StateHandler(this, initial)
+  def handler(initial: S): ThisHandler.Free[(_, S)] = this.stateHandler(initial)

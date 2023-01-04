@@ -1,6 +1,6 @@
 ThisBuild / organization := "io.github.marcinzh"
-ThisBuild / version := "0.27.0"
-ThisBuild / scalaVersion := "3.2.0"
+ThisBuild / version := "0.44.0"
+ThisBuild / scalaVersion := "3.2.1"
 ThisBuild / scalacOptions ++= Seq(
   "-deprecation",
   "-feature",
@@ -11,8 +11,10 @@ ThisBuild / scalacOptions ++= Seq(
 
 val Deps = {
   object deps {
-    val cats_core = "org.typelevel" %% "cats-core" % "2.7.0"
-    val scalatest = "org.scalatest" %% "scalatest" % "3.2.11" % "test"
+    val cats_core = "org.typelevel" %% "cats-core" % "2.9.0"
+    val specs2_core = "org.specs2" %% "specs2-core" % "5.2.0" % "test"
+    val specs2_extra = "org.specs2" %% "specs2-matcher-extra" % "5.2.0" % "test"
+    val jol = "org.openjdk.jol" % "jol-core" % "0.16"
   }
   deps
 }
@@ -22,18 +24,23 @@ lazy val root = project
   .settings(name := "turbolift-root")
   .settings(sourcesInBase := false)
   .settings(dontPublishMe: _*)
-  .aggregate(core)
+  .aggregate(core, devel)
 
 lazy val core = project
   .in(file("modules/core"))
   .settings(name := "turbolift-core")
-  .settings(libraryDependencies ++= Seq(Deps.scalatest, Deps.cats_core))
+  .settings(Compile / scalacOptions += "-Yexplicit-nulls")
+  .settings(libraryDependencies ++= Seq(
+    Deps.cats_core,
+    Deps.specs2_core,
+    Deps.specs2_extra,
+  ))
 
-lazy val site = (project in file("site"))
+lazy val site = (project in file("docs"))
   .settings(dontPublishMe: _*)
+  .settings(moduleName := "site")
   .enablePlugins(MicrositesPlugin)
   .enablePlugins(MdocPlugin)
-  .dependsOn(core)
   .settings(Seq(
     micrositeName := "Turbolift",
     micrositeDescription := "Algebraic Effects for Scala 3",
@@ -41,13 +48,35 @@ lazy val site = (project in file("site"))
     micrositeGithubRepo := "turbolift",
     micrositeUrl := "https://marcinzh.github.io",
     micrositeBaseUrl := "turbolift",
-    micrositeDocumentationUrl := "/turbolift/docs",
+    micrositeDocumentationUrl := "/turbolift/overview.html",
+    micrositeTheme := "pattern",
+    micrositeHighlightTheme := "atom-one-light",
     micrositeGitterChannel := false,
+    micrositeShareOnSocial := false,
+    makeSite / includeFilter := "*.html" | "*.css" | "*.png" | "*.jpg" | "*.gif" | "*.js" | "*.swf" | "*.md",
     mdocIn := (Compile / sourceDirectory).value / "mdoc",
     mdocVariables := Map(
       "VERSION" -> version.value,
     ),
+    micrositePalette := Map(
+      "brand-primary"     -> "#bd5a10",
+      "brand-secondary"   -> "#5c4992",
+      "brand-tertiary"    -> "#544184",
+      "gray-dark"         -> "#000000",
+      "gray"              -> "#333333",
+      "gray-light"        -> "#d8d0df",
+      "gray-lighter"      -> "#f4f0ff",
+      "white-color"       -> "#f8f0ff",
+    ),
   ))
+  .dependsOn(core)
+
+lazy val devel = project
+  .in(file("modules/devel"))
+  .settings(name := "turbolift-devel")
+  .settings(dontPublishMe: _*)
+  .settings(libraryDependencies += Deps.jol)
+  .dependsOn(core)
 
 //=================================================
 
@@ -61,9 +90,11 @@ ThisBuild / watchBeforeCommand := Watch.clearScreen
 ThisBuild / watchTriggeredMessage := Watch.clearScreenOnTrigger
 ThisBuild / watchForceTriggerOnAnyChange := true
 
+Test / parallelExecution := false
+
 //=================================================
 
-ThisBuild / description := "Effect system for Scala"
+ThisBuild / description := "Algebraic Effects for Scala 3"
 ThisBuild / organizationName := "marcinzh"
 ThisBuild / homepage := Some(url("https://github.com/marcinzh/turbolift"))
 ThisBuild / scmInfo := Some(ScmInfo(url("https://github.com/marcinzh/turbolift"), "scm:git@github.com:marcinzh/turbolift.git"))

@@ -1,4 +1,0 @@
-package turbolift
-import turbolift.internals.extensions.AllOrphanedExtensions
-
-object Implicits extends AllOrphanedExtensions

@@ -5,6 +5,7 @@ import turbolift.std_effects.Each
 
 private[turbolift] trait MiscExtensions:
   extension [A](thiz: A)
+    /** Postfix alias of `pure(_)` */
     def pure_!! : A !! Any = !!.pure(thiz)
 
   extension [A](thiz: Iterable[A])

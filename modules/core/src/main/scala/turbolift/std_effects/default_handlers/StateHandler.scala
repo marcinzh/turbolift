@@ -1,77 +1,54 @@
 package turbolift.std_effects.default_handlers
 import turbolift.!!
-import turbolift.typeclass.MonadZip
-import turbolift.typeclass.Syntax._
-import turbolift.typeclass.FlippedPairFunctor.given
 import turbolift.std_effects.{State, StateSig}
 
 
-private[std_effects] object StateHandler:
-  def apply[S, Fx <: State[S]](fx: Fx, initial: S): fx.ThisHandler.Free[(_, S)] =
-    new fx.Stateful[S, (_, S)] with StateSig[S]:
-      override def onPure[A](a: A): S => (A, S) = (a, _)
+extension [S](fx: State[S])
+  private[std_effects] def stateHandler(initial: S): fx.ThisHandler.Free[(_, S)] =
+    new fx.Stateful[S, (_, S)] with fx.Sequential with StateSig[S]:
+      override def onPure[A](a: A, s: S): (A, S) = (a, s)
 
-      override def onFlatMap[A, B, M[_]: MonadZip](tma: S => M[(A, S)])(f: A => S => M[(B, S)]): S => M[(B, S)] =
-        s0 => tma(s0).flatMap {
-          case (a, s1) => f(a)(s1)
-        }
+      override val get: S !@! ThisEffect = (k, s) => k(s)
 
-      override def onZip[A, B, M[_]: MonadZip](tma: S => M[(A, S)], tmb: S => M[(B, S)]): S => M[((A, B), S)] =
-        s0 => tma(s0).flatMap {
-          case (a, s1) => tmb(s1).map {
-            case (b, s2) => ((a, b), s2)
-          }
-        }
-      
-      override val get: S !@! ThisEffect =
-        kk ?=> s => kk.outer((kk.inner(s), s))
+      override def gets[A](f: S => A): A !@! ThisEffect = (k, s) => k(f(s))
 
-      override def gets[A](f: S => A): A !@! ThisEffect =
-        kk ?=> s => kk.outer((kk.inner(f(s)), s))
+      override def put(s2: S): Unit !@! ThisEffect = (k, s) => k((), s2)
 
-      override def put(s: S): Unit !@! ThisEffect =
-        kk ?=> _ => kk.outer((kk.inner(), s))
+      override def swap(s2: S): S !@! ThisEffect = (k, s) => k(s, s2)
 
-      override def swap(s2: S): S !@! ThisEffect =
-        kk ?=> s1 => kk.outer((kk.inner(s1), s2))
-
-      override def modify(f: S => S): Unit !@! ThisEffect =
-        kk ?=> s => kk.outer((kk.inner(), f(s)))
+      override def modify(f: S => S): Unit !@! ThisEffect = (k, s) => k((), f(s))
 
       override def modifyGet(f: S => S): S !@! ThisEffect =
-        kk ?=> s1 =>
-          val s2 = f(s1)
-          kk.outer((kk.inner(s2), s2))
+        (k, s) =>
+          val s2 = f(s)
+          k(s2, s2)
 
-      override def getModify(f: S => S): S !@! ThisEffect =
-        kk ?=> s1 =>
-          val s2 = f(s1)
-          kk.outer((kk.inner(s1), s2))
+      override def getModify(f: S => S): S !@! ThisEffect = (k, s) => k(s, f(s))
 
       override def getModifyGet(f: S => S): (S, S) !@! ThisEffect =
-        kk ?=> s1 =>
-          val s2 = f(s1)
-          kk.outer((kk.inner((s1, s2)), s2))
+        (k, s) =>
+          val s2 = f(s)
+          k((s, s2), s2)
 
       override def update[A](f: S => (A, S)): A !@! ThisEffect =
-        kk ?=> s1 =>
-          val (a, s2) = f(s1)
-          kk.outer((kk.inner(a), s2))
+        (k, s) =>
+          val (a, s2) = f(s)
+          k(a, s2)
 
       override def updateGet[A](f: S => (A, S)): (A, S) !@! ThisEffect =
-        kk ?=> s1 =>
-          val as @ (_, s2) = f(s1)
-          kk.outer((kk.inner(as), s2))
+        (k, s) =>
+          val a_s @ (_, s2) = f(s)
+          k(a_s, s2)
 
       override def getUpdate[A](f: S => (A, S)): (A, S) !@! ThisEffect =
-        kk ?=> s1 =>
-          val (a, s2) = f(s1)
-          kk.outer((kk.inner((a, s1)), s2))
+        (k, s) =>
+          val (a, s2) = f(s)
+          k((a, s), s2)
 
       override def getUpdateGet[A](f: S => (A, S)): (A, S, S) !@! ThisEffect =
-        kk ?=> s1 =>
-          val (a, s2) = f(s1)
-          kk.outer((kk.inner((a, s1, s2)), s2))
+        (k, s) =>
+          val (a, s2) = f(s)
+          k((a, s, s2), s2)
 
 
     .toHandler(initial)

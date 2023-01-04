@@ -4,13 +4,14 @@ import turbolift.std_effects.State
 import turbolift.extra_effects.{CyclicMemoizer, CyclicMemoizerSig}
 
 
-private[extra_effects] object CyclicMemoizerHandler:
-  def apply[K, V, Fx <: CyclicMemoizer[K, V]](fx: Fx): fx.ThisHandler.FreeId =
+extension [K, V](fx: CyclicMemoizer[K, V])
+  private[extra_effects] def cyclicMemoizerHandler: fx.ThisHandler.FreeId =
     case object Storage extends State[Map[K, Thunk[V]]]
 
     new fx.Proxy[Storage.type] with CyclicMemoizerSig[K, V]:
-      override def get: Map[K, V] !@! ThisEffect =
-        Storage.gets(_.view.mapValues(_.apply()).toMap) //@#@TODO mapValues not strict yet
+      override def domain: Set[K] !@! ThisEffect = Storage.gets(_.keySet)
+
+      override def toMap: Map[K, V] !@! ThisEffect = Storage.gets(_.view.mapValues(_.apply()).toMap) //@#@TODO mapValues not strict yet
 
       override def memo[U <: ThisEffect](f: K => V !! U)(k: K): (() => V) !@! U =
         Storage.get.flatMap { m =>
@@ -30,7 +31,7 @@ private[extra_effects] object CyclicMemoizerHandler:
     .dropState
 
 
-  private class Thunk[A] extends Function0[A]:
-    private var result: A = null.asInstanceOf[A]
-    def :=(value: A): Unit = result = value
-    override def apply(): A = result
+private class Thunk[A] extends Function0[A]:
+  private var result: A = null.asInstanceOf[A]
+  def :=(value: A): Unit = result = value
+  override def apply(): A = result

@@ -1,53 +1,56 @@
 package turbolift.std_effects
-import org.scalatest.funspec.AnyFunSpec
-import org.scalatest.matchers.should.Matchers._
+import org.specs2.mutable._
 import turbolift.!!
 import turbolift.std_effects.State
+import turbolift.mode.ST
 
 
-class StateTests extends AnyFunSpec:
-  describe("Basic ops") {
-    it("get") {
-      case object Fx extends State[Int]
-      Fx.get
-      .runWith(Fx.handler(1)) shouldEqual ((1, 1))
+class StateTest extends Specification:
+  "Basic ops" >> {
+    "get" >> {
+      case object S extends State[Int]
+      S.get
+      .handleWith(S.handler(1))
+      .run === (1, 1)
     }
 
-    it("put") {
-      case object Fx extends State[Int]
-      Fx.put(2)
-      .runWith(Fx.handler(1)) shouldEqual (((), 2))
+    "put" >> {
+      case object S extends State[Int]
+      S.put(2)
+      .handleWith(S.handler(1))
+      .run === ((), 2)
     }
 
-    it("modify") {
-      case object Fx extends State[Int]
-      Fx.modify(_ + 10)
-      .runWith(Fx.handler(1)) shouldEqual (((), 11))
+    "modify" >> {
+      case object S extends State[Int]
+      S.modify(_ + 10)
+      .handleWith(S.handler(1))
+      .run === ((), 11)
     }
   }
 
-  describe("Combined ops") {
-    it("put & get") {
-      case object Fx extends State[Int]
+  "Combined ops" >> {
+    "put & get" >> {
+      case object S extends State[Int]
       (for
-        a <- Fx.get
-        _ <- Fx.put(2)
-        b <- Fx.get
+        a <- S.get
+        _ <- S.put(2)
+        b <- S.get
       yield (a, b))
-      .runWith(Fx.handler(1)) shouldEqual (((1, 2), 2))
+      .handleWith(S.handler(1))
+      .run === ((1, 2), 2)
     }
       
-    it("2 states interleaved") {
-      case object Fx1 extends State[Int]
-      case object Fx2 extends State[Int]
+    "2 states interleaved" >> {
+      case object S1 extends State[Int]
+      case object S2 extends State[Int]
       (for
-        a <- Fx1.get
-        b <- Fx2.get
-        _ <- Fx1.modify(_ * 10)
-        _ <- Fx2.modify(_ * 10)
-        _ <- Fx1.modify(_ + b)
-        _ <- Fx2.modify(_ + a)
+        a <- S1.get
+        b <- S2.get
+        _ <- S1.modify(_ + 10 * b)
+        _ <- S2.modify(_ + 10 * a)
       yield (a, b))
-      .runWith(Fx1.handler(1) ***! Fx2.handler(2)) shouldEqual (((1, 2), (12, 21)))
+      .handleWith(S1.handler(1) ***! S2.handler(2))
+      .run === ((1, 2), (21, 12))
     }
   }

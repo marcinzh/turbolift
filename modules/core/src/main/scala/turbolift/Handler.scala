@@ -2,26 +2,27 @@ package turbolift
 import turbolift.internals.auxx.CanPartiallyHandle
 import turbolift.internals.extensions.HandlerExtensions
 import turbolift.internals.interpreter.Interpreter
+import turbolift.internals.primitives.{ComputationCases => CC}
 
-/** Handler is an object used to transform a [[Computation]], by discharging some or all of its requested effects.
+/** Used to delimit scope of effect(s).
  *
- *  For example, having:
+ *  Handler transforms a [[Computation]], by discharging some or all of its requested effects,
+ *  and (optionally) introducing handlers own dependencies to it (set of effects used to create the handler).
  *  {{{
  *  val myComputation2 = myComputation1.handleWith(myHandler)
  *  }}}
- *  ...then, `myComputation2` will have the type of `myComputation1`, modified as follows:
- *  - [[Elim]] effects will be **removed** from the set of requested effects.
- *  - [[Intro]] effects (if any) will be **inserted** to the set of requested effects.
- *  - The result type `A`, will be transformed into `Result[A]`.
  *  
- *  Handlers can be obtained in 3 ways:
- *  - By implementing an [[internals.interpreter.Interpreter Interpreter]] for an [[Effect]], and then transforming it into a [[Handler]].
- *  - By transforming a preexisting handler, e.g: `val myHandler2 = myHandler1.map(...)`
- *  - By composing 2 preexisting handlers, e.g: `val myHandler3 = myHandler1 &&&! myHandler2`
+ *  Handlers can be obtained:
+ *  - By implementing an [[internals.interpreter.Interpreter Interpreter]] for an [[Effect]],
+ *  and then, obtaining a [[Handler]] from it.
+ *  - By transforming a preexisting handler, e.g. `val myHandler2 = myHandler1.map(...)`
+ *  - By composing 2 preexisting handlers, e.g. `val myHandler3 = myHandler1 &&&! myHandler2`
+ *  
+ *  Compositon of 2 handlers is always *sequential*: the operands are applied in left to right order.
  *  
  *  @tparam Result Type constructor (e.g. `Option[_]`), in which the computation's result is wrapped, after application of this handler. This is often an identity.
- *  @tparam Elim Type-level set of effects, expressed as an intersection type, that this handler __eliminates__ from the computation.
- *  @tparam Intro Type-level set of effects, expressed as an intersection type, that this handler __introduces__ into the computation. This is often an empty set, expressed as `Any`.
+ *  @tparam Elim Type-level set of effects, that this handler __eliminates__ from the computation.
+ *  @tparam Intro Type-level set of effects, that this handler __introduces__ into the computation. This is often an empty set, expressed as `Any`.
  */
 
 sealed trait Handler[Result[+_], Elim, Intro]:
@@ -36,51 +37,46 @@ sealed trait Handler[Result[+_], Elim, Intro]:
     def apply[A, W](comp: A !! W)(implicit ev: CanPartiallyHandle[V, W, Elim]): Result[A] !! (V & Intro) =
       doHandle[A, V](ev(comp))
 
-  /** Runs given computation, provided that all of its effects can be discharged by this handler.
-    * 
-    * Equivalent of [[Computation]]'s `handleWith(this)` followed by `run`
-    */
-  final def run[A](comp: A !! Elim)(implicit ev: Intro =:= Any): Result[A] = handle[Any](comp).run
-
-  /** Composes this handler with a post-processing function, applied to this handler's `Result[_]`.
+  /** Transforms this handler, by applying a post-processing function to its result`.
     *
     * a.k.a Natural Transformation.
     */
   final def map[NewResult[+_]](f: [X] => Result[X] => NewResult[X]): Handler[NewResult, Elim, Intro] =
     HandlerCases.Mapped[Result, NewResult, Elim, Intro](this, f)
 
-  /** Like `map`, but the post-processing of `Result[_]` can also introduce effects.
+  /** Like [[map]], but the post-processing of `Result[_]` can also introduce effects.
     *
     * Those effects are then absorbed by the new handler into the effects it introduces.
     */
   final def flatMap[NewResult[+_], V](f: [X] => Result[X] => NewResult[X] !! V): Handler[NewResult, Elim, Intro & V] =
     HandlerCases.FlatMapped[Result, NewResult, Elim, Intro, V](this, f)
 
-  /** Like `flatMap`, but the post-processing is executed for its effects only.
+  /** Like [[flatMap]], but the post-processing is executed for its effects only.
     *
     * This handler's `Result[_]` remains unchanged.
     */
   final def flatTap[V](f: [X] => Result[X] => Unit !! V): Handler[Result, Elim, Intro & V] =
-    HandlerCases.FlatTapped[Result, Elim, Intro, V](this, f)
+    flatMap([X] => (xx: Result[X]) => f(xx).as(xx))
 
-  /** Composes 2 **independent** handlers sequentially. This handler is applied first.
+  /** Composes 2 **independent** handlers.
     *
-    * Independence of handlers means, that effects __eliminated__ by one of the handlers, do not overlap with effects __introduced__ by the other.
+    * Independence of handlers means, that effects __eliminated__ by one of the handlers,
+    * do not overlap with effects __introduced__ by the other.
     *
-    * Independence of 2 handlers guarantees, that it is also valid to compose them in the opposite order.
+    * Independence of 2 handlers guarantees, that it's also valid to compose them in the opposite order.
     * However, nesting order of their `Result[_]`s would also be reversed.
     */
   final def composeWith[ThatResult[+_], ThatElim, ThatIntro](that: Handler[ThatResult, ThatElim, ThatIntro]) =
     HandlerCases.Composed[Result, ThatResult, Elim, ThatElim, Intro, ThatIntro, Any](this, that).self
   
-  /** Composes 2 **fully dependent** handlers sequentially. This handler is applied first.
+  /** Composes 2 **fully dependent** handlers.
     *
     * Assumes that **all** effects introduced by this handler, are eliminated by `that` handler.
     */
   final def provideWith[ThatResult[+_], ThatIntro](that: Handler[ThatResult, Intro, ThatIntro]) =
     HandlerCases.Composed[Result, ThatResult, Elim, Any, Any, ThatIntro, Intro](Handler.this, that).self
 
-  /** Composes 2 **partially dependent** handlers sequentially. This handler is applied first.
+  /** Composes 2 **partially dependent** handlers.
     *
     * Assumes that **some of** effects introduced by this handler, are eliminated by `that` handler.
     */
@@ -93,14 +89,13 @@ sealed trait Handler[Result[+_], Elim, Intro]:
 
   private[turbolift] final def self: Handler[Result, Elim, Intro] = this
 
-  /** Alias for `composeWith`. */
+  /** Alias for [[composeWith]]. */
   final def &&&![ThatResult[+_], ThatElim, ThatIntro](that: Handler[ThatResult, ThatElim, ThatIntro]) = this.composeWith(that)
 
-  /** Maps `Result[_]` to `Unit`. */
-  final def void: Handler[[X] =>> Unit, Elim, Intro] = map([X] => (_: Result[X]) => ())
+  /** Transforms this handler, by discarding its result. */
+  final def void: Handler.Const[Unit, Elim, Intro] = map([X] => (_: Result[X]) => ())
 
 
-/** Defines convenience extensions and type aliases for [[Handler]]. */
 object Handler extends HandlerExtensions:
 
   /** Alias for handler, whose `Result[_]` is type-level identity. */
@@ -124,11 +119,11 @@ object Handler extends HandlerExtensions:
 
 private[turbolift] object HandlerCases:
   final case class Primitive[Result[+_], Elim, Intro](
-    interpreter: Interpreter.Apply[Result, Elim, Intro],
-    initial: Any,
+    interpreter: Interpreter.Apply[Result[+_], Elim, Intro],
+    initial: Any
   ) extends Handler[Result, Elim, Intro]:
     override def doHandle[A, U](comp: A !! (U & Elim)): Result[A] !! (U & Intro) = 
-      new ComputationCases.Delimit[A, U, Result, Elim, Intro](comp, this)
+      new CC.Handle[A, U, Result, Elim, Intro](comp, this)
 
 
   final case class Composed[Result1[+_], Result2[+_], Elim1, Elim2, Intro1, Intro2, Hidden](
@@ -155,14 +150,6 @@ private[turbolift] object HandlerCases:
   ) extends Handler[NewResult, Elim, Intro1 & Intro2]:
     override def doHandle[A, U](comp: A !! (U & Elim)): NewResult[A] !! (U & Intro1 & Intro2) =
       that.doHandle[A, U](comp).flatMap(fun(_))
-
-
-  final case class FlatTapped[Result[+_], Elim, Intro1, Intro2](
-    that: Handler[Result, Elim, Intro1],
-    fun: [X] => Result[X] => Unit !! Intro2,
-  ) extends Handler[Result, Elim, Intro1 & Intro2]:
-    override def doHandle[A, U](comp: A !! (U & Elim)): Result[A] !! (U & Intro1 & Intro2) =
-      that.doHandle[A, U](comp).flatTap(fun(_))
 
 
   final case class FlatHandled[Result[+_], Elim, Intro1, Intro2](

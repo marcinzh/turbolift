@@ -1,30 +1,21 @@
 package turbolift.type_safety
-import org.scalatest.funspec.AnyFunSpec
-import org.scalatest.matchers.should.Matchers._
+import org.specs2._
+import org.specs2.execute.Typecheck
+import org.specs2.matcher.TypecheckMatchers._
 import Dummies._
 
 
-class TotalHandlerTest extends AnyFunSpec:
-  describe("Total handlers should not leak effects") {
-    assertCompiles  {"any[H12] run any[Eff1]"}
-    assertCompiles  {"any[H12] run any[Eff2]"}
-    assertCompiles  {"any[H12] run any[Eff12]"}
-    assertTypeError {"any[H12] run any[Eff3]"}
-    assertTypeError {"any[H12] run any[Eff123]"}
-    assertCompiles  {"any[H21] run any[Eff1]"}
-    assertCompiles  {"any[H21] run any[Eff2]"}
-    assertCompiles  {"any[H21] run any[Eff12]"}
-    assertTypeError {"any[H21] run any[Eff3]"}
-    assertTypeError {"any[H21] run any[Eff123]"}
-
-    assertCompiles  {"any[Eff1] runWith any[H12]"}
-    assertCompiles  {"any[Eff2] runWith any[H12]"}
-    assertCompiles  {"any[Eff12] runWith any[H12]"}
-    assertTypeError {"any[Eff3] runWith any[H12]"}
-    assertTypeError {"any[Eff123] runWith any[H12]"}
-    assertCompiles  {"any[Eff1] runWith any[H21]"}
-    assertCompiles  {"any[Eff2] runWith any[H21]"}
-    assertCompiles  {"any[Eff12] runWith any[H21]"}
-    assertTypeError {"any[Eff3] runWith any[H21]"}
-    assertTypeError {"any[Eff123] runWith any[H21]"}
-  }
+class TotalHandlerTest extends Specification:
+  def is = br ^ "Total handler's effects should be superset of handled computation's effects" !
+    List(
+      Typecheck {"any[Eff1]   .handleWith(any[H12]).run"} must succeed,
+      Typecheck {"any[Eff2]   .handleWith(any[H12]).run"} must succeed,
+      Typecheck {"any[Eff12]  .handleWith(any[H12]).run"} must succeed,
+      Typecheck {"any[Eff3]   .handleWith(any[H12]).run"} must succeed.not,
+      Typecheck {"any[Eff123] .handleWith(any[H12]).run"} must succeed.not,
+      Typecheck {"any[Eff1]   .handleWith(any[H21]).run"} must succeed,
+      Typecheck {"any[Eff2]   .handleWith(any[H21]).run"} must succeed,
+      Typecheck {"any[Eff12]  .handleWith(any[H21]).run"} must succeed,
+      Typecheck {"any[Eff3]   .handleWith(any[H21]).run"} must succeed.not,
+      Typecheck {"any[Eff123] .handleWith(any[H21]).run"} must succeed.not,
+    )

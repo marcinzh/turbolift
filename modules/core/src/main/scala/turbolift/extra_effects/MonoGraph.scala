@@ -1,7 +1,7 @@
 package turbolift.extra_effects
 import cats.Monoid
 import turbolift.{!!, Effect, Signature}
-import turbolift.extra_effects.default_handlers.MonoGraphHandler
+import turbolift.extra_effects.default_handlers.monoGraphHandler
 
 
 trait MonoGraphSig[K, V] extends Signature:
@@ -35,7 +35,7 @@ trait MonoGraph[K, V] extends Effect[MonoGraphSig[K, V]] with MonoGraphSig[K, V]
     def outgoings(tos: IterableOnce[K]) = enclosing.outgoings(k, tos)
 
   /** Predefined handler for this effect. */
-  def handler(implicit M: Monoid[V]): ThisHandler.Free[(_, Map[K, V])] = MonoGraphHandler[K, V, this.type](this)
+  def handler(implicit M: Monoid[V]): ThisHandler.Free[(_, Map[K, V])] = this.monoGraphHandler
 
   /** Predefined handler for this effect. */
   def handler(zero: V, combine: (V, V) => V): ThisHandler.Free[(_, Map[K, V])] = handler(Monoid.instance(zero, combine))

@@ -1,7 +1,7 @@
 package turbolift.std_effects
 import turbolift.{!!, Effect, Signature}
 import turbolift.typeclass.AccumZero
-import turbolift.std_effects.default_handlers.WriterHandler
+import turbolift.std_effects.default_handlers.writerHandler
 
 
 trait WriterSig[W, W1] extends Signature:
@@ -10,6 +10,7 @@ trait WriterSig[W, W1] extends Signature:
   def mute[A, U <: ThisEffect](body: A !! U): A !@! U
   def listen[A, U <: ThisEffect](body: A !! U): (A, W) !@! U
   def censor[A, U <: ThisEffect](f: W => W)(body: A !! U): A !@! U
+  def pass[A, U <: ThisEffect](body: (A, W => W) !! U): A !@! U
 
 
 trait WriterEffect[W, W1] extends Effect[WriterSig[W, W1]] with WriterSig[W, W1]:
@@ -18,11 +19,12 @@ trait WriterEffect[W, W1] extends Effect[WriterSig[W, W1]] with WriterSig[W, W1]
   final override def mute[A, U <: this.type](body: A !! U): A !! U = perform(_.mute(body))
   final override def listen[A, U <: this.type](body: A !! U): (A, W) !! U = perform(_.listen(body))
   final override def censor[A, U <: this.type](f: W => W)(body: A !! U): A !! U = perform(_.censor(f)(body))
+  final override def pass[A, U <: this.type](body: (A, W => W) !! U): A !@! U = perform(_.pass(body))
 
   final def tell[K, V1](k: K, v: V1)(implicit ev: ((K, V1)) <:< W1): Unit !! this.type = tell(ev((k, v)))
 
   /** Default handler for this effect. */
-  def handler(implicit W: AccumZero[W, W1]): ThisHandler.Free[(_, W)] = WriterHandler[W, W1, this.type](this)
+  def handler(implicit W: AccumZero[W, W1]): ThisHandler.Free[(_, W)] = this.writerHandler
 
 
 trait Writer[W] extends WriterEffect[W, W]

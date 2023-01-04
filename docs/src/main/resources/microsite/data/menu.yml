@@ -1,0 +1,31 @@
+options:
+  - title: Overview
+    url: overview.html
+
+  - title: Defining your own effects and handlers
+    url: custom/index.html
+
+    nested_options:
+    - title: "Effect example: Flip "
+      url: custom/flip.html
+
+    - title: "Effect example: File System"
+      url: custom/file_sys.html
+
+  - title: Advanced Features
+    url: advanced/index.html
+
+    nested_options:
+
+    - title: "Labelled Effects"
+      url: advanced/labelled.html
+
+    - title: "Applicative Effects"
+      url: advanced/applicative.html
+
+    - title: "Higher Order Effects"
+      url: advanced/higher.html
+
+  - title: IO
+    url: io.html
+

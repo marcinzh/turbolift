@@ -1,110 +1,208 @@
 package turbolift.std_effects
-import org.scalatest.funspec.AnyFunSpec
-import org.scalatest.matchers.should.Matchers._
+import org.specs2.mutable._
+import org.specs2.specification.core.Fragment
+import org.specs2.execute.Result
 import turbolift.!!
 import turbolift.std_effects.{Choice, Error}
+import turbolift.mode.ST
 
 
-class ChoiceTest extends AnyFunSpec with CanLaunchTheMissiles:
+class ChoiceTest extends Specification:
   private class Picker(round: Boolean):
-    def apply[T](a: => T)(b: => T): T = if round then a else b
-    def name = apply("one")("many")
+    def apply[T](a: => T, b: => T): T = if round then a else b
+    def name = apply("first", "all")
     def handler[Fx <: Choice](fx: Fx): fx.ThisHandler.Free[Vector] =
-      apply(fx.handlers.one.toVector)(fx.handlers.many)
+      def h1 = fx.handlers.first.map([X] => (xs: Option[X]) => xs.toVector)
+      def h2 = fx.handlers.all
+      apply(h1, h2)
 
-  private object Picker:
-    def foreach(f: Picker => Unit): Unit =
-      for round <- List(true, false) do
-        if round then
-          ignore("With handler = " + Picker(true).name)(???)
-        else
-          f(Picker(round))
-        //@#@TODO
-        // f(Picker(round))
+  private val Pickers = List(true, false).map(new Picker(_)) 
 
-
-  describe("Basic ops") {
-    case object Fx extends Choice
-    for picker <- Picker do
-      val handler = picker.handler(Fx)
-      describe("With handler = " + picker.name) {
-        it("choose") {
-          Fx.choose(List(1, 2))
-          .runWith(handler) shouldEqual picker(Vector(1))(Vector(1, 2))
+  "Basic ops" >> {
+    case object C extends Choice
+    Fragment.foreach(Pickers) { picker =>
+      val handler = picker.handler(C)
+      s"With handler = ${picker.name}" >> {
+        "choose 0" >> {
+          C.choose(List())
+          .handleWith(handler)
+          .run === Vector[Int]()
         }
 
-        it("empty") {
-          (Fx.empty &&! !!.pure(1))
-          .runWith(handler) shouldEqual Vector()
+        "choose 1" >> {
+          C.choose(List(1))
+          .handleWith(handler)
+          .run === (Vector(1))
         }
 
-        it("plus") {
-          Fx.plus(!!.pure(1), !!.pure(2))
-          .runWith(handler) shouldEqual picker(Vector(1))(Vector(1, 2))
+        "choose 2" >> {
+          C.choose(List(1, 2))
+          .handleWith(handler)
+          .run === picker(
+            Vector(1),
+            Vector(1, 2)
+          )
         }
 
-        it("plus fail") {
-          (!!.pure(1) ||! !!.fail ||! !!.pure(2))
-          .runWith(handler) shouldEqual picker(Vector(1))(Vector(1, 2))
+        "fail" >> {
+          val cases = List(
+            ("fail &&!", C.fail &&! !!.pure(1)),
+            ("fail &!",  C.fail &! !!.pure(1)),
+            ("!!.fail &&!", !!.fail &&! !!.pure(1)),
+            ("!!.fail &!",  !!.fail &! !!.pure(1)),
+            ("&&! fail", !!.pure(1) &&! C.fail),
+            ("&! fail",  !!.pure(1) &! C.fail),
+            ("&&! !!.fail", !!.pure(1) &&! !!.fail),
+            ("&! !!.fail",  !!.pure(1) &! !!.fail),
+          )
+
+          Fragment.foreach(cases) { case (name, prog) =>
+            name >> (prog.handleWith(handler).run === Vector())
+          }
+        }
+
+        "plus pure" >> {
+          (!!.pure(1) ++! !!.pure(2))
+          .handleWith(handler)
+          .run === picker(
+            Vector(1),
+            Vector(1, 2)
+          )
+        }
+
+        "plus fail" >> {
+          (!!.pure(1) ++! !!.fail)
+          .handleWith(handler)
+          .run === Vector(1)
         }
       }
+    }
   }
 
 
-  describe("Combined ops") {
-    case object Fx extends Choice
-    for picker <- Picker do
-      val handler = picker.handler(Fx)
-      describe("With handler = " + picker.name) {
-        it("Nested choose") {
+  "Combined ops" >> {
+    case object C extends Choice
+    Fragment.foreach(Pickers) { picker =>
+      val handler = picker.handler(C)
+      s"With handler = ${picker.name}" >> {
+        "Nested choose" >> {
           (for
-            n <- Fx.choose(1 to 2)
-            c <- Fx.choose('a' to 'b')
+            n <- C.choose(1 to 2)
+            c <- C.choose('a' to 'b')
           yield s"$n$c")
-          .runWith(handler) shouldEqual picker(Vector("1a"))(Vector("1a", "1b", "2a", "2b"))
+          .handleWith(handler)
+          .run === picker(
+            Vector("1a"),
+            Vector("1a", "1b", "2a", "2b")
+          )
         }
 
-        it("Nested choose with guard") {
+        "Nested choose with guard" >> {
           (for
-            n <- Fx.choose(1 to 2)
+            n <- C.choose(1 to 2)
             if n % 2 == 0
-            c <- Fx.choose('a' to 'b')
+            c <- C.choose('a' to 'b')
           yield s"$n$c")
-          .runWith(handler) shouldEqual picker(Vector("2a"))(Vector("2a", "2b"))
+          .handleWith(handler)
+          .run === picker(
+            Vector("2a"),
+            Vector("2a", "2b")
+          )
         }
 
-        it("Nested plus") {
+        "Nested plus" >> {
           (for
-            n <- !!.pure(1) ||! !!.pure(2)
-            c <- !!.pure('a') ||! !!.pure('b')
+            n <- !!.pure(1) ++! !!.pure(2)
+            c <- !!.pure('a') ++! !!.pure('b')
           yield s"$n$c")
-          .runWith(handler) shouldEqual picker(Vector("1a"))(Vector("1a", "1b", "2a", "2b"))
+          .handleWith(handler)
+          .run === picker(
+            Vector("1a"),
+            Vector("1a", "1b", "2a", "2b")
+          )
         }
 
-        it("Nested plus with guard") {
+        "Nested plus with guard" >> {
           (for
-            n <- !!.pure(1) ||! !!.pure(2)
+            n <- !!.pure(1) ++! !!.pure(2)
             if n % 2 == 0
-            c <- !!.pure('a') ||! !!.pure('b')
+            c <- !!.pure('a') ++! !!.pure('b')
           yield s"$n$c")
-          .runWith(handler) shouldEqual picker(Vector("2a"))(Vector("2a", "2b"))
+          .handleWith(handler)
+          .run === picker(
+            Vector("2a"),
+            Vector("2a", "2b")
+          )
         }
 
+        "choose >>= tell" >> {
+          case object W extends Writer[Int]
+          val hW = W.handler
+          val hC = picker.handler(C)
 
-        describe("Choice & Error") {
-          case object FxE extends Error[Int]
-          val hE = FxE.handler
-          val hC = picker.handler(Fx)
+          val prog = C.choose(List(1, 2)) >>= W.tell
 
-          val comp = !!.pure(1) ||! FxE.raise(2)
-
-          it("Writer before Choice") {
-            comp.runWith(hE &&&! hC) shouldEqual picker(Vector(Right(1)))((Vector(Right(1), Left(2))))
+          "Writer &&&! Choice" >> {
+            prog.handleWith(hW &&&! hC)
+            .run === picker(
+              Vector(((), 1)),
+              (Vector(((), 1), ((), 2)))
+            )
           }
 
-          it("Choice before Writer") {
-            comp.runWith(hC &&&! hE) shouldEqual picker(Right(Vector(1)))(Left(2))
+          "Choice &&&! Writer" >> {
+            prog.handleWith(hC &&&! hW)
+            .run === picker(
+              (Vector(()), 1),
+              (Vector((), ()), 3)
+            )
+          }
+        }
+
+        "choose >>= raise" >> {
+          case object E extends Error[Int]
+          val hE = E.handlers.all
+          val hC = picker.handler(C)
+
+          val prog = C.choose(List(1, 2)) >>= E.raise
+
+          "Error &&&! Choice" >> {
+            prog.handleWith(hE &&&! hC)
+            .run === picker(
+              Vector(Left(1).withRight[Int]),
+              (Vector(Left(1).withRight[Int], Left(2).withRight[Int]))
+            )
+          }
+
+          "Choice &&&! Error" >> {
+            prog.handleWith(hC &&&! hE)
+            .run === Left(1).withRight[Int]
+          }
+        }
+
+        "plus & raise" >> {
+          case object E extends Error[Int]
+          val hE = E.handler
+          val hC = picker.handler(C)
+
+          val prog = !!.pure(1) ++! E.raise(2)
+
+          "Error &&&! Choice" >> {
+            prog.handleWith(hE &&&! hC)
+            .run === picker(
+              Vector(Right(1)),
+              Vector(Right(1), Left(2))
+            )
+          }
+
+          "Choice &&&! Error" >> {
+            prog.handleWith(hC &&&! hE)
+            .run === picker(
+              Right(Vector(1)),
+              Left(2)
+            )
           }
         }
       }
+    }
   }

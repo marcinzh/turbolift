@@ -1,89 +1,137 @@
 package turbolift.std_effects
-import org.scalatest.funspec.AnyFunSpec
-import org.scalatest.matchers.should.Matchers._
+import org.specs2.mutable._
 import turbolift.!!
 import turbolift.std_effects.{Reader, WriterK}
+import turbolift.mode.ST
 
 
-class ReaderTest extends AnyFunSpec:
-  describe("Basic ops") {
-    it("ask") {
-      case object Fx extends Reader[Int]
-      Fx.ask
-      .runWith(Fx.handler(1)) shouldEqual 1
+class ReaderTest extends Specification:
+  "Basic ops" >> {
+    "ask" >> {
+      case object R extends Reader[Int]
+      R.ask
+      .handleWith(R.handler(1))
+      .run === 1
     }
 
-    it("asks") {
-      case object Fx extends Reader[(Int, Int)]
-      Fx.asks(_._1)
-      .runWith(Fx.handler((1, 2))) shouldEqual 1
+    "asks" >> {
+      case object R extends Reader[(Int, Int)]
+      R.asks(_._1)
+      .handleWith(R.handler((1, 2)))
+      .run === 1
     }
 
-    it("localPut") {
-      case object Fx extends Reader[Int]
-      Fx.localPut(2) { Fx.ask }
-      .runWith(Fx.handler(1)) shouldEqual 2
-    }
-  }
-
-
-  describe("Combined ops") {
-    it("ask & localPut") {
-      case object Fx extends Reader[Int]
-      (Fx.localPut(2) { Fx.ask } **! Fx.ask)
-      .runWith(Fx.handler(1)) shouldEqual ((2, 1))
+    "localPut" >> {
+      case object R extends Reader[Int]
+      R.localPut(2) { R.ask }
+      .handleWith(R.handler(1))
+      .run === 2
     }
 
-    it("Reader & Writer") {
-      case object FxR extends Reader[Int]
-      case object FxW extends WriterK[Vector, String]
-
-      def loop(str: String): Unit !! FxR.type with FxW.type =
-        if str.isEmpty then
-          !!.pure()
-        else 
-          str.head match
-            case '[' => FxR.localModify(_ + 1)(loop(str.tail))
-            case ']' => FxR.localModify(_ - 1)(loop(str.tail))
-            case x =>
-              for
-                indent <- FxR.ask
-                _ <- FxW.tell(("  " * indent) :+ x)
-                _ <- loop(str.tail) 
-              yield ()
-
-      val lines1 = 
-        loop("ab[cd[e]f[]g]h")
-        .runWith(FxW.handler.justState &&&! FxR.handler(0))
-        .mkString("\n")
-
-      val lines2 = """
-        |a
-        |b
-        |  c
-        |  d
-        |    e
-        |  f
-        |  g
-        |h
-        |""".stripMargin.tail.init
-
-      lines1 shouldEqual lines2
+    "localModify" >> {
+      case object R extends Reader[Int]
+      R.localModify(_ + 2) { R.ask }
+      .handleWith(R.handler(1))
+      .run === 3
     }
   }
 
 
-  describe("Par ops") {
-    it("ask & localModify") {
-      case object Fx extends Reader[Int]
-      Fx.localModify(_ + 1) {
-        Fx.ask *!
-        Fx.localModify(_ + 10) { Fx.ask } *!
-        Fx.ask *!
-        Fx.localModify(_ + 100) { Fx.ask } *!
-        Fx.ask
+  "Combined ops" >> {
+    "ask **! localPut" >> {
+      case object R extends Reader[Int]
+      (R.ask **! R.localPut(2) { R.ask })
+      .handleWith(R.handler(1))
+      .run === (1, 2)
+    }
+
+    "localPut **! ask" >> {
+      case object R extends Reader[Int]
+      (R.localPut(2) { R.ask } **! R.ask)
+      .handleWith(R.handler(1))
+      .run === (2, 1)
+    }
+
+    "nested localModify x1" >> {
+      case object R extends Reader[Int]
+      (
+        R.ask **!
+        R.localModify(_ + 10) {
+          R.ask
+        } **!
+        R.ask
+      )
+      .handleWith(R.handler(1))
+      .run === ((1, 11), 1)
+    }
+
+
+    "nested localModify x2" >> {
+      case object R extends Reader[Int]
+      (
+        R.ask **!
+        R.localModify(_ + 1) {
+          R.ask **!
+          R.localModify(_ + 10) {
+            R.ask
+          } **!
+          R.ask
+        } **!
+        R.ask
+      )
+      .handleWith(R.handler(1))
+      .run === ((1, ((2, 12), 2)), 1)
+    }
+
+    "nested localModify x3" >> {
+      case object R extends Reader[Int]
+      (
+        R.ask **!
+        R.localModify(_ + 1) {
+          R.ask **!
+          R.localModify(_ + 10) {
+            R.ask **!
+            R.localModify(_ + 100) {
+              R.ask
+            } **!
+            R.ask
+          } **!
+          R.ask
+        } **!
+        R.ask
+      )
+      .handleWith(R.handler(1))
+      .run === ((1,((2,((12,112),12)),2)),1)
+    }
+  }
+
+
+  "Par ops" >> {
+    case object R extends Reader[Int]
+    val h = R.handler(1)
+
+    "ask *! localPut" >> {
+      (R.ask *! R.localPut(2)(R.ask))
+      .handleWith(h)
+      .run === ((1, 2))
+    }
+
+    "localPut *! ask" >> {
+      (R.localPut(2)(R.ask) *! R.ask)
+      .handleWith(h)
+      .run === ((2, 1))
+    }
+
+    "nested localModify" >> {
+      R.localModify(_ + 1) {
+        R.ask *!
+        R.localModify(_ + 10) { R.ask } *!
+        R.ask *!
+        R.localModify(_ + 100) { R.ask } *!
+        R.ask
       }
       .map { case ((((a, b), c), d), e) => (a, b, c, d, e) }
-      .runWith(Fx.handler(1)) shouldEqual ((2, 12, 2, 102, 2))
+      .handleWith(h)
+      .run === ((2, 12, 2, 102, 2))
     }
   }
