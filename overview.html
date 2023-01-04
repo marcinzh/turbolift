@@ -1,0 +1,172 @@
+<!DOCTYPE html><html><head><title>Turbolift: Overview</title><meta charset="utf-8" /><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="author" content="marcinzh" /><meta name="description" content="Algebraic Effects for Scala 3" /><meta name="og:image" content="/turbolift/img/poster.png" /><meta name="image" property="og:image" content="/turbolift/img/poster.png" /><meta name="og:title" content="Turbolift: Overview" /><meta name="title" property="og:title" content="Turbolift: Overview" /><meta name="og:site_name" content="Turbolift" /><meta name="og:url" content="https://github.com/marcinzh/turbolift" /><meta name="og:type" content="website" /><meta name="og:description" content="Algebraic Effects for Scala 3" /><link rel="icon" type="image/png" href="/turbolift/img/favicon.png" /><meta name="twitter:title" content="Turbolift: Overview" /><meta name="twitter:image" content="https://marcinzh.github.io/turbolift/img/poster.png" /><meta name="twitter:description" content="Algebraic Effects for Scala 3" /><meta name="twitter:card" content="summary_large_image" /><link rel="icon" type="image/png" sizes="16x16" href="/turbolift/img/favicon16x16.png" /><link rel="icon" type="image/png" sizes="24x24" href="/turbolift/img/favicon24x24.png" /><link rel="icon" type="image/png" sizes="32x32" href="/turbolift/img/favicon32x32.png" /><link rel="icon" type="image/png" sizes="48x48" href="/turbolift/img/favicon48x48.png" /><link rel="icon" type="image/png" sizes="57x57" href="/turbolift/img/favicon57x57.png" /><link rel="icon" type="image/png" sizes="60x60" href="/turbolift/img/favicon60x60.png" /><link rel="icon" type="image/png" sizes="64x64" href="/turbolift/img/favicon64x64.png" /><link rel="icon" type="image/png" sizes="70x70" href="/turbolift/img/favicon70x70.png" /><link rel="icon" type="image/png" sizes="72x72" href="/turbolift/img/favicon72x72.png" /><link rel="icon" type="image/png" sizes="76x76" href="/turbolift/img/favicon76x76.png" /><link rel="icon" type="image/png" sizes="96x96" href="/turbolift/img/favicon96x96.png" /><link rel="icon" type="image/png" sizes="114x114" href="/turbolift/img/favicon114x114.png" /><link rel="icon" type="image/png" sizes="120x120" href="/turbolift/img/favicon120x120.png" /><link rel="icon" type="image/png" sizes="128x128" href="/turbolift/img/favicon128x128.png" /><link rel="icon" type="image/png" sizes="144x144" href="/turbolift/img/favicon144x144.png" /><link rel="icon" type="image/png" sizes="150x150" href="/turbolift/img/favicon150x150.png" /><link rel="icon" type="image/png" sizes="152x152" href="/turbolift/img/favicon152x152.png" /><link rel="icon" type="image/png" sizes="196x196" href="/turbolift/img/favicon196x196.png" /><link rel="icon" type="image/png" sizes="310x310" href="/turbolift/img/favicon310x310.png" /><link rel="icon" type="image/png" sizes="310x150" href="/turbolift/img/favicon310x150.png" /><link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" /><link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" /><link rel="stylesheet" href="/turbolift/highlight/styles/atom-one-light.css" /><link rel="stylesheet" href="/turbolift/css/pattern-style.css" /></head><body class="docs"><div id="wrapper"><div id="sidebar-wrapper"><ul id="sidebar" class="sidebar-nav"><li class="sidebar-brand"><a href="/turbolift/" class="brand"><div class="brand-wrapper"><span>Turbolift</span></div></a></li> <li><a href="/turbolift/overview.html" class=" active ">Overview</a></li> <li><a href="/turbolift/custom/index.html" class="">Defining your own effects and handlers</a> <ul class="sub-section"> <li><a href="/turbolift/custom/flip.html" class="">Effect example: Flip </a></li> <li><a href="/turbolift/custom/file_sys.html" class="">Effect example: File System</a></li></ul></li> <li><a href="/turbolift/advanced/index.html" class="">Advanced Features</a> <ul class="sub-section"> <li><a href="/turbolift/advanced/labelled.html" class="">Labelled Effects</a></li> <li><a href="/turbolift/advanced/applicative.html" class="">Applicative Effects</a></li> <li><a href="/turbolift/advanced/higher.html" class="">Higher Order Effects</a></li></ul></li> <li><a href="/turbolift/io.html" class="">IO</a></li></ul></div><div id="page-content-wrapper"><div class="nav"><div class="container-fluid"><div class="row"><div class="col-lg-12"><div class="action-menu pull-left clearfix"><a href="#menu-toggle" id="menu-toggle"><i class="fa fa-bars" aria-hidden="true"></i></a></div><ul class="pull-right"><li class="search-nav hidden-xs hidden-sm"><div id="search-dropdown"><label><i class="fa fa-search"></i>Search</label><input id="search-bar" type="text" placeholder="Enter keywords here..." onclick="displayToggleSearch(event)" /><ul id="search-dropdown-content" class="dropdown dropdown-content"></ul></div></li><li id="gh-eyes-item" class="hidden-xs to-uppercase"><a href="https://github.com/marcinzh/turbolift" target="_blank" rel="noopener noreferrer"><i class="fa fa-eye"></i><span>Watchers<span id="eyes" class="label label-default">--</span></span></a></li><li id="gh-stars-item" class="hidden-xs to-uppercase"><a href="https://github.com/marcinzh/turbolift" target="_blank" rel="noopener noreferrer"><i class="fa fa-star-o"></i><span>Stars<span id="stars" class="label label-default">--</span></span></a></li></ul></div></div></div></div><div id="content" data-github-owner="marcinzh" data-github-repo="turbolift"><div class="content-wrapper"><section><h1 id="overview">Overview</h1>
+
+<h3 id="the-main-types-of-turbolift-and-their-roles">The main types of Turbolift, and their roles</h3>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">Computation</code> - Monad, parametrized by set of effects, a.k.a <strong>“One Monad To Rule Them All”</strong> <sup id="fnref:1" role="doc-noteref"><a href="#fn:1" class="footnote" rel="footnote">1</a></sup>.</li>
+  <li><code class="language-plaintext highlighter-rouge">Signature</code> - Trait, where we define our <em>Algebra/Service/DSL</em> (as abstract methods).</li>
+  <li><code class="language-plaintext highlighter-rouge">Effect</code> - Object, through which we can invoke operations of some <em>Algebra/Service/DSL</em> (as concrete methods).</li>
+  <li><code class="language-plaintext highlighter-rouge">Interpreter</code> - Object that assigns semantics to some <em>Algebra/Service/DSL</em>. It produces a <code class="language-plaintext highlighter-rouge">Handler</code>.</li>
+  <li><code class="language-plaintext highlighter-rouge">Handler</code> - Object that we can use like generalized <code class="language-plaintext highlighter-rouge">try ... catch</code> expression: to delimit scope of effect(s).</li>
+</ul>
+
+<h3 id="computation-usage">Computation Usage</h3>
+
+<p>A value of type <code class="language-plaintext highlighter-rouge">Computation[A, U]</code> describes a… computation,
+that requests a set of effects <code class="language-plaintext highlighter-rouge">U</code> that need to be handled,
+before it can return a value of type <code class="language-plaintext highlighter-rouge">A</code>.</p>
+
+<p>A <strong>type alias</strong> <code class="language-plaintext highlighter-rouge">!![A, U]</code> is defined for convenient <strong>infix syntax</strong>.</p>
+
+<p>The type-level set of effects is modelled by intersection types:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Scala type</th>
+      <th>Meaning as a set of effects</th>
+      <th>Sample computation type</th>
+      <th>Same, using infix syntax</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Any</code></td>
+      <td>∅</td>
+      <td><code class="language-plaintext highlighter-rouge">Computation[Int, Any]</code></td>
+      <td><code class="language-plaintext highlighter-rouge">Int !! Any</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">X</code></td>
+      <td><code class="language-plaintext highlighter-rouge">X</code></td>
+      <td><code class="language-plaintext highlighter-rouge">Computation[Int, X]</code></td>
+      <td><code class="language-plaintext highlighter-rouge">Int !! X</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">X &amp; Y</code></td>
+      <td><code class="language-plaintext highlighter-rouge">X</code> ∪ <code class="language-plaintext highlighter-rouge">Y</code></td>
+      <td><code class="language-plaintext highlighter-rouge">Computation[Int, X &amp; Y]</code></td>
+      <td><code class="language-plaintext highlighter-rouge">Int !! (X &amp; Y)</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<p> </p>
+
+<p>Additionally, <code class="language-plaintext highlighter-rouge">!!</code> is a <strong>value alias</strong> of <code class="language-plaintext highlighter-rouge">Computation</code>’s companion object:</p>
+
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">turbolift.</span><span class="o">!!</span>
+
+<span class="k">val</span> <span class="nv">myComputation1</span> <span class="k">=</span> <span class="o">!!.</span><span class="py">unit</span>
+<span class="c1">// myComputation1: Computation[Unit, Any] = turbolift.Computation@3b583d3b</span>
+
+<span class="k">val</span> <span class="nv">myComputation2</span> <span class="k">=</span> <span class="o">!!.</span><span class="py">pure</span><span class="o">(</span><span class="mi">42</span><span class="o">)</span>
+<span class="c1">// myComputation2: Computation[Int, Any] = turbolift.Computation@60a56613</span>
+
+<span class="k">val</span> <span class="nv">myComputation3</span> <span class="k">=</span> <span class="o">!!.</span><span class="py">impure</span> <span class="o">{</span> <span class="nf">println</span><span class="o">(</span><span class="s">"hello world"</span><span class="o">)</span> <span class="o">}</span>
+<span class="c1">// myComputation3: Computation[Unit, Any] = turbolift.Computation@f2b1177</span>
+</code></pre></div></div>
+
+<p>For more information, see <a href="https://javadoc.io/static/io.github.marcinzh/turbolift-core_3/0.44.0/turbolift/Computation.html">Computation API</a></p>
+
+<h3 id="effect-usage">Effect Usage</h3>
+
+<p>To be able to invoke the effect’s operations, we need access to an instance of the effect.</p>
+
+<p>We can create such instance ourselves:</p>
+
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">turbolift.std_effects.State</span>
+
+<span class="c1">// Indirectly inherits from Effect:</span>
+<span class="k">case</span> <span class="k">object</span> <span class="nc">MyState</span> <span class="k">extends</span> <span class="nc">State</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span>
+
+<span class="k">val</span> <span class="nv">computation</span> <span class="k">=</span> <span class="nv">MyState</span><span class="o">.</span><span class="py">put</span><span class="o">(</span><span class="mi">42</span><span class="o">)</span>
+<span class="c1">// computation: Computation[Unit, MyState] = turbolift.Computation@202f5075</span>
+</code></pre></div></div>
+
+<p>For more details, see <a href="custom/index.html">Defining your own effects &amp; handlers</a> and <a href="advanced/labelled.html">Effect labelling</a>.</p>
+
+<h3 id="handler-usage">Handler Usage</h3>
+
+<p>Application of a handler delimits scope of effect(s).
+It also transforms type of the computation. 
+In the simplest case, one of effects requested by the computation is eliminated.</p>
+
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="k">val</span> <span class="nv">myComputation2</span> <span class="k">=</span> <span class="nv">myComputation1</span><span class="o">.</span><span class="py">handleWith</span><span class="o">(</span><span class="n">myHandler</span><span class="o">)</span>
+</code></pre></div></div>
+
+<p>As soon as all effects are eliminated, the computation’s result can be obtained, using <code class="language-plaintext highlighter-rouge">run</code>:</p>
+
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  <span class="k">val</span> <span class="nv">result</span> <span class="k">=</span> <span class="n">myComputation</span>
+    <span class="o">.</span><span class="py">handleWith</span><span class="o">(</span><span class="n">myHandler1</span><span class="o">)</span>
+    <span class="o">.</span><span class="py">handleWith</span><span class="o">(</span><span class="n">myHandler2</span><span class="o">)</span>
+    <span class="o">.</span><span class="py">handleWith</span><span class="o">(</span><span class="n">myHandler3</span><span class="o">)</span>
+    <span class="o">.</span><span class="py">run</span>
+</code></pre></div></div>
+
+<p>In general, a handler of type <code class="language-plaintext highlighter-rouge">Handler[F[_], L, N]</code> represents a
+<a href="https://docs.scala-lang.org/scala3/reference/new-types/polymorphic-function-types.html">polymorphic function</a>,
+that transforms computations:</p>
+
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">∀</span> <span class="n">A</span><span class="o">,</span> <span class="n">M</span><span class="o">.</span>  <span class="nc">Computation</span><span class="o">[</span><span class="kt">A</span>, <span class="kt">M</span> <span class="kt">∪</span> <span class="kt">L</span><span class="o">]</span> <span class="k">=&gt;</span> <span class="nc">Computation</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="kt">A</span><span class="o">]</span>, <span class="kt">M</span> <span class="kt">∪</span> <span class="kt">N</span><span class="o">]</span>
+</code></pre></div></div>
+<p>Meaning, that application of it, does the following:</p>
+<ul>
+  <li>It e<strong>L</strong>iminates  set of effects <code class="language-plaintext highlighter-rouge">L</code> from incoming computation.</li>
+  <li>It i<strong>N</strong>troduces  set of effects <code class="language-plaintext highlighter-rouge">N</code> into outgoing computation (revealing dependencies of the handler, if there are any).</li>
+  <li>It passes a<strong>M</strong>bient set of effects <code class="language-plaintext highlighter-rouge">M</code> unaffected, from incoming to outgoing computation.</li>
+  <li>It applies type constructor <code class="language-plaintext highlighter-rouge">F[_]</code> to <code class="language-plaintext highlighter-rouge">A</code>.</li>
+</ul>
+
+<p>In the example below, <code class="language-plaintext highlighter-rouge">myHandler</code> eliminates single <code class="language-plaintext highlighter-rouge">MyChoice</code> effect, introduces no effects,
+and wraps the result type in <code class="language-plaintext highlighter-rouge">Vector[_]</code>.</p>
+
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">turbolift.Handler</span>
+<span class="k">import</span> <span class="nn">turbolift.std_effects.Choice</span>
+
+<span class="k">case</span> <span class="k">object</span> <span class="nc">MyChoice</span> <span class="k">extends</span> <span class="nc">Choice</span>
+<span class="k">type</span> <span class="kt">MyChoice</span> <span class="o">=</span> <span class="nv">MyChoice</span><span class="o">.</span><span class="py">type</span>
+
+<span class="k">val</span> <span class="nv">myHandler</span><span class="k">:</span> <span class="kt">Handler</span><span class="o">[</span><span class="kt">Vector</span>, <span class="kt">MyChoice</span>, <span class="kt">Any</span><span class="o">]</span> <span class="k">=</span> <span class="nv">MyChoice</span><span class="o">.</span><span class="py">handler</span>
+</code></pre></div></div>
+
+<p>Handlers can be transformed or composed in various ways.</p>
+
+<p>For example, this sequences 3 independent handlers:</p>
+
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">val</span> <span class="nv">myHandler123</span> <span class="k">=</span> <span class="n">myHandler1</span> <span class="o">&amp;&amp;&amp;!</span> <span class="n">myHandler2</span> <span class="o">&amp;&amp;&amp;!</span> <span class="n">myHandler3</span>
+</code></pre></div></div>
+
+<p>For more operations, see <a href="https://javadoc.io/static/io.github.marcinzh/turbolift-core_3/0.44.0/turbolift/Handler.html">Handler API</a></p>
+
+<h3 id="signature--interpreter-usage">Signature &amp; Interpreter Usage</h3>
+
+<p>Those 2 types are used only during <a href="custom/index.html">Defining your own effects &amp; handlers</a>.</p>
+
+<hr />
+
+<div class="footnotes" role="doc-endnotes">
+  <ol>
+    <li id="fn:1" role="doc-endnote">
+      <p>Slogan <a href="https://www.youtube.com/watch?v=KGJLeHhsZBo">© by Eric Torreborre</a>. <a href="#fnref:1" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+    </li>
+  </ol>
+</div>
+</section></div></div></div></div><script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/js/bootstrap.min.js"></script><script src="/turbolift/highlight/highlight.pack.js"></script><script src="/turbolift/lunr/lunr.js"></script><script>
+// For all code blocks, copy the language from the containing div
+// to the inner code tag (where hljs expects it to be)
+const langPrefix = 'language-';
+document.querySelectorAll(`div[class^='${langPrefix}']`).forEach(function(div) {
+  div.classList.forEach(function(cssClass) {
+    if (cssClass.startsWith(langPrefix)) {
+      const lang = cssClass.substring(langPrefix.length);
+      div.querySelectorAll('pre code').forEach(function(code) {
+        code.classList.add(lang);
+      });
+    }
+  });
+});
+
+hljs.configure({languages:['scala','java','bash']});
+hljs.initHighlightingOnLoad();
+      </script><script>console.info('\x57\x65\x62\x73\x69\x74\x65\x20\x62\x75\x69\x6c\x74\x20\x77\x69\x74\x68\x3a\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x5f\x5f\x20\x20\x20\x20\x5f\x5f\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x5f\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x5f\x20\x5f\x5f\x0a\x20\x20\x20\x5f\x5f\x5f\x5f\x5f\x2f\x20\x2f\x5f\x20\x20\x2f\x20\x2f\x5f\x20\x20\x20\x20\x20\x20\x5f\x5f\x5f\x5f\x20\x5f\x5f\x5f\x20\x20\x28\x5f\x29\x5f\x5f\x5f\x5f\x5f\x5f\x5f\x5f\x5f\x5f\x5f\x5f\x5f\x20\x20\x5f\x5f\x5f\x5f\x5f\x28\x5f\x29\x20\x2f\x5f\x5f\x5f\x5f\x20\x20\x5f\x5f\x5f\x5f\x5f\x0a\x20\x20\x2f\x20\x5f\x5f\x5f\x2f\x20\x5f\x5f\x20\x5c\x2f\x20\x5f\x5f\x2f\x5f\x5f\x5f\x5f\x5f\x2f\x20\x5f\x5f\x20\x60\x5f\x5f\x20\x5c\x2f\x20\x2f\x20\x5f\x5f\x5f\x2f\x20\x5f\x5f\x5f\x2f\x20\x5f\x5f\x20\x5c\x2f\x20\x5f\x5f\x5f\x2f\x20\x2f\x20\x5f\x5f\x2f\x20\x5f\x20\x5c\x2f\x20\x5f\x5f\x5f\x2f\x0a\x20\x28\x5f\x5f\x20\x20\x29\x20\x2f\x5f\x2f\x20\x2f\x20\x2f\x5f\x2f\x5f\x5f\x5f\x5f\x5f\x2f\x20\x2f\x20\x2f\x20\x2f\x20\x2f\x20\x2f\x20\x2f\x20\x2f\x5f\x5f\x2f\x20\x2f\x20\x20\x2f\x20\x2f\x5f\x2f\x20\x28\x5f\x5f\x20\x20\x29\x20\x2f\x20\x2f\x5f\x2f\x20\x20\x5f\x5f\x28\x5f\x5f\x20\x20\x29\x0a\x2f\x5f\x5f\x5f\x5f\x2f\x5f\x2e\x5f\x5f\x5f\x2f\x5c\x5f\x5f\x2f\x20\x20\x20\x20\x20\x2f\x5f\x2f\x20\x2f\x5f\x2f\x20\x2f\x5f\x2f\x5f\x2f\x5c\x5f\x5f\x5f\x2f\x5f\x2f\x20\x20\x20\x5c\x5f\x5f\x5f\x5f\x2f\x5f\x5f\x5f\x5f\x2f\x5f\x2f\x5c\x5f\x5f\x2f\x5c\x5f\x5f\x5f\x2f\x5f\x5f\x5f\x5f\x2f\x0a\x0a\x68\x74\x74\x70\x73\x3a\x2f\x2f\x34\x37\x64\x65\x67\x2e\x67\x69\x74\x68\x75\x62\x2e\x69\x6f\x2f\x73\x62\x74\x2d\x6d\x69\x63\x72\x6f\x73\x69\x74\x65\x73')</script><script src="/turbolift/js/search.js"></script><script src="/turbolift/js/main.js"></script></body></html>
