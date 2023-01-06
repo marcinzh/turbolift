@@ -1,6 +1,6 @@
 package turbolift.type_safety
 import turbolift.{!!, Handler}
-import turbolift.std_effects.{Reader, Writer, State}
+import turbolift.effects.{Reader, Writer, State}
 
 
 object Dummies {

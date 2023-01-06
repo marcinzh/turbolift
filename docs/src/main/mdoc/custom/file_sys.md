@@ -16,7 +16,7 @@ This is how it looks in Turbolift:
 
 ```scala mdoc
 import turbolift.{!!, Signature, Effect, Handler}
-import turbolift.std_effects.{State, Error}
+import turbolift.effects.{State, Error}
 ```
 
 ### 2. Define the signature

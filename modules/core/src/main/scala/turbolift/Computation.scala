@@ -1,5 +1,5 @@
 package turbolift
-import turbolift.std_effects.{ChoiceSig, Each}
+import turbolift.effects.{ChoiceSig, Each}
 import turbolift.internals.effect.AnyChoice
 import turbolift.internals.extensions.ComputationExtensions
 import turbolift.internals.primitives.Primitives
@@ -116,7 +116,6 @@ object Computation extends ComputationExtensions:
   def pure[A](a: A): A !! Any = Primitives.pure(a)
   def defer[A, U](ua: => A !! U): A !! U = unit.flatMap(_ => ua)
   
-  /** Stop gap before Turbolift gets true `IO`. */
   def impure[A](a: => A): A !! Any = Primitives.impure(() => a)
 
   /** Executes `fail` operation from the innermost `Choice` effect in the current scope. */

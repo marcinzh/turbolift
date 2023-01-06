@@ -35,7 +35,7 @@ Excerpt from [Effect Zoo](https://github.com/marcinzh/effect-zoo) microbenchmark
 
 ```scala mdoc
 import turbolift.!!
-import turbolift.std_effects.{Reader, State, Error}
+import turbolift.effects.{Reader, State, Error}
 
 case object MyReader extends Reader[Int]
 case object MyState extends State[Int]

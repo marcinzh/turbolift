@@ -18,7 +18,7 @@ In Idris and Helium, effect labelling is optional.
 In Turbolift, effects are always uniquely labeled, thanks to Scala's singleton types: 
 
 ```scala mdoc
-import turbolift.std_effects.Error
+import turbolift.effects.Error
 
 // Unique value:
 case object MyError extends Error[String]
@@ -30,7 +30,7 @@ type MyError = MyError.type
 There is nothing stopping us from instantiating given effect more than once:
 
 ```scala mdoc:reset
-import turbolift.std_effects.Error
+import turbolift.effects.Error
 
 case object MyError1 extends Error[String]
 case object MyError2 extends Error[String]
@@ -50,7 +50,7 @@ The type of the computation will reflect this, showing 2 distinct effects (e.g. 
 
 ```scala mdoc:reset
 import turbolift.!!
-import turbolift.std_effects.State
+import turbolift.effects.State
 
 case object Foo extends State[Int]
 case object Bar extends State[Int]

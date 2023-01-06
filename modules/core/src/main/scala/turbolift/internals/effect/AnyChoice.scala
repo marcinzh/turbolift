@@ -1,7 +1,7 @@
 package turbolift.internals.effect
 import scala.util.Try
 import turbolift.!!
-import turbolift.std_effects.ChoiceSig
+import turbolift.effects.ChoiceSig
 
 
 private[turbolift] case object AnyChoice extends CanPerform[ChoiceSig] with ChoiceSig:
