@@ -5,6 +5,9 @@ case class LauncherConfig(
    multiThreaded: Boolean,
 )
 
+object LauncherConfig:
+  val default: LauncherConfig = LauncherConfigs.MT
+
 object LauncherConfigs:
   /** Import this, to `run` computations in multi-threaded mode (default). */
   given MT: LauncherConfig = LauncherConfig(multiThreaded = true)

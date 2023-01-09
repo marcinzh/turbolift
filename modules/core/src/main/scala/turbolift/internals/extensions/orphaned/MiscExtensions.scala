@@ -1,6 +1,6 @@
 package turbolift.internals.extensions.orphaned
 import turbolift.!!
-import turbolift.std_effects.Each
+import turbolift.effects.Each
 
 
 private[turbolift] trait MiscExtensions:

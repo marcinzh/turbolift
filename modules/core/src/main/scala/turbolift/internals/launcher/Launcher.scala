@@ -8,10 +8,10 @@ import turbolift.internals.engine.{Config, Fiber, Panic}
 private[internals] sealed abstract class Launcher[F[_]]:
   enclosing =>
 
-  def run[A](comp: A !! Any): F[A]
+  def run[A](comp: A !! ?): F[A]
 
   final def map[G[_]](f: [X] => F[X] => G[X]): Launcher[G] = new:
-    override def run[A](comp: A !! Any): G[A] = f(enclosing.run(comp))
+    override def run[A](comp: A !! ?): G[A] = f(enclosing.run(comp))
 
 
 private[internals] object Launcher:
@@ -28,7 +28,7 @@ private[internals] object Launcher:
 
 
 private class SingleThreaded extends Launcher[Try]:
-  override def run[A](comp: A !! Any): Try[A] =
+  override def run[A](comp: A !! ?): Try[A] =
     val exec = new ZeroThreadExecutor
     val callback = new Callback.Sync[A]
     val config = Config.default(executor = exec)
@@ -38,7 +38,7 @@ private class SingleThreaded extends Launcher[Try]:
 
 
 private final class MultiThreaded extends Launcher[Try]:
-  override def run[A](comp: A !! Any): Try[A] =
+  override def run[A](comp: A !! ?): Try[A] =
     val exec = MultiThreaded.get()
     val callback = new Callback.Notify[A]
     val config = Config.default(executor = exec)

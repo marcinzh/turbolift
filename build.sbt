@@ -1,5 +1,5 @@
 ThisBuild / organization := "io.github.marcinzh"
-ThisBuild / version := "0.44.0"
+ThisBuild / version := "0.45.0"
 ThisBuild / scalaVersion := "3.2.1"
 ThisBuild / scalacOptions ++= Seq(
   "-deprecation",
@@ -24,7 +24,7 @@ lazy val root = project
   .settings(name := "turbolift-root")
   .settings(sourcesInBase := false)
   .settings(dontPublishMe: _*)
-  .aggregate(core, devel)
+  .aggregate(core, extra_effects, devel)
 
 lazy val core = project
   .in(file("modules/core"))
@@ -35,6 +35,21 @@ lazy val core = project
     Deps.specs2_core,
     Deps.specs2_extra,
   ))
+
+lazy val extra_effects = project
+  .in(file("modules/extra_effects"))
+  .settings(name := "turbolift-extra-effects")
+  .settings(libraryDependencies ++= Seq(
+    Deps.specs2_core,
+  ))
+  .dependsOn(core)
+
+lazy val devel = project
+  .in(file("modules/devel"))
+  .settings(name := "turbolift-devel")
+  .settings(dontPublishMe: _*)
+  .settings(libraryDependencies += Deps.jol)
+  .dependsOn(core, extra_effects)
 
 lazy val site = (project in file("docs"))
   .settings(dontPublishMe: _*)
@@ -69,13 +84,6 @@ lazy val site = (project in file("docs"))
       "white-color"       -> "#f8f0ff",
     ),
   ))
-  .dependsOn(core)
-
-lazy val devel = project
-  .in(file("modules/devel"))
-  .settings(name := "turbolift-devel")
-  .settings(dontPublishMe: _*)
-  .settings(libraryDependencies += Deps.jol)
   .dependsOn(core)
 
 //=================================================

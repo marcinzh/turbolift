@@ -42,8 +42,6 @@ import turbolift.!!
 val myComputation1 = !!.unit
 
 val myComputation2 = !!.pure(42)
-
-val myComputation3 = !!.impure { println("hello world") }
 ```
 
 For more information, see [Computation API](https://javadoc.io/static/io.github.marcinzh/turbolift-core_3/@VERSION@/turbolift/Computation.html)
@@ -55,7 +53,7 @@ To be able to invoke the effect's operations, we need access to an instance of t
 We can create such instance ourselves:
 
 ```scala mdoc
-import turbolift.std_effects.State
+import turbolift.effects.State
 
 // Indirectly inherits from Effect:
 case object MyState extends State[Int]
@@ -106,7 +104,7 @@ and wraps the result type in `Vector[_]`.
 
 ```scala mdoc:silent
 import turbolift.Handler
-import turbolift.std_effects.Choice
+import turbolift.effects.Choice
 
 case object MyChoice extends Choice
 type MyChoice = MyChoice.type

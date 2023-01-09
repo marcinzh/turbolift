@@ -34,7 +34,7 @@ before the `catchAll` operation.
 
 ```scala mdoc
 import turbolift.!!
-import turbolift.std_effects.{Error, State}
+import turbolift.effects.{Error, State}
 
 case object MyError extends Error[String]
 case object MyState extends State[Int]

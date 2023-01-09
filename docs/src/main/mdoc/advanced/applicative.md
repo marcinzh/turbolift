@@ -34,7 +34,7 @@ Depending on selected handler, given program will either:
 
 ```scala mdoc
 import turbolift.!!
-import turbolift.std_effects.ErrorK
+import turbolift.effects.ErrorK
 
 case object MyError extends ErrorK[List, String]
 

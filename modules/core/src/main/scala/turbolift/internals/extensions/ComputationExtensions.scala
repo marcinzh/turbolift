@@ -1,20 +1,23 @@
 package turbolift.internals.extensions
+import scala.util.Try
 import turbolift.{!!, Computation, Handler}
-import turbolift.internals.launcher.{Launcher, LauncherConfig, LauncherConfigs}
-import turbolift.internals.auxx.{CanRun, CanPartiallyHandle}
+import turbolift.io.IO
+import turbolift.internals.launcher.{Launcher, LauncherConfig}
+import turbolift.internals.auxx.{CanRun, CanUnsafeRun, CanPartiallyHandle}
 
 
 private[turbolift] trait ComputationExtensions:
-  extension [A, U](thiz: Computation[A, U])
+  extension [A](thiz: Computation[A, Any])
     /** Runs the computation, provided that it requests no effects. */
-    def run(using ev: CanRun[U], config: LauncherConfig = LauncherConfigs.MT): A = Launcher.sync.unsafeGet.run(ev(thiz))
+    def run(using config: LauncherConfig = LauncherConfig.default): A = Launcher.sync.unsafeGet.run(thiz)
 
-    /** Currently: like `run`, but captures leaked exceptions. True `IO` is WIP. */
-    def unsafeRun(using ev: CanRun[U], config: LauncherConfig = LauncherConfigs.MT) = Launcher.sync.run(ev(thiz))
 
-    // def runST(using ev: CanRun[U]): A = Launcher.sync(using LauncherConfigs.ST).unsafeGet.run(ev(thiz))
-    // def runMT(using ev: CanRun[U]): A = Launcher.sync(using LauncherConfigs.MT).unsafeGet.run(ev(thiz))
+  extension [A, U >: IO](thiz: Computation[A, U])
+    /** Runs the computation, provided that it requests IO effect only, or none at all. */
+    def unsafeRun(using config: LauncherConfig = LauncherConfig.default): Try[A] = Launcher.sync.run(thiz)
 
+
+  extension [A, U](thiz: Computation[A, U])
     def downCast[U2 >: U] = thiz.asInstanceOf[Computation[A, U2]]
   
     /** Simplifies effectful creation of handlers (handlers that depend on other effects).
@@ -29,6 +32,7 @@ private[turbolift] trait ComputationExtensions:
      *  Same as `myHandler.handle(this)`.
      */
     def handleWith[V]: HandleWithApply[A, U, V] = new HandleWithApply[A, U, V](thiz)
+
 
 
   extension [F[+_], L, N](thiz: Computation[Handler[F, L, N], N])

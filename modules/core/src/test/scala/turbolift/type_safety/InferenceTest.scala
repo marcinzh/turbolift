@@ -3,7 +3,7 @@ import org.specs2._
 import org.specs2.execute.Typecheck
 import org.specs2.matcher.TypecheckMatchers._
 import turbolift.!!
-import turbolift.std_effects.{Reader, Writer, State, Choice}
+import turbolift.effects.{Reader, Writer, State, Choice}
 import turbolift.mode.ST
 
 
