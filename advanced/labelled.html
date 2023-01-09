@@ -14,7 +14,7 @@ That’s a shame, because without it, there is no true modularity.</p>
 
 <p>In Turbolift, effects are always uniquely labeled, thanks to Scala’s singleton types:</p>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">turbolift.std_effects.Error</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">turbolift.effects.Error</span>
 
 <span class="c1">// Unique value:</span>
 <span class="k">case</span> <span class="k">object</span> <span class="nc">MyError</span> <span class="k">extends</span> <span class="nc">Error</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span>
@@ -25,7 +25,7 @@ That’s a shame, because without it, there is no true modularity.</p>
 
 <p>There is nothing stopping us from instantiating given effect more than once:</p>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">turbolift.std_effects.Error</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">turbolift.effects.Error</span>
 
 <span class="k">case</span> <span class="k">object</span> <span class="nc">MyError1</span> <span class="k">extends</span> <span class="nc">Error</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span>
 <span class="k">case</span> <span class="k">object</span> <span class="nc">MyError2</span> <span class="k">extends</span> <span class="nc">Error</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span>
@@ -45,7 +45,7 @@ The type of the computation will reflect this, showing 2 distinct effects (e.g. 
 <h3 id="example-using-2-state-effects-at-the-same-time">Example: Using 2 State effects at the same time</h3>
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">turbolift.</span><span class="o">!!</span>
-<span class="k">import</span> <span class="nn">turbolift.std_effects.State</span>
+<span class="k">import</span> <span class="nn">turbolift.effects.State</span>
 
 <span class="k">case</span> <span class="k">object</span> <span class="nc">Foo</span> <span class="k">extends</span> <span class="nc">State</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span>
 <span class="k">case</span> <span class="k">object</span> <span class="nc">Bar</span> <span class="k">extends</span> <span class="nc">State</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span>
@@ -55,7 +55,7 @@ The type of the computation will reflect this, showing 2 distinct effects (e.g. 
     <span class="n">x</span> <span class="k">&lt;-</span> <span class="nv">Foo</span><span class="o">.</span><span class="py">get</span>
     <span class="k">_</span> <span class="k">&lt;-</span> <span class="nv">Bar</span><span class="o">.</span><span class="py">put</span><span class="o">(-</span><span class="n">x</span><span class="o">)</span>
   <span class="nf">yield</span> <span class="o">()</span>
-<span class="c1">// program: Computation[Unit, Foo &amp; Bar] = turbolift.Computation@4f7e4bb3</span>
+<span class="c1">// program: Computation[Unit, Foo &amp; Bar] = turbolift.Computation@65488356</span>
 
 <span class="k">val</span> <span class="nv">result</span> <span class="k">=</span> <span class="n">program</span>
   <span class="o">.</span><span class="py">handleWith</span><span class="o">(</span><span class="nv">Foo</span><span class="o">.</span><span class="py">handler</span><span class="o">(</span><span class="mi">42</span><span class="o">))</span>

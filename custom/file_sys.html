@@ -10,7 +10,7 @@ The File System effect example is often used as their demonstrator of reinterpre
 <h3 id="1-imports">1. Imports</h3>
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">turbolift.</span><span class="o">{!!,</span> <span class="nc">Signature</span><span class="o">,</span> <span class="nc">Effect</span><span class="o">,</span> <span class="nc">Handler</span><span class="o">}</span>
-<span class="k">import</span> <span class="nn">turbolift.std_effects.</span><span class="o">{</span><span class="nc">State</span><span class="o">,</span> <span class="nc">Error</span><span class="o">}</span>
+<span class="k">import</span> <span class="nn">turbolift.effects.</span><span class="o">{</span><span class="nc">State</span><span class="o">,</span> <span class="nc">Error</span><span class="o">}</span>
 </code></pre></div></div>
 
 <h3 id="2-define-the-signature">2. Define the signature</h3>
@@ -83,7 +83,7 @@ such that the latter handles dependency introduced by the former
     <span class="k">_</span> <span class="k">&lt;-</span> <span class="nv">MyFS</span><span class="o">.</span><span class="py">writeFile</span><span class="o">(</span><span class="s">"hello.txt"</span><span class="o">,</span> <span class="s">"Hello world!"</span><span class="o">)</span>
     <span class="n">contents</span> <span class="k">&lt;-</span> <span class="nv">MyFS</span><span class="o">.</span><span class="py">readFile</span><span class="o">(</span><span class="s">"hello.txt"</span><span class="o">)</span>
   <span class="k">yield</span> <span class="n">contents</span>
-<span class="c1">// program: Computation[String, ThisEffect &amp; FileError] = turbolift.Computation@1a8c01d1</span>
+<span class="c1">// program: Computation[String, ThisEffect &amp; FileError] = turbolift.Computation@96b2953</span>
 
 <span class="k">val</span> <span class="nv">result</span> <span class="k">=</span> <span class="n">program</span>
   <span class="o">.</span><span class="py">handleWith</span><span class="o">(</span><span class="nv">MyFS</span><span class="o">.</span><span class="py">inMemoryHandler</span><span class="o">)</span>
