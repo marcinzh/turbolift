@@ -32,5 +32,5 @@ private[internals] object Config:
     new Config(
       executor = executor,
       tickHigh = 10,
-      tickLow = 1000,
+      tickLow = 500,
     )

@@ -1,6 +1,7 @@
 package turbolift.internals.extensions
 
-private[turbolift] trait AllOrphanedExtensions
+/** No need to use this trait directly, because it's inherited by [[turbolift.Extensions Extensions]] object. */
+/*private[turbolift]*/ trait AllOrphanedExtensions
   extends orphaned.MiscExtensions
   with orphaned.FoldExtensions
   with orphaned.MapFilterExtensions

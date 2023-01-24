@@ -8,7 +8,7 @@ import turbolift.effects.{RandomEffect, RandomSig}
 extension (fx: RandomEffect)
   private[effects] def randomHandler_shared(seed: Long): fx.ThisHandler.Id[IO] =
     IO(new ScalaRandom(seed)) >>=! { rng =>
-      new fx.Proxy[IO] with RandomSig:
+      new fx.ProxyIO with RandomSig:
         override def nextBoolean: Boolean !@! ThisEffect = IO(rng.nextBoolean)
         override def nextInt: Int !@! ThisEffect = IO(rng.nextInt)
         override def nextInt(n: Int): Int !@! ThisEffect = IO(rng.nextInt(n))

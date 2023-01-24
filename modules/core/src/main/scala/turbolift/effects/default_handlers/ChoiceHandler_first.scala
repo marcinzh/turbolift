@@ -22,7 +22,7 @@ extension (fx: ChoiceEffect)
       override def choose[A](as: Iterable[A]): A !@! ThisEffect =
         k =>
           val it = as.iterator
-          def loop(): Option[Unknown] !! Ambient =
+          def loop(): Option[Unknown] !! Any =
             if it.hasNext then
               k(it.next()).flatMap {
                 case None => loop()

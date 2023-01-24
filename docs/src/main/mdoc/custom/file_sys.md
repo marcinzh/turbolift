@@ -58,13 +58,13 @@ extension (fx: FileSystemEffect)
 
     new fx.Proxy[InternalStorage.type] with FileSystemSignature:
       override def readFile(path: String) =
-        InternalStorage.gets(_.get(path)).flatMap {
+        kk => InternalStorage.gets(_.get(path)).flatMap {
           case Some(contents) => !!.pure(contents)
-          case None => FileError.raise(FileErrorCause.NoSuchFile(path))
+          case None => kk.escape(FileError.raise(FileErrorCause.NoSuchFile(path)))
         }
 
       override def writeFile(path: String, contents: String) =
-        InternalStorage.modify(_.updated(path, contents))
+        _ => InternalStorage.modify(_.updated(path, contents))
 
     .toHandler
     .provideWith(InternalStorage.handler(Map()).dropState)

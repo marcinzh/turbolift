@@ -12,11 +12,11 @@ import turbolift.internals.primitives.{ComputationCases => CC}
  *  val myComputation2 = myComputation1.handleWith(myHandler)
  *  }}}
  *  
- *  Handlers can be obtained:
- *  - By implementing an [[internals.interpreter.Interpreter Interpreter]] for an [[Effect]],
- *  and then, obtaining a [[Handler]] from it.
- *  - By transforming a preexisting handler, e.g. `val myHandler2 = myHandler1.map(...)`
- *  - By composing 2 preexisting handlers, e.g. `val myHandler3 = myHandler1 &&&! myHandler2`
+ *  Handlers can be obtained by:
+ *  - implementing an [[internals.interpreter.Interpreter Interpreter]] for an [[Effect]],
+ *  and then calling `toHandler` method on it.
+ *  - transforming a preexisting handler, e.g. `val myHandler2 = myHandler1.map(...)`
+ *  - composing 2 preexisting handlers, e.g. `val myHandler3 = myHandler1 &&&! myHandler2`
  *  
  *  Compositon of 2 handlers is always *sequential*: the operands are applied in left to right order.
  *  
@@ -113,7 +113,12 @@ object Handler extends HandlerExtensions:
   /** Alias for handler, that is both [[Free]] and [[Const]]. */
   type FreeConst[Result, Elim] = Handler[[X] =>> Result, Elim, Any]
 
-  /** Absorbs effects requested to create the handler, as the new handler's additional dependencies. */
+  /** Transforms a computation of a handler, into a new handler.
+   *
+   *  Useful for effectful creation of handlers.
+   *  Effects requested to create the handler are absorbed by the handler itself,
+   *  into its own (additional) dependencies.
+   */
   def flatHandle[F[+_], L, N1, N2](h: Handler[F, L, N1] !! N2): Handler[F, L, N1 & N2] = HandlerCases.FlatHandled(h)
 
 

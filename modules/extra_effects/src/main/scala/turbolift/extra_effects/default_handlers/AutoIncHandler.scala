@@ -8,7 +8,7 @@ extension (fx: AutoInc)
     case object S extends State[Int]
 
     new fx.Proxy[S.type] with AutoIncSig:
-      override def next: Int !@! ThisEffect = S.getModify(_ + 1)
+      override def next: Int !@! ThisEffect = _ => S.getModify(_ + 1)
 
     .toHandler
     .provideWith(S.handler(initial))

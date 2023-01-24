@@ -1,7 +1,7 @@
 package turbolift.effects
 import turbolift.{!!, Signature, Effect}
 import turbolift.io.IO
-import turbolift.effects.default_handlers.{randomHandler_shared} 
+import turbolift.effects.default_handlers.{randomHandler_local, randomHandler_shared}
 
 
 trait RandomSig extends Signature:
@@ -43,7 +43,9 @@ trait RandomEffect extends Effect[RandomSig] with RandomSig:
 
   /** Predefined handlers for this effect. */
   object handlers:
+    def local: ThisHandler.Id[IO] = RandomEffect.this.randomHandler_local
     def shared: ThisHandler.Id[IO] = RandomEffect.this.randomHandler_shared
+    def local(seed: Long): ThisHandler.FreeId = RandomEffect.this.randomHandler_local(seed)
     def shared(seed: Long): ThisHandler.Id[IO] = RandomEffect.this.randomHandler_shared(seed)
 
 

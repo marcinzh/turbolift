@@ -3,8 +3,8 @@ import org.specs2.mutable._
 import org.specs2.specification.core.Fragment
 import org.specs2.execute.Result
 import turbolift.{!!, Handler}
-import turbolift.typeclass.Accum
 import turbolift.effects.{Error, State}
+import turbolift.typeclass.Accum
 import turbolift.mode.ST
 
 
@@ -12,7 +12,9 @@ class ErrorTest extends Specification with CanLaunchTheMissiles:
   private class Picker(round: Boolean):
     def apply[T](a: => T, b: => T): T = if round then a else b
     def name = apply("first", "all")
-    def handler[T, Fx <: Error[T]](fx: Fx)(using Accum[T, T]): fx.ThisHandler.Free[Either[T, *]] = apply(fx.handlers.first, fx.handlers.all)
+    def header = s"With handler = ${name}"
+    def handler[T, Fx <: Error[T]](fx: Fx)(using Accum[T, T]): fx.ThisHandler.Free[Either[T, *]] =
+      apply(fx.handlers.first, fx.handlers.all)
 
   private val Pickers = List(true, false).map(new Picker(_)) 
 
@@ -49,7 +51,7 @@ class ErrorTest extends Specification with CanLaunchTheMissiles:
       Fragment.foreach(Pickers) { picker =>
         val hS = S.handler(0)
         val hE = picker.handler(E)
-        s"With handler = ${picker.name}" >> {
+        picker.header >> {
           "State &&&! Error" >> {
             prog.handleWith(hS &&&! hE).run === Left(42)
           }
@@ -76,7 +78,7 @@ class ErrorTest extends Specification with CanLaunchTheMissiles:
       Fragment.foreach(Pickers) { picker =>
         val hS = S.handler(0)
         val hE = picker.handler(E)
-        s"With handler = ${picker.name}" >> {
+        picker.header >> {
           "State &&&! Error" >> {
             prog.handleWith(hS &&&! hE).run === Right((false, 1))
           }
@@ -96,7 +98,7 @@ class ErrorTest extends Specification with CanLaunchTheMissiles:
       Fragment.foreach(Pickers) { picker =>
         val hS = S.handler(0)
         val hE = picker.handler(E)
-        s"With handler = ${picker.name}" >> {
+        picker.header >> {
           "State &&&! Error" >> {
             prog.handleWith(hS &&&! hE).run === Right(((), 10))
           }
@@ -131,7 +133,7 @@ class ErrorTest extends Specification with CanLaunchTheMissiles:
 
   "Par ops" >> {
     Fragment.foreach(Pickers) { picker =>
-      s"With handler = ${picker.name}" >> {
+      picker.header >> {
         "raise *!" >> {
           case object E extends Error[Int]
           (E.raise(1) *! E.raise(2))

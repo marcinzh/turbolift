@@ -12,12 +12,13 @@ import turbolift.internals.effect.{CanPerform, CanInterpret, HasSignature => Stu
  * {{{
  * import turbolift.{!!, Signature, Effect}}
  *
+ * // Signature:
  * trait GoogleSignature extends Signature:
  *   def countPicturesOf(topic: String): Int !@! ThisEffect
  *
  * // Boilerplate:
  * trait Google extends Effect[GoogleSignature] with GoogleSignature:
- *   final override def countPicturesOf(topic: String): Int !! this.type = perform(_.countPicturesOf(topic))
+ *   final override def countPicturesOf(topic: String) = perform(_.countPicturesOf(topic))
  *
  * // Instantiaton establishes the identity:
  * case object MyGoogle extends Google

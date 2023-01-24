@@ -11,10 +11,12 @@ class ChoiceTest extends Specification:
   private class Picker(round: Boolean):
     def apply[T](a: => T, b: => T): T = if round then a else b
     def name = apply("first", "all")
+    def header = s"With handler = ${name}"
     def handler[Fx <: Choice](fx: Fx): fx.ThisHandler.Free[Vector] =
-      def h1 = fx.handlers.first.map([X] => (xs: Option[X]) => xs.toVector)
-      def h2 = fx.handlers.all
-      apply(h1, h2)
+      apply(
+        fx.handlers.first.map([X] => (xs: Option[X]) => xs.toVector),
+        fx.handlers.all,
+      )
 
   private val Pickers = List(true, false).map(new Picker(_)) 
 
@@ -22,7 +24,7 @@ class ChoiceTest extends Specification:
     case object C extends Choice
     Fragment.foreach(Pickers) { picker =>
       val handler = picker.handler(C)
-      s"With handler = ${picker.name}" >> {
+      picker.header >> {
         "choose 0" >> {
           C.choose(List())
           .handleWith(handler)
@@ -84,7 +86,7 @@ class ChoiceTest extends Specification:
     case object C extends Choice
     Fragment.foreach(Pickers) { picker =>
       val handler = picker.handler(C)
-      s"With handler = ${picker.name}" >> {
+      picker.header >> {
         "Nested choose" >> {
           (for
             n <- C.choose(1 to 2)

@@ -49,5 +49,7 @@ trait CanInterpret extends HasSignature:
    */
   abstract class Proxy[Fx] extends IC.Proxy[Fx] with ThisInterpreter { thiz: ThisSignature => }
 
+  abstract class ProxyIO extends IC.ProxyIO with ThisInterpreter { thiz: ThisSignature => }
+
 
   export Features.{Sequential, Parallel}

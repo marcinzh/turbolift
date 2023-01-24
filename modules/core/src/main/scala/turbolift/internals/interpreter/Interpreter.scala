@@ -1,5 +1,6 @@
 package turbolift.internals.interpreter
 import turbolift.{!!, Signature, Handler, HandlerCases => HC}
+import turbolift.io.IO
 import turbolift.effects.ChoiceSig
 
 
@@ -24,10 +25,22 @@ sealed trait Interpreter extends Signature:
   final type ThisHandler = Handler[Result, ThisEffect, Dependency]
 
   private[turbolift] val signatures: Array[Signature]
-  private[internals] val isFlow: Boolean
-  private[internals] val isParallelizable: Boolean
-  private[internals] final def isProxy: Boolean = !isFlow
-  private[internals] final def isChoice: Boolean = isInstanceOf[ChoiceSig]
+  private[internals] final val bits: Int = makeBits
+
+  private[internals] final def isFlow: Boolean            = !isProxy
+  private[internals] final def isProxy: Boolean           = (bits & Bits.IsProxy) != 0
+  private[internals] final def isProxyIO: Boolean         = (bits & Bits.IsProxyIO) != 0
+  private[internals] final def isStateful: Boolean        = (bits & Bits.IsStateful) != 0
+  private[internals] final def isStateless: Boolean       = !isStateful
+  private[internals] final def isChoice: Boolean          = (bits & Bits.IsChoice) != 0
+  private[internals] final def isSequential: Boolean      = (bits & Bits.IsSequential) != 0
+  private[internals] final def isParallelizable: Boolean  = !isSequential
+  private[internals] final def hasZip: Boolean            = (bits & Bits.HasZip) != 0
+  private[internals] final def hasForkJoin: Boolean       = (bits & Bits.HasForkJoin) != 0
+  private[internals] final def hasUnpure: Boolean         = (bits & Bits.HasUnpure) != 0
+
+  private[internals] def makeBits: Int = if isInstanceOf[ChoiceSig] then Bits.IsChoice else 0    
+
   private[internals] final def untyped: Interpreter.Untyped = asInstanceOf[Interpreter.Untyped]
 
 
@@ -61,26 +74,28 @@ object Interpreter:
     * 
     * @tparam Fx Type-level set of effects, specifying dependencies of this proxy interpreter.
     */
-  trait Proxy[Fx] extends Interpreter:
+  abstract class Proxy[Fx] extends Interpreter:
     final override type Dependency = Fx
     final override type Result[+A] = A
-    final override type !@![A, U] = A !! (U & Dependency)
-    private[internals] final override val isFlow: Boolean = false
-    private[internals] final override val isParallelizable: Boolean = true
+    final override type !@![A, U] = Control.Proxy[U, Dependency] => A !! Dependency
+    private[internals] final override def makeBits = super.makeBits | Bits.IsProxy
 
-    //@#@TODO
-    final def unproxy[A, U <: Dependency](comp: A !! U): A !! ThisEffect = comp.asInstanceOf[A !! ThisEffect]
-
-    /** Creates a [[turbolift.Handler Handler]] from this interpreter. */
     final def toHandler: ThisHandler = HC.Primitive[Result, ThisEffect, Dependency](this, Void)
 
 
-  trait FlowFeatures extends Interpreter:
-    private[internals] val isStateful: Boolean
-    private[internals] val hasZip: Boolean
-    private[internals] val hasForkJoin: Boolean
-    private[internals] val hasUnpure: Boolean
-    private[internals] final def isStateless: Boolean = !isStateful
+  /** Like `Proxy[IO]`, but with less overhead. */
+  abstract class ProxyIO extends Interpreter:
+    final override type Dependency = IO
+    final override type Result[+A] = A
+    final override type !@![A, U] = A !! Dependency
+    private[internals] final override def makeBits = super.makeBits | Bits.IsProxy | Bits.IsProxyIO
+
+    final def toHandler: ThisHandler = HC.Primitive[Result, ThisEffect, Dependency](this, Void)
+
+
+  abstract class FlowFeatures extends Interpreter: //// subclassed by Effect
+    private[internals] def makeFeatureBits: Int
+    private[internals] override def makeBits = super.makeBits | makeFeatureBits
 
     /** State of this interpreter. Named `Stan`, to avoid confusion with `State` effect. */
     type Stan
@@ -96,7 +111,6 @@ object Interpreter:
   sealed abstract class Flow extends FlowFeatures:
     enclosing =>
     final override type Dependency = Any
-    private[internals] final override val isFlow: Boolean = true
 
     /** Free variable, meaning the unknown part of the continuation's answer type.
       *
@@ -104,11 +118,8 @@ object Interpreter:
       */
     type Unknown
 
-    /** Free variable, meaning set of effects beyond the scope of the currently interpreted effect */
-    type Ambient
-
     /** Alias for [[Control]], specialized for this interpreter. */
-    type ThisControl[-A, U] = Control[A, Unknown, Stan, Result, U & Ambient, Ambient]
+    type ThisControl[-A, U] = Control.Flow[A, Unknown, Stan, Result, U, Any]
 
 
   /** Super class for any user-defined [[Flow Flow]] Interpreter, that has no internal state.
@@ -117,9 +128,9 @@ object Interpreter:
     */
   abstract class Stateless[F[+_]] extends Flow: //// subclassed by Effect
     final override type Result[+A] = F[A]
-    final override type !@![A, U] = ThisControl[A, U] => Result[Unknown] !! Ambient
+    final override type !@![A, U] = ThisControl[A, U] => Result[Unknown] !! Any
     final override type Stan = Void
-    private[internals] final override val isStateful: Boolean = false
+    private[internals] final override def makeBits = super.makeBits
 
     final override def onPure[A](a: A, s: Void): Result[A] = onPure(a)
     def onPure[A](a: A): Result[A]
@@ -135,9 +146,9 @@ object Interpreter:
     */
   abstract class Stateful[S, F[+_]] extends Flow: //// subclassed by Effect
     final override type Result[+A] = F[A]
-    final override type !@![A, U] = (ThisControl[A, U], S) => Result[Unknown] !! Ambient
+    final override type !@![A, U] = (ThisControl[A, U], S) => Result[Unknown] !! Any
     final override type Stan = S
-    private[internals] final override val isStateful: Boolean = true
+    private[internals] final override def makeBits = super.makeBits | Bits.IsStateful
 
     /** Creates a [[turbolift.Handler Handler]] from this interpreter. */
     final def toHandler(initial: Stan): ThisHandler = HC.Primitive[Result, ThisEffect, Dependency](this, initial)

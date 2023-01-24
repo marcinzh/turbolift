@@ -3,7 +3,8 @@ import turbolift.!!
 import scala.collection.BuildFrom
 
 
-private[turbolift] trait TraverseExtensions extends AuxExtensions:
+/** No need to use this trait directly, because it's inherited by [[turbolift.Extensions Extensions]] object. */
+/*private[turbolift]*/ trait TraverseExtensions extends AuxExtensions:
   extension [A, U, S[+X] <: IterableOnce[X]](thiz: S[A !! U])
     /** Like [[traversePar]], but discards the result. */
     def traverseVoidPar: Unit !! U =

@@ -8,7 +8,7 @@ import turbolift.effects.{ConsoleSig, ConsoleEffect}
 extension (fx: ConsoleEffect)
   private[effects] def consoleHandler: fx.ThisHandler.Id[IO] =
     IO(new BufferedReader(new InputStreamReader(JConsole.in))) >>=! { breader =>
-      new fx.Proxy[IO] with ConsoleSig:
+      new fx.ProxyIO with ConsoleSig:
         override def readLine: String !@! ThisEffect = IO.blocking(breader.nn.readLine().nn)
         override def print(text: String): Unit !@! ThisEffect = IO.blocking(JConsole.out.nn.print(text))
         override def printErr(text: String): Unit !@! ThisEffect = IO.blocking(JConsole.err.nn.print(text))

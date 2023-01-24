@@ -1,56 +1,77 @@
 package turbolift.effects
 import org.specs2.mutable._
+import org.specs2.specification.core.Fragment
 import turbolift.!!
+import turbolift.io.IO
 import turbolift.effects.State
 import turbolift.mode.ST
 
 
 class StateTest extends Specification:
+  private class Picker(round: Boolean):
+    def apply[T](a: => T, b: => T): T = if round then a else b
+    def name = apply("local", "shared")
+    def header = s"With handler = ${name}"
+    def handler[S, Fx <: State[S]](fx: Fx): S => fx.ThisHandler[(_, S), IO] =
+      s => apply(
+        fx.handlers.local(s).flatTap([X] => (_: (X, S)) => !!.unit.upCast[IO]),
+        fx.handlers.shared(s),
+      )
+
+  private val Pickers = List(true, false).map(new Picker(_)) 
+
   "Basic ops" >> {
-    "get" >> {
+    Fragment.foreach(Pickers) { picker =>
       case object S extends State[Int]
-      S.get
-      .handleWith(S.handler(1))
-      .run === (1, 1)
-    }
+      val h = picker.handler(S)
+      picker.header >> {
+        "get" >> {
+          S.get
+          .handleWith(h(1))
+          .unsafeRun.get === (1, 1)
+        }
 
-    "put" >> {
-      case object S extends State[Int]
-      S.put(2)
-      .handleWith(S.handler(1))
-      .run === ((), 2)
-    }
+        "put" >> {
+          S.put(2)
+          .handleWith(h(1))
+          .unsafeRun.get === ((), 2)
+        }
 
-    "modify" >> {
-      case object S extends State[Int]
-      S.modify(_ + 10)
-      .handleWith(S.handler(1))
-      .run === ((), 11)
+        "modify" >> {
+          S.modify(_ + 10)
+          .handleWith(h(1))
+          .unsafeRun.get === ((), 11)
+        }
+      }
     }
   }
 
   "Combined ops" >> {
-    "put & get" >> {
-      case object S extends State[Int]
-      (for
-        a <- S.get
-        _ <- S.put(2)
-        b <- S.get
-      yield (a, b))
-      .handleWith(S.handler(1))
-      .run === ((1, 2), 2)
-    }
-      
-    "2 states interleaved" >> {
-      case object S1 extends State[Int]
-      case object S2 extends State[Int]
-      (for
-        a <- S1.get
-        b <- S2.get
-        _ <- S1.modify(_ + 10 * b)
-        _ <- S2.modify(_ + 10 * a)
-      yield (a, b))
-      .handleWith(S1.handler(1) ***! S2.handler(2))
-      .run === ((1, 2), (21, 12))
+    Fragment.foreach(Pickers) { picker =>
+      picker.header >> {
+        "put & get" >> {
+          case object S extends State[Int]
+          (for
+            a <- S.get
+            _ <- S.put(2)
+            b <- S.get
+          yield (a, b))
+          .handleWith(picker.handler(S)(1))
+          .unsafeRun.get === ((1, 2), 2)
+        }
+          
+        "2 states interleaved" >> {
+          case object S1 extends State[Int]
+          case object S2 extends State[Int]
+          (for
+            a <- S1.get
+            b <- S2.get
+            _ <- S1.modify(_ + 10 * b)
+            _ <- S2.modify(_ + 10 * a)
+          yield (a, b))
+          .handleWith(picker.handler(S1)(1) ***! picker.handler(S2)(2))
+          .unsafeRun.get === ((1, 2), (21, 12))
+        }
+      }
     }
   }

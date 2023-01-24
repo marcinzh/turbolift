@@ -3,12 +3,15 @@ import scala.annotation.tailrec
 import turbolift.{!!, Signature}
 import turbolift.internals.interpreter.Interpreter
 
+
 private[internals] final class Prompt(
   val signature: Signature,
   val flow: Interpreter.FlowUntyped,
   val storeIndex: Short,
   val levelIndex: Short,
   val isParallelizable: Boolean,
+  val isProxyIO: Boolean,
+  belowLookup: AnyRef,
   canAbort: Boolean,
 ):
   val abort: Step =
@@ -16,6 +19,8 @@ private[internals] final class Prompt(
     if canAbort
     then StepCases.Abort(this)
     else null.asInstanceOf[Step]
+
+  val below: Lookup = belowLookup.asInstanceOf[Lookup]
 
   def isFlow: Boolean = flow ne null
   def isGlobal: Boolean = signature eq null
@@ -25,20 +30,23 @@ private[internals] final class Prompt(
 
   def pure(value: Any, stan: Any): Any = flow.onPure(value, stan)
 
-  override def toString = s"Prompt(${toStr})"
+  override def toString = s"Prompt(#${##.toHexString} ${toStr} l=$levelIndex  s=$storeIndex)"
   def toStr = if isGlobal then "Global" else anyInterpreter.signatures.head.toString
 
 
 private[engine] object Prompt:
-  def create(topPrompt: Prompt, interpreter: Interpreter, nextStoreIndex: Int): Prompt =
+  def create(lookup: Lookup, interpreter: Interpreter, nextStoreIndex: Int, nextLevelIndex: Int): Prompt =
+    val isPar = lookup.top.isParallelizable
     if interpreter.isFlow then
       val flow = interpreter.asInstanceOf[Interpreter.FlowUntyped]
       new Prompt(
         signature = flow,
         flow = flow,
         storeIndex = if flow.isStateful then nextStoreIndex.toShort else -1,
-        levelIndex = (topPrompt.levelIndex + 1).toShort,
-        isParallelizable = topPrompt.isParallelizable && flow.isParallelizable,
+        levelIndex = nextLevelIndex.toShort,
+        isParallelizable = isPar && flow.isParallelizable,
+        isProxyIO = false,
+        belowLookup = lookup,
         canAbort = true,
       )
     else
@@ -47,7 +55,9 @@ private[engine] object Prompt:
         flow = null.asInstanceOf[Interpreter.FlowUntyped],
         storeIndex = -1,
         levelIndex = -1,
-        isParallelizable = topPrompt.isParallelizable,
+        isParallelizable = isPar,
+        isProxyIO = interpreter.isProxyIO,
+        belowLookup = lookup,
         canAbort = false,
       )
 
@@ -57,6 +67,8 @@ private[engine] object Prompt:
       flow = null.asInstanceOf[Interpreter.FlowUntyped],
       storeIndex = -1,
       levelIndex = -1,
+      belowLookup = Lookup.initial,
       isParallelizable = true,
+      isProxyIO = false,
       canAbort = true,
     )

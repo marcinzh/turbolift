@@ -14,12 +14,12 @@ extension [R](fx: Reader[R])
 
       override def localPut[A, U <: ThisEffect](r1: R)(body: A !! U): A !@! U = 
         (k, r) => k.local(body, r1).flatMap {
-          case (a, k) => k(a)
+          case (a, k, _) => k(a)
         }
 
       override def localModify[A, U <: ThisEffect](f: R => R)(body: A !! U): A !@! U =
         (k, r) => k.local(body, f(r)).flatMap {
-          case (a, k) => k(a)
+          case (a, k, _) => k(a)
         }
       
     .toHandler(initial)

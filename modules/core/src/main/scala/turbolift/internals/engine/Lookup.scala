@@ -4,16 +4,24 @@ import turbolift.{!!, Signature}
 import turbolift.internals.effect.AnyChoice
 
 
-private[engine] opaque type Lookup = Array[LookupElem]
+private[engine] opaque type Lookup <: AnyRef = Array[LookupElem]
 
 private type LookupElem = Prompt | Signature
 
 private[engine] object Lookup:
-  val empty: Lookup = Array[LookupElem](AnyChoice, Prompt.global)
+  val initial: Lookup = Array[LookupElem](AnyChoice, Prompt.global)
+
+  final val flowDiv: Lookup = null.asInstanceOf[Lookup]
 
   extension (thiz: Lookup)
     def top: Prompt = thiz(1).asInstanceOf[Prompt]
 
+    def isFlowDiv: Boolean = thiz eq null
+
+    def toStr =
+      val ps = thiz.iterator.zipWithIndex.collect { case (p, i) if i % 2 == 1 => p }
+      s"Lookup[${ps.mkString(", ")}]"
+  
     def find(sig: Signature): Prompt =
       @tailrec def loop(i: Int): Prompt =
         if thiz(i) eq sig then
@@ -22,6 +30,7 @@ private[engine] object Lookup:
           loop(i + 2)
       loop(0)
 
+    //@#@ unused
     private def contains(sig: Signature): Boolean =
       val n = thiz.size
       @tailrec def loop(i: Int): Boolean =
@@ -39,9 +48,9 @@ private[engine] object Lookup:
       val n = thiz.size
       val d = sigs.size * 2
 
-      if sigs.exists(contains(_)) then
-        val bads = sigs.filter(contains(_))
-        throw new Panic(s"Effect shadowing not implemented. Shadowed effects = [${bads.mkString(", ")}]")
+      //@#@TODO replace instead of prepend
+      // if sigs.exists(contains(_)) then
+      //   ???
 
       val that = new Array[LookupElem](n + d)
       java.lang.System.arraycopy(thiz, 0, that, d, n)
@@ -55,4 +64,5 @@ private[engine] object Lookup:
 
       if p.isChoice then
         that(n + d - 1) = p
+
       that
