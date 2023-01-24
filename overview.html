@@ -58,13 +58,13 @@ before it can return a value of type <code class="language-plaintext highlighter
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">turbolift.</span><span class="o">!!</span>
 
 <span class="k">val</span> <span class="nv">myComputation1</span> <span class="k">=</span> <span class="o">!!.</span><span class="py">unit</span>
-<span class="c1">// myComputation1: Computation[Unit, Any] = turbolift.Computation@7d564031</span>
+<span class="c1">// myComputation1: Computation[Unit, Any] = turbolift.Computation@428e6f76</span>
 
 <span class="k">val</span> <span class="nv">myComputation2</span> <span class="k">=</span> <span class="o">!!.</span><span class="py">pure</span><span class="o">(</span><span class="mi">42</span><span class="o">)</span>
-<span class="c1">// myComputation2: Computation[Int, Any] = turbolift.Computation@1dacce2</span>
+<span class="c1">// myComputation2: Computation[Int, Any] = turbolift.Computation@24d4a5fd</span>
 </code></pre></div></div>
 
-<p>For more information, see <a href="https://javadoc.io/static/io.github.marcinzh/turbolift-core_3/0.45.0/turbolift/Computation.html">Computation API</a></p>
+<p>For more information, see <a href="https://javadoc.io/static/io.github.marcinzh/turbolift-core_3/0.46.0/turbolift/Computation.html">Computation API</a></p>
 
 <h3 id="effect-usage">Effect Usage</h3>
 
@@ -78,7 +78,7 @@ before it can return a value of type <code class="language-plaintext highlighter
 <span class="k">case</span> <span class="k">object</span> <span class="nc">MyState</span> <span class="k">extends</span> <span class="nc">State</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span>
 
 <span class="k">val</span> <span class="nv">computation</span> <span class="k">=</span> <span class="nv">MyState</span><span class="o">.</span><span class="py">put</span><span class="o">(</span><span class="mi">42</span><span class="o">)</span>
-<span class="c1">// computation: Computation[Unit, MyState] = turbolift.Computation@349ad59d</span>
+<span class="c1">// computation: Computation[Unit, MyState] = turbolift.Computation@296f4dc8</span>
 </code></pre></div></div>
 
 <p>For more details, see <a href="custom/index.html">Defining your own effects &amp; handlers</a> and <a href="advanced/labelled.html">Effect labelling</a>.</p>
@@ -134,7 +134,7 @@ and wraps the result type in <code class="language-plaintext highlighter-rouge">
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">val</span> <span class="nv">myHandler123</span> <span class="k">=</span> <span class="n">myHandler1</span> <span class="o">&amp;&amp;&amp;!</span> <span class="n">myHandler2</span> <span class="o">&amp;&amp;&amp;!</span> <span class="n">myHandler3</span>
 </code></pre></div></div>
 
-<p>For more operations, see <a href="https://javadoc.io/static/io.github.marcinzh/turbolift-core_3/0.45.0/turbolift/Handler.html">Handler API</a></p>
+<p>For more operations, see <a href="https://javadoc.io/static/io.github.marcinzh/turbolift-core_3/0.46.0/turbolift/Handler.html">Handler API</a></p>
 
 <h3 id="signature--interpreter-usage">Signature &amp; Interpreter Usage</h3>
 
