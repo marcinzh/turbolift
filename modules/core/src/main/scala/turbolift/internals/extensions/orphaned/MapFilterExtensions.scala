@@ -3,7 +3,6 @@ import turbolift.!!
 import scala.collection.BuildFrom
 
 
-
 private[turbolift] trait AuxExtensions:
   private[orphaned] def empty0[A, U]: Vector[A] !! U = !!.pure(Vector.empty[A]).upCast[U]
   private[orphaned] def unit0[U]: Unit !! U = !!.unit.upCast[U]
@@ -22,6 +21,7 @@ private[turbolift] trait AuxExtensions:
     mbs.map(bs => (bf.newBuilder(as) ++= bs).result())
 
 
+/** No need to use this trait directly, because it's inherited by [[turbolift.Extensions Extensions]] object. */
 private[turbolift] trait MapFilterExtensions extends AuxExtensions:
   extension [A](thiz: Iterator[A])
     /** Like `map` from the standard library, but using effectful function. */

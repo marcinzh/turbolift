@@ -4,7 +4,8 @@ import turbolift.typeclass.ExtendTuple
 import scala.util.{Try, Success, Failure}
 
 
-private[turbolift] trait HandlerExtensions:
+/** No need to use this trait directly, because it's inherited by [[turbolift.Handler Handler]]'s companion object. */
+/*private[turbolift]*/ trait HandlerExtensions:
   extension [S, L, N](thiz: Handler[(_, S), L, N])
     /** Alias for [[dropState]]. */
     def eval: Handler.Id[L, N] = dropState
@@ -25,14 +26,14 @@ private[turbolift] trait HandlerExtensions:
         (a, f(s))
       )
 
-    /** Like [[turbolift.Handler mapState]], but the mapping function is effectful. */
+    /** Like [[mapState]], but the mapping function is effectful. */
     def flatMapState[S2, U](f: S => S2 !! U): Handler[(_, S2), L, (N & U)] =
       thiz.flatMap([A] => (pair: (A, S)) =>
         val (a, s) = pair
         f(s).map((a, _))
       )
 
-    /** Like [[turbolift.Handler flatMapState]], but the mapping is executed for its effects only. */
+    /** Like [[flatMapState]], but the mapping is executed for its effects only. */
     def flatTapState[S2, U](f: S => Unit !! U): Handler[(_, S), L, (N & U)] =
       thiz.flatTap([A] => (pair: (A, S)) =>
         val (_, s) = pair
@@ -113,14 +114,14 @@ private[turbolift] trait HandlerExtensions:
     def mapLeft[E2](f: E => E2): Handler[Either[E2, _], L, N] =
       thiz.map([A] => (result: Either[E, A]) => result.swap.map(f).swap)
 
-    /** Like [[turbolift.Handler mapLeft]], but the mapping function is effectful. */
+    /** Like [[mapLeft]], but the mapping function is effectful. */
     def flatMapLeft[E2, U](f: E => E2 !! U): Handler[Either[E2, _], L, (N & U)] =
       thiz.flatMap([A] => (result: Either[E, A]) => result match
         case Left(e) => f(e).map(Left(_))
         case Right(a) => !!.pure(Right(a))
       )
 
-    /** Like [[turbolift.Handler flatMapLeft]], but the mapping is executed for its effects only. */
+    /** Like [[flatMapLeft]], but the mapping is executed for its effects only. */
     def flatTapLeft[U](f: E => Unit !! U): Handler[Either[E, _], L, (N & U)] =
       thiz.flatTap([A] => (result: Either[E, A]) => result match
         case Left(e) => f(e)

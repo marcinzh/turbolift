@@ -40,6 +40,7 @@ private[engine] final class Stack(
 
 
   def canPopFlow: Boolean = lastHeight >= 0
+  def nextLevelIndex = levels.size
   def promptCount = levels.size
   def promptAt(i: Int) = levels(i).prompt
   
@@ -164,28 +165,25 @@ private[engine] final class Stack(
     )
 
   def spliceForRestore(deepStep: Step, kont: Kont, oldStore: Store): (Stack, Store) =
-    //@#@TODO opty if kont has same Stack
     val divSegment =
       kont.stack.getTopSegmentAt(kont.prompt).copy(
         step = deepStep,
         history = history,
-        savedStan = kont.get,
+        savedStan = kont.getStan,
       )
     splice(divSegment, kont, oldStore)
 
   def spliceForResume(stepAside: Step, kont: Kont, oldStore: Store, newStan: Any): (Stack, Store) =
-    //@#@TODO opty if kont has same Stack
     val divSegment = 
-      val s = Void.orElse(newStan, kont.get)
+      val s = Void.orElse(newStan, kont.getStan)
       val oldSegment = kont.getDivSegment
       val repeatStep = new SC.Restore(stepAside, kont, oldSegment.step)
       oldSegment.copy(step = repeatStep, savedStan = s)
     splice(divSegment, kont, oldStore)
 
   def spliceForLocal(stepAside: Step, kont: Kont, oldStore: Store, newStan: Any): (Stack, Store) =
-    //@#@TODO opty if kont has same Stack
     val divSegment =
-      val s = Void.orElse(newStan, kont.get)
+      val s = Void.orElse(newStan, kont.getStan)
       getTopSegmentAt(kont.prompt).patch(s)
     val (newStack, newStore) = splice(divSegment, kont, oldStore)
     val newStack2 =
@@ -200,7 +198,7 @@ private[engine] final class Stack(
 private[engine] object Stack:
   def initial(config: Config): Stack =
     new Stack(
-      lookup = Lookup.empty,
+      lookup = Lookup.initial,
       history = HC.Empty,
       config = config,
       levels = Array[Level](),
@@ -208,7 +206,8 @@ private[engine] object Stack:
       forkOrNull = null
     )
 
-  //// Behold: the absolute most PITA part of this project
+  //// Behold: the absolute most PITA part of this project.
+  //// Currently left unoptimized, due to fear of breaking it.
   def splice(
     divPrompt: Prompt,
     divSegment: Segment,

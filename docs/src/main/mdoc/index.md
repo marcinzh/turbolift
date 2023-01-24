@@ -9,7 +9,6 @@ title:  Algebraic Effects for Scala 3
 
 ---
 
-
 ## Highlights
 
 &nbsp;

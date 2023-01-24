@@ -1,8 +1,8 @@
 package turbolift.internals.extensions.orphaned
 import turbolift.!!
 
-
-private[turbolift] trait FoldExtensions:
+/** No need to use this trait directly, because it's inherited by [[turbolift.Extensions Extensions]] object. */
+/*private[turbolift]*/ trait FoldExtensions:
   extension [A, S[X] <: IterableOnce[X]](thiz: S[A])
     /** Like `foldLeft` from the standard library, but using effectful function. */
     def foldLeft_!![U, B](z: B)(op: (B, A) => B !! U): B !! U =

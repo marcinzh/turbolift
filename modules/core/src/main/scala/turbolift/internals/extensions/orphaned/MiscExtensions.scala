@@ -3,7 +3,8 @@ import turbolift.!!
 import turbolift.effects.Each
 
 
-private[turbolift] trait MiscExtensions:
+/** No need to use this trait directly, because it's inherited by [[turbolift.Extensions Extensions]] object. */
+/*private[turbolift]*/ trait MiscExtensions:
   extension [A](thiz: A)
     /** Postfix alias of `pure(_)` */
     def pure_!! : A !! Any = !!.pure(thiz)

@@ -24,17 +24,17 @@ extension [W, W1](fx: WriterEffect[W, W1])
 
       override def listen[A, U <: ThisEffect](body: A !! U): (A, W) !@! U =
         (k, _) => k.local(body, W.zero).flatMap {
-          case (a_w @ (_, w), k) => k(a_w, k.get |+| w)
+          case (a_w2 @ (_, w2), k, w1) => k(a_w2, w1 |+| w2)
         }
 
       override def censor[A, U <: ThisEffect](f: W => W)(body: A !! U): A !@! U =
         (k, _) => k.local(body, W.zero).flatMap {
-          case ((a, w), k) => k(a, k.get |+| f(w))
+          case ((a, w2), k, w1) => k(a, w1 |+| f(w2))
         }
 
       override def pass[A, U <: ThisEffect](body: (A, W => W) !! U): A !@! U =
         (k, _) => k.local(body, W.zero).flatMap {
-          case (((a, f), w), k) => k(a, k.get |+| f(w))
+          case (((a, f), w2), k, w1) => k(a, w1 |+| f(w2))
         }
 
     .toHandler(W.zero)

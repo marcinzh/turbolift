@@ -30,8 +30,8 @@ sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift]
 
   /** Composes 2 independent computations parallelly (if possible).
    *
-   * Parallelism may be impossible, due to at least of one of handlers in current scope
-   * being inherently sequential (e.g. some predefined handlers for `State` or `Error`).
+   * Parallelism may be impossible, due to at least one of handlers in current scope
+   * being inherently sequential (e.g. `State.handlers.local` or `Error.handlers.first`).
    * In such case, `zipPar` behaves like `zip`.
    */
   final def zipPar[B, U2 <: U](that: B !! U2): (A, B) !! U2 = Primitives.zipPar(this, that)
@@ -59,8 +59,8 @@ sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift]
 
   /** Composes 2 independent computations parallelly (if possible), discarding result of the first.
    *
-   * Parallelism may be impossible, due to at least of one of handlers in current scope
-   * being inherently sequential (e.g. some predefined handlers for `State` or `Error`).
+   * Parallelism may be impossible, due to at least one of handlers in current scope
+   * being inherently sequential (e.g. `State.handlers.local` or `Error.handlers.first`).
    * In such case, `&!` behaves like `&&!`.
    */
   final def &![B, U2 <: U](that: B !! U2): B !! U2 = zipPar(that).map(_._2)
@@ -70,8 +70,8 @@ sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift]
 
   /** Composes 2 independent computations parallelly (if possible), discarding result of the second.
    *
-   * Parallelism may be impossible, due to at least of one of handlers in current scope
-   * being inherently sequential (e.g. some predefined handlers for `State` or `Error`).
+   * Parallelism may be impossible, due to at least one of handlers in current scope
+   * being inherently sequential (e.g. `State.handlers.local` or `Error.handlers.first`).
    * In such case, `&<!` behaves like `&&<!`.
    */
   final def &<![B, U2 <: U](that: B !! U2): A !! U2 = zipPar(that).map(_._1)

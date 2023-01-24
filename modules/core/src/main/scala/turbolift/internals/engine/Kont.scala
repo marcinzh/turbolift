@@ -7,7 +7,7 @@ private[engine] final class Kont(
   var step: Step,
   var stack: Stack,
   var store: Store,
-) extends Control[Any, Any, Any, [X] =>> X, Any, Any]:
+) extends Control.Flow[Any, Any, Any, [X] =>> X, Any, Any]:
 
   def this() = this(
     prompt = null.asInstanceOf[Prompt],
@@ -22,6 +22,6 @@ private[engine] final class Kont(
     this.stack = stack
     this.store = store
 
-  override def get: Any = store.getOrElseVoid(prompt)
+  def getStan: Any = store.getOrElseVoid(prompt)
 
   def getDivSegment: Segment = stack.getTopSegmentAt(prompt)
