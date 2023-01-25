@@ -3,13 +3,13 @@ import turbolift.!!
 import turbolift.io.{IO, Ref}
 import turbolift.typeclass.AccumZero
 import turbolift.typeclass.Syntax._
-import turbolift.effects.{WriterEffect, WriterSig}
+import turbolift.effects.{WriterEffect, WriterSignature}
 
 
 extension [W, W1](fx: WriterEffect[W, W1])
   private[effects] def writerHandler_shared(implicit W: AccumZero[W, W1]): fx.ThisHandler[(_, W), IO] =
     Ref(W.zero) >>=! { ref =>
-      new fx.Proxy[IO] with WriterSig[W, W1]:
+      new fx.Proxy[IO] with WriterSignature[W, W1]:
         override def tell(w: W1): Unit !@! ThisEffect = _ => ref.modify(_ |+ w)
 
         override def tells(w: W): Unit !@! ThisEffect = _ => ref.modify(_ |+| w) 

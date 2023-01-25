@@ -1,11 +1,11 @@
 package turbolift.effects.default_handlers
 import turbolift.!!
-import turbolift.effects.{State, StateSig}
+import turbolift.effects.{State, StateSignature}
 
 
 extension [S](fx: State[S])
   private[effects] def stateHandler_local(initial: S): fx.ThisHandler.Free[(_, S)] =
-    new fx.Stateful[S, (_, S)] with fx.Sequential with StateSig[S]:
+    new fx.Stateful[S, (_, S)] with fx.Sequential with StateSignature[S]:
       override def onPure[A](a: A, s: S): (A, S) = (a, s)
 
       override val get: S !@! ThisEffect = (k, s) => k(s)

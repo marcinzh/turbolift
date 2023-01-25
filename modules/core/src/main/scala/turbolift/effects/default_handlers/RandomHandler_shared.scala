@@ -2,13 +2,13 @@ package turbolift.effects.default_handlers
 import scala.util.{Random => ScalaRandom}
 import turbolift.!!
 import turbolift.io.IO
-import turbolift.effects.{RandomEffect, RandomSig}
+import turbolift.effects.{RandomEffect, RandomSignature}
 
 
 extension (fx: RandomEffect)
   private[effects] def randomHandler_shared(seed: Long): fx.ThisHandler.Id[IO] =
     IO(new ScalaRandom(seed)) >>=! { rng =>
-      new fx.ProxyIO with RandomSig:
+      new fx.ProxyIO with RandomSignature:
         override def nextBoolean: Boolean !@! ThisEffect = IO(rng.nextBoolean)
         override def nextInt: Int !@! ThisEffect = IO(rng.nextInt)
         override def nextInt(n: Int): Int !@! ThisEffect = IO(rng.nextInt(n))
@@ -21,6 +21,7 @@ extension (fx: RandomEffect)
         override def between(minInclusive: Long, maxExclusive: Long): Long !@! ThisEffect = IO(rng.between(minInclusive, maxExclusive))
         override def between(minInclusive: Float, maxExclusive: Float): Float !@! ThisEffect = IO(rng.between(minInclusive, maxExclusive))
         override def between(minInclusive: Double, maxExclusive: Double): Double !@! ThisEffect = IO(rng.between(minInclusive, maxExclusive))
+        override def nextBytes(n: Int): Array[Byte] !@! ThisEffect = IO(rng.nextBytes(n))
         override def setSeed(seed: Long): Unit !@! ThisEffect = IO(rng.setSeed(seed))
       .toHandler
     }

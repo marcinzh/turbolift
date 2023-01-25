@@ -11,7 +11,7 @@ private type LookupElem = Prompt | Signature
 private[engine] object Lookup:
   val initial: Lookup = Array[LookupElem](AnyChoice, Prompt.global)
 
-  final val flowDiv: Lookup = null.asInstanceOf[Lookup]
+  // final val flowDiv: Lookup = Array[LookupElem]()
 
   extension (thiz: Lookup)
     def top: Prompt = thiz(1).asInstanceOf[Prompt]

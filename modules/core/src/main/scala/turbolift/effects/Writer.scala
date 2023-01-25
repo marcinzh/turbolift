@@ -5,7 +5,7 @@ import turbolift.typeclass.AccumZero
 import turbolift.effects.default_handlers.{writerHandler_local, writerHandler_shared}
 
 
-trait WriterSig[W, W1] extends Signature:
+trait WriterSignature[W, W1] extends Signature:
   def tell(w: W1): Unit !@! ThisEffect
   def tells(w: W): Unit !@! ThisEffect
   def mute[A, U <: ThisEffect](body: A !! U): A !@! U
@@ -14,7 +14,7 @@ trait WriterSig[W, W1] extends Signature:
   def pass[A, U <: ThisEffect](body: (A, W => W) !! U): A !@! U
 
 
-trait WriterEffect[W, W1] extends Effect[WriterSig[W, W1]] with WriterSig[W, W1]:
+trait WriterEffect[W, W1] extends Effect[WriterSignature[W, W1]] with WriterSignature[W, W1]:
   final override def tell(w: W1): Unit !! this.type = perform(_.tell(w))
   final override def tells(w: W): Unit !! this.type = perform(_.tells(w))
   final override def mute[A, U <: this.type](body: A !! U): A !! U = perform(_.mute(body))

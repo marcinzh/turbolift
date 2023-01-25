@@ -1,13 +1,13 @@
 package turbolift.effects.default_handlers
 import turbolift.!!
 import turbolift.io.{IO, Ref}
-import turbolift.effects.{State, StateSig}
+import turbolift.effects.{State, StateSignature}
 
 
 extension [S](fx: State[S])
   private[effects] def stateHandler_shared(initial: S): fx.ThisHandler[(_, S), IO] =
     Ref(initial) >>=! { ref =>
-      new fx.ProxyIO with StateSig[S]:
+      new fx.ProxyIO with StateSignature[S]:
         override def get: S !@! ThisEffect = ref.get
 
         override def gets[A](f: S => A): A !@! ThisEffect = ref.gets(f)

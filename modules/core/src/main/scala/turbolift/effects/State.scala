@@ -4,7 +4,7 @@ import turbolift.io.IO
 import turbolift.effects.default_handlers.{stateHandler_local, stateHandler_shared}
 
 
-trait StateSig[S] extends Signature:
+trait StateSignature[S] extends Signature:
   def get: S !@! ThisEffect
   def gets[A](f: S => A): A !@! ThisEffect
   def put(s: S): Unit !@! ThisEffect
@@ -19,7 +19,7 @@ trait StateSig[S] extends Signature:
   def getUpdateGet[A](f: S => (A, S)): (A, S, S) !@! ThisEffect
 
 
-trait State[S] extends Effect[StateSig[S]] with StateSig[S]:
+trait State[S] extends Effect[StateSignature[S]] with StateSignature[S]:
   final override val get: S !! this.type = perform(_.get)
   final override def gets[A](f: S => A): A !! this.type = perform(_.gets(f))
   final override def put(s: S): Unit !! this.type = perform(_.put(s))

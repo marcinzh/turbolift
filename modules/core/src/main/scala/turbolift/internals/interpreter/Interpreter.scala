@@ -1,7 +1,7 @@
 package turbolift.internals.interpreter
 import turbolift.{!!, Signature, Handler, HandlerCases => HC}
 import turbolift.io.IO
-import turbolift.effects.ChoiceSig
+import turbolift.effects.ChoiceSignature
 
 
 /** Super trait for any user-defined [[Interpreter Interpreter]].
@@ -39,7 +39,7 @@ sealed trait Interpreter extends Signature:
   private[internals] final def hasForkJoin: Boolean       = (bits & Bits.HasForkJoin) != 0
   private[internals] final def hasUnpure: Boolean         = (bits & Bits.HasUnpure) != 0
 
-  private[internals] def makeBits: Int = if isInstanceOf[ChoiceSig] then Bits.IsChoice else 0    
+  private[internals] def makeBits: Int = if isInstanceOf[ChoiceSignature] then Bits.IsChoice else 0    
 
   private[internals] final def untyped: Interpreter.Untyped = asInstanceOf[Interpreter.Untyped]
 

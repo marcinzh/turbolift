@@ -24,6 +24,9 @@ object Control:
     /** Alias for binary [[resume]]. */
     final def apply(a: A, s: S): F[B] !! V = resume(a, s)
 
+    /** Tupled version of binary [[resume]]. */
+    final def tupled(a_s: (A, S)): F[B] !! V = resume(a_s._1, a_s._2)
+
     /** Resumes the continuation. */
     final def resume(a: A): F[B] !! V = resume(a, void)
     

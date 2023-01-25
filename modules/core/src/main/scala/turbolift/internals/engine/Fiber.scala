@@ -135,10 +135,10 @@ private[engine] final class Fiber(
                 innerLoop(tick2, step.tag, theResume.value, step, stack, store2, lookup, kont0)
               else
                 kont0.init(prompt, step, stack, store)
-                innerLoop(tick2, semantic.tag, semantic, prompt.abort, stack, store, Lookup.flowDiv, new Kont)
+                innerLoop(tick2, semantic.tag, semantic, prompt.abort, stack, store, prompt.below, new Kont)
             else
               kont0.init(prompt, step, stack, store)
-              innerLoop(tick2, semantic.tag, semantic, prompt.abort, stack, store, Lookup.flowDiv, new Kont)
+              innerLoop(tick2, semantic.tag, semantic, prompt.abort, stack, store, prompt.below, new Kont)
           else
             if prompt.isProxyIO then
               val semantic = impl.asInstanceOf[AnyComp]
@@ -243,7 +243,7 @@ private[engine] final class Fiber(
             // noDiv
             val theRestore = step.asInstanceOf[SC.Restore]
             val (stack2, store2) = stack.spliceForRestore(theRestore.next, theRestore.kont, store)
-            innerLoop(tick2, theRestore.aside.tag, payload, theRestore.aside, stack2, store2, Lookup.flowDiv, kont0)
+            innerLoop(tick2, theRestore.aside.tag, payload, theRestore.aside, stack2, store2, theRestore.kont.prompt.below, kont0)
 
           case Tags.Step_Capture =>
             // noDiv
@@ -251,7 +251,7 @@ private[engine] final class Fiber(
             val prompt = theCapture.prompt
             val kont2 = new Kont(prompt, theCapture.next, stack, store)
             val payload2 = (payload, kont2, store.getOrElseVoid(prompt))
-            innerLoop(tick2, theCapture.aside.tag, payload2, theCapture.aside, stack, store, Lookup.flowDiv, kont0)
+            innerLoop(tick2, theCapture.aside.tag, payload2, theCapture.aside, stack, store, theCapture.prompt.below, kont0)
 
           // ------------------------------------------
 
@@ -280,12 +280,12 @@ private[engine] final class Fiber(
               step.tag match
                 case Tags.Step_Done =>
                   val payload2 = prompt.pure(payload, stan)
-                  innerLoop(tick2, step2.tag, payload2, step2, stack2, store2, lookup, kont0)
+                  innerLoop(tick2, step2.tag, payload2, step2, stack2, store2, stack2.lookup, kont0)
 
                 case Tags.Step_Abort =>
                   val theAbort = step.asInstanceOf[SC.Abort]
                   val step3 = if prompt == theAbort.prompt then step2 else step
-                  innerLoop(tick2, step3.tag, payload, step3, stack2, store2, lookup, kont0)
+                  innerLoop(tick2, step3.tag, payload, step3, stack2, store2, stack2.lookup, kont0)
             else
               this.constantBits & Bits.Tree_Mask match 
                 case Bits.Tree_Root =>
@@ -377,7 +377,7 @@ private[engine] final class Fiber(
     step: Step,
     stack: Stack,
     store: Store,
-    lookup: Lookup | Null,
+    lookup: Lookup,
   ): Unit =
     assert(!isSuspended)
     suspendedTick    = tick

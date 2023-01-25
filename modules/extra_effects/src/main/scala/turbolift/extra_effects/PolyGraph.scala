@@ -3,7 +3,7 @@ import turbolift.{!!, Effect, Signature}
 import turbolift.extra_effects.default_handlers.polyGraphHandler
 
 
-trait PolyGraphSig[K, V] extends Signature:
+trait PolyGraphSignature[K, V] extends Signature:
   def empty(to: K): Unit !@! ThisEffect
   def const(to: K, value: V): Unit !@! ThisEffect
   def identity(to: K, from: K): Unit !@! ThisEffect
@@ -12,7 +12,7 @@ trait PolyGraphSig[K, V] extends Signature:
   def variadic(to: K, froms: Vector[K])(f: Vector[V] => V): Unit !@! ThisEffect
 
 
-trait PolyGraph[K, V] extends Effect[PolyGraphSig[K, V]] with PolyGraphSig[K, V]:
+trait PolyGraph[K, V] extends Effect[PolyGraphSignature[K, V]] with PolyGraphSignature[K, V]:
   enclosing =>
   final override def empty(to: K): Unit !! this.type = perform(_.empty(to))
   final override def const(to: K, value: V): Unit !! this.type = perform(_.const(to, value))

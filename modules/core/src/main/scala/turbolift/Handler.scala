@@ -85,6 +85,12 @@ sealed trait Handler[Result[+_], Elim, Intro]:
     def apply[ThatResult[+_], ThatElim >: Intro, ThatIntro](that: Handler[ThatResult, ThatElim, ThatIntro]) =
      HandlerCases.Composed[Result, ThatResult, Elim, Any, Remains, ThatIntro, ThatElim](upCastIntro[Remains & ThatElim], that).self
 
+  /** Alias for [[provideWith]]. */
+  final def %%%![ThatResult[+_], ThatIntro](that: Handler[ThatResult, Intro, ThatIntro]) = provideWith(that)
+
+  /** Alias for [[partiallyProvideWith]]. */
+  final def %%![Remains >: Intro] = partiallyProvideWith[Remains]
+
   private[turbolift] final def upCastIntro[T >: Intro] = asInstanceOf[Handler[Result, Elim, T]]
 
   private[turbolift] final def self: Handler[Result, Elim, Intro] = this

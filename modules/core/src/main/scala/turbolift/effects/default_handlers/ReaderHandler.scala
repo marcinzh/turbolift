@@ -1,11 +1,11 @@
 package turbolift.effects.default_handlers
 import turbolift.!!
-import turbolift.effects.{Reader, ReaderSig}
+import turbolift.effects.{Reader, ReaderSignature}
 
 
 extension [R](fx: Reader[R])
   private[effects] def readerHandler(initial: R): fx.ThisHandler.FreeId =
-    new fx.Stateful[R, [X] =>> X] with fx.Parallel.Trivial with ReaderSig[R]:
+    new fx.Stateful[R, [X] =>> X] with fx.Parallel.Trivial with ReaderSignature[R]:
       override def onPure[A](a: A, r: R): A = a
 
       override val ask: R !@! ThisEffect = (k, r) => k(r)

@@ -2,13 +2,13 @@ package turbolift.effects.default_handlers
 import java.lang.{System => JConsole}
 import java.io.{BufferedReader, InputStreamReader}
 import turbolift.io.IO
-import turbolift.effects.{ConsoleSig, ConsoleEffect}
+import turbolift.effects.{ConsoleSignature, ConsoleEffect}
 
 
 extension (fx: ConsoleEffect)
   private[effects] def consoleHandler: fx.ThisHandler.Id[IO] =
     IO(new BufferedReader(new InputStreamReader(JConsole.in))) >>=! { breader =>
-      new fx.ProxyIO with ConsoleSig:
+      new fx.ProxyIO with ConsoleSignature:
         override def readLine: String !@! ThisEffect = IO.blocking(breader.nn.readLine().nn)
         override def print(text: String): Unit !@! ThisEffect = IO.blocking(JConsole.out.nn.print(text))
         override def printErr(text: String): Unit !@! ThisEffect = IO.blocking(JConsole.err.nn.print(text))
