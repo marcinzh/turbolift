@@ -54,25 +54,26 @@ trait FileSystemEffect extends Effect[FileSystemSignature] with FileSystemSignat
 ```scala mdoc
 extension (fx: FileSystemEffect)
   def inMemoryHandler =
-    case object InternalStorage extends State[Map[String, String]]
+    // Internal state:
+    case object S extends State[Map[String, String]]
 
-    new fx.Proxy[InternalStorage.type] with FileSystemSignature:
+    new fx.Proxy[S.type] with FileSystemSignature:
       override def readFile(path: String) =
-        kk => InternalStorage.gets(_.get(path)).flatMap {
+        k => S.gets(_.get(path)).flatMap {
           case Some(contents) => !!.pure(contents)
-          case None => kk.escape(FileError.raise(FileErrorCause.NoSuchFile(path)))
+          case None => k.escape(FileError.raise(FileErrorCause.NoSuchFile(path)))
         }
 
       override def writeFile(path: String, contents: String) =
-        _ => InternalStorage.modify(_.updated(path, contents))
+        _ => S.modify(_.updated(path, contents))
 
     .toHandler
-    .provideWith(InternalStorage.handler(Map()).dropState)
+    .provideWith(S.handler(Map()).dropState)
 ```
 
 The `provideWith` method composes 2 dependent handlers,
 such that the latter handles dependency introduced by the former
-(`InternalStorage` effect in this case).
+(`S` effect in this case).
 
 ---
 

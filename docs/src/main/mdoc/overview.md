@@ -16,10 +16,8 @@ title:  Overview
 ### Computation Usage
 
 A value of type `Computation[A, U]` describes a... computation,
-that requests a set of effects `U` that need to be handled,
+that requests a set of effects `U`, that need to be handled,
 before it can return a value of type `A`.
-
-
 
 A **type alias** `!![A, U]` is defined for convenient **infix syntax**.
 
@@ -30,6 +28,13 @@ The type-level set of effects is modelled by intersection types:
 | `Any`   | ∅         | `Computation[Int, Any]`    | `Int !! Any` |
 | `X`     | `X`       | `Computation[Int, X]`      | `Int !! X` |
 | `X & Y` | `X` ∪ `Y` | `Computation[Int, X & Y]`  | `Int !! (X & Y)` |
+
+&nbsp;
+
+Usually, Scala compiler can infer the set of effects used in the computation.
+We can see this in [code example](index.html#-lightweight-syntax) on the front page.
+The inferred type of `program` indicates,
+that it requests set of 3 effects: `MyReader`, `MyState` and `MyError`.
 
 &nbsp;
 
@@ -44,7 +49,7 @@ val myComputation1 = !!.unit
 val myComputation2 = !!.pure(42)
 ```
 
-For more information, see [Computation API](https://javadoc.io/static/io.github.marcinzh/turbolift-core_3/@VERSION@/turbolift/Computation.html)
+For more information, see [Computation API](https://javadoc.io/static/io.github.marcinzh/turbolift-core_3/@VERSION@/turbolift/Computation.html).
 
 ### Effect Usage
 
@@ -120,7 +125,7 @@ For example, this sequences 3 independent handlers:
 val myHandler123 = myHandler1 &&&! myHandler2 &&&! myHandler3
 ```
 
-For more operations, see [Handler API](https://javadoc.io/static/io.github.marcinzh/turbolift-core_3/@VERSION@/turbolift/Handler.html)
+For more operations, see [Handler API](https://javadoc.io/static/io.github.marcinzh/turbolift-core_3/@VERSION@/turbolift/Handler.html).
 
 
 
@@ -130,4 +135,4 @@ Those 2 types are used only during [Defining your own effects & handlers](custom
 
 ---
 
-[^1]: Slogan [© by Eric Torreborre](https://www.youtube.com/watch?v=KGJLeHhsZBo).
+[^1]: Slogan coined by [Eric Torreborre](https://www.youtube.com/watch?v=KGJLeHhsZBo).

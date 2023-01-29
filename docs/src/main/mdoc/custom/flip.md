@@ -65,6 +65,7 @@ extension (fx: FlipEffect)
           as <- k(true)
           bs <- k(false)
         yield as ++ bs
+
     .toHandler
 ```
 
@@ -81,6 +82,7 @@ extension (fx: FlipEffect)
           case None => k(false)
           case some => !!.pure(some)
         }
+
     .toHandler
 ```
 

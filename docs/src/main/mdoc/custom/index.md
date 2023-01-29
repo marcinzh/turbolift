@@ -20,7 +20,7 @@ trait GoogleSignature extends Signature:
 `!@![_, ThisEffect]` is somewhat similar to `F[_]` from Tagless Final.
 
 The main difference, is that in Turbolift this abstraction is **short lived**.
-It's local to `Signature`, and it vanishes in `Effect`.
+It's introduced in `Signature`, and it vanishes in its direct subtrait, `Effect`.
 
 Both `!@!` and `ThisEffect` are defined as abstract type members of `Signature`.
 In the next step, once we inherit our signature from an `Effect`, they become (automatically) concretized:
@@ -48,6 +48,19 @@ trait Google extends Effect[GoogleSignature] with GoogleSignature:
 ### ⚠️ Notice:
 
 The signature is used here **twice**: first as the type parameter and second as the super trait.
+
+&nbsp;
+
+Hopefully, with future version of Scala compiler,
+it will be possible to automatically generate the boilerplate methods,
+by using annotation macro:
+
+```scala
+import turbolift.{Effect, effect}
+
+@effect trait Google extends Effect[GoogleSignature] with GoogleSignature
+  // No boilerplate methods needed.
+```
 
 
 ### 3. Define a handler for your effect

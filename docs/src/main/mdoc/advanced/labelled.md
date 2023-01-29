@@ -5,7 +5,7 @@ title:  Labelled Effects
 
 # Labelled Effects
 
-Ability to label effects, is very rarely found feature in effect systems.
+Ability to label effects, is a very rarely found feature in effect systems.
 That's a shame, because without it, there is no true modularity.
 
 Related reading:

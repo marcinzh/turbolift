@@ -18,11 +18,44 @@ The possibility of parallelism, depends on **implementation of handlers**.
 Parallelism is possible only when **all** handlers in the currently used effect stack,
 are implemented to permit parallelism.
 
-- If parallelization is possible, 2 fibers[^1] for `foo` and `bar` are implicitly forked.
+- If parallelization is possible, 2 fibers[^1] for `foo` and `bar` are **implicitly** forked.
 Upon joining, results of each contributing effect are composed, 
 in a similar manner as in composed Applicative Functor[^2].
 
 - If parallelization is not possible, `zipPar` fallbacks to sequential `zip`.
+
+This condition doesn't apply to fibers forked & joined **explicitly** (WIP).
+
+### Parallelizability of predefined handlers
+
+| Predefined effect | Predefined handler for this effect | Is the handler parallelizable? |
+|---|---|---|
+| `Reader`  | default  | ✅ |
+| `Writer`  | `local`  | ✅ |
+| `Writer`  | `shared` | ✅ |
+| `State`   | `local`  | ❌|
+| `State`   | `shared` | ✅ |
+| `Error`   | `first`  | ❌|
+| `Error`   | `all`    | ✅ |
+| `Choice`  | `first`  | ✅ |
+| `Choice`  | `all`    | ✅ |
+| `Random`  | `local`  | ✅ |
+| `Random`  | `shared` | ✅ |
+| `Console` | default  | ✅ |
+
+&nbsp;
+
+`State`'s `local` handler is conceptually similar to standard `State` monad.
+State updates are chained linearly.
+It is inherently impossible to fork-and-join such chain
+without having to make arbitrary choice about information loss.
+For this reason, this handler prohibits parallellism.
+See [Everything you didn't want to know about StateT](https://www.youtube.com/watch?v=KZIN9f9rI34&t=515s) ⚠️**λ**[^3] video for more information.
+
+`Error`'s `first` handler short-circuits the computation on the first raised error.
+This handler prohibits parallellism,
+because the second computation can't be run,
+until it's determined that the first one completes without error.
 
 ### Example: Applicative vs. Monadic error
 
@@ -45,9 +78,8 @@ val result1 = program.handleWith(MyError.handlers.first).run
 val result2 = program.handleWith(MyError.handlers.all).run
 ```
 
-&nbsp;
-
 ---
 
 [^1]: Currently, fibers are not exposed to user. 🚧 **WIP** 🚧
 [^2]: Turbolift does not use `Applicative` typeclass. It's only mentioned as an analogy.
+[^3]: **Warning:** Haskell code ahead.
