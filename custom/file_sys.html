@@ -44,25 +44,26 @@ The File System effect example is often used as their demonstrator of reinterpre
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nf">extension</span> <span class="o">(</span><span class="n">fx</span><span class="k">:</span> <span class="kt">FileSystemEffect</span><span class="o">)</span>
   <span class="k">def</span> <span class="nf">inMemoryHandler</span> <span class="k">=</span>
-    <span class="k">case</span> <span class="k">object</span> <span class="nc">InternalStorage</span> <span class="k">extends</span> <span class="nc">State</span><span class="o">[</span><span class="kt">Map</span><span class="o">[</span><span class="kt">String</span>, <span class="kt">String</span><span class="o">]]</span>
+    <span class="c1">// Internal state:</span>
+    <span class="k">case</span> <span class="k">object</span> <span class="nc">S</span> <span class="k">extends</span> <span class="nc">State</span><span class="o">[</span><span class="kt">Map</span><span class="o">[</span><span class="kt">String</span>, <span class="kt">String</span><span class="o">]]</span>
 
-    <span class="k">new</span> <span class="nv">fx</span><span class="o">.</span><span class="py">Proxy</span><span class="o">[</span><span class="kt">InternalStorage.</span><span class="k">type</span><span class="o">]</span> <span class="k">with</span> <span class="nc">FileSystemSignature</span><span class="k">:</span>
+    <span class="k">new</span> <span class="nv">fx</span><span class="o">.</span><span class="py">Proxy</span><span class="o">[</span><span class="kt">S.</span><span class="k">type</span><span class="o">]</span> <span class="k">with</span> <span class="nc">FileSystemSignature</span><span class="k">:</span>
       <span class="kt">override</span> <span class="kt">def</span> <span class="kt">readFile</span><span class="o">(</span><span class="kt">path:</span> <span class="kt">String</span><span class="o">)</span> <span class="o">=</span>
-        <span class="n">kk</span> <span class="k">=&gt;</span> <span class="nv">InternalStorage</span><span class="o">.</span><span class="py">gets</span><span class="o">(</span><span class="nv">_</span><span class="o">.</span><span class="py">get</span><span class="o">(</span><span class="n">path</span><span class="o">)).</span><span class="py">flatMap</span> <span class="o">{</span>
+        <span class="n">k</span> <span class="k">=&gt;</span> <span class="nv">S</span><span class="o">.</span><span class="py">gets</span><span class="o">(</span><span class="nv">_</span><span class="o">.</span><span class="py">get</span><span class="o">(</span><span class="n">path</span><span class="o">)).</span><span class="py">flatMap</span> <span class="o">{</span>
           <span class="k">case</span> <span class="nc">Some</span><span class="o">(</span><span class="n">contents</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="o">!!.</span><span class="py">pure</span><span class="o">(</span><span class="n">contents</span><span class="o">)</span>
-          <span class="k">case</span> <span class="nc">None</span> <span class="k">=&gt;</span> <span class="nv">kk</span><span class="o">.</span><span class="py">escape</span><span class="o">(</span><span class="nv">FileError</span><span class="o">.</span><span class="py">raise</span><span class="o">(</span><span class="nv">FileErrorCause</span><span class="o">.</span><span class="py">NoSuchFile</span><span class="o">(</span><span class="n">path</span><span class="o">)))</span>
+          <span class="k">case</span> <span class="nc">None</span> <span class="k">=&gt;</span> <span class="nv">k</span><span class="o">.</span><span class="py">escape</span><span class="o">(</span><span class="nv">FileError</span><span class="o">.</span><span class="py">raise</span><span class="o">(</span><span class="nv">FileErrorCause</span><span class="o">.</span><span class="py">NoSuchFile</span><span class="o">(</span><span class="n">path</span><span class="o">)))</span>
         <span class="o">}</span>
 
       <span class="k">override</span> <span class="k">def</span> <span class="nf">writeFile</span><span class="o">(</span><span class="n">path</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">contents</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">=</span>
-        <span class="k">_</span> <span class="k">=&gt;</span> <span class="nv">InternalStorage</span><span class="o">.</span><span class="py">modify</span><span class="o">(</span><span class="nv">_</span><span class="o">.</span><span class="py">updated</span><span class="o">(</span><span class="n">path</span><span class="o">,</span> <span class="n">contents</span><span class="o">))</span>
+        <span class="k">_</span> <span class="k">=&gt;</span> <span class="nv">S</span><span class="o">.</span><span class="py">modify</span><span class="o">(</span><span class="nv">_</span><span class="o">.</span><span class="py">updated</span><span class="o">(</span><span class="n">path</span><span class="o">,</span> <span class="n">contents</span><span class="o">))</span>
 
     <span class="o">.</span><span class="py">toHandler</span>
-    <span class="o">.</span><span class="py">provideWith</span><span class="o">(</span><span class="nv">InternalStorage</span><span class="o">.</span><span class="py">handler</span><span class="o">(</span><span class="nc">Map</span><span class="o">()).</span><span class="py">dropState</span><span class="o">)</span>
+    <span class="o">.</span><span class="py">provideWith</span><span class="o">(</span><span class="nv">S</span><span class="o">.</span><span class="py">handler</span><span class="o">(</span><span class="nc">Map</span><span class="o">()).</span><span class="py">dropState</span><span class="o">)</span>
 </code></pre></div></div>
 
 <p>The <code class="language-plaintext highlighter-rouge">provideWith</code> method composes 2 dependent handlers,
 such that the latter handles dependency introduced by the former
-(<code class="language-plaintext highlighter-rouge">InternalStorage</code> effect in this case).</p>
+(<code class="language-plaintext highlighter-rouge">S</code> effect in this case).</p>
 
 <hr />
 
@@ -83,7 +84,7 @@ such that the latter handles dependency introduced by the former
     <span class="k">_</span> <span class="k">&lt;-</span> <span class="nv">MyFS</span><span class="o">.</span><span class="py">writeFile</span><span class="o">(</span><span class="s">"hello.txt"</span><span class="o">,</span> <span class="s">"Hello world!"</span><span class="o">)</span>
     <span class="n">contents</span> <span class="k">&lt;-</span> <span class="nv">MyFS</span><span class="o">.</span><span class="py">readFile</span><span class="o">(</span><span class="s">"hello.txt"</span><span class="o">)</span>
   <span class="k">yield</span> <span class="n">contents</span>
-<span class="c1">// program: Computation[String, ThisEffect &amp; FileError] = turbolift.Computation@315fd3bd</span>
+<span class="c1">// program: Computation[String, ThisEffect &amp; FileError] = turbolift.Computation@46ca0ecf</span>
 
 <span class="k">val</span> <span class="nv">result</span> <span class="k">=</span> <span class="n">program</span>
   <span class="o">.</span><span class="py">handleWith</span><span class="o">(</span><span class="nv">MyFS</span><span class="o">.</span><span class="py">inMemoryHandler</span><span class="o">)</span>

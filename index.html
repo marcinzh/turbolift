@@ -6,14 +6,11 @@
 
 <h2 id="highlights">Highlights</h2>
 
-<p> </p>
-
 <h3 id="-expressive-power">⭐ Expressive power</h3>
 
 <p>Turbolift supports constructs rarely found in other effect systems,
-or in new programming languages with native support for Algebraic Effects. See <a href="advanced/index.html">Advanced Features</a>.</p>
-
-<p> </p>
+or in new programming languages with native support for Algebraic Effects.
+See <a href="advanced/index.html">Advanced Features</a>.</p>
 
 <h3 id="-high-performance">⭐ High performance</h3>
 
@@ -23,7 +20,7 @@ or in new programming languages with native support for Algebraic Effects. See <
 
 <p><img src="img/bench-sumh.png" alt="image" /></p>
 
-<p> </p>
+<p>More results <a href="bench/index.html">here</a>.</p>
 
 <h3 id="-lightweight-syntax">⭐ Lightweight syntax</h3>
 
@@ -45,7 +42,7 @@ or in new programming languages with native support for Algebraic Effects. See <
     <span class="o">}</span>
     <span class="k">_</span> <span class="k">&lt;-</span> <span class="nv">MyState</span><span class="o">.</span><span class="py">put</span><span class="o">(</span><span class="n">c</span><span class="o">)</span>
   <span class="nf">yield</span> <span class="o">()</span>
-<span class="c1">// program: Computation[Unit, MyReader &amp; MyError &amp; MyState] = turbolift.Computation@6de2880e</span>
+<span class="c1">// program: Computation[Unit, MyReader &amp; MyError &amp; MyState] = turbolift.Computation@6d96cdd8</span>
 
 <span class="k">val</span> <span class="nv">result</span> <span class="k">=</span> <span class="n">program</span>
   <span class="o">.</span><span class="py">handleWith</span><span class="o">(</span><span class="nv">MyState</span><span class="o">.</span><span class="py">handler</span><span class="o">(</span><span class="mi">100</span><span class="o">).</span><span class="py">justState</span><span class="o">)</span>
@@ -57,14 +54,10 @@ or in new programming languages with native support for Algebraic Effects. See <
 
 <hr />
 
-<p> </p>
-
 <h2 id="usage">Usage</h2>
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">libraryDependencies</span> <span class="o">+=</span> <span class="s">"io.github.marcinzh"</span> <span class="o">%%</span> <span class="s">"turbolift-core"</span> <span class="o">%</span> <span class="s">"0.46.0"</span>
 </code></pre></div></div>
-
-<p> </p>
 
 <h2 id="credits">Credits</h2>
 

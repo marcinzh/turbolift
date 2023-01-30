@@ -13,7 +13,7 @@
 <p><code class="language-plaintext highlighter-rouge">!@![_, ThisEffect]</code> is somewhat similar to <code class="language-plaintext highlighter-rouge">F[_]</code> from Tagless Final.</p>
 
 <p>The main difference, is that in Turbolift this abstraction is <strong>short lived</strong>.
-It’s local to <code class="language-plaintext highlighter-rouge">Signature</code>, and it vanishes in <code class="language-plaintext highlighter-rouge">Effect</code>.</p>
+It’s introduced in <code class="language-plaintext highlighter-rouge">Signature</code>, and it vanishes in its direct subtrait, <code class="language-plaintext highlighter-rouge">Effect</code>.</p>
 
 <p>Both <code class="language-plaintext highlighter-rouge">!@!</code> and <code class="language-plaintext highlighter-rouge">ThisEffect</code> are defined as abstract type members of <code class="language-plaintext highlighter-rouge">Signature</code>.
 In the next step, once we inherit our signature from an <code class="language-plaintext highlighter-rouge">Effect</code>, they become (automatically) concretized:</p>
@@ -42,6 +42,18 @@ using <code class="language-plaintext highlighter-rouge">perform</code> (provide
 <h3 id="️-notice">⚠️ Notice:</h3>
 
 <p>The signature is used here <strong>twice</strong>: first as the type parameter and second as the super trait.</p>
+
+<p> </p>
+
+<p>Hopefully, with future version of Scala compiler,
+it will be possible to automatically generate the boilerplate methods,
+by using annotation macro:</p>
+
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">turbolift.</span><span class="o">{</span><span class="nc">Effect</span><span class="o">,</span> <span class="n">effect</span><span class="o">}</span>
+
+<span class="nd">@effect</span> <span class="k">trait</span> <span class="nc">Google</span> <span class="k">extends</span> <span class="nc">Effect</span><span class="o">[</span><span class="kt">GoogleSignature</span><span class="o">]</span> <span class="k">with</span> <span class="nc">GoogleSignature</span>
+  <span class="c1">// No boilerplate methods needed.</span>
+</code></pre></div></div>
 
 <h3 id="3-define-a-handler-for-your-effect">3. Define a handler for your effect</h3>
 

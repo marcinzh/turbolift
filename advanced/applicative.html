@@ -13,7 +13,7 @@ are implemented to permit parallelism.</p>
 
 <ul>
   <li>
-    <p>If parallelization is possible, 2 fibers<sup id="fnref:1" role="doc-noteref"><a href="#fn:1" class="footnote" rel="footnote">1</a></sup> for <code class="language-plaintext highlighter-rouge">foo</code> and <code class="language-plaintext highlighter-rouge">bar</code> are implicitly forked.
+    <p>If parallelization is possible, 2 fibers<sup id="fnref:1" role="doc-noteref"><a href="#fn:1" class="footnote" rel="footnote">1</a></sup> for <code class="language-plaintext highlighter-rouge">foo</code> and <code class="language-plaintext highlighter-rouge">bar</code> are <strong>implicitly</strong> forked.
 Upon joining, results of each contributing effect are composed, 
 in a similar manner as in composed Applicative Functor<sup id="fnref:2" role="doc-noteref"><a href="#fn:2" class="footnote" rel="footnote">2</a></sup>.</p>
   </li>
@@ -21,6 +21,96 @@ in a similar manner as in composed Applicative Functor<sup id="fnref:2" role="do
     <p>If parallelization is not possible, <code class="language-plaintext highlighter-rouge">zipPar</code> fallbacks to sequential <code class="language-plaintext highlighter-rouge">zip</code>.</p>
   </li>
 </ul>
+
+<p>This condition doesn’t apply to fibers forked &amp; joined <strong>explicitly</strong> (WIP).</p>
+
+<h3 id="parallelizability-of-predefined-handlers">Parallelizability of predefined handlers</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Predefined effect</th>
+      <th>Predefined handler for this effect</th>
+      <th>Is the handler parallelizable?</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Reader</code></td>
+      <td>default</td>
+      <td>✅</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Writer</code></td>
+      <td><code class="language-plaintext highlighter-rouge">local</code></td>
+      <td>✅</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Writer</code></td>
+      <td><code class="language-plaintext highlighter-rouge">shared</code></td>
+      <td>✅</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">State</code></td>
+      <td><code class="language-plaintext highlighter-rouge">local</code></td>
+      <td>❌</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">State</code></td>
+      <td><code class="language-plaintext highlighter-rouge">shared</code></td>
+      <td>✅</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Error</code></td>
+      <td><code class="language-plaintext highlighter-rouge">first</code></td>
+      <td>❌</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Error</code></td>
+      <td><code class="language-plaintext highlighter-rouge">all</code></td>
+      <td>✅</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Choice</code></td>
+      <td><code class="language-plaintext highlighter-rouge">first</code></td>
+      <td>✅</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Choice</code></td>
+      <td><code class="language-plaintext highlighter-rouge">all</code></td>
+      <td>✅</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Random</code></td>
+      <td><code class="language-plaintext highlighter-rouge">local</code></td>
+      <td>✅</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Random</code></td>
+      <td><code class="language-plaintext highlighter-rouge">shared</code></td>
+      <td>✅</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Console</code></td>
+      <td>default</td>
+      <td>✅</td>
+    </tr>
+  </tbody>
+</table>
+
+<p> </p>
+
+<p><code class="language-plaintext highlighter-rouge">State</code>’s <code class="language-plaintext highlighter-rouge">local</code> handler is conceptually similar to standard <code class="language-plaintext highlighter-rouge">State</code> monad.
+State updates are chained linearly.
+It is inherently impossible to fork-and-join such chain
+without having to make arbitrary choice about information loss.
+For this reason, this handler prohibits parallellism.
+See <a href="https://www.youtube.com/watch?v=KZIN9f9rI34&amp;t=515s">Everything you didn’t want to know about StateT</a> ⚠️<strong>λ</strong><sup id="fnref:3" role="doc-noteref"><a href="#fn:3" class="footnote" rel="footnote">3</a></sup> video for more information.</p>
+
+<p><code class="language-plaintext highlighter-rouge">Error</code>’s <code class="language-plaintext highlighter-rouge">first</code> handler short-circuits the computation on the first raised error.
+This handler prohibits parallellism,
+because the second computation can’t be run,
+until it’s determined that the first one completes without error.</p>
 
 <h3 id="example-applicative-vs-monadic-error">Example: Applicative vs. Monadic error</h3>
 
@@ -41,7 +131,7 @@ in a similar manner as in composed Applicative Functor<sup id="fnref:2" role="do
 <span class="k">case</span> <span class="k">object</span> <span class="nc">MyError</span> <span class="k">extends</span> <span class="nc">ErrorK</span><span class="o">[</span><span class="kt">List</span>, <span class="kt">String</span><span class="o">]</span>
 
 <span class="k">val</span> <span class="nv">program</span> <span class="k">=</span> <span class="nv">MyError</span><span class="o">.</span><span class="py">raise</span><span class="o">(</span><span class="s">"foo"</span><span class="o">)</span> <span class="o">&amp;!</span> <span class="nv">MyError</span><span class="o">.</span><span class="py">raise</span><span class="o">(</span><span class="s">"bar"</span><span class="o">)</span>
-<span class="c1">// program: Computation[Nothing, MyError] = turbolift.Computation@7af6f300</span>
+<span class="c1">// program: Computation[Nothing, MyError] = turbolift.Computation@1c2e40a</span>
 
 <span class="k">val</span> <span class="nv">result1</span> <span class="k">=</span> <span class="nv">program</span><span class="o">.</span><span class="py">handleWith</span><span class="o">(</span><span class="nv">MyError</span><span class="o">.</span><span class="py">handlers</span><span class="o">.</span><span class="py">first</span><span class="o">).</span><span class="py">run</span>
 <span class="c1">// result1: Either[List[String], Nothing] = Left(value = List("foo"))</span>
@@ -49,8 +139,6 @@ in a similar manner as in composed Applicative Functor<sup id="fnref:2" role="do
 <span class="k">val</span> <span class="nv">result2</span> <span class="k">=</span> <span class="nv">program</span><span class="o">.</span><span class="py">handleWith</span><span class="o">(</span><span class="nv">MyError</span><span class="o">.</span><span class="py">handlers</span><span class="o">.</span><span class="py">all</span><span class="o">).</span><span class="py">run</span>
 <span class="c1">// result2: Either[List[String], Nothing] = Left(value = List("foo", "bar"))</span>
 </code></pre></div></div>
-
-<p> </p>
 
 <hr />
 
@@ -61,6 +149,9 @@ in a similar manner as in composed Applicative Functor<sup id="fnref:2" role="do
     </li>
     <li id="fn:2" role="doc-endnote">
       <p>Turbolift does not use <code class="language-plaintext highlighter-rouge">Applicative</code> typeclass. It’s only mentioned as an analogy. <a href="#fnref:2" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+    </li>
+    <li id="fn:3" role="doc-endnote">
+      <p><strong>Warning:</strong> Haskell code ahead. <a href="#fnref:3" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
     </li>
   </ol>
 </div>

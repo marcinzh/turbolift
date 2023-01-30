@@ -13,7 +13,7 @@
 <h3 id="computation-usage">Computation Usage</h3>
 
 <p>A value of type <code class="language-plaintext highlighter-rouge">Computation[A, U]</code> describes a… computation,
-that requests a set of effects <code class="language-plaintext highlighter-rouge">U</code> that need to be handled,
+that requests a set of effects <code class="language-plaintext highlighter-rouge">U</code>, that need to be handled,
 before it can return a value of type <code class="language-plaintext highlighter-rouge">A</code>.</p>
 
 <p>A <strong>type alias</strong> <code class="language-plaintext highlighter-rouge">!![A, U]</code> is defined for convenient <strong>infix syntax</strong>.</p>
@@ -53,18 +53,25 @@ before it can return a value of type <code class="language-plaintext highlighter
 
 <p> </p>
 
+<p>Usually, Scala compiler can infer the set of effects used in the computation.
+We can see this in <a href="index.html#-lightweight-syntax">code example</a> on the front page.
+The inferred type of <code class="language-plaintext highlighter-rouge">program</code> indicates,
+that it requests set of 3 effects: <code class="language-plaintext highlighter-rouge">MyReader</code>, <code class="language-plaintext highlighter-rouge">MyState</code> and <code class="language-plaintext highlighter-rouge">MyError</code>.</p>
+
+<p> </p>
+
 <p>Additionally, <code class="language-plaintext highlighter-rouge">!!</code> is a <strong>value alias</strong> of <code class="language-plaintext highlighter-rouge">Computation</code>’s companion object:</p>
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">turbolift.</span><span class="o">!!</span>
 
 <span class="k">val</span> <span class="nv">myComputation1</span> <span class="k">=</span> <span class="o">!!.</span><span class="py">unit</span>
-<span class="c1">// myComputation1: Computation[Unit, Any] = turbolift.Computation@428e6f76</span>
+<span class="c1">// myComputation1: Computation[Unit, Any] = turbolift.Computation@71dcf29a</span>
 
 <span class="k">val</span> <span class="nv">myComputation2</span> <span class="k">=</span> <span class="o">!!.</span><span class="py">pure</span><span class="o">(</span><span class="mi">42</span><span class="o">)</span>
-<span class="c1">// myComputation2: Computation[Int, Any] = turbolift.Computation@24d4a5fd</span>
+<span class="c1">// myComputation2: Computation[Int, Any] = turbolift.Computation@45a2ebea</span>
 </code></pre></div></div>
 
-<p>For more information, see <a href="https://javadoc.io/static/io.github.marcinzh/turbolift-core_3/0.46.0/turbolift/Computation.html">Computation API</a></p>
+<p>For more information, see <a href="https://javadoc.io/static/io.github.marcinzh/turbolift-core_3/0.46.0/turbolift/Computation.html">Computation API</a>.</p>
 
 <h3 id="effect-usage">Effect Usage</h3>
 
@@ -78,7 +85,7 @@ before it can return a value of type <code class="language-plaintext highlighter
 <span class="k">case</span> <span class="k">object</span> <span class="nc">MyState</span> <span class="k">extends</span> <span class="nc">State</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span>
 
 <span class="k">val</span> <span class="nv">computation</span> <span class="k">=</span> <span class="nv">MyState</span><span class="o">.</span><span class="py">put</span><span class="o">(</span><span class="mi">42</span><span class="o">)</span>
-<span class="c1">// computation: Computation[Unit, MyState] = turbolift.Computation@296f4dc8</span>
+<span class="c1">// computation: Computation[Unit, MyState] = turbolift.Computation@42ab90d8</span>
 </code></pre></div></div>
 
 <p>For more details, see <a href="custom/index.html">Defining your own effects &amp; handlers</a> and <a href="advanced/labelled.html">Effect labelling</a>.</p>
@@ -134,7 +141,7 @@ and wraps the result type in <code class="language-plaintext highlighter-rouge">
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">val</span> <span class="nv">myHandler123</span> <span class="k">=</span> <span class="n">myHandler1</span> <span class="o">&amp;&amp;&amp;!</span> <span class="n">myHandler2</span> <span class="o">&amp;&amp;&amp;!</span> <span class="n">myHandler3</span>
 </code></pre></div></div>
 
-<p>For more operations, see <a href="https://javadoc.io/static/io.github.marcinzh/turbolift-core_3/0.46.0/turbolift/Handler.html">Handler API</a></p>
+<p>For more operations, see <a href="https://javadoc.io/static/io.github.marcinzh/turbolift-core_3/0.46.0/turbolift/Handler.html">Handler API</a>.</p>
 
 <h3 id="signature--interpreter-usage">Signature &amp; Interpreter Usage</h3>
 
@@ -145,7 +152,7 @@ and wraps the result type in <code class="language-plaintext highlighter-rouge">
 <div class="footnotes" role="doc-endnotes">
   <ol>
     <li id="fn:1" role="doc-endnote">
-      <p>Slogan <a href="https://www.youtube.com/watch?v=KGJLeHhsZBo">© by Eric Torreborre</a>. <a href="#fnref:1" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+      <p>Slogan coined by <a href="https://www.youtube.com/watch?v=KGJLeHhsZBo">Eric Torreborre</a>. <a href="#fnref:1" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
     </li>
   </ol>
 </div>
