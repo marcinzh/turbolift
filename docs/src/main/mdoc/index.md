@@ -11,14 +11,11 @@ title:  Algebraic Effects for Scala 3
 
 ## Highlights
 
-&nbsp;
-
 ### ⭐ Expressive power
 
 Turbolift supports constructs rarely found in other effect systems,
-or in new programming languages with native support for Algebraic Effects. See [Advanced Features](advanced/index.html).
-
-&nbsp;
+or in new programming languages with native support for Algebraic Effects.
+See [Advanced Features](advanced/index.html).
 
 ### ⭐ High performance
 
@@ -28,7 +25,7 @@ Excerpt from [Effect Zoo](https://github.com/marcinzh/effect-zoo) microbenchmark
 
 ![image](img/bench-sumh.png)
 
-&nbsp;
+More results [here](bench/index.html).
 
 ### ⭐ Lightweight syntax
 
@@ -62,15 +59,11 @@ val result = program
 
 ---
 
-&nbsp;
-
 ## Usage
 
 ```scala
 libraryDependencies += "io.github.marcinzh" %% "turbolift-core" % "@VERSION@"
 ```
-
-&nbsp;
 
 ## Credits
 
