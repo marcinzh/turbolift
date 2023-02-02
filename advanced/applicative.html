@@ -5,7 +5,7 @@
 <p>Two independent computations can be combined, giving potential for their parallel execution:</p>
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">val</span> <span class="nv">foobar</span> <span class="k">=</span> <span class="n">foo</span> <span class="o">*!</span> <span class="n">bar</span>
 </code></pre></div></div>
-<p>The <code class="language-plaintext highlighter-rouge">*!</code> operator is an alias for <code class="language-plaintext highlighter-rouge">zipPar</code> method (see <a href="https://javadoc.io/static/io.github.marcinzh/turbolift-core_3/0.46.0/turbolift/Computation.html">Computation API</a>).</p>
+<p>The <code class="language-plaintext highlighter-rouge">*!</code> operator is an alias for <code class="language-plaintext highlighter-rouge">zipPar</code> method (see <a href="https://javadoc.io/static/io.github.marcinzh/turbolift-core_3/0.48.0/turbolift/Computation.html">Computation API</a>).</p>
 
 <p>The possibility of parallelism, depends on <strong>implementation of handlers</strong>.
 Parallelism is possible only when <strong>all</strong> handlers in the currently used effect stack,
@@ -131,7 +131,7 @@ until it’s determined that the first one completes without error.</p>
 <span class="k">case</span> <span class="k">object</span> <span class="nc">MyError</span> <span class="k">extends</span> <span class="nc">ErrorK</span><span class="o">[</span><span class="kt">List</span>, <span class="kt">String</span><span class="o">]</span>
 
 <span class="k">val</span> <span class="nv">program</span> <span class="k">=</span> <span class="nv">MyError</span><span class="o">.</span><span class="py">raise</span><span class="o">(</span><span class="s">"foo"</span><span class="o">)</span> <span class="o">&amp;!</span> <span class="nv">MyError</span><span class="o">.</span><span class="py">raise</span><span class="o">(</span><span class="s">"bar"</span><span class="o">)</span>
-<span class="c1">// program: Computation[Nothing, MyError] = turbolift.Computation@1c2e40a</span>
+<span class="c1">// program: Computation[Nothing, MyError] = turbolift.Computation@19f3c1f1</span>
 
 <span class="k">val</span> <span class="nv">result1</span> <span class="k">=</span> <span class="nv">program</span><span class="o">.</span><span class="py">handleWith</span><span class="o">(</span><span class="nv">MyError</span><span class="o">.</span><span class="py">handlers</span><span class="o">.</span><span class="py">first</span><span class="o">).</span><span class="py">run</span>
 <span class="c1">// result1: Either[List[String], Nothing] = Left(value = List("foo"))</span>
