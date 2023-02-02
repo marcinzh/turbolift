@@ -14,7 +14,7 @@ private[turbolift] object ComputationCases:
   final class Impure[A, U](val thunk: () => A) extends Unsealed[A, U](Tags.Impure)
   final class Resume[A, U](val ctrl: Control.FlowUntyped, val value: Any, val stan: Any) extends Unsealed[A, U](Tags.Resume)
   final class Local[A, U](val ctrl: Control.FlowUntyped, val body: Untyped, val stan: Any) extends Unsealed[A, U](Tags.Local)
-  final class Escape[A, U](val body: Untyped) extends Unsealed[A, U](Tags.Escape)
+  final class Escape[A, U](val ctrl: Control.FlowUntyped | Null, val body: Untyped, val stan: Any) extends Unsealed[A, U](Tags.Escape)
   final class Handle[A, U, F[+_], L, N](val body: A !! (U & L), val handler: Primitive[F, L, N]) extends Unsealed[F[A], U & N](Tags.Handle)
   final class ConfigAsk[A](val fun: Config => A) extends Unsealed[A, Any](Tags.ConfigAsk)
   final class ConfigMod[A, U](val fun: Config => Config, val body: A !! U) extends Unsealed[A, U](Tags.ConfigMod)

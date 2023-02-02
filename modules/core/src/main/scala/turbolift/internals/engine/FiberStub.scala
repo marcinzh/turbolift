@@ -1,13 +1,13 @@
 package turbolift.internals.engine
 // import java.util.concurrent.atomic.AtomicInteger
-import turbolift.internals.launcher.Callback
+import turbolift.internals.launcher.Promise
 import scala.annotation.tailrec
 
 
 private[engine] abstract class FiberStub(
   protected val constantBits: Int,
   protected val parent: Fiber,
-  protected val callback: Callback.Untyped,
+  protected val promise: Promise.Untyped,
 // ) extends AtomicInteger:
 ):
   @volatile private var varyingBits: Int = 0
@@ -19,10 +19,10 @@ private[engine] abstract class FiberStub(
     this.childLeft  = null
     this.childRight = null
 
-  protected final def findCallback: Callback.Untyped =
+  protected final def findPromise: Promise.Untyped =
     constantBits match
-      case Bits.Tree_Root => callback
-      case _ => parent.findCallback
+      case Bits.Tree_Root => promise
+      case _ => parent.findPromise
 
   protected final def whichChildAmI: Int = (this.constantBits >>> Bits.Self_Shift) & Bits.Child_Mask
   protected final def getSiblingOfChild(whichChild: Int): Fiber | Null = getChild(whichChild ^ Bits.Child_Mask)

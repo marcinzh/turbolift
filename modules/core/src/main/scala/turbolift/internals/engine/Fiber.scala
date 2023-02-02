@@ -1,18 +1,18 @@
 package turbolift.internals.engine
 import scala.annotation.{tailrec, switch}
 import turbolift.{!!, Signature}
-import turbolift.internals.launcher.Callback
+import turbolift.internals.launcher.Promise
 import turbolift.internals.interpreter.{Control, Void}
 import turbolift.internals.primitives.{Tags, ComputationCases => CC}
 import turbolift.internals.engine.{StepCases => SC, HistoryCases => HC}
 
 
 private[engine] final class Fiber(
-  _constantBits: Int, _parent: Fiber, _callback: Callback.Untyped
-) extends FiberStub(_constantBits, _parent, _callback) with Runnable:
+  _constantBits: Int, _parent: Fiber, _promise: Promise.Untyped
+) extends FiberStub(_constantBits, _parent, _promise) with Runnable:
 
-  def this(callback: Callback.Untyped) = this(Bits.Tree_Root, null.asInstanceOf[Fiber], callback)
-  def this(parent: Fiber, constantBits: Int) = this(constantBits, parent, null.asInstanceOf[Callback.Untyped])
+  def this(promise: Promise.Untyped) = this(Bits.Tree_Root, null.asInstanceOf[Fiber], promise)
+  def this(parent: Fiber, constantBits: Int) = this(constantBits, parent, null.asInstanceOf[Promise.Untyped])
 
   private var suspendedTick: Int = 0
   private var suspendedTag: Int = 0
@@ -36,7 +36,7 @@ private[engine] final class Fiber(
     try
       outerLoop(suspendedConfig.nn.tickHigh)
     catch e =>
-      findCallback.failure(
+      findPromise.failure(
         if e.isInstanceOf[Panic]
         then e
         else
@@ -215,8 +215,15 @@ private[engine] final class Fiber(
           case Tags.Escape =>
             // yesDiv
             val theEscape = payload.asInstanceOf[CC.Escape[Any, Any]]
-            val step2 = new SC.Hop(lookup, step)
-            innerLoop(tick2, theEscape.body.tag, theEscape.body, step2, stack, store, stack.lookup, kont0)
+            if theEscape.ctrl == null then
+              // Proxy
+              val step2 = new SC.Hop(lookup, step)
+              innerLoop(tick2, theEscape.body.tag, theEscape.body, step2, stack, store, stack.lookup, kont0)
+            else
+              // Flow
+              val ctrl = theEscape.ctrl.asInstanceOf[Kont]
+              val (stack2, store2, step2) = stack.spliceForEscape(step, ctrl, store, theEscape.stan)
+              innerLoop(tick2, theEscape.body.tag, theEscape.body, step2, stack2, store2, stack.lookup, kont0)
 
           case Tags.Resume =>
             // yesDiv
@@ -284,12 +291,12 @@ private[engine] final class Fiber(
                 case Bits.Tree_Root =>
                   step.tag match
                     case Tags.Step_Done =>
-                      callback.success(payload)
+                      promise.success(payload)
                       null
 
                     case Tags.Step_Abort =>
                       assert(step.isGlobalAbort)
-                      callback.failure(payload.asInstanceOf[Throwable])
+                      promise.failure(payload.asInstanceOf[Throwable])
                       null
 
                 case Bits.Tree_Zip =>
@@ -394,7 +401,7 @@ private[engine] final class Fiber(
 
 
 private[internals] object Fiber:
-  def makeRoot[A, U](comp: A !! U, config: Config, callback: Callback[A]): Fiber =
-    val fiber = new Fiber(callback.untyped)
+  def makeRoot[A, U](comp: A !! U, promise: Promise[A], config: Config): Fiber =
+    val fiber = new Fiber(promise.untyped)
     fiber.init(comp.untyped, config)
     fiber

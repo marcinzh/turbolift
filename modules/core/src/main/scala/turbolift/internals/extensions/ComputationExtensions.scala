@@ -10,12 +10,12 @@ import turbolift.internals.auxx.{CanRun, CanUnsafeRun, CanPartiallyHandle}
 /*private[turbolift]*/ trait ComputationExtensions:
   extension [A](thiz: Computation[A, Any])
     /** Runs the computation, provided that it requests no effects. */
-    def run(using config: LauncherConfig = LauncherConfig.default): A = Launcher.sync.unsafeGet.run(thiz)
+    def run(using config: LauncherConfig = LauncherConfig.default): A = Launcher.run(thiz).get
 
 
   extension [A, U >: IO](thiz: Computation[A, U])
     /** Runs the computation, provided that it requests IO effect only, or none at all. */
-    def unsafeRun(using config: LauncherConfig = LauncherConfig.default): Try[A] = Launcher.sync.run(thiz)
+    def unsafeRun(using config: LauncherConfig = LauncherConfig.default): Try[A] = Launcher.run(thiz)
 
 
   extension [A, U](thiz: Computation[A, U])
