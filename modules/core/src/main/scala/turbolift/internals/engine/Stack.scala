@@ -193,6 +193,15 @@ private[engine] final class Stack(
     val newStore2 = newStore.setIfNotVoid(kont.prompt, newStan)
     (newStack2, newStore2)
 
+  def spliceForEscape(stepAside: Step, kont: Kont, oldStore: Store, newStan: Any): (Stack, Store, Step) =
+    val divSegment =
+      val s = Void.orElse(newStan, kont.getStan)
+      getTopSegmentAt(kont.prompt).patch(s)
+    val captureStep = SC.Capture(kont.prompt, stepAside, kont.step)
+    val (newStack, newStore) = splice(divSegment, kont, oldStore)
+    val newStore2 = newStore.setIfNotVoid(kont.prompt, newStan)
+    (newStack, newStore2, captureStep)
+
 
 
 private[engine] object Stack:

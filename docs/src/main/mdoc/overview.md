@@ -15,8 +15,8 @@ title:  Overview
 
 ### Computation Usage
 
-A value of type `Computation[A, U]` describes a... computation,
-that requests a set of effects `U`, that need to be handled,
+A value of type `Computation[+A, -U]` describes a... computation,
+that **requests** a set of effects `U`, that need to be **handled**,
 before it can return a value of type `A`.
 
 A **type alias** `!![A, U]` is defined for convenient **infix syntax**.
@@ -31,10 +31,10 @@ The type-level set of effects is modelled by intersection types:
 
 &nbsp;
 
-Usually, Scala compiler can infer the set of effects used in the computation.
+Usually, Scala compiler can infer the set of effects requested by the computation.
 We can see this in [code example](index.html#-lightweight-syntax) on the front page.
 The inferred type of `program` indicates,
-that it requests set of 3 effects: `MyReader`, `MyState` and `MyError`.
+that it requests 3 effects: `MyReader`, `MyState` and `MyError`.
 
 &nbsp;
 
@@ -58,11 +58,13 @@ To be able to invoke the effect's operations, we need access to an instance of t
 We can create such instance ourselves:
 
 ```scala mdoc
+// State inherits from Effect:
 import turbolift.effects.State
 
-// Indirectly inherits from Effect:
+// Instantiation:
 case object MyState extends State[Int]
 
+// Invoking operation:
 val computation = MyState.put(42)
 ```
 
@@ -88,6 +90,8 @@ As soon as all effects are eliminated, the computation's result can be obtained,
     .handleWith(myHandler3)
     .run
 ```
+
+...or using `unsafeRun`, if the only effect remaining unhandled, is `IO`.
 
 
 In general, a handler of type `Handler[F[_], L, N]` represents a
