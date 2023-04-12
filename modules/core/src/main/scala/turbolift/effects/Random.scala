@@ -4,7 +4,7 @@ import turbolift.io.IO
 import turbolift.effects.default_handlers.{randomHandler_local, randomHandler_shared}
 
 
-trait RandomSig extends Signature:
+trait RandomSignature extends Signature:
   def nextBoolean: Boolean !@! ThisEffect
   def nextInt: Int !@! ThisEffect
   def nextInt(n: Int): Int !@! ThisEffect
@@ -17,10 +17,11 @@ trait RandomSig extends Signature:
   def between(minInclusive: Long, maxExclusive: Long): Long !@! ThisEffect
   def between(minInclusive: Float, maxExclusive: Float): Float !@! ThisEffect
   def between(minInclusive: Double, maxExclusive: Double): Double !@! ThisEffect
+  def nextBytes(n: Int): Array[Byte] !@! ThisEffect
   def setSeed(seed: Long): Unit !@! ThisEffect
 
 
-trait RandomEffect extends Effect[RandomSig] with RandomSig:
+trait RandomEffect extends Effect[RandomSignature] with RandomSignature:
   final override def nextBoolean: Boolean !! this.type = perform(_.nextBoolean)
   final override def nextInt: Int !! this.type = perform(_.nextInt)
   final override def nextInt(n: Int): Int !! this.type = perform(_.nextInt(n))
@@ -33,6 +34,7 @@ trait RandomEffect extends Effect[RandomSig] with RandomSig:
   final override def between(minInclusive: Long, maxExclusive: Long): Long !! this.type = perform(_.between(minInclusive, maxExclusive))
   final override def between(minInclusive: Float, maxExclusive: Float): Float !! this.type = perform(_.between(minInclusive, maxExclusive))
   final override def between(minInclusive: Double, maxExclusive: Double): Double !! this.type = perform(_.between(minInclusive, maxExclusive))
+  final override def nextBytes(n: Int): Array[Byte] !@! ThisEffect = perform(_.nextBytes(n))
   final override def setSeed(seed: Long): Unit !! this.type = perform(_.setSeed(seed))
 
   /** Default handler for this effect. */

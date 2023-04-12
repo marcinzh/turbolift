@@ -3,14 +3,14 @@ import turbolift.{!!, Effect, Signature}
 import turbolift.extra_effects.default_handlers.cyclicMemoizerHandler
 
 
-trait CyclicMemoizerSig[K, V] extends Signature:
+trait CyclicMemoizerSignature[K, V] extends Signature:
   def memo[U <: ThisEffect](f: K => V !! U)(k: K): (() => V) !@! U
   def domain: Set[K] !@! ThisEffect
   def toMap: Map[K, V] !@! ThisEffect
   @deprecated final def get = toMap
 
 
-trait CyclicMemoizer[K, V] extends Effect[CyclicMemoizerSig[K, V]] with CyclicMemoizerSig[K, V]:
+trait CyclicMemoizer[K, V] extends Effect[CyclicMemoizerSignature[K, V]] with CyclicMemoizerSignature[K, V]:
   final override def memo[U <: this.type](f: K => V !! U)(k: K): (() => V) !! U = perform(_.memo(f)(k))
   final override def domain: Set[K] !! this.type = perform(_.domain)
   final override def toMap: Map[K, V] !! this.type = perform(_.toMap)

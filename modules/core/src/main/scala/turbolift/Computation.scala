@@ -1,5 +1,5 @@
 package turbolift
-import turbolift.effects.{ChoiceSig, Each}
+import turbolift.effects.{ChoiceSignature, Each}
 import turbolift.internals.effect.AnyChoice
 import turbolift.internals.extensions.ComputationExtensions
 import turbolift.internals.primitives.Primitives
@@ -83,10 +83,10 @@ sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift]
    *
    * Similar to `<|>` operator of `Alternative`.
    */
-  final def ++![A2 >: A, U2 <: U & ChoiceSig](that: => A2 !! U2): A2 !! U2 = AnyChoice.plus(this, that)
+  final def ++![A2 >: A, U2 <: U & ChoiceSignature](that: => A2 !! U2): A2 !! U2 = AnyChoice.plus(this, that)
 
   /** Applies filter, using `fail` operation from the innermost `Choice` effect in the current scope. */
-  final def withFilter[U2 <: U & ChoiceSig](f: A => Boolean): A !! U2 = flatMap(a => if f(a) then !!.pure(a) else !!.fail)
+  final def withFilter[U2 <: U & ChoiceSignature](f: A => Boolean): A !! U2 = flatMap(a => if f(a) then !!.pure(a) else !!.fail)
 
   /** Widens the set of requested effects. */
   final def upCast[U2 <: U] = this: A !! U2
@@ -119,7 +119,7 @@ object Computation extends ComputationExtensions:
   def impure[A](a: => A): A !! Any = Primitives.impure(() => a)
 
   /** Executes `fail` operation from the innermost `Choice` effect in the current scope. */
-  def fail: Nothing !! ChoiceSig = AnyChoice.fail
+  def fail: Nothing !! ChoiceSignature = AnyChoice.fail
 
   /** Handles `Each` effect. */
   def every[A, U](body: A !! (U & Each)): Vector[A] !! U = body.handleWith(Each.handler)

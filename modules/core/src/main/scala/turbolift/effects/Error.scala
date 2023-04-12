@@ -5,13 +5,13 @@ import turbolift.typeclass.{Accum, One}
 import turbolift.effects.default_handlers.{errorHandler_first, errorHandler_all} 
 
 
-trait ErrorSig[E, E1] extends Signature:
+trait ErrorSignature[E, E1] extends Signature:
   def raise(e: E1): Nothing !@! ThisEffect
   def raises(e: E): Nothing !@! ThisEffect
   def catchAll[A, U <: ThisEffect](body: A !! U)(f: E => A !! U): A !@! U
 
 
-trait ErrorEffect[E, E1] extends Effect[ErrorSig[E, E1]] with ErrorSig[E, E1]:
+trait ErrorEffect[E, E1] extends Effect[ErrorSignature[E, E1]] with ErrorSignature[E, E1]:
   final override def raise(e: E1): Nothing !! this.type = perform(_.raise(e))
   final override def raises(e: E): Nothing !! this.type = perform(_.raises(e))
   final override def catchAll[A, U <: this.type](body: A !! U)(f: E => A !! U): A !! U = perform(_.catchAll(body)(f))

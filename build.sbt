@@ -1,6 +1,6 @@
 ThisBuild / organization := "io.github.marcinzh"
-ThisBuild / version := "0.48.0"
-ThisBuild / scalaVersion := "3.2.1"
+ThisBuild / version := "0.50.0"
+ThisBuild / scalaVersion := "3.3.0-RC3"
 ThisBuild / scalacOptions ++= Seq(
   "-deprecation",
   "-feature",
@@ -24,7 +24,7 @@ lazy val root = project
   .settings(name := "turbolift-root")
   .settings(sourcesInBase := false)
   .settings(dontPublishMe: _*)
-  .aggregate(core, extra_effects, devel)
+  .aggregate(core, extra_effects, devel, examples)
 
 lazy val core = project
   .in(file("modules/core"))
@@ -43,6 +43,12 @@ lazy val extra_effects = project
     Deps.specs2_core,
   ))
   .dependsOn(core)
+
+lazy val examples = project
+  .in(file("modules/examples"))
+  .settings(name := "turbolift-examples")
+  .settings(dontPublishMe: _*)
+  .dependsOn(core, extra_effects)
 
 lazy val devel = project
   .in(file("modules/devel"))

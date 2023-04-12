@@ -2,12 +2,12 @@ package turbolift.effects.default_handlers
 import turbolift.!!
 import turbolift.typeclass.AccumZero
 import turbolift.typeclass.Syntax._
-import turbolift.effects.{WriterEffect, WriterSig}
+import turbolift.effects.{WriterEffect, WriterSignature}
 
 
 extension [W, W1](fx: WriterEffect[W, W1])
   private[effects] def writerHandler_local(implicit W: AccumZero[W, W1]): fx.ThisHandler.Free[(_, W)] =
-    new fx.Stateful[W, (_, W)] with fx.Parallel.ForkJoin with WriterSig[W, W1]:
+    new fx.Stateful[W, (_, W)] with fx.Parallel.ForkJoin with WriterSignature[W, W1]:
       override def onPure[A](a: A, w: W): (A, W) = (a, w)
 
       override def onUnpure[A](a_w: (A, W)): A !! ThisEffect = fx.tells(a_w._2) &&! !!.pure(a_w._1)

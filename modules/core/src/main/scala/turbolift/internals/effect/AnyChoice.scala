@@ -1,11 +1,11 @@
 package turbolift.internals.effect
 import scala.util.Try
 import turbolift.!!
-import turbolift.effects.ChoiceSig
+import turbolift.effects.ChoiceSignature
 
 
-private[turbolift] case object AnyChoice extends CanPerform[ChoiceSig] with ChoiceSig:
-  override type ThisEffect >: ChoiceSig
+private[turbolift] case object AnyChoice extends CanPerform[ChoiceSignature] with ChoiceSignature:
+  override type ThisEffect >: ChoiceSignature
 
   final override val fail: Nothing !! ThisEffect = perform(_.fail)
   final override def choose[A](as: Iterable[A]): A !! ThisEffect = perform(_.choose(as))

@@ -1,12 +1,12 @@
 package turbolift.effects.default_handlers
 import turbolift.!!
 import turbolift.Extensions._
-import turbolift.effects.{ChoiceEffect, ChoiceSig}
+import turbolift.effects.{ChoiceEffect, ChoiceSignature}
 
 
 extension (fx: ChoiceEffect)
   private[effects] def choiceHandler_first: fx.ThisHandler.Free[Option] =
-    new fx.Stateless[Option] with fx.Parallel with ChoiceSig:
+    new fx.Stateless[Option] with fx.Parallel with ChoiceSignature:
       override def onPure[A](a: A): Option[A] = Some(a)
 
       override def onUnpure[A](as: Option[A]): A !! ThisEffect =

@@ -4,7 +4,7 @@ import turbolift.{!!, Effect, Signature}
 import turbolift.extra_effects.default_handlers.monoGraphHandler
 
 
-trait MonoGraphSig[K, V] extends Signature:
+trait MonoGraphSignature[K, V] extends Signature:
   def empty(to: K): Unit !@! ThisEffect
   def incomingConst(to: K, value: V): Unit !@! ThisEffect
   def outgoingConst(from: K, value: V): Unit !@! ThisEffect
@@ -14,7 +14,7 @@ trait MonoGraphSig[K, V] extends Signature:
   def outgoings(from: K, tos: IterableOnce[K]): Unit !@! ThisEffect
 
 
-trait MonoGraph[K, V] extends Effect[MonoGraphSig[K, V]] with MonoGraphSig[K, V]:
+trait MonoGraph[K, V] extends Effect[MonoGraphSignature[K, V]] with MonoGraphSignature[K, V]:
   enclosing =>
   def empty(to: K): Unit !! this.type = perform(_.empty(to))
   def incomingConst(to: K, value: V): Unit !! this.type = perform(_.incomingConst(to, value))

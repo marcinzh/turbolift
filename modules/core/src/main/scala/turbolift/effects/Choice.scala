@@ -4,12 +4,12 @@ import turbolift.{!!, Effect, Signature}
 import turbolift.effects.default_handlers.{choiceHandler_first, choiceHandler_all} 
 
 
-trait ChoiceSig extends Signature:
+trait ChoiceSignature extends Signature:
   def fail: Nothing !@! ThisEffect
   def choose[A](as: Iterable[A]): A !@! ThisEffect
 
 
-sealed trait ChoiceEffect extends Effect[ChoiceSig] with ChoiceSig:
+sealed trait ChoiceEffect extends Effect[ChoiceSignature] with ChoiceSignature:
   final override val fail: Nothing !! this.type = perform(_.fail)
   final override def choose[A](as: Iterable[A]): A !! this.type = perform(_.choose(as))
 

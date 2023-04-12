@@ -1,14 +1,14 @@
 package turbolift.extra_effects.default_handlers
 import turbolift.!!
 import turbolift.effects.State
-import turbolift.extra_effects.{CyclicMemoizer, CyclicMemoizerSig}
+import turbolift.extra_effects.{CyclicMemoizer, CyclicMemoizerSignature}
 
 
 extension [K, V](fx: CyclicMemoizer[K, V])
   private[extra_effects] def cyclicMemoizerHandler: fx.ThisHandler.FreeId =
     case object Storage extends State[Map[K, Thunk[V]]]
 
-    new fx.Proxy[Storage.type] with CyclicMemoizerSig[K, V]:
+    new fx.Proxy[Storage.type] with CyclicMemoizerSignature[K, V]:
       override def domain: Set[K] !@! ThisEffect = _ => Storage.gets(_.keySet)
 
       override def toMap: Map[K, V] !@! ThisEffect = _ => Storage.gets(_.view.mapValues(_.apply()).toMap) //@#@TODO mapValues not strict yet
