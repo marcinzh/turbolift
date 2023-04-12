@@ -65,13 +65,13 @@ that it requests 3 effects: <code class="language-plaintext highlighter-rouge">M
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">turbolift.</span><span class="o">!!</span>
 
 <span class="k">val</span> <span class="nv">myComputation1</span> <span class="k">=</span> <span class="o">!!.</span><span class="py">unit</span>
-<span class="c1">// myComputation1: Computation[Unit, Any] = turbolift.Computation@5a6c547d</span>
+<span class="c1">// myComputation1: Computation[Unit, Any] = turbolift.Computation@6f26d53a</span>
 
 <span class="k">val</span> <span class="nv">myComputation2</span> <span class="k">=</span> <span class="o">!!.</span><span class="py">pure</span><span class="o">(</span><span class="mi">42</span><span class="o">)</span>
-<span class="c1">// myComputation2: Computation[Int, Any] = turbolift.Computation@877085a</span>
+<span class="c1">// myComputation2: Computation[Int, Any] = turbolift.Computation@38f4489f</span>
 </code></pre></div></div>
 
-<p>For more information, see <a href="https://javadoc.io/static/io.github.marcinzh/turbolift-core_3/0.48.0/turbolift/Computation.html">Computation API</a>.</p>
+<p>For more information, see <a href="https://javadoc.io/static/io.github.marcinzh/turbolift-core_3/0.50.0/turbolift/Computation.html">Computation API</a>.</p>
 
 <h3 id="effect-usage">Effect Usage</h3>
 
@@ -87,7 +87,7 @@ that it requests 3 effects: <code class="language-plaintext highlighter-rouge">M
 
 <span class="c1">// Invoking operation:</span>
 <span class="k">val</span> <span class="nv">computation</span> <span class="k">=</span> <span class="nv">MyState</span><span class="o">.</span><span class="py">put</span><span class="o">(</span><span class="mi">42</span><span class="o">)</span>
-<span class="c1">// computation: Computation[Unit, MyState] = turbolift.Computation@1904dc11</span>
+<span class="c1">// computation: Computation[Unit, MyState] = turbolift.Computation@9d31e27</span>
 </code></pre></div></div>
 
 <p>For more details, see <a href="custom/index.html">Defining your own effects &amp; handlers</a> and <a href="advanced/labelled.html">Effect labelling</a>.</p>
@@ -145,7 +145,7 @@ and wraps the result type in <code class="language-plaintext highlighter-rouge">
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">val</span> <span class="nv">myHandler123</span> <span class="k">=</span> <span class="n">myHandler1</span> <span class="o">&amp;&amp;&amp;!</span> <span class="n">myHandler2</span> <span class="o">&amp;&amp;&amp;!</span> <span class="n">myHandler3</span>
 </code></pre></div></div>
 
-<p>For more operations, see <a href="https://javadoc.io/static/io.github.marcinzh/turbolift-core_3/0.48.0/turbolift/Handler.html">Handler API</a>.</p>
+<p>For more operations, see <a href="https://javadoc.io/static/io.github.marcinzh/turbolift-core_3/0.50.0/turbolift/Handler.html">Handler API</a>.</p>
 
 <h3 id="signature--interpreter-usage">Signature &amp; Interpreter Usage</h3>
 
