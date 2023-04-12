@@ -3,6 +3,7 @@ import scala.annotation.implicitNotFound
 import turbolift.!!
 import turbolift.io.IO
 
+//@#@ not used anymore
 
 @implicitNotFound(msg =
   "Effect leak (implicit not found: CanUnsafeRun)"+

@@ -19,10 +19,6 @@ extension [E, E1](fx: ErrorEffect[E, E1])
           case (Left(e), k) => k.escape(f(e)).flatMap {
             case (a, k) => k(a)
           }
-          // case (Left(e), k) => k.local(f(e)).flatMap {
-          //   case (Right(a), k) => k(a)
-          //   case (Left(e), k) => !!.pure(Left(e))
-          // }
         }
 
     .toHandler

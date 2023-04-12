@@ -1,3 +1,9 @@
 package turbolift.mode
+import turbolift.internals.launcher.Launcher
 
-export turbolift.internals.launcher.LauncherConfigs.{ST, MT}
+
+/** Import this, to `run` computations in multi-threaded mode (default). */
+given MT: Launcher = Launcher.MT
+
+/** Import this, to `run` computations in single-threaded mode. */
+given ST: Launcher = Launcher.ST

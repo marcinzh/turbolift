@@ -1,110 +1,158 @@
 package turbolift.internals.engine
 import scala.annotation.{tailrec, switch}
+import scala.util.{Try, Success, Failure}
 import turbolift.{!!, Signature}
-import turbolift.internals.launcher.Promise
 import turbolift.internals.interpreter.{Control, Void}
 import turbolift.internals.primitives.{Tags, ComputationCases => CC}
 import turbolift.internals.engine.{StepCases => SC, HistoryCases => HC}
+import turbolift.io.Fiber
 
 
-private[engine] final class Fiber(
-  _constantBits: Int, _parent: Fiber, _promise: Promise.Untyped
-) extends FiberStub(_constantBits, _parent, _promise) with Runnable:
-
-  def this(promise: Promise.Untyped) = this(Bits.Tree_Root, null.asInstanceOf[Fiber], promise)
-  def this(parent: Fiber, constantBits: Int) = this(constantBits, parent, null.asInstanceOf[Promise.Untyped])
-
-  private var suspendedTick: Int = 0
-  private var suspendedTag: Int = 0
+private[turbolift] final class FiberImpl private (
+  val constantBits: Byte,
+  val parent: FiberImpl = null.asInstanceOf[FiberImpl],
+) extends FiberLink with Fiber.Unsealed:
+  @volatile private var varyingBits: Int = 0
+  private var suspendedTick: Short = 0
+  private var suspendedTag: Byte = 0
   private var suspendedPayload: Any = null
   private var suspendedStep: Step | Null = null
   private var suspendedStack: Stack | Null = null
   private var suspendedStore: Store | Null = null
   private var suspendedLookup: Lookup | Null = null
   private def suspendedConfig = suspendedStack.nn.config
-
+  protected[this] val pad1, pad2, pad3 = 0
   def isSuspended: Boolean = suspendedStack != null
+
+  def this(comp: !![?, ?], config: Config) =
+    this(Bits.Tree_Root)
+    init(comp.untyped, config)
+
+
+  private def init(comp: AnyComp, config: Config): Unit =
+    suspend(
+      tick    = config.tickLow,
+      tag     = comp.tag,
+      payload = comp,
+      step    = StepCases.Done,
+      stack   = Stack.initial(config),
+      store   = Store.empty,
+      lookup  = Lookup.initial,
+    )
+
+
+  private def suspend(
+    tick: Short,
+    tag: Byte,
+    payload: Any,
+    step: Step,
+    stack: Stack,
+    store: Store,
+    lookup: Lookup,
+  ): Unit =
+    assert(!isSuspended)
+    suspendedTick    = tick
+    suspendedTag     = tag
+    suspendedPayload = payload
+    suspendedStep    = step
+    suspendedStack   = stack
+    suspendedStore   = store
+    suspendedLookup  = lookup
+
 
   def submit(): Unit =
     assert(isSuspended)
-    suspendedConfig.nn.executor.execute(this)
+    suspendedConfig.nn.executor.enqueue(this)
 
 
-  override def run(): Unit =
+  def run(): FiberImpl =
     assert(isSuspended)
     suspendedTick = suspendedConfig.nn.tickLow
     try
       outerLoop(suspendedConfig.nn.tickHigh)
     catch e =>
-      findPromise.failure(
+      val e2 = 
         if e.isInstanceOf[Panic]
         then e
-        else
-          val s = s"Unhandled exception: ${e.getMessage}"
-          new Panic(s, e)
-      )
+        else new Panic(s"Unhandled exception: ${e.getMessage}", e)
+      val that = findRoot
+      that.setFailure(e2)
+      that
 
         
-  @tailrec private def outerLoop(tickHigh: Int): Unit =
-    if unsafeIsCancelled() then
+  @tailrec private def outerLoop(tickHigh: Short): FiberImpl =
+    val newBits =
+      synchronized {
+        val oldBits = varyingBits
+        if Bits.isPending(oldBits) && Bits.isCancelledButNotLatched(oldBits) then
+          val n = oldBits | Bits.Cancellation_Latched
+          varyingBits = n
+          n
+        else
+          oldBits
+      }
+
+    if Bits.isLatched(newBits) then
       suspendedTag = Tags.Step_Abort
       suspendedPayload = Cancelled
       suspendedStep = Prompt.global.abort
 
-    val currentTick    = suspendedTick
-    val currentTag     = suspendedTag
-    val currentPayload = suspendedPayload.nn
-    val currentStep    = suspendedStep.nn
-    val currentStack   = suspendedStack.nn
-    val currentStore   = suspendedStore.nn
-    val currentLookup  = suspendedLookup.nn
-    
-    suspendedTick    = 0
-    suspendedTag     = 0
-    suspendedPayload = null
-    suspendedStep    = null
-    suspendedStack   = null
-    suspendedStore   = null
-    suspendedLookup  = null
-
-    val that = innerLoop(
-      tick    = currentTick,
-      tag     = currentTag,
-      payload = currentPayload,
-      step    = currentStep,
-      stack   = currentStack,
-      store   = currentStore,
-      lookup  = currentLookup,
-      kont0   = new Kont,
-    )
-
-    if that != null then
-      if that.suspendedTick > 0 then
-        that.outerLoop(tickHigh)
-      else
-        if tickHigh > 0 then
-          that.suspendedTick = that.suspendedConfig.nn.tickLow
-          that.outerLoop(tickHigh - 1)
+    if Bits.isPending(newBits) && tickHigh > 0 then
+      val tickHigh2: Short =
+        if suspendedTick == 0 then
+          suspendedTick = suspendedConfig.nn.tickLow
+          (tickHigh - 1).toShort
         else
-          that.submit()
+          tickHigh
+      
+      val that =
+        val currentTick    = suspendedTick
+        val currentTag     = suspendedTag
+        val currentPayload = suspendedPayload.nn
+        val currentStep    = suspendedStep.nn
+        val currentStack   = suspendedStack.nn
+        val currentStore   = suspendedStore.nn
+        val currentLookup  = suspendedLookup.nn
+        
+        suspendedTick    = 0
+        suspendedTag     = 0
+        suspendedPayload = null
+        suspendedStep    = null
+        suspendedStack   = null
+        suspendedStore   = null
+        suspendedLookup  = null
 
+        innerLoop(
+          tick    = currentTick,
+          tag     = currentTag,
+          payload = currentPayload,
+          step    = currentStep,
+          stack   = currentStack,
+          store   = currentStore,
+          lookup  = currentLookup,
+          kont0   = new Kont,
+        )
+
+      that.outerLoop(tickHigh2)
+    else
+      this
 
   //===================================================================
-  // Inner Loop {{
+  // Inner Loop
   //===================================================================
 
   @tailrec def innerLoop(
-    tick: Int,
-    tag: Int,
+    tick: Short,
+    tag: Byte,
     payload: Any,
     step: Step,
     stack: Stack,
     store: Store,
     lookup: Lookup,
     kont0: Kont,
-  ): Fiber | Null =
+  ): FiberImpl =
     if tick > 0 then
-      val tick2 = tick - 1
+      val tick2 = (tick - 1).toShort
       (tag: @switch) match
         case Tags.MapFlat =>
           val theMap = payload.asInstanceOf[CC.Map[Any, Any]]
@@ -183,16 +231,16 @@ private[engine] final class Fiber(
           case Tags.ZipWithPar =>
             val theZipWith = payload.asInstanceOf[CC.ZipWithPar[Any, Any, Any, Any]]
             if !lookup.isFlowDiv && stack.lookup.top.isParallelizable && stack.config.isParallelismRequested then
-              val fiberLeft = new Fiber(this, Bits.Zip_Left)
-              val fiberRight = new Fiber(this, Bits.Zip_Right)
-              if this.makeChildrenAwaited(fiberLeft, fiberRight) then
+              val fiberLeft = new FiberImpl(Bits.Zip_Left, this)
+              val fiberRight = new FiberImpl(Bits.Zip_Right, this)
+              if makeChildrenAwaited(fiberLeft, fiberRight) then
                 val (storeTmp, storeLeft) = stack.cascadedFork(store)
                 val (storeDown, storeRight) = stack.cascadedFork(storeTmp)
-                this.suspendedPayload = theZipWith.fun
-                this.suspendedStep = step
-                this.suspendedStack = stack
-                this.suspendedStore = storeDown
-                this.suspendedLookup = lookup
+                suspendedPayload = theZipWith.fun
+                suspendedStep = step
+                suspendedStack = stack
+                suspendedStore = storeDown
+                suspendedLookup = lookup
                 fiberRight.suspend(0, theZipWith.rhs.tag, theZipWith.rhs, SC.Done, stack.fork, storeRight, stack.fork.lookup)
                 fiberRight.submit()
                 fiberLeft.innerLoop(tick2, theZipWith.lhs.tag, theZipWith.lhs, SC.Done, stack.fork, storeLeft, stack.fork.lookup, kont0)
@@ -203,12 +251,12 @@ private[engine] final class Fiber(
               innerLoop(tick2, comp1.tag, comp1, step, stack, store, lookup, kont0)
 
           case Tags.Step_ZipLeft =>
-            val theZipWith = payload.asInstanceOf[SC.ZipLeft]
+            val theZipLeft = payload.asInstanceOf[SC.ZipLeft]
             //@#@TODO
             ???
 
           case Tags.Step_ZipRight =>
-            val theZipWith = payload.asInstanceOf[SC.ZipRight]
+            val theZipRight = payload.asInstanceOf[SC.ZipRight]
             //@#@TODO
             ???
 
@@ -287,36 +335,35 @@ private[engine] final class Fiber(
                   val step3 = if prompt == theAbort.prompt then step2 else step
                   innerLoop(tick2, step3.tag, payload, step3, stack2, store2, stack2.lookup, kont0)
             else
-              this.constantBits & Bits.Tree_Mask match 
-                case Bits.Tree_Root =>
-                  step.tag match
-                    case Tags.Step_Done =>
-                      promise.success(payload)
-                      null
+              val isSuccess =
+                step.tag match 
+                  case Tags.Step_Done =>
+                    setSuccess(payload)
+                    true
 
-                    case Tags.Step_Abort =>
-                      assert(step.isGlobalAbort)
-                      promise.failure(payload.asInstanceOf[Throwable])
-                      null
+                  case Tags.Step_Abort =>
+                    setFailure(payload)
+                    false
+
+              constantBits & Bits.Tree_Mask match 
+                case Bits.Tree_Root => this
 
                 case Bits.Tree_Zip =>
-                  this.suspendedPayload = payload
-                  val bits = parent.tryWin(whichChildAmI, isSuccess = step.tag == Tags.Step_Done)
-                  if (bits & Bits.Winner) != 0 then
-                    null
+                  val bits = parent.tryWin(whichChildAmI, isSuccess, true)
+                  if Bits.isWinner(bits) then
+                    this
                   else
-                    //// I am the loser.
                     val successBits = bits & Bits.Child_Mask
                     if successBits == Bits.Child_Both then
                       val comp =
-                        val ftorLeft  = parent.childLeft.nn.suspendedPayload
-                        val ftorRight = parent.childRight.nn.suspendedPayload
+                        val ftorLeft  = parent.childLeft.suspendedPayload
+                        val ftorRight = parent.childRight.suspendedPayload
                         parent.suspendedStack.nn.cascadedZipAndUnpure(
                           ftorLeft = ftorLeft,
                           ftorRight = ftorRight,
                           fun = parent.suspendedPayload.asInstanceOf[(Any, Any) => Any]
                         )
-                      parent.clearChildren()
+                      parent.clearLinks()
                       parent.suspendedTick = tick2
                       parent.suspendedTag = comp.tag
                       parent.suspendedPayload = comp
@@ -324,9 +371,9 @@ private[engine] final class Fiber(
                     else
                       val payload2 =
                         if successBits == Bits.Child_Left
-                        then parent.childRight.nn.suspendedPayload
-                        else parent.childLeft.nn.suspendedPayload
-                      parent.clearChildren()
+                        then parent.childRight.suspendedPayload
+                        else parent.childLeft.suspendedPayload
+                      parent.clearLinks()
                       parent.suspendedTick = tick2
                       parent.suspendedTag = Tags.Step_Abort
                       parent.suspendedPayload = payload2
@@ -363,45 +410,143 @@ private[engine] final class Fiber(
               val stack2 = stack.pushConfig(config2, step)
               innerLoop(tick2, theConfigMod.body.tag, theConfigMod.body, SC.Done, stack2, store, lookup, kont0)
     else
-      this.suspend(0, tag, payload, step, stack, store, lookup)
+      suspend(0, tag, payload, step, stack, store, lookup)
       this
 
   //===================================================================
-  // Inner Loop }}
+  // Finalization
   //===================================================================
 
-  private def suspend(
-    tick: Int,
-    tag: Int,
-    payload: Any,
-    step: Step,
-    stack: Stack,
-    store: Store,
-    lookup: Lookup,
-  ): Unit =
-    assert(!isSuspended)
-    suspendedTick    = tick
-    suspendedTag     = tag
-    suspendedPayload = payload
-    suspendedStep    = step
-    suspendedStack   = stack
-    suspendedStore   = store
-    suspendedLookup  = lookup
+  def isRoot: Boolean = Bits.isRoot(constantBits)
+  def isPending: Boolean = Bits.isPending(varyingBits)
+  def isSuccess: Boolean = Bits.isSuccess(varyingBits)
 
-  private[this] def init(comp: AnyComp, config: Config): Unit =
-    suspend(
-      tick = config.tickLow,
-      tag = comp.tag,
-      payload = comp,
-      step = StepCases.Done,
-      stack = Stack.initial(config),
-      store = Store.empty,
-      lookup = Lookup.initial,
-    )
+  def isSubstitute: Boolean = Bits.isSubstitute(varyingBits)
+  def setSubstitute(): Unit = varyingBits = varyingBits | Bits.Substitute
+  
+  private def findRoot: FiberImpl = if isRoot then this else parent.findRoot
+
+  private def setSuccess(a: Any): Unit = setResult(a, Bits.Phase_Success)
+  private def setFailure(a: Any): Unit = setResult(a, Bits.Phase_Failure)
+
+  private def setResult(valueOrThrowable: Any, bit: Int): Unit =
+    synchronized {
+      suspendedPayload = valueOrThrowable
+      varyingBits = varyingBits | bit
+    }
+
+  def doWait(): Unit =
+    synchronized {
+      if isPending then
+        wait()
+    }
+
+  def doNotify(): Unit =
+    synchronized {
+      notify()
+    }
+
+  def toTry[A](): Try[A] =
+    if isSuccess then
+      val result = Success(suspendedPayload.asInstanceOf[A])
+      suspendedPayload = null
+      result
+    else
+      val result = Failure(suspendedPayload.asInstanceOf[Throwable])
+      suspendedPayload = null
+      result
+
+  //===================================================================
+  // Child/Parent
+  //===================================================================
+
+  private def childLeft: FiberImpl = linkLeft.asInstanceOf[FiberImpl]
+  private def childRight: FiberImpl = linkRight.asInstanceOf[FiberImpl]
+  private def whichChildAmI: Int = constantBits & Bits.Child_Mask
+  private def getSiblingOfChild(childBit: Int): FiberImpl = getChild(childBit ^ Bits.Child_Mask)
+  private def getSibling: FiberImpl | Null = parent.getSiblingOfChild(whichChildAmI)
+
+  private def getChild(childBit: Int): FiberImpl =
+    childBit match
+      case Bits.Child_Left => childLeft
+      case Bits.Child_Right => childRight
+
+  private def makeChildrenAwaited(lhs: FiberImpl, rhs: FiberImpl): Boolean =
+    val ok =
+      synchronized {
+        val oldBits = varyingBits
+        if !Bits.isCancelled(oldBits) then
+          varyingBits = oldBits | Bits.Awaiting_Both
+          true
+        else
+          false
+      }
+    //@#@THOV
+    if ok then
+      linkLeft = lhs
+      linkRight = rhs
+    ok
 
 
-private[internals] object Fiber:
-  def makeRoot[A, U](comp: A !! U, promise: Promise[A], config: Config): Fiber =
-    val fiber = new Fiber(promise.untyped)
-    fiber.init(comp.untyped, config)
-    fiber
+  private def tryWin(childBit: Int, isSuccess: Boolean, isZip: Boolean): Int =
+    val successBit = if isSuccess then childBit else 0
+    val awaitingBit = childBit << Bits.Awaiting_Shift
+    val resultBits =
+      synchronized {
+        val oldBits = varyingBits
+        val winnerBit = 
+          if (oldBits & Bits.Awaiting_Mask) == Bits.Awaiting_Both then
+            varyingBits = (oldBits & ~awaitingBit) | successBit
+            Bits.Winner
+          else
+            varyingBits = oldBits & ~(Bits.Awaiting_Mask | Bits.Child_Mask)
+            Bits.Loser
+        (oldBits & Bits.Child_Mask) | successBit | winnerBit
+      }
+    if (!isSuccess || !isZip) && Bits.isWinner(resultBits) then
+      //// Cancel the loser
+      getSiblingOfChild(childBit).cull()
+    resultBits
+
+
+  //===================================================================
+  // Cancelling
+  //===================================================================
+
+  def isCancelled(): Boolean = Bits.isCancelled(varyingBits)
+
+  private def cull(): Unit = cullRec(this, Bits.Child_None)
+
+  @tailrec private def cullRec(limit: FiberImpl, comingFromChild: Int): Unit =
+    val nextToVisit: FiberImpl | Null = comingFromChild match
+      case Bits.Child_None =>
+        //// coming from parent
+        val awaitingBits =
+          synchronized {
+            val oldBits = varyingBits
+            if !Bits.isCancelled(oldBits) then
+              varyingBits = oldBits | Bits.Cancellation_Requested
+              oldBits & Bits.Awaiting_Mask
+            else
+              Bits.Awaiting_None
+          }
+        awaitingBits match
+          case Bits.Awaiting_None => null
+          case Bits.Awaiting_Right => childRight
+          case _ => childLeft
+
+      case Bits.Child_Left =>
+        varyingBits & Bits.Awaiting_Mask match
+          case Bits.Awaiting_Right => childRight
+          case _ => null
+
+      case Bits.Child_Right => null
+
+    if nextToVisit != null then
+      //// go to first/next child
+      nextToVisit.cullRec(limit, Bits.Child_None)
+    else
+      //// go back to parent
+      if this != limit then
+        parent.cullRec(limit, whichChildAmI)
+

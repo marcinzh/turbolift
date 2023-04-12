@@ -1,5 +1,5 @@
 package turbolift.internals.engine
-import java.util.concurrent.Executor
+import turbolift.internals.executor.Executor
 
 
 private[internals] final class Config(

@@ -1,7 +1,7 @@
 package turbolift.effects.default_handlers
 import java.lang.StrictMath
-import Splitmix64._
 import Double.NaN
+import Splitmix64._
 
 
 private[effects] case class Splitmix64(value: Long, secondGaussian: Double = NaN):
