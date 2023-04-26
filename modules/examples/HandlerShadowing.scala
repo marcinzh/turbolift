@@ -1,19 +1,18 @@
 package examples
-import turbolift.!!
+import turbolift.{!!, Signature, Effect, Handler}
 import turbolift.Extensions._
-import turbolift.io.IO
-import turbolift.effects.{Console, ConsoleSignature, State}
+import turbolift.effects.State
 
 
 case object HandlerShadowing extends Function0[Unit]:
-  private val lorem = """
+  val lorem = """
     Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
     Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
     Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
     Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
   """
 
-  private val lines =
+  val lines =
     def loop(words: Vector[String], line: String, lines: Vector[String]): Vector[String] =
       words match
         case Vector() => lines :+ line
@@ -25,7 +24,7 @@ case object HandlerShadowing extends Function0[Unit]:
         case _ => ???
     loop(lorem.split("\\s+").filter(_.nonEmpty).toVector, "", Vector())
 
-  private val palette = Vector(
+  val palette = Vector(
     Console.MAGENTA,
     Console.RED,
     Console.YELLOW,
@@ -34,67 +33,69 @@ case object HandlerShadowing extends Function0[Unit]:
     Console.BLUE,
   )
 
-  extension (fx: Console.type)
-    private def rainbow: fx.ThisHandler.Id[Console & IO] =
+  //===== Effect =====
+
+  trait KonsoleSignature extends Signature:
+    def log(text: String): Unit !@! ThisEffect
+
+  case object Konsole extends Effect[KonsoleSignature] with KonsoleSignature:
+    override def log(text: String): Unit !@! ThisEffect = perform(_.log(text))
+
+  type Konsole = Konsole.type
+
+  //===== Handlers =====
+
+  extension (fx: Konsole)
+    def plain =
+      new fx.Proxy[Any] with KonsoleSignature:
+        override def log(text: String): Unit !@! ThisEffect =
+          _ => !!.impure(println(text))
+      .toHandler
+
+
+    def sarcastic =
+      new fx.Proxy[Konsole] with KonsoleSignature:
+        override def log(text: String): Unit !@! ThisEffect =
+          _ =>
+            val (text2, _) = text.foldLeft(("", false)) {
+              case ((acc, flip), char) =>
+                if char.isLetter then
+                  val char2 = if flip then char.toUpper else char.toLower
+                  (acc :+ char2, !flip)
+                else
+                  (acc :+ char, flip)
+            }
+            Konsole.log(text2)
+      .toHandler
+
+
+    def rainbow =
       case object S extends State[Int]
-
-      new fx.Proxy[S.type & Console] with ConsoleSignature:
-        override def print(text: String): Unit !@! ThisEffect = _ => Console.print(text)
-        override def printErr(text: String): Unit !@! ThisEffect = _ => Console.printErr(text)
-        override def printLineErr(text: String): Unit !@! ThisEffect = _ => Console.printLineErr(text)
-        override def readLine: String !@! ThisEffect = _ => Console.readLine
-
-        override def printLine(text: String): Unit !@! ThisEffect =
+      new fx.Proxy[S.type & Konsole] with KonsoleSignature:
+        override def log(text: String): Unit !@! ThisEffect =
           _ =>
             for
               i <- S.getModify(n => (n + 1) % palette.size)
               color = palette(i)
-              _ <- Console.printLine(s"${color}$text${Console.RESET}")
+              _ <- Konsole.log(s"${color}$text${Console.RESET}")
             yield ()
       .toHandler
-      .partiallyProvideWith[Console](S.handlers.shared(0).dropState)
+      .partiallyProvideWith[Konsole](S.handler(0).dropState)
 
-
-    private def sarcastic: fx.ThisHandler.Id[Console & IO] =
-      case object S extends State[Boolean]
-
-      new fx.Proxy[S.type & Console] with ConsoleSignature:
-        override def print(text: String): Unit !@! ThisEffect = _ => Console.print(text)
-        override def printErr(text: String): Unit !@! ThisEffect = _ => Console.printErr(text)
-        override def printLineErr(text: String): Unit !@! ThisEffect = _ => Console.printLineErr(text)
-        override def readLine: String !@! ThisEffect = _ => Console.readLine
-
-        override def printLine(text: String): Unit !@! ThisEffect =
-          _ =>
-            for
-              x <- S.get
-              (text2, x2) = text.foldLeft(("", x)) {
-                case ((acc, x), char) =>
-                  if char.isLetter then
-                    val char2 = if x then char.toUpper else char.toLower
-                    (acc :+ char2, !x)
-                  else
-                    (acc :+ char, x)
-              }
-              _ <- S.put(x2)
-              _ <- Console.printLine(text2)
-            yield ()
-      .toHandler
-      .partiallyProvideWith[Console](S.handlers.shared(true).dropState)
-
+  //===== Run =====
 
   override def apply() =
-    val prog = lines.foreach_!!(Console.println)
+    val prog = lines.foreach_!!(Konsole.log)
 
     val cases = List(
-      ("Plain", Console.handler),
-      ("Rainbow", Console.rainbow %%! Console.handler),
-      ("Sarcastic", Console.sarcastic %%! Console.handler),
-      ("Sarcastic & Rainbow", Console.sarcastic %%! Console.rainbow %%! Console.handler),
+      ("Plain", Konsole.plain),
+      ("Rainbow", Konsole.rainbow %%! Konsole.plain),
+      ("Sarcastic", Konsole.sarcastic %%! Konsole.plain),
+      ("Sarcastic + Rainbow", Konsole.sarcastic %%! Konsole.rainbow %%! Konsole.plain),
     )
 
     for (label, handler) <- cases do
-      val title = s"$label Console handler:"
+      val title = s"Konsole handler = $label"
       val line = "=" * title.size
       println(line)
       println(title)
