@@ -28,20 +28,72 @@ This condition doesn't apply to fibers forked & joined **explicitly** (WIP).
 
 ### Parallelizability of predefined handlers
 
-| Predefined effect | Predefined handler for this effect | Is the handler parallelizable? |
-|---|---|---|
-| `Reader`  | default  | ✅ |
-| `Writer`  | `local`  | ✅ |
-| `Writer`  | `shared` | ✅ |
-| `State`   | `local`  | ❌|
-| `State`   | `shared` | ✅ |
-| `Error`   | `first`  | ❌|
-| `Error`   | `all`    | ✅ |
-| `Choice`  | `first`  | ✅ |
-| `Choice`  | `all`    | ✅ |
-| `Random`  | `local`  | ✅ |
-| `Random`  | `shared` | ✅ |
-| `Console` | default  | ✅ |
+<table>
+  <thead>
+    <tr>
+      <th align="center">Predefined effect</th>
+      <th align="center">Predefined handler for this effect</th>
+      <th align="center">Is the handler parallelizable?</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>Reader</code></td>
+      <td>default</td>
+      <td>✅</td>
+    </tr>
+    <tr>
+      <td rowspan="2"><code>Writer</code></td>
+      <td><code>local</code></td>
+      <td>✅</td>
+    </tr>
+    <tr>
+      <td><code>shared</code></td>
+      <td>✅</td>
+    </tr>
+    <tr>
+      <td rowspan="2"><code>State</code></td>
+      <td><code>local</code></td>
+      <td>❌</td>
+    </tr>
+    <tr>
+      <td><code>shared</code></td>
+      <td>✅</td>
+    </tr>
+    <tr>
+      <td rowspan="2"><code>Error</code></td>
+      <td><code>first</code></td>
+      <td>❌</td>
+    </tr>
+    <tr>
+      <td><code>all</code></td>
+      <td>✅</td>
+    </tr>
+    <tr>
+      <td rowspan="2"><code>Choice</code></td>
+      <td><code>first</code></td>
+      <td>✅</td>
+    </tr>
+    <tr>
+      <td><code>all</code></td>
+      <td>✅</td>
+    </tr>
+    <tr>
+      <td rowspan="2"><code>Random</code></td>
+      <td><code>local</code></td>
+      <td>✅</td>
+    </tr>
+    <tr>
+      <td><code>shared</code></td>
+      <td>✅</td>
+    </tr>
+    <tr>
+      <td><code>Console</code></td>
+      <td>default</td>
+      <td>✅</td>
+    </tr>
+  </tbody>
+</table>
 
 &nbsp;
 
