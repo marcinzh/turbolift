@@ -4,25 +4,20 @@ import turbolift.Extensions._
 import turbolift.effects.State
 
 
-case object HandlerShadowing extends Function0[Unit]:
+case object HandlerShadowing extends Example:
+  override def description: String = """
+    Handler can eliminate an effect, and at the same time re-introduce it, so that
+    it can be handled again by a different handler.
+    This allows chaining handlers for given effect, in a pipeline-like fashion.
+    Hypothetical application: middleware?
+  """
+
   val lorem = """
     Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
     Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
     Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
     Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
   """
-
-  val lines =
-    def loop(words: Vector[String], line: String, lines: Vector[String]): Vector[String] =
-      words match
-        case Vector() => lines :+ line
-        case w +: ws =>
-          val line2 = if line.isEmpty then w else s"$line $w"
-          if line2.size < 40
-          then loop(ws.toVector, line2, lines)
-          else loop(ws.toVector, w, lines :+ line)
-        case _ => ???
-    loop(lorem.split("\\s+").filter(_.nonEmpty).toVector, "", Vector())
 
   val palette = Vector(
     Console.MAGENTA,
@@ -85,6 +80,8 @@ case object HandlerShadowing extends Function0[Unit]:
   //===== Run =====
 
   override def apply() =
+    val lines = Utils.paragraph(lorem, 40)
+    
     val prog = lines.foreach_!!(Konsole.log)
 
     val cases = List(
