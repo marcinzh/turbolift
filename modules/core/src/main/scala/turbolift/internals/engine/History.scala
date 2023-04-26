@@ -4,7 +4,7 @@ import turbolift.internals.primitives.Tags
 import HistoryCases._
 
 
-private[engine] sealed abstract class History(val tag: Int):
+private[engine] sealed abstract class History(val tag: Byte):
   def isEmpty: Boolean = tag == Tags.History_Empty
 
 

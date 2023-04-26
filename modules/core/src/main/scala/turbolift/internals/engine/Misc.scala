@@ -9,3 +9,9 @@ private[internals] final class Panic(m: String, c: Throwable | Null = null) exte
 
 private[internals] case object Cancelled extends Throwable("Fiber cancelled", null, false, false):
   override def setStackTrace(x: Array[StackTraceElement]): Unit = ()
+
+
+
+private[engine] sealed trait Stop
+private[engine] case object Yielded extends Stop
+private[engine] case object Completed extends Stop

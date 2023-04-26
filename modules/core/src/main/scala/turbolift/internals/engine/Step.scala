@@ -4,7 +4,7 @@ import turbolift.internals.primitives.Tags
 import StepCases._
 
 
-private[engine] sealed abstract class Step(val tag: Int):
+private[engine] sealed abstract class Step(val tag: Byte):
   def doneOnce(that: Step): Step = if tag == Tags.Step_Done then that else this
   def isGlobalAbort: Boolean =
     this match
@@ -25,7 +25,7 @@ private[engine] sealed abstract class Step(val tag: Int):
     loop(this, Vector()).mkString("{", "; ", "}")
 
 private[engine] object StepCases:
-  final class More(n: Int, val fun: Any => Any, val next: Step) extends Step(n)
+  final class More(_tag: Byte, val fun: Any => Any, val next: Step) extends Step(_tag)
   final class Hop(val savedLookup: Lookup, val next: Step) extends Step(Tags.Step_Hop)
   //@#@TODO
   final class ZipLeft(val todoRight: AnyComp, fun: (Any, Any) => Any, val next: Step) extends Step(Tags.Step_ZipLeft)

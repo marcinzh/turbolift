@@ -19,7 +19,7 @@ import turbolift.internals.primitives.Primitives
  * @tparam U Type-level set of effects requested by this computation.
  */
 
-sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift] val tag: Int):
+sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift] val tag: Byte):
   final def map[B](f: A => B): B !! U = Primitives.map(this, f)
   final def flatMap[B, U2 <: U](f: A => B !! U2): B !! U2 = Primitives.flatMap(this, f)
   final def flatten[B, U2 <: U](implicit ev: A <:< (B !! U2)): B !! U2 = flatMap(ev)
@@ -107,7 +107,7 @@ sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift]
   */
 
 object Computation extends ComputationExtensions:
-  private[turbolift] abstract class Unsealed[A, U](_tag: Int) extends Computation[A, U](_tag)
+  private[turbolift] abstract class Unsealed[A, U](_tag: Byte) extends Computation[A, U](_tag)
   private[turbolift] type Untyped = Computation[Any, Any]
 
   /** Same as `!!.pure(())`. */

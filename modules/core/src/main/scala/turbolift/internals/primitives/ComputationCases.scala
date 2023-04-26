@@ -8,7 +8,7 @@ import turbolift.internals.engine.{Config, Prompt}
 
 private[turbolift] object ComputationCases:
   final class Pure[A](val value: A) extends Unsealed[A, Any](Tags.Pure)
-  final class Map[A, U](n: Int, val comp: Untyped, val fun: Any => Any) extends Unsealed[A, U](n)
+  final class Map[A, U](_tag: Byte, val comp: Untyped, val fun: Any => Any) extends Unsealed[A, U](_tag)
   final class ZipWithPar[A, B, C, U](val lhs: A !! U, val rhs: B !! U, val fun: (A, B) => C) extends Unsealed[C, U](Tags.ZipWithPar)
   final class Perform[A, U, Z <: Signature](val sig: Signature, val op: Z => Any) extends Unsealed[A, U](Tags.Perform)
   final class Impure[A, U](val thunk: () => A) extends Unsealed[A, U](Tags.Impure)

@@ -2,20 +2,20 @@ package turbolift.internals.extensions
 import scala.util.Try
 import turbolift.{!!, Computation, Handler}
 import turbolift.io.IO
-import turbolift.internals.launcher.{Launcher, LauncherConfig}
-import turbolift.internals.auxx.{CanRun, CanUnsafeRun, CanPartiallyHandle}
+import turbolift.internals.launcher.Launcher
+import turbolift.internals.auxx.CanPartiallyHandle
 
 
 /** No need to use this trait directly, because it's inherited by [[turbolift.Computation Computation]]'s companion object. */
 /*private[turbolift]*/ trait ComputationExtensions:
   extension [A](thiz: Computation[A, Any])
     /** Runs the computation, provided that it requests no effects. */
-    def run(using config: LauncherConfig = LauncherConfig.default): A = Launcher.run(thiz).get
+    def run(using launcher: Launcher = Launcher.default): A = launcher.run(thiz).get
 
 
   extension [A, U >: IO](thiz: Computation[A, U])
     /** Runs the computation, provided that it requests IO effect only, or none at all. */
-    def unsafeRun(using config: LauncherConfig = LauncherConfig.default): Try[A] = Launcher.run(thiz)
+    def unsafeRun(using launcher: Launcher = Launcher.default): Try[A] = launcher.run(thiz)
 
 
   extension [A, U](thiz: Computation[A, U])
