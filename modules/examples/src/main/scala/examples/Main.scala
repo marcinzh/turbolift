@@ -15,6 +15,7 @@ object Main:
   val cases = List(
     HandlerShadowing,
     ReentrantRun,
+    PingPong,
   )
 
   def describe() =
