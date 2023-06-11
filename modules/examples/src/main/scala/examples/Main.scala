@@ -16,6 +16,7 @@ object Main:
     HandlerShadowing,
     ReentrantRun,
     PingPong,
+    YieldReplace,
   )
 
   def describe() =
