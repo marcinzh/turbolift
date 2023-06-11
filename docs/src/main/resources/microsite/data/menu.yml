@@ -26,6 +26,9 @@ options:
     - title: "Higher Order Effects"
       url: advanced/higher.html
 
+    - title: "Bidirectional Effects"
+      url: advanced/bidir.html
+
   - title: IO
     url: io.html
 

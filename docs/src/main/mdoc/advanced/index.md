@@ -10,3 +10,6 @@ title:  Advanced Features
 - [Applicative Effects](applicative.html)
 
 - [Higher Order Effects](higher.html)
+
+- [Bidirectional Effects](bidir.html)
+
