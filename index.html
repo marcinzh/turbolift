@@ -42,7 +42,7 @@ See <a href="advanced/index.html">Advanced Features</a>.</p>
     <span class="o">}</span>
     <span class="k">_</span> <span class="k">&lt;-</span> <span class="nv">MyState</span><span class="o">.</span><span class="py">put</span><span class="o">(</span><span class="n">c</span><span class="o">)</span>
   <span class="nf">yield</span> <span class="o">()</span>
-<span class="c1">// program: Computation[Unit, MyReader &amp; MyError &amp; MyState] = turbolift.Computation@600f2f46</span>
+<span class="c1">// program: Computation[Unit, MyReader &amp; MyError &amp; MyState] = turbolift.Computation@114e430e</span>
 
 <span class="k">val</span> <span class="nv">result</span> <span class="k">=</span> <span class="n">program</span>
   <span class="o">.</span><span class="py">handleWith</span><span class="o">(</span><span class="nv">MyState</span><span class="o">.</span><span class="py">handler</span><span class="o">(</span><span class="mi">100</span><span class="o">).</span><span class="py">justState</span><span class="o">)</span>

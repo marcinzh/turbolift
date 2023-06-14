@@ -126,7 +126,7 @@ until it’s determined that the first one completes without error.</p>
 <span class="k">case</span> <span class="k">object</span> <span class="nc">MyError</span> <span class="k">extends</span> <span class="nc">ErrorK</span><span class="o">[</span><span class="kt">List</span>, <span class="kt">String</span><span class="o">]</span>
 
 <span class="k">val</span> <span class="nv">program</span> <span class="k">=</span> <span class="nv">MyError</span><span class="o">.</span><span class="py">raise</span><span class="o">(</span><span class="s">"foo"</span><span class="o">)</span> <span class="o">&amp;!</span> <span class="nv">MyError</span><span class="o">.</span><span class="py">raise</span><span class="o">(</span><span class="s">"bar"</span><span class="o">)</span>
-<span class="c1">// program: Computation[Nothing, MyError] = turbolift.Computation@29906e02</span>
+<span class="c1">// program: Computation[Nothing, MyError] = turbolift.Computation@5a20542d</span>
 
 <span class="k">val</span> <span class="nv">result1</span> <span class="k">=</span> <span class="nv">program</span><span class="o">.</span><span class="py">handleWith</span><span class="o">(</span><span class="nv">MyError</span><span class="o">.</span><span class="py">handlers</span><span class="o">.</span><span class="py">first</span><span class="o">).</span><span class="py">run</span>
 <span class="c1">// result1: Either[List[String], Nothing] = Left(value = List("foo"))</span>

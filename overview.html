@@ -65,10 +65,10 @@ that it requests 3 effects: <code class="language-plaintext highlighter-rouge">M
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">turbolift.</span><span class="o">!!</span>
 
 <span class="k">val</span> <span class="nv">myComputation1</span> <span class="k">=</span> <span class="o">!!.</span><span class="py">unit</span>
-<span class="c1">// myComputation1: Computation[Unit, Any] = turbolift.Computation@3b26cf3e</span>
+<span class="c1">// myComputation1: Computation[Unit, Any] = turbolift.Computation@109f9abc</span>
 
 <span class="k">val</span> <span class="nv">myComputation2</span> <span class="k">=</span> <span class="o">!!.</span><span class="py">pure</span><span class="o">(</span><span class="mi">42</span><span class="o">)</span>
-<span class="c1">// myComputation2: Computation[Int, Any] = turbolift.Computation@350447</span>
+<span class="c1">// myComputation2: Computation[Int, Any] = turbolift.Computation@9b91cc5</span>
 </code></pre></div></div>
 
 <p>For more information, see <a href="https://javadoc.io/static/io.github.marcinzh/turbolift-core_3/0.54.0/turbolift/Computation.html">Computation API</a>.</p>
@@ -87,7 +87,7 @@ that it requests 3 effects: <code class="language-plaintext highlighter-rouge">M
 
 <span class="c1">// Invoking operation:</span>
 <span class="k">val</span> <span class="nv">computation</span> <span class="k">=</span> <span class="nv">MyState</span><span class="o">.</span><span class="py">put</span><span class="o">(</span><span class="mi">42</span><span class="o">)</span>
-<span class="c1">// computation: Computation[Unit, MyState] = turbolift.Computation@7192ec74</span>
+<span class="c1">// computation: Computation[Unit, MyState] = turbolift.Computation@1b1e7362</span>
 </code></pre></div></div>
 
 <p>For more details, see <a href="custom/index.html">Defining your own effects &amp; handlers</a> and <a href="advanced/labelled.html">Effect labelling</a>.</p>

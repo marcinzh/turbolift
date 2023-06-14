@@ -97,7 +97,7 @@ They are defined entirely in terms of <code class="language-plaintext highlighte
     <span class="k">_</span> <span class="k">&lt;-</span> <span class="o">!!.</span><span class="py">when</span><span class="o">(</span><span class="nf">isOdd</span><span class="o">(</span><span class="n">x</span><span class="o">))(</span><span class="nv">MyFlip</span><span class="o">.</span><span class="py">fail</span><span class="o">)</span>
     <span class="n">y</span> <span class="k">&lt;-</span> <span class="nv">MyFlip</span><span class="o">.</span><span class="py">select</span><span class="o">(</span><span class="sc">'a'</span> <span class="n">to</span> <span class="sc">'b'</span><span class="o">)</span>
   <span class="k">yield</span> <span class="n">s</span><span class="s">"$x$y"</span>
-<span class="c1">// program: Computation[String, MyFlip] = turbolift.Computation@4a232255</span>
+<span class="c1">// program: Computation[String, MyFlip] = turbolift.Computation@6e9c20a</span>
 
 <span class="k">val</span> <span class="nv">result1</span> <span class="k">=</span> <span class="nv">program</span><span class="o">.</span><span class="py">handleWith</span><span class="o">(</span><span class="nv">MyFlip</span><span class="o">.</span><span class="py">findAll</span><span class="o">).</span><span class="py">run</span>
 <span class="c1">// result1: Vector[String] = Vector("2a", "2b", "4a", "4b")</span>

@@ -21,7 +21,7 @@ in addition to the self-referenced one.</p>
 <p>Let’s have such another effect defined:</p>
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">turbolift.effects.Error</span>
 
-<span class="k">case</span> <span class="k">object</span> <span class="nc">FileNotFound</span> <span class="k">extends</span> <span class="nc">Error</span><span class="o">[</span><span class="kt">FileNotFound</span><span class="o">]</span>
+<span class="k">case</span> <span class="k">object</span> <span class="nc">FileNotFound</span> <span class="k">extends</span> <span class="nc">Error</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span>
 <span class="k">type</span> <span class="kt">FileNotFound</span> <span class="o">=</span> <span class="nv">FileNotFound</span><span class="o">.</span><span class="py">type</span>
 </code></pre></div></div>
 
