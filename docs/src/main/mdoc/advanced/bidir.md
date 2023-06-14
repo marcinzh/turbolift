@@ -29,7 +29,7 @@ Let's have such another effect defined:
 ```scala mdoc:reset
 import turbolift.effects.Error
 
-case object FileNotFound extends Error[FileNotFound]
+case object FileNotFound extends Error[String]
 type FileNotFound = FileNotFound.type
 ```
 
