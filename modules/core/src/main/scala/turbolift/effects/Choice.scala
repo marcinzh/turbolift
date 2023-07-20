@@ -38,6 +38,6 @@ case object Fail extends ChoiceEffect:
 type Fail = Fail.type
 
 case object Each extends Choice:
-  def void: ThisHandler.FreeConst[Unit] = handlers.all.void
+  def void: ThisHandler.Free.Const[Unit] = handlers.all.void
 
 type Each = Each.type

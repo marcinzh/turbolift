@@ -17,4 +17,4 @@ trait Reader[R] extends Effect[ReaderSignature[R]] with ReaderSignature[R]:
   final override def localModify[A, U <: this.type](f: R => R)(body: A !! U): A !! U = perform(_.localModify(f)(body))
 
   /** Default handler for this effect. */
-  def handler(initial: R): ThisHandler.FreeId = this.readerHandler(initial)
+  def handler(initial: R): ThisHandler.Free.Id = this.readerHandler(initial)

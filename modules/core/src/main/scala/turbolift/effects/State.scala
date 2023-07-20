@@ -38,4 +38,4 @@ trait State[S] extends Effect[StateSignature[S]] with StateSignature[S]:
   /** Predefined handlers for this effect. */
   object handlers:
     def local(initial: S): ThisHandler.Free[(_, S)] = State.this.stateHandler_local(initial)
-    def shared(initial: S): ThisHandler[(_, S), IO] = State.this.stateHandler_shared(initial)
+    def shared(initial: S): ThisHandler.FromId[(_, S), IO] = State.this.stateHandler_shared(initial)

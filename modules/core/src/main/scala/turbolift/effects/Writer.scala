@@ -29,7 +29,7 @@ trait WriterEffect[W, W1] extends Effect[WriterSignature[W, W1]] with WriterSign
   /** Predefined handlers for this effect. */
   object handlers:
     def local(implicit W: AccumZero[W, W1]): ThisHandler.Free[(_, W)] = WriterEffect.this.writerHandler_local
-    def shared(implicit W: AccumZero[W, W1]): ThisHandler[(_, W), IO] = WriterEffect.this.writerHandler_shared
+    def shared(implicit W: AccumZero[W, W1]): ThisHandler.FromId[(_, W), IO] = WriterEffect.this.writerHandler_shared
 
 
 trait Writer[W] extends WriterEffect[W, W]

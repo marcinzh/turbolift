@@ -46,7 +46,7 @@ trait RandomEffect extends Effect[RandomSignature] with RandomSignature:
   object handlers:
     def local: ThisHandler.Id[IO] = RandomEffect.this.randomHandler_local
     def shared: ThisHandler.Id[IO] = RandomEffect.this.randomHandler_shared
-    def local(seed: Long): ThisHandler.FreeId = RandomEffect.this.randomHandler_local(seed)
+    def local(seed: Long): ThisHandler.Free.Id = RandomEffect.this.randomHandler_local(seed)
     def shared(seed: Long): ThisHandler.Id[IO] = RandomEffect.this.randomHandler_shared(seed)
 
 

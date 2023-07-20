@@ -8,7 +8,9 @@ import turbolift.internals.primitives.Primitives
   * Running computation that requests `NonDet` effect,
   * may produce different results each time.
   *
-  * This is psedo-effect: it interpreted by the user.
+  * This is a psedo-effect.
+  * It functions as a type-level label only.
+  * It cannot be interpreted by the user.
   */
 sealed trait NonDet
 
@@ -17,14 +19,18 @@ sealed trait NonDet
   * Running computation that requests `NonTot` effect,
   * may complete without producing a result.
   *
-  * This is psedo-effect: it interpreted by the user.
+  * This is a psedo-effect.
+  * It functions as a type-level label only.
+  * It cannot be interpreted by the user.
   */
 sealed trait NonTot
 
 
 /** Effect that indicates lack of guarantee of totality or determinism.
   *
-  * This is psedo-effect: it interpreted by the user.
+  * This is a psedo-effect.
+  * It functions as a type-level label only.
+  * It cannot be interpreted by the user.
   */
 sealed trait IO extends NonDet with NonTot
 

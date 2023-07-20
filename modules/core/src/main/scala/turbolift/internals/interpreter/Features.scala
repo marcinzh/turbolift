@@ -10,14 +10,14 @@ object Features:
   private def unimplemented: Nothing = sys.error("Intentionally unimplemented")
 
   protected sealed trait HasNotUnpure extends Interpreter.FlowFeatures:
-    final override def onUnpure[A](aa: Result[A]): A !! ThisEffect = unimplemented
+    final override def onUnpure[A](aa: To[A]): A !! ThisEffect = unimplemented
 
   protected sealed trait HasNotForkJoin extends Interpreter.FlowFeatures:
     final override def onFork(s: Stan): (Stan, Stan) = unimplemented
     final override def onJoin(s1: Stan, s2: Stan): Stan = unimplemented
 
   protected sealed trait HasNotZip extends Interpreter.FlowFeatures:
-    final override def onZip[A, B, C](aa: Result[A], bb: Result[B], k: (A, B) => C): Result[C] = unimplemented
+    final override def onZip[A, B, C](aa: To[A], bb: To[B], k: (A, B) => C): To[C] = unimplemented
   
 
   /** Mixin trait for interpreters, that prohibit parallelism. */

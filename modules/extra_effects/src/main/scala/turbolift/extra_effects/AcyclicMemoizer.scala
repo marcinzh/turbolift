@@ -24,4 +24,4 @@ trait AcyclicMemoizer[K, V] extends Effect[AcyclicMemoizerSignature[K, V]] with 
       recur
 
   /** Default handler for this effect. */
-  def handler: ThisHandler.FreeId = this.acyclicMemoizerHandler
+  def handler: ThisHandler.Free.Id = this.acyclicMemoizerHandler

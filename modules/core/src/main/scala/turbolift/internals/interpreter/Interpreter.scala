@@ -17,11 +17,12 @@ import turbolift.effects.{ChoiceSignature, IO}
   * by calling `toHandler` method on it.
   */
 sealed trait Interpreter extends Signature:
-  type Result[+A]
+  type From[+A]
+  type To[+A]
   type Dependency
 
   /** Alias for [[Handler]], specialized for this interperter. */
-  final type ThisHandler = Handler[Result, ThisEffect, Dependency]
+  final type ThisHandler = Handler[From, To, ThisEffect, Dependency]
 
   private[turbolift] val signatures: Array[Signature]
   private[internals] final val bits: Int = makeBits
@@ -44,21 +45,24 @@ sealed trait Interpreter extends Signature:
 
 
 object Interpreter:
-  private[turbolift] type Apply[F[+_], L, N] = Interpreter {
-    type Result[+X] = F[X]
+  private[turbolift] type Apply[F[+_], G[+_], L, N] = Interpreter {
+    type From[+X] = F[X]
+    type To[+X] = G[X]
     type ThisEffect = L
     type Dependency = N
   }
 
   private[turbolift] type Untyped = Interpreter {
-    type Result[+X] = X
+    type From[+X] = X
+    type To[+X] = X
     type Dependency = Any
     type ThisEffect = Any
     type Stan = Any
   }
 
   private[internals] type FlowUntyped = Flow {
-    type Result[+X] = X
+    type From[+X] = X
+    type To[+X] = X
     type Dependency = Any
     type ThisEffect = Any
     type Stan = Any
@@ -75,21 +79,23 @@ object Interpreter:
     */
   abstract class Proxy[Fx] extends Interpreter:
     final override type Dependency = Fx
-    final override type Result[+A] = A
+    final override type From[+A] = A
+    final override type To[+A] = A
     final override type !@![A, U] = Control.Proxy[U, Dependency] => A !! Dependency
     private[internals] final override def makeBits = super.makeBits | Bits.IsProxy
 
-    final def toHandler: ThisHandler = HC.Primitive[Result, ThisEffect, Dependency](this, Void)
+    final def toHandler: ThisHandler = HC.Primitive[From, To, ThisEffect, Dependency](this, Void)
 
 
   /** Like `Proxy[IO]`, but with less overhead. */
   abstract class ProxyIO extends Interpreter:
     final override type Dependency = IO
-    final override type Result[+A] = A
+    final override type From[+A] = A
+    final override type To[+A] = A
     final override type !@![A, U] = A !! Dependency
     private[internals] final override def makeBits = super.makeBits | Bits.IsProxy | Bits.IsProxyIO
 
-    final def toHandler: ThisHandler = HC.Primitive[Result, ThisEffect, Dependency](this, Void)
+    final def toHandler: ThisHandler = HC.Primitive[From, To, ThisEffect, Dependency](this, Void)
 
 
   abstract class FlowFeatures extends Interpreter: //// subclassed by Effect
@@ -99,9 +105,9 @@ object Interpreter:
     /** State of this interpreter. Named `Stan`, to avoid confusion with `State` effect. */
     type Stan
 
-    def onPure[A](a: A, s: Stan): Result[A]
-    def onUnpure[A](aa: Result[A]): A !! ThisEffect
-    def onZip[A, B, C](aa: Result[A], bb: Result[B], k: (A, B) => C): Result[C]
+    def onPure[A](aa: From[A], s: Stan): To[A]
+    def onUnpure[A](aa: To[A]): A !! ThisEffect
+    def onZip[A, B, C](aa: To[A], bb: To[B], k: (A, B) => C): To[C]
     def onFork(s: Stan): (Stan, Stan)
     def onJoin(s1: Stan, s2: Stan): Stan
 
@@ -113,41 +119,41 @@ object Interpreter:
 
     /** Free variable, meaning the unknown part of the continuation's answer type.
       *
-      * The full answer type is `Result[Unknown]`.
+      * The full answer type is `To[Unknown]`.
       */
     type Unknown
 
     /** Alias for [[Control]], specialized for this interpreter. */
-    type ThisControl[-A, U] = Control.Flow[A, Unknown, Stan, Result, U, Any]
+    type ThisControl[-A, U] = Control.Flow[A, Unknown, Stan, To, U, Any]
 
 
-  /** Super class for any user-defined [[Flow Flow]] Interpreter, that has no internal state.
+  /** Super class for any user-defined [[Flow]] Interpreter, that has no internal state.
     * 
-    * @tparam F Result for this interpreter.
     */
-  abstract class Stateless[F[+_]] extends Flow: //// subclassed by Effect
-    final override type Result[+A] = F[A]
-    final override type !@![A, U] = ThisControl[A, U] => Result[Unknown] !! Any
+  abstract class Stateless[F[+_], G[+_]] extends Flow: //// subclassed by Effect
+    final override type From[+A] = F[A]
+    final override type To[+A] = G[A]
+    final override type !@![A, U] = ThisControl[A, U] => To[Unknown] !! Any
     final override type Stan = Void
     private[internals] final override def makeBits = super.makeBits
 
-    final override def onPure[A](a: A, s: Void): Result[A] = onPure(a)
-    def onPure[A](a: A): Result[A]
+    final override def onPure[A](aa: From[A], s: Void): To[A] = onPure(aa)
+    def onPure[A](aa: From[A]): To[A]
 
     /** Creates a [[turbolift.Handler Handler]] from this interpreter. */
-    final def toHandler: ThisHandler = HC.Primitive[Result, ThisEffect, Dependency](this, Void)
+    final def toHandler: ThisHandler = HC.Primitive[From, To, ThisEffect, Dependency](this, Void)
 
 
-  /** Super class for any user-defined stateful [[Flow Flow]] Interpreter, that has internal state.
+  /** Super class for any user-defined stateful [[Flow]] Interpreter, that has internal state.
     * 
     * @tparam S State for this interpreter.
-    * @tparam F Result for this interpreter.
     */
-  abstract class Stateful[S, F[+_]] extends Flow: //// subclassed by Effect
-    final override type Result[+A] = F[A]
-    final override type !@![A, U] = (ThisControl[A, U], S) => Result[Unknown] !! Any
+  abstract class Stateful[S, F[+_], G[+_]] extends Flow: //// subclassed by Effect
+    final override type From[+A] = F[A]
+    final override type To[+A] = G[A]
+    final override type !@![A, U] = (ThisControl[A, U], S) => To[Unknown] !! Any
     final override type Stan = S
     private[internals] final override def makeBits = super.makeBits | Bits.IsStateful
 
     /** Creates a [[turbolift.Handler Handler]] from this interpreter. */
-    final def toHandler(initial: Stan): ThisHandler = HC.Primitive[Result, ThisEffect, Dependency](this, initial)
+    final def toHandler(initial: Stan): ThisHandler = HC.Primitive[From, To, ThisEffect, Dependency](this, initial)

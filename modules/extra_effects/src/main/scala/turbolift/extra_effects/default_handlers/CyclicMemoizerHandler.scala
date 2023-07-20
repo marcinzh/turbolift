@@ -5,7 +5,7 @@ import turbolift.extra_effects.{CyclicMemoizer, CyclicMemoizerSignature}
 
 
 extension [K, V](fx: CyclicMemoizer[K, V])
-  private[extra_effects] def cyclicMemoizerHandler: fx.ThisHandler.FreeId =
+  private[extra_effects] def cyclicMemoizerHandler: fx.ThisHandler.Free.Id =
     case object Storage extends State[Map[K, Thunk[V]]]
 
     new fx.Proxy[Storage.type] with CyclicMemoizerSignature[K, V]:

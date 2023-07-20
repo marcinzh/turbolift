@@ -312,7 +312,7 @@ private[turbolift] final class FiberImpl private (
 
           case Tags.Handle =>
             if lookup ne stack.lookup then throw Panic("Adding local effect inside interpreter")
-            val theHandle = payload.asInstanceOf[CC.Handle[Any, Any, [X] =>> Any, Any, Any]]
+            val theHandle = payload.asInstanceOf[CC.Handle[Any, Any, [_] =>> Any, [_] =>> Any, Any, Any]]
             val prompt = Prompt.create(stack.lookup, theHandle.handler.interpreter, store.nextIndex, stack.nextLevelIndex)
             if prompt.isFlow then
               val store2 = store.pushIfHasStan(prompt, theHandle.handler.initial)

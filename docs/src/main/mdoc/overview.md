@@ -99,13 +99,18 @@ In general, a handler of type `Handler[F[_], L, N]` represents a
 that transforms computations:
 
 ```scala
-∀ A, M.  Computation[A, M ∪ L] => Computation[F[A], M ∪ N]
+∀ A, M.  Computation[F[A], M ∪ L] => Computation[G[A], M ∪ N]
+
+// Where `F[_]` is either type-level identity, or constant function.
 ```
+
 Meaning, that application of it, does the following:
 - It e**L**iminates  set of effects `L` from incoming computation.
 - It i**N**troduces  set of effects `N` into outgoing computation (revealing dependencies of the handler, if there are any).
 - It passes a**M**bient set of effects `M` unaffected, from incoming to outgoing computation.
-- It applies type constructor `F[_]` to `A`.
+- It applies type constructor `G[_]` to `A`.
+- It constraints type returned by the incoming computation to be equal `F[A]`.
+
 
 
 In the example below, `myHandler` eliminates single `MyChoice` effect, introduces no effects,

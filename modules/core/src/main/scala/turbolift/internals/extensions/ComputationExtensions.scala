@@ -35,7 +35,16 @@ import turbolift.internals.auxx.CanPartiallyHandle
      *  Passes computed value to handler constructor.
      *  Effect used to compute the value, are absorbed by the handler, into its own dependencies.
      */ 
-    def >>=![F[+_], L, N](f: A => Handler[F, L, N]): Handler[F, L, U & N] = Handler.flatHandle(thiz.map(f))
+    @annotation.targetName("flatHandleId")
+    def >>=![F[+_], L, N](f: A => Handler[[X] =>> X, F, L, N]): Handler[[X] =>> X, F, L, U & N] = Handler.flatHandle(thiz.map(f))
+
+    /** Simplifies effectful creation of handlers.
+     * 
+     *  Passes computed value to handler constructor.
+     *  Effect used to compute the value, are absorbed by the handler, into its own dependencies.
+     */ 
+    @annotation.targetName("flatHandleConst")
+    def >>=![F[+_], L, N](f: A => Handler[[_] =>> A, F, L, N]): Handler[[_] =>> A, F, L, U & N] = Handler.flatHandle(thiz.map(f))
 
     /** Applies a handler to this computation.
      *
@@ -44,12 +53,12 @@ import turbolift.internals.auxx.CanPartiallyHandle
     def handleWith[V]: HandleWithApply[A, U, V] = new HandleWithApply[A, U, V](thiz)
 
 
-  extension [F[+_], L, N](thiz: Computation[Handler[F, L, N], N])
+  extension [F[+_], G[+_], L, N](thiz: Computation[Handler[F, G, L, N], N])
     /** Simplifies effectful creation of handlers.
      * 
      *  Same as [[turbolift.Handler.flatHandle Handler.flatHandle(this)]].
      */
-    def flattenHandler: Handler[F, L, N] = Handler.flatHandle(thiz)
+    def flattenHandler: Handler[F, G, L, N] = Handler.flatHandle(thiz)
 
 
   extension [A, B, U](thiz: Computation[(A, B), U])
@@ -70,5 +79,10 @@ import turbolift.internals.auxx.CanPartiallyHandle
 
 
 private[turbolift] class HandleWithApply[A, U, V](thiz: A !! U):
-  def apply[F[+_], L, N, V2 <: V & N](h: Handler[F, L, N])(implicit ev: CanPartiallyHandle[V, U, L]): F[A] !! V2 =
+  @annotation.targetName("applyId")
+  def apply[F[+_], L, N, V2 <: V & N](h: Handler[[X] =>> X, F, L, N])(implicit ev: CanPartiallyHandle[V, U, L]): F[A] !! V2 =
     h.doHandle[A, V](ev(thiz))
+
+  @annotation.targetName("applyConst")
+  def apply[F[+_], L, N, V2 <: V & N](h: Handler[[_] =>> A, F, L, N])(implicit ev: CanPartiallyHandle[V, U, L]): F[A] !! V2 =
+     h.doHandle[A, V](ev(thiz))

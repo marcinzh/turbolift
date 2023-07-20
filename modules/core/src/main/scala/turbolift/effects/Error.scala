@@ -35,3 +35,7 @@ trait ErrorEffect[E, E1] extends Effect[ErrorSignature[E, E1]] with ErrorSignatu
 trait Error[E] extends ErrorEffect[E, E]
 
 trait ErrorK[F[_], E] extends ErrorEffect[F[E], E]
+
+trait ErrorG[M[_, _], K, V] extends ErrorEffect[M[K, V], (K, V)]
+
+trait ErrorGK[M[_, _], K, F[_], V] extends ErrorEffect[M[K, F[V]], (K, V)]
