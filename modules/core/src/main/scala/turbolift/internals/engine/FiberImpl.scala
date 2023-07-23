@@ -5,7 +5,7 @@ import turbolift.{!!, Signature}
 import turbolift.internals.interpreter.{Control, Void}
 import turbolift.internals.primitives.{Tags, ComputationCases => CC}
 import turbolift.internals.engine.{StepCases => SC, HistoryCases => HC}
-import turbolift.io.Fiber
+import turbolift.concurrent.Fiber
 
 
 private[turbolift] final class FiberImpl private (

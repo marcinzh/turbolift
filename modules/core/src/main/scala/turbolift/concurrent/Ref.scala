@@ -1,7 +1,8 @@
-package turbolift.io
+package turbolift.concurrent
 import java.util.concurrent.atomic.AtomicReference
 import scala.annotation.tailrec
 import turbolift.!!
+import turbolift.effects.IO
 
 
 opaque type Ref[S] <: AnyRef = AtomicReference[S]

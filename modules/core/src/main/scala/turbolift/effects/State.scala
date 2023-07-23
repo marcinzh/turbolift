@@ -1,6 +1,5 @@
 package turbolift.effects
 import turbolift.{!!, Effect, Signature}
-import turbolift.io.IO
 import turbolift.effects.default_handlers.{stateHandler_local, stateHandler_shared}
 
 

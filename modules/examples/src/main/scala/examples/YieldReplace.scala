@@ -1,8 +1,8 @@
 package examples
 import turbolift.{!!, Signature, Effect}
 import turbolift.Extensions._
-import turbolift.effects.Console
-import turbolift.io.{IO, Ref}
+import turbolift.effects.{Console, IO}
+import turbolift.concurrent.Ref
 
 
 case object YieldReplace extends Example:

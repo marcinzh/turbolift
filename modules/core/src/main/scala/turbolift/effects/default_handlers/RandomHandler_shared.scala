@@ -1,8 +1,7 @@
 package turbolift.effects.default_handlers
 import scala.util.{Random => ScalaRandom}
 import turbolift.!!
-import turbolift.io.IO
-import turbolift.effects.{RandomEffect, RandomSignature}
+import turbolift.effects.{RandomEffect, RandomSignature, IO}
 
 
 extension (fx: RandomEffect)

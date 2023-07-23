@@ -1,7 +1,6 @@
 package turbolift.effects
 import scala.io.AnsiColor
 import turbolift.{!!, Signature, Effect}
-import turbolift.io.IO
 import turbolift.effects.default_handlers.consoleHandler
 
 

@@ -1,6 +1,5 @@
 package turbolift.effects
 import turbolift.{!!, Signature, Effect}
-import turbolift.io.IO
 import turbolift.effects.default_handlers.{randomHandler_local, randomHandler_shared}
 
 

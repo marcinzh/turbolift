@@ -1,7 +1,7 @@
 package turbolift.effects.default_handlers
 import turbolift.!!
-import turbolift.io.{IO, Ref}
-import turbolift.effects.{State, StateSignature}
+import turbolift.effects.{State, StateSignature, IO}
+import turbolift.concurrent.Ref
 
 
 extension [S](fx: State[S])

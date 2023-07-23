@@ -1,7 +1,7 @@
 package turbolift.internals.extensions
 import scala.util.Try
 import turbolift.{!!, Computation, Handler}
-import turbolift.io.IO
+import turbolift.effects.IO
 import turbolift.internals.launcher.Launcher
 import turbolift.internals.auxx.CanPartiallyHandle
 

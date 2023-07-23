@@ -1,8 +1,7 @@
 package turbolift.effects.default_handlers
 import java.lang.{System => JConsole}
 import java.io.{BufferedReader, InputStreamReader}
-import turbolift.io.IO
-import turbolift.effects.{ConsoleSignature, ConsoleEffect}
+import turbolift.effects.{ConsoleSignature, ConsoleEffect, IO}
 
 
 extension (fx: ConsoleEffect)

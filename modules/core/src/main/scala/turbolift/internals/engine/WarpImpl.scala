@@ -1,5 +1,5 @@
 package turbolift.internals.engine
-import turbolift.io.Warp
+import turbolift.concurrent.Warp
 
 
 private[turbolift] final class WarpImpl private (

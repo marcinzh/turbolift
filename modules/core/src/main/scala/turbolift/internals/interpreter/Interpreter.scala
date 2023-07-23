@@ -1,7 +1,6 @@
 package turbolift.internals.interpreter
 import turbolift.{!!, Signature, Handler, HandlerCases => HC}
-import turbolift.io.IO
-import turbolift.effects.ChoiceSignature
+import turbolift.effects.{ChoiceSignature, IO}
 
 
 /** Super trait for any user-defined [[Interpreter Interpreter]].

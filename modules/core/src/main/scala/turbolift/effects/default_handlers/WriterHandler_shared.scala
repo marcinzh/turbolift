@@ -1,9 +1,9 @@
 package turbolift.effects.default_handlers
 import turbolift.!!
-import turbolift.io.{IO, Ref}
 import turbolift.typeclass.AccumZero
 import turbolift.typeclass.Syntax._
-import turbolift.effects.{WriterEffect, WriterSignature}
+import turbolift.effects.{WriterEffect, WriterSignature, IO}
+import turbolift.concurrent.Ref
 
 
 extension [W, W1](fx: WriterEffect[W, W1])

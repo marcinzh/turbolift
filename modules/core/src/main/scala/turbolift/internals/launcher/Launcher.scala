@@ -1,7 +1,7 @@
 package turbolift.internals.launcher
 import scala.util.Try
 import turbolift.Computation
-import turbolift.io.IO
+import turbolift.effects.IO
 import turbolift.internals.executor.{ZeroThreadedExecutor, MultiThreadedExecutor}
 import turbolift.internals.engine.Config
 

@@ -1,7 +1,7 @@
 package turbolift.internals.auxx
 import scala.annotation.implicitNotFound
 import turbolift.!!
-import turbolift.io.IO
+import turbolift.effects.IO
 
 //@#@ not used anymore
 

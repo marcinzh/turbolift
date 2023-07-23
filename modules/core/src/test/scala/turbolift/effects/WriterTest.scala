@@ -2,8 +2,7 @@ package turbolift.effects
 import org.specs2.mutable._
 import org.specs2.specification.core.Fragment
 import turbolift.!!
-import turbolift.io.IO
-import turbolift.effects.{Writer, WriterK, WriterGK}
+import turbolift.effects.{Writer, WriterK, WriterGK, IO}
 import turbolift.typeclass.AccumZero
 import turbolift.mode.ST
 
