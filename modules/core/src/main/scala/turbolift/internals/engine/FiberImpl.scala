@@ -10,7 +10,7 @@ import turbolift.concurrent.Fiber
 
 private[turbolift] final class FiberImpl private (
   val constantBits: Byte,
-  val parent: FiberImpl = null.asInstanceOf[FiberImpl],
+  val owner: Owner,
 ) extends FiberLink with Fiber.Unsealed:
   @volatile private var varyingBits: Int = 0
   private var suspendedTick: Short = 0
@@ -25,7 +25,11 @@ private[turbolift] final class FiberImpl private (
   def isSuspended: Boolean = suspendedStack != null
 
   def this(comp: !![?, ?], config: Config) =
-    this(Bits.Tree_Root)
+    this(Bits.Tree_Root.toByte, null)
+    init(comp.untyped, config)
+
+  def this(comp: !![?, ?], config: Config, callback: Try[?] => Unit) =
+    this(Bits.Tree_Root.toByte, callback.asInstanceOf[AnyCallback])
     init(comp.untyped, config)
 
 
@@ -435,31 +439,32 @@ private[turbolift] final class FiberImpl private (
       varyingBits = varyingBits | bit
     }
 
-  def doWait(): Unit =
+  def toTry[A](): Try[A] =
+    val result =
+      if isSuccess
+      then Success(suspendedPayload.asInstanceOf[A])
+      else Failure(suspendedPayload.asInstanceOf[Throwable])
+    suspendedPayload = null
+    result
+
+  def unsafeAwait[A](): Try[A] =
     synchronized {
       if isPending then
         wait()
     }
+    toTry()
 
-  def doNotify(): Unit =
-    synchronized {
-      notify()
-    }
-
-  def toTry[A](): Try[A] =
-    if isSuccess then
-      val result = Success(suspendedPayload.asInstanceOf[A])
-      suspendedPayload = null
-      result
-    else
-      val result = Failure(suspendedPayload.asInstanceOf[Throwable])
-      suspendedPayload = null
-      result
+  def doFinalize(): Unit =
+    owner match
+      case null => synchronized { notify() }
+      case f: AnyCallback => f(toTry())
+      case _: FiberImpl => impossible
 
   //===================================================================
   // Child/Parent
   //===================================================================
 
+  private def parent: FiberImpl = owner.asInstanceOf[FiberImpl]
   private def childLeft: FiberImpl = linkLeft.asInstanceOf[FiberImpl]
   private def childRight: FiberImpl = linkRight.asInstanceOf[FiberImpl]
   private def whichChildAmI: Int = constantBits & Bits.Child_Mask

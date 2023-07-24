@@ -9,10 +9,9 @@ private[internals] final class ZeroThreadedExecutor extends FiberLink with Execu
     linkWithSelf()
   }
 
-  override def start[A](comp: Computation[?, ?], config: Config): FiberImpl =
-    val fiber = new FiberImpl(comp, config)
+  override def start(fiber: FiberImpl): Unit =
     drain(fiber)
-    fiber
+    fiber.doFinalize()
 
   override def enqueue(fiber: FiberImpl): Unit = insertLast(fiber)
 
@@ -29,6 +28,3 @@ private[internals] final class ZeroThreadedExecutor extends FiberLink with Execu
       if isPending then
         insertLast(yielder)
       drain(removeFirst())
-
-
-  // def kill(): Unit = linkWithSelf()

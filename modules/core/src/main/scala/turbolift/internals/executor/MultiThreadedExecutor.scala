@@ -1,8 +1,7 @@
 package turbolift.internals.executor
 import java.lang.ThreadLocal
 import turbolift.Computation
-import turbolift.internals.engine.{Config, FiberImpl, FiberLink}
-import turbolift.internals.executor.Executor
+import turbolift.internals.engine.{Config, FiberImpl, FiberLink, AnyCallback}
 
 
 private[turbolift] final class MultiThreadedExecutor(maxBusyThreads: Int) extends FiberLink with Executor:
@@ -14,16 +13,13 @@ private[turbolift] final class MultiThreadedExecutor(maxBusyThreads: Int) extend
   }
 
 
-  override def start[A](comp: Computation[?, ?], config: Config): FiberImpl =
-    val fiber = new FiberImpl(comp, config)
+  override def start(fiber: FiberImpl): Unit =
     val current = MultiThreadedExecutor.currentVar.get
     if current == null then
       enqueue(fiber)
     else
       fiber.setSubstitute()
       awaken(fiber)
-    fiber.doWait()
-    fiber
 
 
   override def enqueue(fiber: FiberImpl): Unit =
@@ -49,7 +45,7 @@ private[turbolift] final class MultiThreadedExecutor(maxBusyThreads: Int) extend
         yielder = todo.run()
         todo = dequeue(yielder)
       if yielder.isRoot then
-        yielder.doNotify()
+        yielder.doFinalize()
     }
 
 

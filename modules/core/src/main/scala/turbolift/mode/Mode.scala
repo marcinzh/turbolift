@@ -1,9 +1,13 @@
 package turbolift.mode
-import turbolift.internals.launcher.Launcher
 
+
+final case class Mode(multiThreaded: Boolean)
+
+object Mode:
+  val default: Mode = MT
 
 /** Import this, to `run` computations in multi-threaded mode (default). */
-given MT: Launcher = Launcher.MT
+given MT: Mode = Mode(true)
 
 /** Import this, to `run` computations in single-threaded mode. */
-given ST: Launcher = Launcher.ST
+given ST: Mode = Mode(false)

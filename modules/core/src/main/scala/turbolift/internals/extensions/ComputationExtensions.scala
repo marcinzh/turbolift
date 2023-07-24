@@ -2,7 +2,8 @@ package turbolift.internals.extensions
 import scala.util.Try
 import turbolift.{!!, Computation, Handler}
 import turbolift.effects.IO
-import turbolift.internals.launcher.Launcher
+import turbolift.mode.Mode
+import turbolift.internals.executor.Executor
 import turbolift.internals.auxx.CanPartiallyHandle
 
 
@@ -10,12 +11,20 @@ import turbolift.internals.auxx.CanPartiallyHandle
 /*private[turbolift]*/ trait ComputationExtensions:
   extension [A](thiz: Computation[A, Any])
     /** Runs the computation, provided that it requests no effects. */
-    def run(using launcher: Launcher = Launcher.default): A = launcher.run(thiz).get
+    def run(using mode: Mode = Mode.default): A = Executor.pick(mode).runSync(thiz).get
+
+    def runST: A = Executor.ST.runSync(thiz).get
+    def runMT: A = Executor.MT.runSync(thiz).get
 
 
   extension [A, U >: IO](thiz: Computation[A, U])
     /** Runs the computation, provided that it requests IO effect only, or none at all. */
-    def unsafeRun(using launcher: Launcher = Launcher.default): Try[A] = launcher.run(thiz)
+    def unsafeRun(using mode: Mode = Mode.default): Try[A] = Executor.pick(mode).runSync(thiz)
+
+    def unsafeRunST: Try[A] = Executor.ST.runSync(thiz)
+    def unsafeRunMT: Try[A] = Executor.MT.runSync(thiz)
+
+    def unsafeRunAsync(using mode: Mode = Mode.default)(callback: Try[A] => Unit): Unit = Executor.pick(mode).runAsync(thiz, callback)
 
 
   extension [A, U](thiz: Computation[A, U])
