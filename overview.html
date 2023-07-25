@@ -65,13 +65,13 @@ that it requests 3 effects: <code class="language-plaintext highlighter-rouge">M
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">turbolift.</span><span class="o">!!</span>
 
 <span class="k">val</span> <span class="nv">myComputation1</span> <span class="k">=</span> <span class="o">!!.</span><span class="py">unit</span>
-<span class="c1">// myComputation1: Computation[Unit, Any] = turbolift.Computation@109f9abc</span>
+<span class="c1">// myComputation1: Computation[Unit, Any] = turbolift.Computation@3a6ca65a</span>
 
 <span class="k">val</span> <span class="nv">myComputation2</span> <span class="k">=</span> <span class="o">!!.</span><span class="py">pure</span><span class="o">(</span><span class="mi">42</span><span class="o">)</span>
-<span class="c1">// myComputation2: Computation[Int, Any] = turbolift.Computation@9b91cc5</span>
+<span class="c1">// myComputation2: Computation[Int, Any] = turbolift.Computation@768c36a1</span>
 </code></pre></div></div>
 
-<p>For more information, see <a href="https://javadoc.io/static/io.github.marcinzh/turbolift-core_3/0.54.0/turbolift/Computation.html">Computation API</a>.</p>
+<p>For more information, see <a href="https://javadoc.io/static/io.github.marcinzh/turbolift-core_3/0.56.0/turbolift/Computation.html">Computation API</a>.</p>
 
 <h3 id="effect-usage">Effect Usage</h3>
 
@@ -87,7 +87,7 @@ that it requests 3 effects: <code class="language-plaintext highlighter-rouge">M
 
 <span class="c1">// Invoking operation:</span>
 <span class="k">val</span> <span class="nv">computation</span> <span class="k">=</span> <span class="nv">MyState</span><span class="o">.</span><span class="py">put</span><span class="o">(</span><span class="mi">42</span><span class="o">)</span>
-<span class="c1">// computation: Computation[Unit, MyState] = turbolift.Computation@1b1e7362</span>
+<span class="c1">// computation: Computation[Unit, MyState] = turbolift.Computation@18f29c62</span>
 </code></pre></div></div>
 
 <p>For more details, see <a href="custom/index.html">Defining your own effects &amp; handlers</a> and <a href="advanced/labelled.html">Effect labelling</a>.</p>
@@ -116,18 +116,22 @@ In the simplest case, one of effects requested by the computation is eliminated.
 <a href="https://docs.scala-lang.org/scala3/reference/new-types/polymorphic-function-types.html">polymorphic function</a>,
 that transforms computations:</p>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">∀</span> <span class="n">A</span><span class="o">,</span> <span class="n">M</span><span class="o">.</span>  <span class="nc">Computation</span><span class="o">[</span><span class="kt">A</span>, <span class="kt">M</span> <span class="kt">∪</span> <span class="kt">L</span><span class="o">]</span> <span class="k">=&gt;</span> <span class="nc">Computation</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="kt">A</span><span class="o">]</span>, <span class="kt">M</span> <span class="kt">∪</span> <span class="kt">N</span><span class="o">]</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">∀</span> <span class="n">A</span><span class="o">,</span> <span class="n">M</span><span class="o">.</span>  <span class="nc">Computation</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="kt">A</span><span class="o">]</span>, <span class="kt">M</span> <span class="kt">∪</span> <span class="kt">L</span><span class="o">]</span> <span class="k">=&gt;</span> <span class="nc">Computation</span><span class="o">[</span><span class="kt">G</span><span class="o">[</span><span class="kt">A</span><span class="o">]</span>, <span class="kt">M</span> <span class="kt">∪</span> <span class="kt">N</span><span class="o">]</span>
+
+<span class="c1">// Where `F[_]` is either type-level identity, or constant function.</span>
 </code></pre></div></div>
+
 <p>Meaning, that application of it, does the following:</p>
 <ul>
   <li>It e<strong>L</strong>iminates  set of effects <code class="language-plaintext highlighter-rouge">L</code> from incoming computation.</li>
   <li>It i<strong>N</strong>troduces  set of effects <code class="language-plaintext highlighter-rouge">N</code> into outgoing computation (revealing dependencies of the handler, if there are any).</li>
   <li>It passes a<strong>M</strong>bient set of effects <code class="language-plaintext highlighter-rouge">M</code> unaffected, from incoming to outgoing computation.</li>
-  <li>It applies type constructor <code class="language-plaintext highlighter-rouge">F[_]</code> to <code class="language-plaintext highlighter-rouge">A</code>.</li>
+  <li>It applies type constructor <code class="language-plaintext highlighter-rouge">G[_]</code> to <code class="language-plaintext highlighter-rouge">A</code>.</li>
+  <li>It constraints type returned by the incoming computation to be equal <code class="language-plaintext highlighter-rouge">F[A]</code>.</li>
 </ul>
 
 <p>In the example below, <code class="language-plaintext highlighter-rouge">myHandler</code> eliminates single <code class="language-plaintext highlighter-rouge">MyChoice</code> effect, introduces no effects,
-and wraps the result type in <code class="language-plaintext highlighter-rouge">Vector[_]</code>.</p>
+accepts any type of computation (identity), and wraps the result type in <code class="language-plaintext highlighter-rouge">Vector[_]</code>.</p>
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">turbolift.Handler</span>
 <span class="k">import</span> <span class="nn">turbolift.effects.Choice</span>
@@ -135,7 +139,7 @@ and wraps the result type in <code class="language-plaintext highlighter-rouge">
 <span class="k">case</span> <span class="k">object</span> <span class="nc">MyChoice</span> <span class="k">extends</span> <span class="nc">Choice</span>
 <span class="k">type</span> <span class="kt">MyChoice</span> <span class="o">=</span> <span class="nv">MyChoice</span><span class="o">.</span><span class="py">type</span>
 
-<span class="k">val</span> <span class="nv">myHandler</span><span class="k">:</span> <span class="kt">Handler</span><span class="o">[</span><span class="kt">Vector</span>, <span class="kt">MyChoice</span>, <span class="kt">Any</span><span class="o">]</span> <span class="k">=</span> <span class="nv">MyChoice</span><span class="o">.</span><span class="py">handler</span>
+<span class="k">val</span> <span class="nv">myHandler</span><span class="k">:</span> <span class="kt">Handler</span><span class="o">[[</span><span class="kt">X</span><span class="o">]</span> <span class="k">=&gt;</span><span class="kt">&gt;</span> <span class="kt">X</span>, <span class="kt">Vector</span>, <span class="kt">MyChoice</span>, <span class="kt">Any</span><span class="o">]</span> <span class="k">=</span> <span class="nv">MyChoice</span><span class="o">.</span><span class="py">handler</span>
 </code></pre></div></div>
 
 <p>Handlers can be transformed or composed in various ways.</p>
@@ -145,7 +149,7 @@ and wraps the result type in <code class="language-plaintext highlighter-rouge">
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">val</span> <span class="nv">myHandler123</span> <span class="k">=</span> <span class="n">myHandler1</span> <span class="o">&amp;&amp;&amp;!</span> <span class="n">myHandler2</span> <span class="o">&amp;&amp;&amp;!</span> <span class="n">myHandler3</span>
 </code></pre></div></div>
 
-<p>For more operations, see <a href="https://javadoc.io/static/io.github.marcinzh/turbolift-core_3/0.54.0/turbolift/Handler.html">Handler API</a>.</p>
+<p>For more operations, see <a href="https://javadoc.io/static/io.github.marcinzh/turbolift-core_3/0.56.0/turbolift/Handler.html">Handler API</a>.</p>
 
 <h3 id="signature--interpreter-usage">Signature &amp; Interpreter Usage</h3>
 
