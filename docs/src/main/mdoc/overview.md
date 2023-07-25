@@ -114,7 +114,7 @@ Meaning, that application of it, does the following:
 
 
 In the example below, `myHandler` eliminates single `MyChoice` effect, introduces no effects,
-and wraps the result type in `Vector[_]`.
+accepts any type of computation (identity), and wraps the result type in `Vector[_]`.
 
 ```scala mdoc:silent
 import turbolift.Handler
@@ -123,7 +123,7 @@ import turbolift.effects.Choice
 case object MyChoice extends Choice
 type MyChoice = MyChoice.type
 
-val myHandler: Handler[Vector, MyChoice, Any] = MyChoice.handler
+val myHandler: Handler[[X] =>> X, Vector, MyChoice, Any] = MyChoice.handler
 ```
 
 Handlers can be transformed or composed in various ways.
