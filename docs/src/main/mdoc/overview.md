@@ -94,7 +94,7 @@ As soon as all effects are eliminated, the computation's result can be obtained,
 ...or using `unsafeRun`, if the only effect remaining unhandled, is `IO`.
 
 
-In general, a handler of type `Handler[F[_], L, N]` represents a
+In general, a handler of type `Handler[F[_], G[_], L, N]` represents a
 [polymorphic function](https://docs.scala-lang.org/scala3/reference/new-types/polymorphic-function-types.html),
 that transforms computations:
 
