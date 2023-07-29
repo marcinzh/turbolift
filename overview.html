@@ -65,10 +65,10 @@ that it requests 3 effects: <code class="language-plaintext highlighter-rouge">M
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">turbolift.</span><span class="o">!!</span>
 
 <span class="k">val</span> <span class="nv">myComputation1</span> <span class="k">=</span> <span class="o">!!.</span><span class="py">unit</span>
-<span class="c1">// myComputation1: Computation[Unit, Any] = turbolift.Computation@3a6ca65a</span>
+<span class="c1">// myComputation1: Computation[Unit, Any] = turbolift.Computation@74a11e3d</span>
 
 <span class="k">val</span> <span class="nv">myComputation2</span> <span class="k">=</span> <span class="o">!!.</span><span class="py">pure</span><span class="o">(</span><span class="mi">42</span><span class="o">)</span>
-<span class="c1">// myComputation2: Computation[Int, Any] = turbolift.Computation@768c36a1</span>
+<span class="c1">// myComputation2: Computation[Int, Any] = turbolift.Computation@350b2671</span>
 </code></pre></div></div>
 
 <p>For more information, see <a href="https://javadoc.io/static/io.github.marcinzh/turbolift-core_3/0.56.0/turbolift/Computation.html">Computation API</a>.</p>
@@ -87,7 +87,7 @@ that it requests 3 effects: <code class="language-plaintext highlighter-rouge">M
 
 <span class="c1">// Invoking operation:</span>
 <span class="k">val</span> <span class="nv">computation</span> <span class="k">=</span> <span class="nv">MyState</span><span class="o">.</span><span class="py">put</span><span class="o">(</span><span class="mi">42</span><span class="o">)</span>
-<span class="c1">// computation: Computation[Unit, MyState] = turbolift.Computation@18f29c62</span>
+<span class="c1">// computation: Computation[Unit, MyState] = turbolift.Computation@21703046</span>
 </code></pre></div></div>
 
 <p>For more details, see <a href="custom/index.html">Defining your own effects &amp; handlers</a> and <a href="advanced/labelled.html">Effect labelling</a>.</p>
@@ -112,7 +112,7 @@ In the simplest case, one of effects requested by the computation is eliminated.
 
 <p>…or using <code class="language-plaintext highlighter-rouge">unsafeRun</code>, if the only effect remaining unhandled, is <code class="language-plaintext highlighter-rouge">IO</code>.</p>
 
-<p>In general, a handler of type <code class="language-plaintext highlighter-rouge">Handler[F[_], L, N]</code> represents a
+<p>In general, a handler of type <code class="language-plaintext highlighter-rouge">Handler[F[_], G[_], L, N]</code> represents a
 <a href="https://docs.scala-lang.org/scala3/reference/new-types/polymorphic-function-types.html">polymorphic function</a>,
 that transforms computations:</p>
 
