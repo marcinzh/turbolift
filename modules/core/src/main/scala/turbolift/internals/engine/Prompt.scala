@@ -28,7 +28,7 @@ private[internals] final class Prompt(
   def hasStan: Boolean = storeIndex >= 0
   def anyInterpreter = signature.asInstanceOf[Interpreter.Untyped]
 
-  def pure(value: Any, stan: Any): Any = flow.onPure(value, stan)
+  def pure(value: Any, stan: Any): AnyComp = flow.onReturn(value, stan)
 
   override def toString = s"Prompt(#${##.toHexString} ${toStr} l=$levelIndex  s=$storeIndex)"
   def toStr = if isGlobal then "Global" else anyInterpreter.signatures.head.toString

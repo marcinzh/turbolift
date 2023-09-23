@@ -7,8 +7,8 @@ import turbolift.effects.{WriterEffect, WriterSignature}
 
 extension [W, W1](fx: WriterEffect[W, W1])
   private[effects] def writerHandler_local(implicit W: AccumZero[W, W1]): fx.ThisHandler.Free[(_, W)] =
-    new fx.Stateful[W, (_, W)] with fx.Parallel.ForkJoin with WriterSignature[W, W1]:
-      override def onPure[A](a: A, w: W): (A, W) = (a, w)
+    new fx.Free.Stateful[W, (_, W)] with fx.Parallel.ForkJoin with WriterSignature[W, W1]:
+      override def onReturn[A](a: A, w: W): (A, W) !! Any = !!.pure((a, w))
 
       override def onUnpure[A](a_w: (A, W)): A !! ThisEffect = fx.tells(a_w._2) &&! !!.pure(a_w._1)
 

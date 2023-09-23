@@ -13,8 +13,8 @@ trait Cont[R] extends Effect[ContSignature[R]] with ContSignature[R]:
 
 
   def handler: ThisHandler[[_] =>> R, [_] =>> R, Any] =
-    new ConstStateless[R, [_] =>> R] with Sequential with ContSignature[R]:
-      override def onPure[A](r: R) = r
+    new Free.Const.Stateless[R, [_] =>> R] with Sequential with ContSignature[R]:
+      override def onReturn[A](r: R) = !!.pure(r)
 
       override def shift[A, U <: ThisEffect](f: (A => R !! U) => R !! U): A !@! U =
         k => k.escape(f(k)).map(_._1)

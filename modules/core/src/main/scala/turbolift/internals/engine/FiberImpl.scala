@@ -331,8 +331,8 @@ private[turbolift] final class FiberImpl private (
               val (step2, stack2, store2, prompt, stan) = stack.popFlow(store)
               step.tag match
                 case Tags.Step_Done =>
-                  val payload2 = prompt.pure(payload, stan)
-                  innerLoop(tick2, step2.tag, payload2, step2, stack2, store2, stack2.lookup, kont0)
+                  val comp = prompt.pure(payload, stan)
+                  innerLoop(tick2, comp.tag, comp, step2, stack2, store2, stack2.lookup, kont0)
 
                 case Tags.Step_Abort =>
                   val theAbort = step.asInstanceOf[SC.Abort]

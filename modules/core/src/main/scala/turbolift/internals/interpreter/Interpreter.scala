@@ -105,7 +105,7 @@ object Interpreter:
     /** State of this interpreter. Named `Stan`, to avoid confusion with `State` effect. */
     type Stan
 
-    def onPure[A](aa: From[A], s: Stan): To[A]
+    def onReturn[A](aa: From[A], s: Stan): To[A] !! Dependency
     def onUnpure[A](aa: To[A]): A !! ThisEffect
     def onZip[A, B, C](aa: To[A], bb: To[B], k: (A, B) => C): To[C]
     def onFork(s: Stan): (Stan, Stan)
@@ -115,7 +115,6 @@ object Interpreter:
   /** Super class for interpreters using delimited continuation. */
   sealed abstract class Flow extends FlowFeatures:
     enclosing =>
-    final override type Dependency = Any
 
     /** Free variable, meaning the unknown part of the continuation's answer type.
       *
@@ -124,21 +123,22 @@ object Interpreter:
     type Unknown
 
     /** Alias for [[Control]], specialized for this interpreter. */
-    type ThisControl[-A, U] = Control.Flow[A, Unknown, Stan, To, U, Any]
+    type ThisControl[-A, U] = Control.Flow[A, Unknown, Stan, To, U, Dependency]
 
 
   /** Super class for any user-defined [[Flow]] Interpreter, that has no internal state.
     * 
     */
-  abstract class Stateless[F[+_], G[+_]] extends Flow: //// subclassed by Effect
+  abstract class Stateless[F[+_], G[+_], Fx] extends Flow: //// subclassed by Effect
     final override type From[+A] = F[A]
     final override type To[+A] = G[A]
-    final override type !@![A, U] = ThisControl[A, U] => To[Unknown] !! Any
+    final override type Dependency = Fx
+    final override type !@![A, U] = ThisControl[A, U] => To[Unknown] !! Fx
     final override type Stan = Void
     private[internals] final override def makeBits = super.makeBits
 
-    final override def onPure[A](aa: From[A], s: Void): To[A] = onPure(aa)
-    def onPure[A](aa: From[A]): To[A]
+    final override def onReturn[A](aa: From[A], s: Void): To[A] !! Dependency = onReturn(aa)
+    def onReturn[A](aa: From[A]): To[A] !! Dependency
 
     /** Creates a [[turbolift.Handler Handler]] from this interpreter. */
     final def toHandler: ThisHandler = HC.Primitive[From, To, ThisEffect, Dependency](this, Void)
@@ -148,10 +148,11 @@ object Interpreter:
     * 
     * @tparam S State for this interpreter.
     */
-  abstract class Stateful[S, F[+_], G[+_]] extends Flow: //// subclassed by Effect
+  abstract class Stateful[S, F[+_], G[+_], Fx] extends Flow: //// subclassed by Effect
     final override type From[+A] = F[A]
     final override type To[+A] = G[A]
-    final override type !@![A, U] = (ThisControl[A, U], S) => To[Unknown] !! Any
+    final override type !@![A, U] = (ThisControl[A, U], S) => To[Unknown] !! Fx
+    final override type Dependency = Fx
     final override type Stan = S
     private[internals] final override def makeBits = super.makeBits | Bits.IsStateful
 

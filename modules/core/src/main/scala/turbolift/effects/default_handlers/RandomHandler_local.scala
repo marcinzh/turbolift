@@ -6,8 +6,8 @@ import turbolift.effects.{RandomEffect, RandomSignature, IO}
 
 extension (fx: RandomEffect)
   private[effects] def randomHandler_local(seed: Long): fx.ThisHandler.Free.Id =
-    new fx.Stateful[Splitmix64, (_, Splitmix64)] with fx.Parallel.ForkJoin with RandomSignature:
-      override def onPure[A](a: A, s: Splitmix64): (A, Splitmix64) = (a, s)
+    new fx.Free.Stateful[Splitmix64, (_, Splitmix64)] with fx.Parallel.ForkJoin with RandomSignature:
+      override def onReturn[A](a: A, s: Splitmix64): (A, Splitmix64) !! Any = !!.pure((a, s))
 
       override def onFork(s: Stan): (Stan, Stan) =
         val s2 = s.next

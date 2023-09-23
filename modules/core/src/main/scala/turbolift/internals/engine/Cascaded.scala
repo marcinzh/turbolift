@@ -4,17 +4,6 @@ import turbolift.!!
 
 
 extension (thiz: Stack)
-  private[engine] def cascadedPure(value: Any, store: Store): Any =
-    @tailrec def loop(i: Int, aa: Any): Any =
-      if i >= 0 then
-        val p = thiz.promptAt(i)
-        val s = store.getOrElseVoid(p)
-        val bb = p.flow.onPure(aa, s)
-        loop(i - 1, bb)
-      else
-        aa
-    loop(thiz.promptCount - 1, value)
-
   private[engine] def cascadedUnpure(ftor: Any): AnyComp =
     val n = thiz.promptCount
     @tailrec def loop(i: Int, comp: AnyComp): AnyComp =
