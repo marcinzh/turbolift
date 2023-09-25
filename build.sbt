@@ -1,6 +1,6 @@
 ThisBuild / organization := "io.github.marcinzh"
-ThisBuild / version := "0.58.0"
-ThisBuild / scalaVersion := "3.3.0"
+ThisBuild / version := "0.58.1"
+ThisBuild / scalaVersion := "3.3.1"
 ThisBuild / scalacOptions ++= Seq(
   "-deprecation",
   "-feature",
@@ -8,6 +8,7 @@ ThisBuild / scalacOptions ++= Seq(
   "-Ykind-projector:underscores",
   "-Xfatal-warnings",
 )
+Compile / scalacOptions += "-Wnonunit-statement"
 
 val Deps = {
   object deps {
