@@ -1,23 +1,23 @@
-package turbolift.internals.extensions.orphaned
+package turbolift.internals.extensions
 import turbolift.!!
 import scala.collection.BuildFrom
 
 
 private[turbolift] trait AuxExtensions:
-  private[orphaned] def empty0[A, U]: Vector[A] !! U = !!.pure(Vector.empty[A]).upCast[U]
-  private[orphaned] def unit0[U]: Unit !! U = !!.unit.upCast[U]
+  private[extensions] def empty0[A, U]: Vector[A] !! U = !!.pure(Vector.empty[A]).upCast[U]
+  private[extensions] def unit0[U]: Unit !! U = !!.unit.upCast[U]
   
-  private[orphaned] val funAddVoidUntyped: (Unit, Any) => Unit = (_, _) => ()
-  private[orphaned] val funAddOneUntyped: (Vector[Any], Any) => Vector[Any] = (as, a) => as :+ a
-  private[orphaned] val funAddManyUntyped: (Vector[Any], IterableOnce[Any]) => Vector[Any] = (as1, as2) => as1 ++ as2
-  private[orphaned] def funAddVoid[A] = funAddVoidUntyped.asInstanceOf[(Unit, A) => Unit]
-  private[orphaned] def funAddOne[A] = funAddOneUntyped.asInstanceOf[(Vector[A], A) => Vector[A]]
-  private[orphaned] def funAddMany[A] = funAddManyUntyped.asInstanceOf[(Vector[A], IterableOnce[A]) => Vector[A]]
-  private[orphaned] val fallbackVal: Any !! Any = !!.pure(null)
-  private[orphaned] val fallbackFun: Any => Any !! Any = _ => fallbackVal
+  private[extensions] val funAddVoidUntyped: (Unit, Any) => Unit = (_, _) => ()
+  private[extensions] val funAddOneUntyped: (Vector[Any], Any) => Vector[Any] = (as, a) => as :+ a
+  private[extensions] val funAddManyUntyped: (Vector[Any], IterableOnce[Any]) => Vector[Any] = (as1, as2) => as1 ++ as2
+  private[extensions] def funAddVoid[A] = funAddVoidUntyped.asInstanceOf[(Unit, A) => Unit]
+  private[extensions] def funAddOne[A] = funAddOneUntyped.asInstanceOf[(Vector[A], A) => Vector[A]]
+  private[extensions] def funAddMany[A] = funAddManyUntyped.asInstanceOf[(Vector[A], IterableOnce[A]) => Vector[A]]
+  private[extensions] val fallbackVal: Any !! Any = !!.pure(null)
+  private[extensions] val fallbackFun: Any => Any !! Any = _ => fallbackVal
 
-  private[orphaned] type BF[A, B, S[_]] = BuildFrom[S[A], B, S[B]]
-  private[orphaned] def doBuildFromVector[A, B, S[X] <: Iterable[X], U](as: S[A], mbs: Vector[B] !! U)(using bf: BF[A, B, S]): S[B] !! U = 
+  private[extensions] type BF[A, B, S[_]] = BuildFrom[S[A], B, S[B]]
+  private[extensions] def doBuildFromVector[A, B, S[X] <: Iterable[X], U](as: S[A], mbs: Vector[B] !! U)(using bf: BF[A, B, S]): S[B] !! U = 
     mbs.map(bs => (bf.newBuilder(as) ++= bs).result())
 
 

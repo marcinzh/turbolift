@@ -1,8 +1,18 @@
 package turbolift
-import turbolift.effects.{ChoiceSignature, Each}
+import scala.util.{Try, Success, Failure}
+import turbolift.effects.{ChoiceSignature, Each, IO}
+import turbolift.internals.auxx.CanPartiallyHandle
 import turbolift.internals.effect.AnyChoice
-import turbolift.internals.extensions.ComputationExtensions
 import turbolift.internals.primitives.Primitives
+import turbolift.internals.executor.Executor
+import turbolift.mode.Mode
+
+
+/** Alias for [[Computation]] type. Meant to be used in infix form. */
+type !![+A, -U] = Computation[A, U]
+
+/** Alias for [[Computation]] companion object. */
+def !! = Computation
 
 
 /** Monad parametrized by a set of requested effect. Use the `!!` infix type alias instead.
@@ -106,7 +116,7 @@ sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift]
   * }}}
   */
 
-object Computation extends ComputationExtensions:
+object Computation:
   private[turbolift] abstract class Unsealed[A, U](_tag: Byte) extends Computation[A, U](_tag)
   private[turbolift] type Untyped = Computation[Any, Any]
 
@@ -206,10 +216,87 @@ object Computation extends ComputationExtensions:
   def sequentially[A, U](body: A !! U): A !! U = parallellyIf(false)(body)
 
 
-/** Alias for [[Computation]] type. Meant to be used in infix form. */
-type !![+A, -U] = Computation[A, U]
+  //---------- Extensions ----------
 
-/** Alias for [[Computation]] companion object.
- *  
- */
-def !! = Computation
+
+  extension [A](thiz: Computation[A, Any])
+    /** Runs the computation, provided that it requests no effects. */
+    def run(using mode: Mode = Mode.default): A = Executor.pick(mode).runSync(thiz).get
+
+    def runST: A = Executor.ST.runSync(thiz).get
+    def runMT: A = Executor.MT.runSync(thiz).get
+
+
+  extension [A, U >: IO](thiz: Computation[A, U])
+    /** Runs the computation, provided that it requests IO effect only, or none at all. */
+    def unsafeRun(using mode: Mode = Mode.default): Try[A] = Executor.pick(mode).runSync(thiz)
+
+    def unsafeRunST: Try[A] = Executor.ST.runSync(thiz)
+    def unsafeRunMT: Try[A] = Executor.MT.runSync(thiz)
+
+    def unsafeRunAsync(using mode: Mode = Mode.default)(callback: Try[A] => Unit): Unit = Executor.pick(mode).runAsync(thiz, callback)
+
+
+  extension [A, U](thiz: Computation[A, U])
+    def downCast[U2 >: U] = thiz.asInstanceOf[Computation[A, U2]]
+  
+    /** Simplifies effectful creation of handlers.
+     * 
+     *  Passes computed value to handler constructor.
+     *  Effect used to compute the value, are absorbed by the handler, into its own dependencies.
+     */ 
+    @annotation.targetName("flatHandleId")
+    def >>=![F[+_], L, N](f: A => Handler[[X] =>> X, F, L, N]): Handler[[X] =>> X, F, L, U & N] = Handler.flatHandle(thiz.map(f))
+
+    /** Simplifies effectful creation of handlers.
+     * 
+     *  Passes computed value to handler constructor.
+     *  Effect used to compute the value, are absorbed by the handler, into its own dependencies.
+     */ 
+    @annotation.targetName("flatHandleConst")
+    def >>=![F[+_], L, N](f: A => Handler[[_] =>> A, F, L, N]): Handler[[_] =>> A, F, L, U & N] = Handler.flatHandle(thiz.map(f))
+
+    /** Applies a handler to this computation.
+     *
+     *  Same as `myHandler.handle(this)`.
+     */
+    def handleWith[V]: HandleWithApply[A, U, V] = new HandleWithApply[A, U, V](thiz)
+
+
+  extension [F[+_], G[+_], L, N](thiz: Computation[Handler[F, G, L, N], N])
+    /** Simplifies effectful creation of handlers.
+     * 
+     *  Same as [[turbolift.Handler.flatHandle Handler.flatHandle(this)]].
+     */
+    def flattenHandler: Handler[F, G, L, N] = Handler.flatHandle(thiz)
+
+
+  extension [A, B, U](thiz: Computation[(A, B), U])
+    def map2[C](f: (A, B) => C): C !! U = thiz.map(f.tupled)
+    def flatMap2[C, U2 <: U](f: (A, B) => C !! U2): C !! U2 = thiz.flatMap(f.tupled)
+
+
+  extension [U](thiz: Computation[Boolean, U])
+    /** Like `while` statement, but the condition and the body are computations. */
+    def while_!![U2 <: U](body: => Unit !! U2): Unit !! U2 = !!.repeatWhile(thiz)(body)
+
+    /** Like `while` statement, but the condition and the body are computations. */
+    def until_!![U2 <: U](body: => Unit !! U2): Unit !! U2 = !!.repeatUntil(thiz)(body)
+
+    /** Like `if` statement, but the condition and the body are computations. */
+    def if_!![U2 <: U](thenBody: => Unit !! U2)(elseBody: => Unit !! U2): Unit !! U2 =
+      thiz.flatMap(if _ then thenBody else elseBody)
+
+
+  //---------- Apply ----------
+
+
+  class HandleWithApply[A, U, V](thiz: A !! U):
+    @annotation.targetName("applyId")
+    def apply[F[+_], L, N, V2 <: V & N](h: Handler[[X] =>> X, F, L, N])(implicit ev: CanPartiallyHandle[V, U, L]): F[A] !! V2 =
+      h.doHandle[A, V](ev(thiz))
+
+    @annotation.targetName("applyConst")
+    def apply[F[+_], L, N, V2 <: V & N](h: Handler[[_] =>> A, F, L, N])(implicit ev: CanPartiallyHandle[V, U, L]): F[A] !! V2 =
+       h.doHandle[A, V](ev(thiz))
+

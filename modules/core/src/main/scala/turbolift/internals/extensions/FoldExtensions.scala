@@ -1,4 +1,4 @@
-package turbolift.internals.extensions.orphaned
+package turbolift.internals.extensions
 import turbolift.!!
 
 /** No need to use this trait directly, because it's inherited by [[turbolift.Extensions Extensions]] object. */
