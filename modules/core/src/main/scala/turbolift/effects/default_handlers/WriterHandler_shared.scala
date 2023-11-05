@@ -42,5 +42,5 @@ extension [W, W1](fx: WriterEffect[W, W1])
             yield a
 
       .toHandler
-      .flatMap([A] => (a: A) => ref.get.map((a, _)))
+      .mapK_!!([A] => (a: A) => ref.get.map((a, _)))
     }

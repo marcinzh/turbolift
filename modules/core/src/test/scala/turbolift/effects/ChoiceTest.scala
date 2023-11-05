@@ -14,7 +14,7 @@ class ChoiceTest extends Specification:
     def header = s"With handler = ${name}"
     def handler[Fx <: Choice](fx: Fx): fx.ThisHandler.Free[Vector] =
       apply(
-        fx.handlers.first.map([X] => (xs: Option[X]) => xs.toVector),
+        fx.handlers.first.mapK([X] => (xs: Option[X]) => xs.toVector),
         fx.handlers.all,
       )
 

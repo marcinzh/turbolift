@@ -13,7 +13,7 @@ class StateTest extends Specification:
     def header = s"With handler = ${name}"
     def handler[S, Fx <: State[S]](fx: Fx): S => fx.ThisHandler.FromId[(_, S), IO] =
       s => apply(
-        fx.handlers.local(s).flatTap([X] => (_: (X, S)) => !!.unit.upCast[IO]),
+        fx.handlers.local(s).tapK_!!([X] => (_: (X, S)) => !!.unit.upCast[IO]),
         fx.handlers.shared(s),
       )
 

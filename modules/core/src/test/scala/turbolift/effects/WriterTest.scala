@@ -14,7 +14,7 @@ class WriterTest extends Specification:
     def header = s"With handler = ${name}"
     def handler[W, W1, Fx <: WriterEffect[W, W1]](fx: Fx)(using AccumZero[W, W1]): fx.ThisHandler.FromId[(_, W), IO] =
       apply(
-        fx.handlers.local.flatTap([X] => (_: (X, W)) => !!.unit.upCast[IO]),
+        fx.handlers.local.tapK_!!([X] => (_: (X, W)) => !!.unit.upCast[IO]),
         fx.handlers.shared,
       )
 

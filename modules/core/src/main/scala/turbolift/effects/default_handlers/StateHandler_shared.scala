@@ -33,5 +33,5 @@ extension [S](fx: State[S])
         override def getUpdateGet[A](f: S => (A, S)): (A, S, S) !@! ThisEffect = ref.getUpdateGet(f)
 
       .toHandler
-      .flatMap([A] => (a: A) => ref.get.map((a, _)))
+      .mapK_!!([A] => (a: A) => ref.get.map((a, _)))
     }

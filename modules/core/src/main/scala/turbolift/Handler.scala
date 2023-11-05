@@ -49,41 +49,40 @@ sealed trait Handler[From[+_], To[+_], Elim, Intro]:
     *
     * a.k.a Natural Transformation.
     */
-  final def map[To2[+_]](f: [X] => To[X] => To2[X]): Handler[From, To2, Elim, Intro] =
-    flatMap([X] => (xx: To[X]) => !!.pure(f(xx)))
-    // HandlerCases.Mapped[From, To, To2, Elim, Intro](this, f)
+  final def mapK[To2[+_]](f: [X] => To[X] => To2[X]): Handler[From, To2, Elim, Intro] =
+    mapK_!!([X] => (xx: To[X]) => !!.pure(f(xx)))
 
-  /** Like [[map]], but the post-processing of `To[_]` can also introduce effects.
+  /** Like [[mapK]], but the post-processing of `To[_]` can also introduce effects.
     *
     * Those effects are then absorbed by the new handler into the effects it introduces.
     */
-  final def flatMap[To2[+_], V](f: [X] => To[X] => To2[X] !! V): Handler[From, To2, Elim, Intro & V] =
-    HandlerCases.FlatMapped[From, To, To2, Elim, Intro, V](this, f)
+  final def mapK_!![To2[+_], V](f: [X] => To[X] => To2[X] !! V): Handler[From, To2, Elim, Intro & V] =
+    HandlerCases.Mapped[From, To, To2, Elim, Intro, V](this, f)
 
-  /** Like [[flatMap]], but the post-processing is executed for its effects only.
+  /** Like [[mapK_!!]], but the post-processing is executed for its effects only.
     *
     * This handler's `To[_]` remains unchanged.
     */
-  final def flatTap[V](f: [X] => To[X] => Unit !! V): Handler[From, To, Elim, Intro & V] =
-    flatMap([X] => (xx: To[X]) => f(xx).as(xx))
+  final def tapK_!![V](f: [X] => To[X] => Unit !! V): Handler[From, To, Elim, Intro & V] =
+    mapK_!!([X] => (xx: To[X]) => f(xx).as(xx))
 
   /** Transforms this handler, by applying a pre-processing function to its input`. */
-  final def contraMap[From2[+_]](f: [X] => From2[X] => From[X]): Handler[From2, To, Elim, Intro] =
-    contraFlatMap([X] => (xx: From2[X]) => !!.pure(f(xx)))
+  final def contraMapK[From2[+_]](f: [X] => From2[X] => From[X]): Handler[From2, To, Elim, Intro] =
+    contraMapK_!!([X] => (xx: From2[X]) => !!.pure(f(xx)))
 
-  /** Like [[contraMap]], but the pre-processing of `From[_]` can also introduce effects.
+  /** Like [[contraMapK]], but the pre-processing of `From[_]` can also introduce effects.
     *
     * Those effects are then absorbed by the new handler into the effects it introduces.
     */
-  final def contraFlatMap[From2[+_], V](f: [X] => From2[X] => From[X] !! V): Handler[From2, To, Elim, Intro & V] =
-    HandlerCases.ContraFlatMapped[From2, From, To, Elim, V, Intro](f, this)
+  final def contraMapK_!![From2[+_], V](f: [X] => From2[X] => From[X] !! V): Handler[From2, To, Elim, Intro & V] =
+    HandlerCases.ContraMapped[From2, From, To, Elim, V, Intro](f, this)
 
-  /** Like [[contraFlatMap]], but the pre-processing is executed for its effects only.
+  /** Like [[contraMapK_!!]], but the pre-processing is executed for its effects only.
     *
     * This handler's `From[_]` remains unchanged.
     */
-  final def contraFlatTap[V](f: [X] => From[X] => Unit !! V): Handler[From, To, Elim, Intro & V] =
-    contraFlatMap([X] => (xx: From[X]) => f(xx).as(xx))
+  final def contraTapK_!![V](f: [X] => From[X] => Unit !! V): Handler[From, To, Elim, Intro & V] =
+    contraMapK_!!([X] => (xx: From[X]) => f(xx).as(xx))
 
   /** Composes 2 **independent** handlers.
     *
@@ -133,7 +132,7 @@ sealed trait Handler[From[+_], To[+_], Elim, Intro]:
   final def &&&![From2[+_], To2[+_], Elim2, Intro2](that: Handler[From2, To2, Elim2, Intro2])(using ev: CanPipe[To, From2]) = this.composeWith(that)
 
   /** Transforms this handler, by discarding its result. */
-  final def void: Handler[From, [X] =>> Unit, Elim, Intro] = map([X] => (_: To[X]) => ())
+  final def void: Handler[From, [X] =>> Unit, Elim, Intro] = mapK([X] => (_: To[X]) => ())
 
 
 
@@ -179,28 +178,28 @@ object Handler:
     def exec: Handler[F, [_] =>> S, L, N] = justState
 
     /** Transforms this handler, by dropping the first element of its `Tuple2` result. */
-    def justState: Handler[F, [_] =>> S, L, N] = thiz.map([A] => (pair: (A, S)) => pair._2)
+    def justState: Handler[F, [_] =>> S, L, N] = thiz.mapK([A] => (pair: (A, S)) => pair._2)
 
     /** Transforms this handler, by dropping the second element of its `Tuple2` result. */
-    def dropState: Handler[F, [X] =>> X, L, N] = thiz.map([A] => (pair: (A, S)) => pair._1)
+    def dropState: Handler[F, [X] =>> X, L, N] = thiz.mapK([A] => (pair: (A, S)) => pair._1)
 
     /** Transforms this handler, by mapping the second element of its `Tuple2` result. */
     def mapState[S2](f: S => S2): Handler[F, (_, S2), L, N] =
-      thiz.map([A] => (pair: (A, S)) =>
+      thiz.mapK([A] => (pair: (A, S)) =>
         val (a, s) = pair
         (a, f(s))
       )
 
     /** Like [[mapState]], but the mapping function is effectful. */
     def flatMapState[S2, U](f: S => S2 !! U): Handler[F, (_, S2), L, (N & U)] =
-      thiz.flatMap([A] => (pair: (A, S)) =>
+      thiz.mapK_!!([A] => (pair: (A, S)) =>
         val (a, s) = pair
         f(s).map((a, _))
       )
 
     /** Like [[flatMapState]], but the mapping is executed for its effects only. */
     def flatTapState[S2, U](f: S => Unit !! U): Handler[F, (_, S), L, (N & U)] =
-      thiz.flatTap([A] => (pair: (A, S)) =>
+      thiz.tapK_!!([A] => (pair: (A, S)) =>
         val (_, s) = pair
         f(s)
       )
@@ -216,7 +215,7 @@ object Handler:
      */
 
     def ***![S2, S3, L2, N2](that: Handler.FromId[(_, S2), L2, N2])(using ET: ExtendTuple[S, S2, S3]): Handler[F, (_, S3), L & L2, N & N2] =
-      thiz.composeWith(that).map([A] => (pairs: ((A, S), S2)) =>
+      thiz.composeWith(that).mapK([A] => (pairs: ((A, S), S2)) =>
         val ((a, s), s2) = pairs
         (a, ET.extendTuple(s, s2))
       )
@@ -225,19 +224,19 @@ object Handler:
   extension [F[+_], L, N](thiz: Handler[F, Option, L, N])
     /** Transforms this handler, by mapping its `Option` result to `Vector`. */
     def toVector: Handler[F, Vector, L, N] =
-      thiz.map([A] => (result: Option[A]) => result.toVector)
+      thiz.mapK([A] => (result: Option[A]) => result.toVector)
     
     /** Transforms this handler, by mapping its `Option` result to `Either`. */
     def toEither[E](e: => E): Handler[F, Either[E, _], L, N] =
-      thiz.map([A] => (result: Option[A]) => result.toRight(e))
+      thiz.mapK([A] => (result: Option[A]) => result.toRight(e))
 
     /** Transforms this handler, by mapping its `Option` result to `Try`. */
     def toTry(e: => Throwable): Handler[F, Try, L, N] =
-      thiz.map([A] => (result: Option[A]) => result.fold[Try[A]](Failure(e))(Success(_)))
+      thiz.mapK([A] => (result: Option[A]) => result.fold[Try[A]](Failure(e))(Success(_)))
 
     /** Transforms this handler, by deconstructing its `Option` result. */
     def getOrElse(default: => Nothing): Handler[F, [X] =>> X, L, N] =
-      thiz.map([A] => (result: Option[A]) => result.getOrElse(default))
+      thiz.mapK([A] => (result: Option[A]) => result.getOrElse(default))
 
     /** Transforms this handler, by deconstructing its `Option` result. */
     def getOrDie(message: => String): Handler[F, [X] =>> X, L, N] =
@@ -245,7 +244,7 @@ object Handler:
 
     /** Transforms this handler, by deconstructing its `Option` result. */
     def unsafeGet: Handler[F, [X] =>> X, L, N] =
-      thiz.map([A] => (result: Option[A]) => result.get)
+      thiz.mapK([A] => (result: Option[A]) => result.get)
 
     /** Composes 2 **independent** handlers, also flattening their nested `Option` results.
      *
@@ -255,21 +254,21 @@ object Handler:
      */
     @annotation.targetName("flattenOptions")
     def |||![L2, N2](that: Handler.FromId[Option, L2, N2]): Handler[F, Option, L & L2, N & N2] =
-      thiz.composeWith(that).map([A] => (options: Option[Option[A]]) => options.flatten)
+      thiz.composeWith(that).mapK([A] => (options: Option[Option[A]]) => options.flatten)
 
 
   extension [F[+_], E, L, N](thiz: Handler[F, Either[E, _], L, N])
     /** Transforms this handler, by mapping its `Either` result to `Option`. */
     def toOption: Handler[F, Option, L, N] =
-      thiz.map([A] => (result: Either[E, A]) => result.toOption)
+      thiz.mapK([A] => (result: Either[E, A]) => result.toOption)
 
     /** Transforms this handler, by mapping its `Either` result to `Try`. */
     def toTry(implicit ev: E <:< Throwable): Handler[F, Try, L, N] =
-      thiz.map([A] => (result: Either[E, A]) => result.toTry)
+      thiz.mapK([A] => (result: Either[E, A]) => result.toTry)
 
     /** Transforms this handler, by deconstructing its `Either` result. */
     def getOrElse(default: E => Nothing): Handler[F, [X] =>> X, L, N] =
-      thiz.map([A] => (result: Either[E, A]) => result.fold(default, x => x))
+      thiz.mapK([A] => (result: Either[E, A]) => result.fold(default, x => x))
 
     /** Transforms this handler, by deconstructing its `Either` result. */
     def getOrDie(message: E => String): Handler[F, [X] =>> X, L, N] =
@@ -277,18 +276,18 @@ object Handler:
 
     /** Transforms this handler, by mapping the `Left` branch of its `Either` result. */
     def mapLeft[E2](f: E => E2): Handler[F, Either[E2, _], L, N] =
-      thiz.map([A] => (result: Either[E, A]) => result.swap.map(f).swap)
+      thiz.mapK([A] => (result: Either[E, A]) => result.swap.map(f).swap)
 
     /** Like [[mapLeft]], but the mapping function is effectful. */
     def flatMapLeft[E2, U](f: E => E2 !! U): Handler[F, Either[E2, _], L, (N & U)] =
-      thiz.flatMap([A] => (result: Either[E, A]) => result match
+      thiz.mapK_!!([A] => (result: Either[E, A]) => result match
         case Left(e) => f(e).map(Left(_))
         case Right(a) => !!.pure(Right(a))
       )
 
     /** Like [[flatMapLeft]], but the mapping is executed for its effects only. */
     def flatTapLeft[U](f: E => Unit !! U): Handler[F, Either[E, _], L, (N & U)] =
-      thiz.flatTap([A] => (result: Either[E, A]) => result match
+      thiz.tapK_!!([A] => (result: Either[E, A]) => result match
         case Left(e) => f(e)
         case _ => !!.unit
       )
@@ -301,7 +300,7 @@ object Handler:
      */
     @annotation.targetName("flattenEithers")
     def |||![E2, L2, N2](that: Handler.FromId[Either[E2, _], L2, N2]): Handler[F, Either[E | E2, _], L & L2, N & N2] =
-      thiz.composeWith(that).map([A] => (eithers: Either[E2, Either[E, A]]) => eithers.flatten: Either[E2 | E, A])
+      thiz.composeWith(that).mapK([A] => (eithers: Either[E2, Either[E, A]]) => eithers.flatten: Either[E2 | E, A])
 
 
 
@@ -327,14 +326,14 @@ private[turbolift] object HandlerCases:
         .map(ev.fit)
       )
 
-  final case class FlatMapped[From[+_], To1[+_], To2[+_], Elim, Intro1, Intro2](
+  final case class Mapped[From[+_], To1[+_], To2[+_], Elim, Intro1, Intro2](
     that: Handler[From, To1, Elim, Intro1],
     fun: [X] => To1[X] => To2[X] !! Intro2,
   ) extends Handler[From, To2, Elim, Intro1 & Intro2]:
     override def doHandle[A, U](comp: From[A] !! (U & Elim)): To2[A] !! (U & Intro1 & Intro2) =
       that.doHandle[A, U](comp).flatMap(fun(_))
 
-  final case class ContraFlatMapped[From1[+_], From2[+_], To[+_], Elim, Intro1, Intro2](
+  final case class ContraMapped[From1[+_], From2[+_], To[+_], Elim, Intro1, Intro2](
     fun: [X] => From1[X] => From2[X] !! Intro1,
     that: Handler[From2, To, Elim, Intro2],
   ) extends Handler[From1, To, Elim, Intro1 & Intro2]:
