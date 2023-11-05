@@ -1,12 +1,14 @@
 package turbolift
-import turbolift.internals.effect.{CanPerform, CanInterpret, HasSignature => Stub}
+import turbolift.internals.effect.{EffectImpl, CanPerform}
+import turbolift.internals.primitives.{ComputationCases => CC}
 
 /**
  * Base trait for any user-defined effect.
  *
- * Instances of `Effect` are used for:
- * - Establishing unique identity of the effect.
- * - Invoking operations of the effect.
+ * Instances of `Effect` are used:
+ * - To establish unique identity of the effect, both in type and value space.
+ * - By effect users: to invoke operations of the effect.
+ * - By creators of effect handlers: to access base classes needed for implementing interpreters for this effect.
  * 
  * Example:
  * {{{
@@ -33,39 +35,37 @@ import turbolift.internals.effect.{CanPerform, CanInterpret, HasSignature => Stu
  * @tparam Z The [[Signature]] of this effect.
  */
 
-trait Effect[Z <: Signature] extends CanPerform[Z] with CanInterpret:
-  enclosing =>
+trait Effect[Z <: Signature] extends CanPerform[Z]:
+  self: Z =>
   final override type ThisEffect = this.type
-  private[turbolift] final override type ThisSignature = Z
-  private[turbolift] final override def signatures: Array[Signature] = Array(this)
-  
+
+  /** Object containing type definitions, to be used for implementing [[turbolift.internals.Interpreter Interpreters]] for this effect. */
+  val impl: EffectImpl[this.type] = new EffectImpl(Array(this))
+  export impl.ThisHandler
+
   /** Combines with another [[Effect]] instance, for the purpose of sharing an [[internals.interpreter.Interpreter Interpreter]]. */
-  final def &![Fx2 <: Stub](fx2: Fx2) = new Effect.Combine2[this.type, Fx2](this, fx2)
+  final def &![Fx2 <: Signature](fx2: Fx2) = new Effect.Combine2[this.type, fx2.type](this, fx2)
 
 
 object Effect:
-  private[turbolift] sealed abstract class Combine(sigs: Signature*) extends CanInterpret:
-    private[turbolift] final override val signatures: Array[Signature] = sigs.toArray
+  final class Combine2[Fx1 <: Signature, Fx2 <: Signature](val fx1: Fx1, val fx2: Fx2):
+    val impl: EffectImpl[fx1.type & fx2.type] = new EffectImpl(Array(fx1, fx2))
+    export impl.ThisHandler
 
-  /** Composition of 2 effects, for the purpose of sharing an [[internals.interpreter.Interpreter Interpreter]]. */
-  final class Combine2[Fx1 <: Stub, Fx2 <: Stub](val fx1: Fx1, val fx2: Fx2) extends Combine(fx1, fx2):
-    override type ThisEffect = fx1.type & fx2.type
-    private[turbolift] override type ThisSignature = fx1.ThisSignature & fx2.ThisSignature
-    
     /** Combines with another [[Effect]] instance, for the purpose of sharing an [[internals.interpreter.Interpreter Interpreter]]. */
-    def &![Fx3 <: Stub](fx3: Fx3) = new Combine3[Fx1, Fx2, Fx3](fx1, fx2, fx3)
+    def &![Fx3 <: Signature](fx3: Fx3) = new Combine3[Fx1, Fx2, Fx3](fx1, fx2, fx3)
 
 
   /** Composition of 3 effects, for the purpose of sharing an [[internals.interpreter.Interpreter Interpreter]]. */
-  final class Combine3[Fx1 <: Stub, Fx2 <: Stub, Fx3 <: Stub](val fx1: Fx1, val fx2: Fx2, val fx3: Fx3) extends Combine(fx1, fx2, fx3):
-    override type ThisEffect = fx1.type & fx2.type & fx3.type
-    private[turbolift] override type ThisSignature = fx1.ThisSignature & fx2.ThisSignature & fx3.ThisSignature
+  final class Combine3[Fx1 <: Signature, Fx2 <: Signature, Fx3 <: Signature](val fx1: Fx1, val fx2: Fx2, val fx3: Fx3):
+    val impl: EffectImpl[fx1.type & fx2.type & fx3.type] = new EffectImpl(Array(fx1, fx2, fx3))
+    export impl.ThisHandler
     
     /** Combines with another [[Effect]] instance, for the purpose of sharing an [[internals.interpreter.Interpreter Interpreter]]. */
-    def &![Fx4 <: Stub](fx4: Fx4) = new Combine4[Fx1, Fx2, Fx3, Fx4](fx1, fx2, fx3, fx4)
+    def &![Fx4 <: Signature](fx4: Fx4) = new Combine4[Fx1, Fx2, Fx3, Fx4](fx1, fx2, fx3, fx4)
 
 
   /** Composition of 4 effects, for the purpose of sharing an [[internals.interpreter.Interpreter Interpreter]]. */
-  final class Combine4[Fx1 <: Stub, Fx2 <: Stub, Fx3 <: Stub, Fx4 <: Stub](val fx1: Fx1, val fx2: Fx2, val fx3: Fx3, val fx4: Fx4) extends Combine(fx1, fx2, fx3, fx4):
-    override type ThisEffect = fx1.type & fx2.type & fx3.type & fx4.type
-    private[turbolift] override type ThisSignature = fx1.ThisSignature & fx2.ThisSignature & fx3.ThisSignature & fx4.ThisSignature
+  final class Combine4[Fx1 <: Signature, Fx2 <: Signature, Fx3 <: Signature, Fx4 <: Signature](val fx1: Fx1, val fx2: Fx2, val fx3: Fx3, val fx4: Fx4):
+    val impl: EffectImpl[fx1.type & fx2.type & fx3.type & fx4.type] = new EffectImpl(Array(fx1, fx2, fx3, fx4))
+    export impl.ThisHandler

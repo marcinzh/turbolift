@@ -7,7 +7,7 @@ import turbolift.concurrent.Ref
 extension [S](fx: State[S])
   private[effects] def stateHandler_shared(initial: S): fx.ThisHandler.FromId[(_, S), IO] =
     Ref(initial) >>=! { ref =>
-      new fx.ProxyIO with StateSignature[S]:
+      new fx.impl.ProxyIO with StateSignature[S]:
         override def get: S !@! ThisEffect = ref.get
 
         override def gets[A](f: S => A): A !@! ThisEffect = ref.gets(f)

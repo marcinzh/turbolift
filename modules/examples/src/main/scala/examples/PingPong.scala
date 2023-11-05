@@ -32,7 +32,7 @@ case object PingPong extends Example:
 
   extension (fx: Ping)
     def ponger =
-      new fx.Proxy[Console] with PingSignature:
+      new fx.impl.Proxy[Console] with PingSignature:
         override def ping: Unit !@! (ThisEffect & Pong) =
           k =>
             Console.println(s"${Console.CYAN}ping${Console.RESET}") &&!
@@ -42,7 +42,7 @@ case object PingPong extends Example:
   extension (fx: Pong)
     def pinger(limit: Int) =
       case object S extends State[Int]
-      new fx.Proxy[Console & S.type] with PongSignature:
+      new fx.impl.Proxy[Console & S.type] with PongSignature:
         override def pong: Unit !@! (ThisEffect & Ping) =
           k => 
             for

@@ -42,14 +42,14 @@ case object HandlerShadowing extends Example:
 
   extension (fx: Konsole)
     def plain =
-      new fx.Proxy[Any] with KonsoleSignature:
+      new fx.impl.Proxy[Any] with KonsoleSignature:
         override def log(text: String): Unit !@! ThisEffect =
           _ => !!.impure(println(text))
       .toHandler
 
 
     def sarcastic =
-      new fx.Proxy[Konsole] with KonsoleSignature:
+      new fx.impl.Proxy[Konsole] with KonsoleSignature:
         override def log(text: String): Unit !@! ThisEffect =
           _ =>
             val (text2, _) = text.foldLeft(("", false)) {
@@ -66,7 +66,7 @@ case object HandlerShadowing extends Example:
 
     def rainbow =
       case object S extends State[Int]
-      new fx.Proxy[S.type & Konsole] with KonsoleSignature:
+      new fx.impl.Proxy[S.type & Konsole] with KonsoleSignature:
         override def log(text: String): Unit !@! ThisEffect =
           _ =>
             for

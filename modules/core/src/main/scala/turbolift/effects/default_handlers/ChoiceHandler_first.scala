@@ -6,7 +6,7 @@ import turbolift.effects.{ChoiceEffect, ChoiceSignature}
 
 extension (fx: ChoiceEffect)
   private[effects] def choiceHandler_first: fx.ThisHandler.Free[Option] =
-    new fx.Free.Stateless[Option] with fx.Parallel with ChoiceSignature:
+    new fx.impl.Free.Stateless[Option] with fx.impl.Parallel with ChoiceSignature:
       override def onReturn[A](a: A): Option[A] !! Any = !!.pure(Some(a))
 
       override def onUnpure[A](as: Option[A]): A !! ThisEffect =

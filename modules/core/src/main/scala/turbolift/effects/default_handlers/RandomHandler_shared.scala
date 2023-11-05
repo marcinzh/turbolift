@@ -7,7 +7,7 @@ import turbolift.effects.{RandomEffect, RandomSignature, IO}
 extension (fx: RandomEffect)
   private[effects] def randomHandler_shared(seed: Long): fx.ThisHandler.Id[IO] =
     IO(new ScalaRandom(seed)) >>=! { rng =>
-      new fx.ProxyIO with RandomSignature:
+      new fx.impl.ProxyIO with RandomSignature:
         override def nextBoolean: Boolean !@! ThisEffect = IO(rng.nextBoolean)
         override def nextInt: Int !@! ThisEffect = IO(rng.nextInt)
         override def nextInt(n: Int): Int !@! ThisEffect = IO(rng.nextInt(n))

@@ -8,7 +8,7 @@ extension [K, V](fx: CyclicMemoizer[K, V])
   private[extra_effects] def cyclicMemoizerHandler: fx.ThisHandler.Free.Id =
     case object Storage extends State[Map[K, Thunk[V]]]
 
-    new fx.Proxy[Storage.type] with CyclicMemoizerSignature[K, V]:
+    new fx.impl.Proxy[Storage.type] with CyclicMemoizerSignature[K, V]:
       override def domain: Set[K] !@! ThisEffect = _ => Storage.gets(_.keySet)
 
       override def toMap: Map[K, V] !@! ThisEffect = _ => Storage.gets(_.view.mapValues(_.apply()).toMap) //@#@TODO mapValues not strict yet

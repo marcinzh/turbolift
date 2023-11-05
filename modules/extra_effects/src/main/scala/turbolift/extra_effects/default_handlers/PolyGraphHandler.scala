@@ -17,7 +17,7 @@ extension [K, V](fx: PolyGraph[K, V])
     def computeConst(value: V): Solution => V = (_: Solution) => value
     val computeBottom = computeConst(bottom)
 
-    new fx.Proxy[Compute.type & Propagate.type] with PolyGraphSignature[K, V]:
+    new fx.impl.Proxy[Compute.type & Propagate.type] with PolyGraphSignature[K, V]:
       override def empty(to: K): Unit !@! ThisEffect = _ => Compute.tell(to, computeBottom)
 
       override def const(to: K, value: V): Unit !@! ThisEffect = _ => Compute.tell(to, computeConst(value))

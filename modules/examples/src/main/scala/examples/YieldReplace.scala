@@ -31,7 +31,7 @@ case object YieldReplace extends Example:
         for
           head <- Ref(a)
           handler =
-            new R.ProxyIO with ReplaceSignature[A]:
+            new R.impl.ProxyIO with ReplaceSignature[A]:
               override def replace(x: A): Unit !@! R = head.put(x)
             .toHandler
           as2 <- (Y.yeld(R)(a) &&! iterate(Y, R)(as)).handleWith(handler)
@@ -43,7 +43,7 @@ case object YieldReplace extends Example:
     case object R extends Replace[Int]
     iterate(Y, R)(as)
     .handleWith(
-      new Y.Proxy[Console] with YieldSignature[Int]:
+      new Y.impl.Proxy[Console] with YieldSignature[Int]:
         override def yeld[R <: Replace[Int]](R: R)(value: Int) =
           k =>
             !!.when(value < 0)(k.escape(R.replace(-value))) &&!

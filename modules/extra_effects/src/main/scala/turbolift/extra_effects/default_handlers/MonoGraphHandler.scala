@@ -15,7 +15,7 @@ extension [K, V](fx: MonoGraph[K, V])
     case object Propagate extends WriterGK[Map, K, Set, K]
     type Fx3 = IncomingConst.type & OutgoingConst.type & Propagate.type
 
-    new fx.Proxy[Fx3] with MonoGraphSignature[K, V]:
+    new fx.impl.Proxy[Fx3] with MonoGraphSignature[K, V]:
       override def empty(k: K): Unit !@! ThisEffect = _ => IncomingConst.tell(k, V.empty)
       override def incomingConst(to: K, value: V): Unit !@! ThisEffect = _ => IncomingConst.tell(to, value)
       override def outgoingConst(from: K, value: V): Unit !@! ThisEffect = _ => OutgoingConst.tell(from, value)
