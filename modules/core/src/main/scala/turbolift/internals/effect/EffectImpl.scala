@@ -3,12 +3,7 @@ import turbolift.{!!, Signature, Effect, Handler}
 import turbolift.interpreter.{Interpreter => IC, Mixins}
 
 
-//@#@TODO
-// final class EffectImpl[Z <: Signature, Fx <: Effect2[Z]](thiz: Fx):
-// final class EffectImpl[Z <: Signature, Fx <: Signature](val effect: Fx, sigs: Array[Signature]):
 final class EffectImpl[Fx](sigs: Array[Signature]):
-  // final def perform[A, U <: Fx](f: (z: Z & Signature { type ThisEffect = U }) => z.!@![A, U]): A !! U = new CC.Perform(effect, f)
-
   /** Alias for [[Handler]], specialized to eliminate this effect. */
   final type ThisHandler[F[+_], G[+_], N] = Handler[F, G, Fx, N]
 
@@ -80,7 +75,7 @@ final class EffectImpl[Fx](sigs: Array[Signature]):
    *
    *  Like [[turbolift.interpreter.Interpreter.Stateful Stateful]] interpreter, but specialized for this effect.
    */
-  abstract class Stateful[F[+_], Fx] extends IC.Stateful[[X] =>> X, F, Fx] with ThisInterpreter
+  abstract class Stateful[F[+_], G[+_], Fx] extends IC.Stateful[F, G, Fx] with ThisInterpreter
 
 
   /** Namespace for convenient versions of `Stateless` class,

@@ -271,7 +271,7 @@ object Computation:
      *  Effect used to compute the value, are absorbed by the handler, into its own dependencies.
      */ 
     @annotation.targetName("flatHandleId")
-    def >>=![F[+_], L, N](f: A => Handler[[X] =>> X, F, L, N]): Handler[[X] =>> X, F, L, U & N] = Handler.flatHandle(thiz.map(f))
+    def >>=![F[+_], L, N](f: A => Handler.FromId[F, L, N]): Handler.FromId[F, L, U & N] = Handler.flatHandle(thiz.map(f))
 
     /** Simplifies effectful creation of handlers.
      * 
@@ -279,7 +279,7 @@ object Computation:
      *  Effect used to compute the value, are absorbed by the handler, into its own dependencies.
      */ 
     @annotation.targetName("flatHandleConst")
-    def >>=![F[+_], L, N](f: A => Handler[[_] =>> A, F, L, N]): Handler[[_] =>> A, F, L, U & N] = Handler.flatHandle(thiz.map(f))
+    def >>=![F[+_], L, N](f: A => Handler.FromConst[A, F, L, N]): Handler.FromConst[A, F, L, U & N] = Handler.flatHandle(thiz.map(f))
 
     /** Applies a handler to this computation.
      *
@@ -318,11 +318,17 @@ object Computation:
 
 
   class HandleWithApply[A, U, V](thiz: A !! U):
-    @annotation.targetName("applyId")
-    def apply[F[+_], L, N, V2 <: V & N](h: Handler[[X] =>> X, F, L, N])(implicit ev: CanPartiallyHandle[V, U, L]): F[A] !! V2 =
+    def id[F[+_], L, N, V2 <: V & N](h: Handler.FromId[F, L, N])(implicit ev: CanPartiallyHandle[V, U, L]): F[A] !! V2 =
       h.doHandle[A, V](ev(thiz))
 
+    def const[F[+_], L, N, V2 <: V & N](h: Handler.FromConst[A, F, L, N])(implicit ev: CanPartiallyHandle[V, U, L]): F[A] !! V2 =
+      h.doHandle[A, V](ev(thiz))
+
+    @annotation.targetName("applyId")
+    def apply[F[+_], L, N, V2 <: V & N](h: Handler.FromId[F, L, N])(implicit ev: CanPartiallyHandle[V, U, L]): F[A] !! V2 =
+      id(h)
+
     @annotation.targetName("applyConst")
-    def apply[F[+_], L, N, V2 <: V & N](h: Handler[[_] =>> A, F, L, N])(implicit ev: CanPartiallyHandle[V, U, L]): F[A] !! V2 =
-       h.doHandle[A, V](ev(thiz))
+    def apply[F[+_], L, N, V2 <: V & N](h: Handler.FromConst[A, F, L, N])(implicit ev: CanPartiallyHandle[V, U, L]): F[A] !! V2 =
+      const(h)
 
