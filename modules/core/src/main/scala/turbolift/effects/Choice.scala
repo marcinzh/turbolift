@@ -2,6 +2,7 @@ package turbolift.effects
 import scala.util.Try
 import turbolift.{!!, Effect, Signature}
 import turbolift.handlers.{choiceHandler_first, choiceHandler_all}
+import turbolift.handlers.{choiceHandler_allBreadthFirst, choiceHandler_firstBreadthFirst}
 
 
 trait ChoiceSignature extends Signature:
@@ -25,6 +26,8 @@ trait Choice extends Effect[ChoiceSignature] with ChoiceSignature:
   object handlers:
     def first: ThisHandler.FromId.Free[Option] = Choice.this.choiceHandler_first
     def all: ThisHandler.FromId.Free[Vector] = Choice.this.choiceHandler_all
+    def firstBreadthFirst: ThisHandler.FromId.Free[Option] = Choice.this.choiceHandler_firstBreadthFirst
+    def allBreadthFirst: ThisHandler.FromId.Free[Vector] = Choice.this.choiceHandler_allBreadthFirst
 
 
 object Choice:
