@@ -2,15 +2,19 @@ package examples
 import turbolift.{!!, Signature, Effect}
 import turbolift.Extensions._
 import turbolift.effects.{Console, IO}
-import turbolift.concurrent.Ref
+import turbolift.io.Ref
 
 
 case object YieldReplace extends Example:
-  override def description: String = """
-    Another example adapted from "Handling Bidirectional Control Flow" paper.
-    In addition to its original meaning,
-    our implementation demonstrates that in Turbolift we can abstract over effect instances.
+  override def description: String = s"""
+    The feature required for running this example is currently disabled,
+    because it turned out to be conflicting with new ones, which were more important.
   """
+  // override def description: String = """
+  //   Another example adapted from "Handling Bidirectional Control Flow" paper.
+  //   In addition to its original meaning,
+  //   our implementation demonstrates that in Turbolift we can abstract over effect instances.
+  // """
 
   trait YieldSignature[A] extends Signature:
     def yeld[R <: Replace[A]](R: R)(value: A): Unit !@! (ThisEffect & R.type)
@@ -31,8 +35,8 @@ case object YieldReplace extends Example:
         for
           head <- Ref(a)
           handler =
-            new R.impl.ProxyIO with ReplaceSignature[A]:
-              override def replace(x: A): Unit !@! R = head.put(x)
+            new R.impl.Proxy[IO] with ReplaceSignature[A]:
+              override def replace(x: A): Unit !@! R.type = head.put(x)
             .toHandler
           as2 <- (Y.yeld(R)(a) &&! iterate(Y, R)(as)).handleWith(handler)
           a2 <- head.get 
@@ -45,9 +49,8 @@ case object YieldReplace extends Example:
     .handleWith(
       new Y.impl.Proxy[Console] with YieldSignature[Int]:
         override def yeld[R <: Replace[Int]](R: R)(value: Int) =
-          k =>
-            !!.when(value < 0)(k.escape(R.replace(-value))) &&!
-            Console.println(s"iterating: $value")
+          !!.when(value < 0)(R.replace(-value)) &&!
+          Console.println(s"iterating: $value")
       .toHandler
     )
 

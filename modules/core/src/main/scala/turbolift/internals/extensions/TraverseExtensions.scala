@@ -15,9 +15,10 @@ import scala.collection.BuildFrom
       // thiz.iterator.foldLeft(unit0[U])((mas, ma) => mas.zipWith(ma)(funAddVoid))
       val iter = thiz.iterator
       def loop(): Unit !! U =
-        if iter.hasNext
-        then iter.next().flatMap(_ => loop())
-        else !!.unit
+        if iter.hasNext then
+          iter.next().flatMap(_ => loop())
+        else
+          !!.unit
       loop()
 
 
@@ -41,7 +42,7 @@ import scala.collection.BuildFrom
     def traverse: Option[A] !! U =
       thiz match
         case Some(ma) => ma.map(Some(_))
-        case None => !!.pure(None)
+        case None => !!.none
 
     /** Like [[traverse]]. */
     def traversePar: Option[A] !! U = traverse

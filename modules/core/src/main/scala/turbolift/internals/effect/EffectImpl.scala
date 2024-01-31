@@ -1,8 +1,9 @@
 package turbolift.internals.effect
 import turbolift.{!!, Signature, Effect, Handler}
-import turbolift.internals.interpreter.{Interpreter => IC, Features}
+import turbolift.interpreter.{Interpreter => IC, Mixins}
 
 
+//@#@TODO
 // final class EffectImpl[Z <: Signature, Fx <: Effect2[Z]](thiz: Fx):
 // final class EffectImpl[Z <: Signature, Fx <: Signature](val effect: Fx, sigs: Array[Signature]):
 final class EffectImpl[Fx](sigs: Array[Signature]):
@@ -11,85 +12,143 @@ final class EffectImpl[Fx](sigs: Array[Signature]):
   /** Alias for [[Handler]], specialized to eliminate this effect. */
   final type ThisHandler[F[+_], G[+_], N] = Handler[F, G, Fx, N]
 
-  /** Defines type aliases for [[Handler]], specialized to eliminate this effect. */
+  /** Namespace for convenient versions of `ThisHandler` type alias,
+   *  specialized by partially applying some or all of its type parameters.
+   *
+   *  For example: `ThisHandler.FromId.ToId.Free`
+   *  is equivalent of `ThisHandler[[X] =>> X, [X] =>> X, Any]`
+   *
+   *  This works like type-level "fluent interface", where:
+   *  - `FromId` and `FromConst` partially apply `F[+_]` parameter of [[ThisHandler]] type.
+   *  - `ToId` and `ToConst` partially apply `G[+_]` parameter of [[ThisHandler]] type.
+   *  - `Free` partially applies `N` parameter of [[ThisHandler]] type.
+   */
   object ThisHandler:
-    /** Alias for [[Handler.FromId]], specialized to eliminate this effect. */
-    type FromId[F[+_], N] = Handler.FromId[F, Fx, N]
+    type Free[F[+_], G[+_]] = Handler.Free[F, G, Fx]
 
-    /** Alias for [[Handler.Id]], specialized to eliminate this effect. */
-    type Id[N] = Handler.Id[Fx, N]
+    type FromId[F[+_], N] = Handler.FromId[F[+_], Fx, N]
+    object FromId:
+      type Free[F[+_]] = Handler.FromId.Free[F, Fx]
 
-    /** Alias for [[Handler.Const]], specialized to eliminate this effect. */
-    type Const[C, N] = Handler.Const[C, Fx, N]
+      type ToId[N] = Handler.FromId.ToId[Fx, N]
+      object ToId:
+        type Free = Handler.FromId.ToId.Free[Fx]
 
-    /** Alias for [[Handler.Free]], specialized to eliminate this effect. */
-    type Free[F[+_]] = Handler.Free[F, Fx]
+      type ToConst[D, N] = Handler.FromId.ToConst[D, Fx, N]
+      object ToConst:
+        type Free[D] = Handler.FromId.ToConst.Free[D, Fx]
 
-    object Free:
-      /** Alias for [[Handler.Free.Id]], specialized to eliminate this effect. */
-      type Id = Handler.Free.Id[Fx]
+    type FromConst[C, F[+_], N] = Handler.FromConst[C, F, Fx, N]
+    object FromConst:
+      type Free[C, F[+_]] = Handler.FromConst.Free[C, F, Fx]
 
-      /** Alias for [[Handler.Free.Const]], specialized to eliminate this effect. */
-      type Const[C] = Handler.Free.Const[C, Fx]
+      type ToConst[C, D, N] = Handler.FromConst.ToConst[C, D, Fx, N]
+      object ToConst:
+        type Free[C, D] = Handler.FromConst.ToConst.Free[C, D, Fx]
+
+    type ToId[F[+_], N] = Handler.ToId[F[+_], Fx, N]
+    object ToId:
+      type Free[F[+_]] = Handler.ToId.Free[F[+_], Fx]
+
+    type ToConst[F[+_], D, N] = Handler.ToConst[F[+_], D, Fx, N]
+    object ToConst:
+      type Free[F[+_], D] = Handler.ToConst.Free[F[+_], D, Fx]
 
 
   // private[turbolift] def signatures: Array[Signature]
   sealed trait ThisInterpreter extends IC.Unsealed:
     final override type ThisEffect = Fx
-    private[turbolift] final override val signatures: Array[Signature] = sigs
+    private[turbolift] final override def enumSignatures: Array[Signature] = sigs
 
-
-  /** Base class for any user-defined stateless interpreter for this effect.
-   *
-   *  Like [[turbolift.internals.interpreter.Interpreter.Stateless Stateless Interpreter]], but specialized for this effect.
-   */
-  abstract class Stateless[F[+_], Fx] extends IC.Stateless[[X] =>> X, F, Fx] with ThisInterpreter
-
-  /** Base class for any user-defined stateful interpreter for this effect.
-   *
-   *  Like [[turbolift.internals.interpreter.Interpreter.Stateful Stateful Interpreter]], but specialized for this effect.
-   */
-  abstract class Stateful[S, F[+_], Fx] extends IC.Stateful[S, [X] =>> X, F, Fx] with ThisInterpreter
-
-
-  /** Namespace for abstract interpreters, that are "Const".
-   *
-   *  Such interpreters produce handlers, that are applicable only to computations,
-   *  that return values of some specific type. This type supplied in constructor parameter.
-   *  This is opposed to the default case, where produced handler is universally quantified over that type.
-   */
-  object Const:
-    /** Like [[Stateless]], but obtained handler is applicable only to computations that return `C`. */
-    abstract class Stateless[C, F[+_], Fx] extends IC.Stateless[[_] =>> C, F, Fx] with ThisInterpreter
-
-    /** Like [[Stateful]], but obtained handler is applicable only to computations that return `C`. */
-    abstract class Stateful[C, S, F[+_], Fx] extends IC.Stateful[S, [_] =>> C, F, Fx] with ThisInterpreter
-
-
-  /** Namespace for abstract interpreters, that are "Free", meaning they have no dependencies. */
-  object Free:
-    /** Like [[Stateless]], except this one has no dependencies. */
-    abstract class Stateless[F[+_]] extends IC.Stateless[[X] =>> X, F, Any] with ThisInterpreter
-
-    /** Like [[Stateful]], except this one has no dependencies. */
-    abstract class Stateful[S, F[+_]] extends IC.Stateful[S, [X] =>> X, F, Any] with ThisInterpreter
-
-    /** Namespace for abstract interpreters, that are both "Const" and "Free". */
-    object Const:
-      /** Like [[Stateless]], but obtained handler is applicable only to computations that return `C`. */
-      abstract class Stateless[C, F[+_]] extends IC.Stateless[[_] =>> C, F, Any] with ThisInterpreter
-
-      /** Like [[Stateful]], but obtained handler is applicable only to computations that return `C`. */
-      abstract class Stateful[C, S, F[+_]] extends IC.Stateful[S, [_] =>> C, F, Any] with ThisInterpreter
 
 
   /** Base class for any user-defined proxy interpreter for this effect.
    *
-   *  Like [[turbolift.internals.interpreter.Interpreter.Proxy Proxy Interpreter]], but specialized for this effect.
+   *  Like [[turbolift.interpreter.Interpreter.Proxy Proxy Interpreter]], but specialized for this effect.
    */
   abstract class Proxy[Fx] extends IC.Proxy[Fx] with ThisInterpreter
 
-  abstract class ProxyIO extends IC.ProxyIO with ThisInterpreter
+
+  /** Base class for any user-defined stateless interpreter for this effect.
+   *
+   *  Like [[turbolift.interpreter.Interpreter.Stateless Stateless]] interpreter, but specialized for this effect.
+   */
+  abstract class Stateless[F[+_], G[+_], Fx] extends IC.Stateless[F, G, Fx] with ThisInterpreter
 
 
-  export Features.{Sequential, Parallel}
+  /** Base class for any user-defined stateful interpreter for this effect.
+   *
+   *  Like [[turbolift.interpreter.Interpreter.Stateful Stateful]] interpreter, but specialized for this effect.
+   */
+  abstract class Stateful[F[+_], Fx] extends IC.Stateful[[X] =>> X, F, Fx] with ThisInterpreter
+
+
+  /** Namespace for convenient versions of `Stateless` class,
+   *  specialized by partially applying some or all of its type parameters.
+   *
+   *  For example: `Stateless.FromId.ToId.Free`
+   *  is equivalent of `Stateless[[X] =>> X, [X] =>> X, ThisEffect, Any]`
+   *
+   *  This works like type-level "fluent interface", where:
+   *  - `FromId` and `FromConst` partially apply `F[+_]` parameter of [[Stateless]] class.
+   *  - `ToId` and `ToConst` partially apply `G[+_]` parameter of [[Stateless]] class.
+   *  - `Free` partially applies `Fx` parameter of [[Stateless]] class.
+   */
+  object Stateless:
+    abstract class FromId[G[+_], Fx] extends IC.Stateless[[X] =>> X, G, Fx] with ThisInterpreter
+    object FromId:
+      abstract class ToId[Fx] extends IC.Stateless[[X] =>> X, [X] =>> X, Fx] with ThisInterpreter
+      object ToId:
+        abstract class Free extends IC.Stateless[[X] =>> X, [X] =>> X, Any] with ThisInterpreter
+
+      abstract class ToConst[D, Fx] extends IC.Stateless[[X] =>> X, [_] =>> D, Fx] with ThisInterpreter
+      object ToConst:
+        abstract class Free[D] extends IC.Stateless[[X] =>> X, [_] =>> D, Any] with ThisInterpreter
+
+      abstract class Free[G[+_]] extends IC.Stateless[[X] =>> X, G, Any] with ThisInterpreter
+
+    abstract class FromConst[C, G[+_], Fx] extends IC.Stateless[[_] =>> C, G, Fx] with ThisInterpreter
+    object FromConst:
+      abstract class ToConst[C, D, Fx] extends IC.Stateless[[_] =>> C, [_] =>> D, Fx] with ThisInterpreter
+
+      object ToConst:
+        abstract class Free[C, D] extends IC.Stateless[[_] =>> C, [_] =>> D, Any] with ThisInterpreter
+
+      abstract class Free[C, G[+_]] extends IC.Stateless[[_] =>> C, G, Any] with ThisInterpreter
+
+
+  /** Namespace for convenient versions of `Stateful` class,
+   *  specialized by partially applying some or all of its type parameters.
+   *
+   *  For example: `Stateful.FromId.ToId.Free`
+   *  is equivalent of `Stateful[[X] =>> X, [X] =>> X, ThisEffect, Any]`
+   *
+   *  This works like type-level "fluent interface", where:
+   *  - `FromId` and `FromConst` partially apply `F[+_]` parameter of [[Stateful]] class.
+   *  - `ToId` and `ToConst` partially apply `G[+_]` parameter of [[Stateful]] class.
+   *  - `Free` partially applies `Fx` parameter of [[Stateful]] class.
+   */
+  object Stateful:
+    abstract class FromId[G[+_], Fx] extends IC.Stateful[[X] =>> X, G, Fx] with ThisInterpreter
+    object FromId:
+      abstract class ToId[Fx] extends IC.Stateful[[X] =>> X, [X] =>> X, Fx] with ThisInterpreter
+      object ToId:
+        abstract class Free extends IC.Stateful[[X] =>> X, [X] =>> X, Any] with ThisInterpreter
+
+      abstract class ToConst[D, Fx] extends IC.Stateful[[X] =>> X, [_] =>> D, Fx] with ThisInterpreter
+      object ToConst:
+        abstract class Free[D] extends IC.Stateful[[X] =>> X, [_] =>> D, Any] with ThisInterpreter
+
+      abstract class Free[G[+_]] extends IC.Stateful[[X] =>> X, G, Any] with ThisInterpreter
+
+    abstract class FromConst[C, G[+_], Fx] extends IC.Stateful[[_] =>> C, G, Fx] with ThisInterpreter
+    object FromConst:
+      abstract class ToConst[C, D, Fx] extends IC.Stateful[[_] =>> C, [_] =>> D, Fx] with ThisInterpreter
+
+      object ToConst:
+        abstract class Free[C, D] extends IC.Stateful[[_] =>> C, [_] =>> D, Any] with ThisInterpreter
+
+      abstract class Free[C, G[+_]] extends IC.Stateful[[_] =>> C, G, Any] with ThisInterpreter
+
+
+  export Mixins.{Sequential, Parallel}

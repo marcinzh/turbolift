@@ -34,9 +34,8 @@ case object PingPong extends Example:
     def ponger =
       new fx.impl.Proxy[Console] with PingSignature:
         override def ping: Unit !@! (ThisEffect & Pong) =
-          k =>
-            Console.println(s"${Console.CYAN}ping${Console.RESET}") &&!
-            k.escape(Pong.pong)
+          Console.println(s"${Console.CYAN}ping${Console.RESET}") &&!
+          Pong.pong
       .toHandler
 
   extension (fx: Pong)
@@ -44,15 +43,14 @@ case object PingPong extends Example:
       case object S extends State[Int]
       new fx.impl.Proxy[Console & S.type] with PongSignature:
         override def pong: Unit !@! (ThisEffect & Ping) =
-          k => 
-            for
-              i <- S.modifyGet(_ + 1)
-              _ <- Console.println(s"${Console.MAGENTA}pong $i${Console.RESET}")
-              _ <- 
-                if i == limit
-                then !!.unit
-                else k.escape(Ping.ping)
-            yield ()
+          for
+            i <- S.modifyGet(_ + 1)
+            _ <- Console.println(s"${Console.MAGENTA}pong $i${Console.RESET}")
+            _ <- 
+              if i == limit
+              then !!.unit
+              else Ping.ping
+          yield ()
       .toHandler
       .partiallyProvideWith[Console](S.handler(0).dropState)
 

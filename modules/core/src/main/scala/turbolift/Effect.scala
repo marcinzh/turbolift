@@ -39,11 +39,11 @@ trait Effect[Z <: Signature] extends CanPerform[Z]:
   self: Z =>
   final override type ThisEffect = this.type
 
-  /** Object containing type definitions, to be used for implementing [[turbolift.internals.Interpreter Interpreters]] for this effect. */
+  /** Object containing type definitions, to be used for implementing [[turbolift.interpreter.Interpreter Interpreters]] for this effect. */
   val impl: EffectImpl[this.type] = new EffectImpl(Array(this))
   export impl.ThisHandler
 
-  /** Combines with another [[Effect]] instance, for the purpose of sharing an [[internals.interpreter.Interpreter Interpreter]]. */
+  /** Combines with another [[Effect]] instance, for the purpose of sharing an [[interpreter.Interpreter Interpreter]]. */
   final def &![Fx2 <: Signature](fx2: Fx2) = new Effect.Combine2[this.type, fx2.type](this, fx2)
 
 
@@ -52,20 +52,20 @@ object Effect:
     val impl: EffectImpl[fx1.type & fx2.type] = new EffectImpl(Array(fx1, fx2))
     export impl.ThisHandler
 
-    /** Combines with another [[Effect]] instance, for the purpose of sharing an [[internals.interpreter.Interpreter Interpreter]]. */
+    /** Combines with another [[Effect]] instance, for the purpose of sharing an [[interpreter.Interpreter Interpreter]]. */
     def &![Fx3 <: Signature](fx3: Fx3) = new Combine3[Fx1, Fx2, Fx3](fx1, fx2, fx3)
 
 
-  /** Composition of 3 effects, for the purpose of sharing an [[internals.interpreter.Interpreter Interpreter]]. */
+  /** Composition of 3 effects, for the purpose of sharing an [[interpreter.Interpreter Interpreter]]. */
   final class Combine3[Fx1 <: Signature, Fx2 <: Signature, Fx3 <: Signature](val fx1: Fx1, val fx2: Fx2, val fx3: Fx3):
     val impl: EffectImpl[fx1.type & fx2.type & fx3.type] = new EffectImpl(Array(fx1, fx2, fx3))
     export impl.ThisHandler
     
-    /** Combines with another [[Effect]] instance, for the purpose of sharing an [[internals.interpreter.Interpreter Interpreter]]. */
+    /** Combines with another [[Effect]] instance, for the purpose of sharing an [[interpreter.Interpreter Interpreter]]. */
     def &![Fx4 <: Signature](fx4: Fx4) = new Combine4[Fx1, Fx2, Fx3, Fx4](fx1, fx2, fx3, fx4)
 
 
-  /** Composition of 4 effects, for the purpose of sharing an [[internals.interpreter.Interpreter Interpreter]]. */
+  /** Composition of 4 effects, for the purpose of sharing an [[interpreter.Interpreter Interpreter]]. */
   final class Combine4[Fx1 <: Signature, Fx2 <: Signature, Fx3 <: Signature, Fx4 <: Signature](val fx1: Fx1, val fx2: Fx2, val fx3: Fx3, val fx4: Fx4):
     val impl: EffectImpl[fx1.type & fx2.type & fx3.type & fx4.type] = new EffectImpl(Array(fx1, fx2, fx3, fx4))
     export impl.ThisHandler

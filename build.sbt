@@ -1,5 +1,5 @@
 ThisBuild / organization := "io.github.marcinzh"
-ThisBuild / version := "0.61.0-SNAPSHOT"
+ThisBuild / version := "0.70.0"
 ThisBuild / scalaVersion := "3.3.1"
 ThisBuild / scalacOptions ++= Seq(
   "-deprecation",
@@ -11,11 +11,12 @@ ThisBuild / scalacOptions ++= Seq(
 Compile / scalacOptions += "-Wnonunit-statement"
 
 val Deps = {
+  val specs2_v = "5.4.0"
   object deps {
-    val cats_core = "org.typelevel" %% "cats-core" % "2.9.0"
-    val specs2_core = "org.specs2" %% "specs2-core" % "5.2.0" % "test"
-    val specs2_extra = "org.specs2" %% "specs2-matcher-extra" % "5.2.0" % "test"
-    val jol = "org.openjdk.jol" % "jol-core" % "0.16"
+    val cats_core = "org.typelevel" %% "cats-core" % "2.10.0"
+    val specs2_core = "org.specs2" %% "specs2-core" % specs2_v % "test"
+    val specs2_extra = "org.specs2" %% "specs2-matcher-extra" % specs2_v % "test"
+    val jol = "org.openjdk.jol" % "jol-core" % "0.17"
   }
   deps
 }
@@ -31,6 +32,7 @@ lazy val core = project
   .in(file("modules/core"))
   .settings(name := "turbolift-core")
   .settings(Compile / scalacOptions += "-Yexplicit-nulls")
+  .settings(Test / parallelExecution := false)
   .settings(libraryDependencies ++= Seq(
     Deps.cats_core,
     Deps.specs2_core,
@@ -106,6 +108,15 @@ ThisBuild / watchTriggeredMessage := Watch.clearScreenOnTrigger
 ThisBuild / watchForceTriggerOnAnyChange := true
 
 Test / parallelExecution := false
+
+// build.sbt
+
+val cls = taskKey[Unit]("Clears the console the hard way")
+
+cls := {
+  print("\u001b[0m\u001b[2J\u001bc")
+}
+
 
 //=================================================
 

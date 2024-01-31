@@ -1,7 +1,7 @@
 package turbolift
 import scala.util.{Try, Success, Failure}
 import turbolift.internals.auxx.{CanPartiallyHandle, CanPipe}
-import turbolift.internals.interpreter.Interpreter
+import turbolift.interpreter.Interpreter
 import turbolift.internals.primitives.{ComputationCases => CC}
 import turbolift.typeclass.ExtendTuple
 
@@ -14,7 +14,7 @@ import turbolift.typeclass.ExtendTuple
  *  }}}
  *  
  *  Handlers can be obtained by:
- *  - implementing an [[internals.interpreter.Interpreter Interpreter]] for an [[Effect]],
+ *  - implementing an [[interpreter.Interpreter Interpreter]] for an [[Effect]],
  *  and then calling `toHandler` method on it.
  *  - transforming a preexisting handler, e.g. `val myHandler2 = myHandler1.map(...)`
  *  - composing 2 preexisting handlers, e.g. `val myHandler3 = myHandler1 &&&! myHandler2`
@@ -50,39 +50,39 @@ sealed trait Handler[From[+_], To[+_], Elim, Intro]:
     * a.k.a Natural Transformation.
     */
   final def mapK[To2[+_]](f: [X] => To[X] => To2[X]): Handler[From, To2, Elim, Intro] =
-    mapK_!!([X] => (xx: To[X]) => !!.pure(f(xx)))
+    mapEffK([X] => (xx: To[X]) => !!.pure(f(xx)))
 
   /** Like [[mapK]], but the post-processing of `To[_]` can also introduce effects.
     *
     * Those effects are then absorbed by the new handler into the effects it introduces.
     */
-  final def mapK_!![To2[+_], V](f: [X] => To[X] => To2[X] !! V): Handler[From, To2, Elim, Intro & V] =
+  final def mapEffK[To2[+_], V](f: [X] => To[X] => To2[X] !! V): Handler[From, To2, Elim, Intro & V] =
     HandlerCases.Mapped[From, To, To2, Elim, Intro, V](this, f)
 
-  /** Like [[mapK_!!]], but the post-processing is executed for its effects only.
+  /** Like [[mapEffK]], but the post-processing is executed for its effects only.
     *
     * This handler's `To[_]` remains unchanged.
     */
-  final def tapK_!![V](f: [X] => To[X] => Unit !! V): Handler[From, To, Elim, Intro & V] =
-    mapK_!!([X] => (xx: To[X]) => f(xx).as(xx))
+  final def tapEffK[V](f: [X] => To[X] => Unit !! V): Handler[From, To, Elim, Intro & V] =
+    mapEffK([X] => (xx: To[X]) => f(xx).as(xx))
 
   /** Transforms this handler, by applying a pre-processing function to its input`. */
   final def contraMapK[From2[+_]](f: [X] => From2[X] => From[X]): Handler[From2, To, Elim, Intro] =
-    contraMapK_!!([X] => (xx: From2[X]) => !!.pure(f(xx)))
+    contraMapEffK([X] => (xx: From2[X]) => !!.pure(f(xx)))
 
   /** Like [[contraMapK]], but the pre-processing of `From[_]` can also introduce effects.
     *
     * Those effects are then absorbed by the new handler into the effects it introduces.
     */
-  final def contraMapK_!![From2[+_], V](f: [X] => From2[X] => From[X] !! V): Handler[From2, To, Elim, Intro & V] =
+  final def contraMapEffK[From2[+_], V](f: [X] => From2[X] => From[X] !! V): Handler[From2, To, Elim, Intro & V] =
     HandlerCases.ContraMapped[From2, From, To, Elim, V, Intro](f, this)
 
-  /** Like [[contraMapK_!!]], but the pre-processing is executed for its effects only.
+  /** Like [[contraMapEffK]], but the pre-processing is executed for its effects only.
     *
     * This handler's `From[_]` remains unchanged.
     */
-  final def contraTapK_!![V](f: [X] => From[X] => Unit !! V): Handler[From, To, Elim, Intro & V] =
-    contraMapK_!!([X] => (xx: From[X]) => f(xx).as(xx))
+  final def contraTapEffK[V](f: [X] => From[X] => Unit !! V): Handler[From, To, Elim, Intro & V] =
+    contraMapEffK([X] => (xx: From[X]) => f(xx).as(xx))
 
   /** Composes 2 **independent** handlers.
     *
@@ -135,27 +135,105 @@ sealed trait Handler[From[+_], To[+_], Elim, Intro]:
   final def void: Handler[From, [X] =>> Unit, Elim, Intro] = mapK([X] => (_: To[X]) => ())
 
 
-
 object Handler:
-  /** Alias for handler, whose `From[_]` is type-level identity. */
+  /** Namespace for convenient type aliases of `Handler` class,
+   *  specialized by partially applying some or all of its type parameters.
+   *
+   *  For example: `Handler.FromId.ToId.Free[Fx]`
+   *  is equivalent of `Handler[[X] =>> X, [X] =>> X, Fx, Any]`
+   *
+   *  This works like type-level "fluent interface", where:
+   *  - `FromId` and `FromConst` partially apply `From[+_]` parameter of [[Handler]] class.
+   *  - `ToId` and `ToConst` partially apply `To[+_]` parameter of [[Handler]] class.
+   *  - `Free` partially applies `Intro` parameter of [[Handler]] class.
+   */
+
+  /** Alias for [[Handler]], that has no dependencies. */
+  type Free[F[+_], G[+_], Elim] = Handler[F, G, Elim, Any]
+
+  /** Alias for [[Handler]], where `From[_]` is type-level identity. */
   type FromId[To[+_], Elim, Intro] = Handler[[X] =>> X, To, Elim, Intro]
+  /** Type-level fluent interface for accessing [[Handler]] type aliases. */
+  object FromId:
+    /** Alias for [[Handler]], where
+      * `From[_]` is type-level identity,
+      * and there are no dependencies.
+      */
+    type Free[To[+_], Elim] = FromId[To, Elim, Any]
 
-  /** Alias for handler, whose both `From[_]` and `To[_]` are type-level identities. */
-  type Id[Elim, Intro] = FromId[[X] =>> X, Elim, Intro]
+    /** Alias for [[Handler]], where
+      * both `From[_]` and `To[_] are type-level identities.
+      */
+    type ToId[Elim, Intro] = FromId[[X] =>> X, Elim, Intro]
+    /** Type-level fluent interface for accessing [[Handler]] type aliases. */
+    object ToId:
+      /** Alias for [[Handler]], where
+        * both `From[_]` and `To[_] are type-level identities,
+        * and there are no dependencies.
+        */
+      type Free[Elim] = ToId[Elim, Any]
 
-  /** Alias for handler, whose `From[_]` is type-level identity, and `To[_]` is a type-level constant function. */
-  type Const[To, Elim, Intro] = FromId[[_] =>> To, Elim, Intro]
+    /** Alias for [[Handler]], where
+      * `From[_]` is type-level identity,
+      * and `To[_]` is type-level constant function.
+      */
+    type ToConst[D, Elim, Intro] = FromId[[_] =>> D, Elim, Intro]
+    /** Type-level fluent interface for accessing [[Handler]] type aliases. */
+    object ToConst:
+      /** Alias for [[Handler]], where
+        * `From[_]` is type-level identity,
+        * `To[_]` is type-level constant function,
+        * and there are no dependencies.
+        */
+      type Free[D, Elim] = ToConst[D, Elim, Any]
 
-  /** Alias for handler, whose `From[_]` is type-level identity, and has no dependencies (introduces no new effects). */
-  type Free[To[+_], Elim] = FromId[To, Elim, Any]
+  /** Alias for [[Handler]], whose `From[_]` is type-level constant function. */
+  type FromConst[C, To[+_], Elim, Intro] = Handler[[_] =>> C, To, Elim, Intro]
+  /** Type-level fluent interface for accessing [[Handler]] type aliases. */
+  object FromConst:
+    /** Alias for [[Handler]], where 
+      * From[_]` is type-level constant function,
+      * and there are no dependencies.
+      */
+    type Free[C, To[+_], Elim] = FromConst[C, To, Elim, Any]
 
-  object Free:
-    /** Alias for handler, that is both [[Free]] and [[Id]]. */
-    type Id[Elim] = Free[[X] =>> X, Elim]
-
-    /** Alias for handler, that is both [[Free]] and [[Const]]. */
-    type Const[To, Elim] = Free[[_] =>> To, Elim]
+    /** Alias for [[Handler]], where
+      * both `From[_]` and `To[_]` are type-level constant functions.
+      */
+    type ToConst[C, D, Elim, Intro] = FromConst[C, [_] =>> D, Elim, Intro]
+    /** Type-level fluent interface for accessing [[Handler]] type aliases. */
+    object ToConst:
+      /** Alias for [[Handler]], where
+        * both `From[_]` and `To[_]` are type-level constant functions,
+        * and there are no dependencies.
+        */
+      type Free[C, D, Elim] = ToConst[C, D, Elim, Any]
  
+  /** Alias for [[Handler]], where
+    * `To[_]` is type-level identity.
+    */
+  type ToId[F[+_], Elim, Intro] = Handler[F, [X] =>> X, Elim, Intro]
+  /** Type-level fluent interface for accessing [[Handler]] type aliases. */
+  object ToId:
+    /** Alias for [[Handler]], where
+      * `To[_]` is type-level identity.
+      * and there are no dependencies.
+      */
+    type Free[F[+_], Elim] = ToId[F, Elim, Any]
+
+  /** Alias for [[Handler]], where
+    * `To[_]` is type-level constant function.
+    */
+  type ToConst[F[+_], D, Elim, Intro] = Handler[F, [_] =>> D, Elim, Intro]
+  /** Type-level fluent interface for accessing [[Handler]] type aliases. */
+  object ToConst:
+    /** Alias for [[Handler]], where
+      * `To[_]` is type-level constant function,
+      * and there are no dependencies.
+      */
+    type Free[F[+_], D, Elim] = ToConst[F, D, Elim, Any]
+
+
   /** Transforms a computation of a handler, into a new handler.
    *
    *  Useful for effectful creation of handlers.
@@ -172,16 +250,16 @@ object Handler:
 
   extension [F[+_], S, L, N](thiz: Handler[F, (_, S), L, N])
     /** Alias for [[dropState]]. */
-    def eval: Handler[F, [X] =>> X, L, N] = dropState
+    def eval: Handler.ToId[F, L, N] = dropState
 
     /** Alias for [[justState]]. */
-    def exec: Handler[F, [_] =>> S, L, N] = justState
+    def exec: Handler.ToConst[F, S, L, N] = justState
 
     /** Transforms this handler, by dropping the first element of its `Tuple2` result. */
-    def justState: Handler[F, [_] =>> S, L, N] = thiz.mapK([A] => (pair: (A, S)) => pair._2)
+    def justState: Handler.ToConst[F, S, L, N] = thiz.mapK([A] => (pair: (A, S)) => pair._2)
 
     /** Transforms this handler, by dropping the second element of its `Tuple2` result. */
-    def dropState: Handler[F, [X] =>> X, L, N] = thiz.mapK([A] => (pair: (A, S)) => pair._1)
+    def dropState: Handler.ToId[F, L, N] = thiz.mapK([A] => (pair: (A, S)) => pair._1)
 
     /** Transforms this handler, by mapping the second element of its `Tuple2` result. */
     def mapState[S2](f: S => S2): Handler[F, (_, S2), L, N] =
@@ -192,14 +270,14 @@ object Handler:
 
     /** Like [[mapState]], but the mapping function is effectful. */
     def flatMapState[S2, U](f: S => S2 !! U): Handler[F, (_, S2), L, (N & U)] =
-      thiz.mapK_!!([A] => (pair: (A, S)) =>
+      thiz.mapEffK([A] => (pair: (A, S)) =>
         val (a, s) = pair
         f(s).map((a, _))
       )
 
     /** Like [[flatMapState]], but the mapping is executed for its effects only. */
     def flatTapState[S2, U](f: S => Unit !! U): Handler[F, (_, S), L, (N & U)] =
-      thiz.tapK_!!([A] => (pair: (A, S)) =>
+      thiz.tapEffK([A] => (pair: (A, S)) =>
         val (_, s) = pair
         f(s)
       )
@@ -235,15 +313,15 @@ object Handler:
       thiz.mapK([A] => (result: Option[A]) => result.fold[Try[A]](Failure(e))(Success(_)))
 
     /** Transforms this handler, by deconstructing its `Option` result. */
-    def getOrElse(default: => Nothing): Handler[F, [X] =>> X, L, N] =
+    def getOrElse(default: => Nothing): Handler.ToId[F, L, N] =
       thiz.mapK([A] => (result: Option[A]) => result.getOrElse(default))
 
     /** Transforms this handler, by deconstructing its `Option` result. */
-    def getOrDie(message: => String): Handler[F, [X] =>> X, L, N] =
+    def getOrDie(message: => String): Handler.ToId[F, L, N] =
       getOrElse(sys.error(message))
 
     /** Transforms this handler, by deconstructing its `Option` result. */
-    def unsafeGet: Handler[F, [X] =>> X, L, N] =
+    def unsafeGet: Handler.ToId[F, L, N] =
       thiz.mapK([A] => (result: Option[A]) => result.get)
 
     /** Composes 2 **independent** handlers, also flattening their nested `Option` results.
@@ -267,11 +345,11 @@ object Handler:
       thiz.mapK([A] => (result: Either[E, A]) => result.toTry)
 
     /** Transforms this handler, by deconstructing its `Either` result. */
-    def getOrElse(default: E => Nothing): Handler[F, [X] =>> X, L, N] =
+    def getOrElse(default: E => Nothing): Handler.ToId[F, L, N] =
       thiz.mapK([A] => (result: Either[E, A]) => result.fold(default, x => x))
 
     /** Transforms this handler, by deconstructing its `Either` result. */
-    def getOrDie(message: E => String): Handler[F, [X] =>> X, L, N] =
+    def getOrDie(message: E => String): Handler.ToId[F, L, N] =
       getOrElse(e => sys.error(message(e)))
 
     /** Transforms this handler, by mapping the `Left` branch of its `Either` result. */
@@ -280,14 +358,14 @@ object Handler:
 
     /** Like [[mapLeft]], but the mapping function is effectful. */
     def flatMapLeft[E2, U](f: E => E2 !! U): Handler[F, Either[E2, _], L, (N & U)] =
-      thiz.mapK_!!([A] => (result: Either[E, A]) => result match
+      thiz.mapEffK([A] => (result: Either[E, A]) => result match
         case Left(e) => f(e).map(Left(_))
         case Right(a) => !!.pure(Right(a))
       )
 
     /** Like [[flatMapLeft]], but the mapping is executed for its effects only. */
     def flatTapLeft[U](f: E => Unit !! U): Handler[F, Either[E, _], L, (N & U)] =
-      thiz.tapK_!!([A] => (result: Either[E, A]) => result match
+      thiz.tapEffK([A] => (result: Either[E, A]) => result match
         case Left(e) => f(e)
         case _ => !!.unit
       )
@@ -309,8 +387,7 @@ private[turbolift] object HandlerCases:
     override def doHandle[A, U](comp: F[A] !! U): F[A] !! U = comp
 
   final case class Primitive[From[+_], To[+_], Elim, Intro](
-    interpreter: Interpreter.Apply[From, To, Elim, Intro],
-    initial: Any
+    interpreter: Interpreter.Apply[From, To, Elim, Intro]
   ) extends Handler[From, To, Elim, Intro]:
     override def doHandle[A, U](comp: From[A] !! (U & Elim)): To[A] !! (U & Intro) =
       new CC.Handle[A, U, From, To, Elim, Intro](comp, this)

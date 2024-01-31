@@ -5,12 +5,16 @@ import turbolift.effects.State
 
 
 case object HandlerShadowing extends Example:
-  override def description: String = """
-    Handler can eliminate an effect, and at the same time re-introduce it, so that
-    it can be handled again by a different handler.
-    This allows chaining handlers for given effect, in a pipeline-like fashion.
-    Hypothetical application: middleware?
+  override def description: String = s"""
+    The feature required for running this example is currently disabled,
+    because it turned out to be conflicting with new ones, which were more important.
   """
+  // override def description: String = s"""
+  //   Handler can eliminate an effect, and at the same time re-introduce it, so that
+  //   it can be handled again by a different handler.
+  //   This allows chaining handlers for given effect, in a pipeline-like fashion.
+  //   Hypothetical application: middleware?
+  // """
 
   val lorem = """
     Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
@@ -44,23 +48,22 @@ case object HandlerShadowing extends Example:
     def plain =
       new fx.impl.Proxy[Any] with KonsoleSignature:
         override def log(text: String): Unit !@! ThisEffect =
-          _ => !!.impure(println(text))
+          !!.impure(println(text))
       .toHandler
 
 
     def sarcastic =
       new fx.impl.Proxy[Konsole] with KonsoleSignature:
         override def log(text: String): Unit !@! ThisEffect =
-          _ =>
-            val (text2, _) = text.foldLeft(("", false)) {
-              case ((acc, flip), char) =>
-                if char.isLetter then
-                  val char2 = if flip then char.toUpper else char.toLower
-                  (acc :+ char2, !flip)
-                else
-                  (acc :+ char, flip)
-            }
-            Konsole.log(text2)
+          val (text2, _) = text.foldLeft(("", false)) {
+            case ((acc, flip), char) =>
+              if char.isLetter then
+                val char2 = if flip then char.toUpper else char.toLower
+                (acc :+ char2, !flip)
+              else
+                (acc :+ char, flip)
+          }
+          Konsole.log(text2)
       .toHandler
 
 
@@ -68,12 +71,11 @@ case object HandlerShadowing extends Example:
       case object S extends State[Int]
       new fx.impl.Proxy[S.type & Konsole] with KonsoleSignature:
         override def log(text: String): Unit !@! ThisEffect =
-          _ =>
-            for
-              i <- S.getModify(n => (n + 1) % palette.size)
-              color = palette(i)
-              _ <- Konsole.log(s"${color}$text${Console.RESET}")
-            yield ()
+          for
+            i <- S.getModify(n => (n + 1) % palette.size)
+            color = palette(i)
+            _ <- Konsole.log(s"${color}$text${Console.RESET}")
+          yield ()
       .toHandler
       .partiallyProvideWith[Konsole](S.handler(0).dropState)
 
@@ -82,7 +84,7 @@ case object HandlerShadowing extends Example:
   override def apply() =
     val lines = Utils.paragraph(lorem, 40)
     
-    val prog = lines.foreach_!!(Konsole.log)
+    val prog = lines.foreachEff(Konsole.log)
 
     val cases = List(
       ("Plain", Konsole.plain),

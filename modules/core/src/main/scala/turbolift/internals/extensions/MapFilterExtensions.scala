@@ -25,78 +25,74 @@ private[turbolift] trait AuxExtensions:
 private[turbolift] trait MapFilterExtensions extends AuxExtensions:
   extension [A](thiz: Iterator[A])
     /** Like `map` from the standard library, but using effectful function. */
-    def map_!![B, U](f: A => B !! U): Vector[B] !! U =
+    def mapEff[B, U](f: A => B !! U): Vector[B] !! U =
       thiz.foldLeft(empty0[B, U])((mbs, a) => mbs.zipWith(f(a))(funAddOne))
 
-    /** Like [[map_!!]], but executed parallelly for each element. */
-    def mapPar_!![B, U](f: A => B !! U): Vector[B] !! U =
+    /** Like [[mapEff]], but executed parallelly for each element. */
+    def mapParEff[B, U](f: A => B !! U): Vector[B] !! U =
       thiz.foldLeft(empty0[B, U])((mbs, a) => mbs.zipWithPar(f(a))(funAddOne))
 
     /** Like `flatMap` from the standard library, but using effectful function. */
-    def flatMap_!![B, U](f: A => IterableOnce[B] !! U): Vector[B] !! U =
+    def flatMapEff[B, U](f: A => IterableOnce[B] !! U): Vector[B] !! U =
       thiz.foldLeft(empty0[B, U])((mbs, a) => mbs.zipWith(f(a))(funAddMany))
 
-    /** Like [[flatMap_!!]], but executed parallelly for each element. */
-    def flatMapPar_!![B, U](f: A => IterableOnce[B] !! U): Vector[B] !! U =
+    /** Like [[flatMapEff]], but executed parallelly for each element. */
+    def flatMapParEff[B, U](f: A => IterableOnce[B] !! U): Vector[B] !! U =
       thiz.foldLeft(empty0[B, U])((mbs, a) => mbs.zipWithPar(f(a))(funAddMany))
 
     /** Like `filter` from the standard library, but using effectful function. */
-    def filter_!![U](f: A => Boolean !! U): Vector[A] !! U =
-      thiz.flatMap_!!(a => f(a).map(if _ then Some(a) else None))
+    def filterEff[U](f: A => Boolean !! U): Vector[A] !! U =
+      thiz.flatMapEff(a => f(a).map(if _ then Some(a) else None))
 
-    /** Like [[filter_!!]], but executed parallelly for each element. */
-    def filterPar_!![U](f: A => Boolean !! U): Vector[A] !! U =
-      thiz.flatMapPar_!!(a => f(a).map(if _ then Some(a) else None))
+    /** Like [[filterEff]], but executed parallelly for each element. */
+    def filterParEff[U](f: A => Boolean !! U): Vector[A] !! U =
+      thiz.flatMapParEff(a => f(a).map(if _ then Some(a) else None))
 
     /** Like `flatMap` from the standard library, but specialized for `Option`. */
     def mapFilter[B, U](f: A => Option[B]): Iterator[B] = thiz.flatMap(f)
 
     /** Like [[mapFilter]], but using effectful function. */
-    def mapFilter_!![B, U](f: A => Option[B] !! U): Vector[B] !! U =
-      thiz.foldLeft(empty0[B, U]) { (mbs, a) =>
-        mbs.zipWith(f(a))((bs, ob) => ob match
-          case Some(b) => bs :+ b
-          case _ => bs
-        )
-      }
+    def mapFilterEff[B, U](f: A => Option[B] !! U): Vector[B] !! U =
+      thiz.foldLeft(empty0[B, U]): (mbs, a) =>
+        mbs.zipWith(f(a)): (bs, ob) =>
+          ob match
+            case Some(b) => bs :+ b
+            case _ => bs
 
-    /** Like [[mapFilter_!!]], but executed parallelly for each element. */
-    def mapFilterPar_!![B, U](f: A => Option[B] !! U): Vector[B] !! U =
-      thiz.foldLeft(empty0[B, U]) { (mbs, a) =>
-        mbs.zipWithPar(f(a))((bs, ob) => ob match
-          case Some(b) => bs :+ b
-          case _ => bs
-        )
-      }
+    /** Like [[mapFilterEff]], but executed parallelly for each element. */
+    def mapFilterParEff[B, U](f: A => Option[B] !! U): Vector[B] !! U =
+      thiz.foldLeft(empty0[B, U]): (mbs, a) =>
+        mbs.zipWithPar(f(a)): (bs, ob) =>
+          ob match
+            case Some(b) => bs :+ b
+            case _ => bs
 
     /** Like `collect` from the standard library, but using effectful function. */
-    def collect_!![B, U](f: PartialFunction[A, B !! U]): Vector[B] !! U =
-      thiz.foldLeft(empty0[B, U]) { (mbs, a) =>
+    def collectEff[B, U](f: PartialFunction[A, B !! U]): Vector[B] !! U =
+      thiz.foldLeft(empty0[B, U]): (mbs, a) =>
         val mb = f.applyOrElse(a, fallbackFun).asInstanceOf[B !! U]
         if mb eq fallbackVal then
           mbs
         else
           mbs.zipWith(mb)(funAddOne)
-      }
 
-    /** Like [[collect_!!]], but executed parallelly for each element. */
-    def collectPar_!![B, U](f: PartialFunction[A, B !! U]): Vector[B] !! U =
-      thiz.foldLeft(empty0[B, U]) { (mbs, a) =>
+    /** Like [[collectEff]], but executed parallelly for each element. */
+    def collectParEff[B, U](f: PartialFunction[A, B !! U]): Vector[B] !! U =
+      thiz.foldLeft(empty0[B, U]): (mbs, a) =>
         val mb = f.applyOrElse(a, fallbackFun).asInstanceOf[B !! U]
         if mb eq fallbackVal then
           mbs
         else
           mbs.zipWithPar(mb)(funAddOne)
-      }
 
 
   extension [A](thiz: IterableOnce[A])
     /** Like `foreach` from the standard library, but using effectful function. */
-    def foreach_!![U](f: A => Unit !! U): Unit !! U =
+    def foreachEff[U](f: A => Unit !! U): Unit !! U =
       thiz.iterator.foldLeft(unit0[U]) { (mbs, a) => mbs &&! f(a) }
 
-    /** Like [[foreach_!!]], but executed parallelly for each element. */
-    def foreachPar_!![U](f: A => Unit !! U): Unit !! U =
+    /** Like [[foreachEff]], but executed parallelly for each element. */
+    def foreachParEff[U](f: A => Unit !! U): Unit !! U =
       thiz.iterator.foldLeft(unit0[U]) { (mbs, a) => mbs &! f(a) }
 
     /** Like `foreach` from the standard library, but executed only for elements, where the partial function is defined. */
@@ -104,24 +100,22 @@ private[turbolift] trait MapFilterExtensions extends AuxExtensions:
       thiz.iterator.foreach(a => f.applyOrElse(a, _ => ()))
 
     /** Like [[forsome]] , but using effectful function. */
-    def forsome_!![U](f: PartialFunction[A, Unit !! U]): Unit !! U =
-      thiz.iterator.foldLeft(unit0[U]) { (mbs, a) => 
+    def forsomeEff[U](f: PartialFunction[A, Unit !! U]): Unit !! U =
+      thiz.iterator.foldLeft(unit0[U]): (mbs, a) => 
         val mb = f.applyOrElse(a, fallbackFun).asInstanceOf[Unit !! U]
         if mb eq fallbackVal then
           mbs
         else
           mbs &&! mb
-      }
 
-    /** Like [[forsome_!!]], but executed parallelly for each element. */
-    def forsomePar_!![U](f: PartialFunction[A, Unit !! U]): Unit !! U =
-      thiz.iterator.foldLeft(unit0[U]) { (mbs, a) => 
+    /** Like [[forsomeEff]], but executed parallelly for each element. */
+    def forsomeParEff[U](f: PartialFunction[A, Unit !! U]): Unit !! U =
+      thiz.iterator.foldLeft(unit0[U]): (mbs, a) => 
         val mb = f.applyOrElse(a, fallbackFun).asInstanceOf[Unit !! U]
         if mb eq fallbackVal then
           mbs
         else
           mbs &! mb
-      }
 
 
   extension [A, S[X] <: Iterable[X]](thiz: S[A])
@@ -129,41 +123,41 @@ private[turbolift] trait MapFilterExtensions extends AuxExtensions:
     // type BF[X] = BuildFrom[S[A], X, S[X]]
 
     /** Like `map` from the standard library, but using effectful function. */
-    def map_!![B, U](f: A => B !! U)(using BF[A, B, S]): S[B] !! U =
-      doBuildFromVector(thiz, thiz.iterator.map_!!(f))
+    def mapEff[B, U](f: A => B !! U)(using BF[A, B, S]): S[B] !! U =
+      doBuildFromVector(thiz, thiz.iterator.mapEff(f))
 
-    /** Like [[map_!!]], but executed parallelly for each element. */
-    def mapPar_!![B, U](f: A => B !! U)(using BF[A, B, S]): S[B] !! U =
-      doBuildFromVector(thiz, thiz.iterator.mapPar_!!(f))
+    /** Like [[mapEff]], but executed parallelly for each element. */
+    def mapParEff[B, U](f: A => B !! U)(using BF[A, B, S]): S[B] !! U =
+      doBuildFromVector(thiz, thiz.iterator.mapParEff(f))
 
     /** Like `flat` from the standard library, but using effectful function. */
-    def flatMap_!![B, U](f: A => IterableOnce[B] !! U)(using BF[A, B, S]): S[B] !! U =
-      doBuildFromVector(thiz, thiz.iterator.flatMap_!!(f))
+    def flatMapEff[B, U](f: A => IterableOnce[B] !! U)(using BF[A, B, S]): S[B] !! U =
+      doBuildFromVector(thiz, thiz.iterator.flatMapEff(f))
 
-    /** Like [[flatMap_!!]], but executed parallelly for each element. */
-    def flatMapPar_!![B, U](f: A => IterableOnce[B] !! U)(using BF[A, B, S]): S[B] !! U =
-      doBuildFromVector(thiz, thiz.iterator.flatMapPar_!!(f))
+    /** Like [[flatMapEff]], but executed parallelly for each element. */
+    def flatMapParEff[B, U](f: A => IterableOnce[B] !! U)(using BF[A, B, S]): S[B] !! U =
+      doBuildFromVector(thiz, thiz.iterator.flatMapParEff(f))
 
     /** Like `filter` from the standard library, but using effectful function. */
-    def filter_!![U](f: A => Boolean !! U)(using BF[A, A, S]): S[A] !! U =
-      doBuildFromVector(thiz, thiz.iterator.filter_!!(f))
+    def filterEff[U](f: A => Boolean !! U)(using BF[A, A, S]): S[A] !! U =
+      doBuildFromVector(thiz, thiz.iterator.filterEff(f))
 
-    /** Like [[filter_!!]], but executed parallelly for each element. */
-    def filterPar_!![U](f: A => Boolean !! U)(using BF[A, A, S]): S[A] !! U =
-      doBuildFromVector(thiz, thiz.iterator.filterPar_!!(f))
+    /** Like [[filterEff]], but executed parallelly for each element. */
+    def filterParEff[U](f: A => Boolean !! U)(using BF[A, A, S]): S[A] !! U =
+      doBuildFromVector(thiz, thiz.iterator.filterParEff(f))
 
     /** Like `map` from the standard library, but using effectful function. */
-    def mapFilter_!![B, U](f: A => Option[B] !! U)(using BF[A, B, S]): S[B] !! U =
-      doBuildFromVector(thiz, thiz.iterator.mapFilter_!!(f))
+    def mapFilterEff[B, U](f: A => Option[B] !! U)(using BF[A, B, S]): S[B] !! U =
+      doBuildFromVector(thiz, thiz.iterator.mapFilterEff(f))
 
-    /** Like [[mapFilter_!!]], but executed parallelly for each element. */
-    def mapFilterPar_!![B, U](f: A => Option[B] !! U)(using BF[A, B, S]): S[B] !! U =
-      doBuildFromVector(thiz, thiz.iterator.mapFilterPar_!!(f))
+    /** Like [[mapFilterEff]], but executed parallelly for each element. */
+    def mapFilterParEff[B, U](f: A => Option[B] !! U)(using BF[A, B, S]): S[B] !! U =
+      doBuildFromVector(thiz, thiz.iterator.mapFilterParEff(f))
 
     /** Like `collect` from the standard library, but using effectful function. */
-    def collect_!![B, U](f: PartialFunction[A, B !! U])(using BF[A, B, S]): S[B] !! U =
-      doBuildFromVector(thiz, thiz.iterator.collect_!!(f))
+    def collectEff[B, U](f: PartialFunction[A, B !! U])(using BF[A, B, S]): S[B] !! U =
+      doBuildFromVector(thiz, thiz.iterator.collectEff(f))
 
-    /** Like [[collect_!!]], but executed parallelly for each element. */
-    def collectPar_!![B, U](f: PartialFunction[A, B !! U])(using BF[A, B, S]): S[B] !! U =
-      doBuildFromVector(thiz, thiz.iterator.collectPar_!!(f))
+    /** Like [[collectEff]], but executed parallelly for each element. */
+    def collectParEff[B, U](f: PartialFunction[A, B !! U])(using BF[A, B, S]): S[B] !! U =
+      doBuildFromVector(thiz, thiz.iterator.collectParEff(f))

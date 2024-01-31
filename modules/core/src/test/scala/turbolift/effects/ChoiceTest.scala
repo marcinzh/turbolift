@@ -12,32 +12,32 @@ class ChoiceTest extends Specification:
     def apply[T](a: => T, b: => T): T = if round then a else b
     def name = apply("first", "all")
     def header = s"With handler = ${name}"
-    def handler[Fx <: Choice](fx: Fx): fx.ThisHandler.Free[Vector] =
+    def handler[Fx <: Choice](fx: Fx): fx.ThisHandler.FromId.Free[Vector] =
       apply(
         fx.handlers.first.mapK([X] => (xs: Option[X]) => xs.toVector),
         fx.handlers.all,
       )
 
-  private val Pickers = List(true, false).map(new Picker(_)) 
+  private val Pickers = List(true, false).map(new Picker(_))
 
   "Basic ops" >> {
     case object C extends Choice
     Fragment.foreach(Pickers) { picker =>
       val handler = picker.handler(C)
       picker.header >> {
-        "choose 0" >> {
+        "choose 0" >>{
           C.choose(List())
           .handleWith(handler)
           .run === Vector[Int]()
         }
 
-        "choose 1" >> {
+        "choose 1" >>{
           C.choose(List(1))
           .handleWith(handler)
           .run === (Vector(1))
         }
 
-        "choose 2" >> {
+        "choose 2" >>{
           C.choose(List(1, 2))
           .handleWith(handler)
           .run === picker(
@@ -46,24 +46,26 @@ class ChoiceTest extends Specification:
           )
         }
 
-        "fail" >> {
+        "empty" >> {
           val cases = List(
-            ("fail &&!", C.fail &&! !!.pure(1)),
-            ("fail &!",  C.fail &! !!.pure(1)),
-            ("!!.fail &&!", !!.fail &&! !!.pure(1)),
-            ("!!.fail &!",  !!.fail &! !!.pure(1)),
-            ("&&! fail", !!.pure(1) &&! C.fail),
-            ("&! fail",  !!.pure(1) &! C.fail),
-            ("&&! !!.fail", !!.pure(1) &&! !!.fail),
-            ("&! !!.fail",  !!.pure(1) &! !!.fail),
+            ("empty &&!", C.empty &&! !!.pure(1)),
+            ("empty &!",  C.empty &! !!.pure(1)),
+            ("!!.empty &&!", !!.empty &&! !!.pure(1)),
+            ("!!.empty &!",  !!.empty &! !!.pure(1)),
+            ("&&! empty", !!.pure(1) &&! C.empty),
+            ("&! empty",  !!.pure(1) &! C.empty),
+            ("&&! !!.empty", !!.pure(1) &&! !!.empty),
+            ("&! !!.empty",  !!.pure(1) &! !!.empty),
           )
 
           Fragment.foreach(cases) { case (name, prog) =>
-            name >> (prog.handleWith(handler).run === Vector())
+            name >>{
+              prog.handleWith(handler).run === Vector[Int]()
+            }
           }
         }
 
-        "plus pure" >> {
+        "plus pure" >>{
           (!!.pure(1) ++! !!.pure(2))
           .handleWith(handler)
           .run === picker(
@@ -72,8 +74,8 @@ class ChoiceTest extends Specification:
           )
         }
 
-        "plus fail" >> {
-          (!!.pure(1) ++! !!.fail)
+        "plus empty" >>{
+          (!!.pure(1) ++! !!.empty)
           .handleWith(handler)
           .run === Vector(1)
         }
@@ -87,7 +89,7 @@ class ChoiceTest extends Specification:
     Fragment.foreach(Pickers) { picker =>
       val handler = picker.handler(C)
       picker.header >> {
-        "Nested choose" >> {
+        "Nested choose" >>{
           (for
             n <- C.choose(1 to 2)
             c <- C.choose('a' to 'b')
@@ -99,7 +101,7 @@ class ChoiceTest extends Specification:
           )
         }
 
-        "Nested choose with guard" >> {
+        "Nested choose with guard" >>{
           (for
             n <- C.choose(1 to 2)
             if n % 2 == 0
@@ -112,7 +114,7 @@ class ChoiceTest extends Specification:
           )
         }
 
-        "Nested plus" >> {
+        "Nested plus" >>{
           (for
             n <- !!.pure(1) ++! !!.pure(2)
             c <- !!.pure('a') ++! !!.pure('b')
@@ -124,7 +126,7 @@ class ChoiceTest extends Specification:
           )
         }
 
-        "Nested plus with guard" >> {
+        "Nested plus with guard" >>{
           (for
             n <- !!.pure(1) ++! !!.pure(2)
             if n % 2 == 0
@@ -144,7 +146,7 @@ class ChoiceTest extends Specification:
 
           val prog = C.choose(List(1, 2)) >>= W.tell
 
-          "Writer &&&! Choice" >> {
+          "Writer &&&! Choice" >>{
             prog.handleWith(hW &&&! hC)
             .run === picker(
               Vector(((), 1)),
@@ -152,7 +154,7 @@ class ChoiceTest extends Specification:
             )
           }
 
-          "Choice &&&! Writer" >> {
+          "Choice &&&! Writer" >>{
             prog.handleWith(hC &&&! hW)
             .run === picker(
               (Vector(()), 1),
@@ -168,7 +170,7 @@ class ChoiceTest extends Specification:
 
           val prog = C.choose(List(1, 2)) >>= E.raise
 
-          "Error &&&! Choice" >> {
+          "Error &&&! Choice" >>{
             prog.handleWith(hE &&&! hC)
             .run === picker(
               Vector(Left(1).withRight[Int]),
@@ -176,9 +178,14 @@ class ChoiceTest extends Specification:
             )
           }
 
-          "Choice &&&! Error" >> {
+          "Choice &&&! Error" >>{
             prog.handleWith(hC &&&! hE)
             .run === Left(1).withRight[Int]
+            //@#@TODO Choice.choosePar
+            // .run === picker(
+            //   Left(1).withRight[Int],
+            //   Left(3).withRight[Int],
+            // )
           }
         }
 
@@ -189,7 +196,7 @@ class ChoiceTest extends Specification:
 
           val prog = !!.pure(1) ++! E.raise(2)
 
-          "Error &&&! Choice" >> {
+          "Error &&&! Choice" >>{
             prog.handleWith(hE &&&! hC)
             .run === picker(
               Vector(Right(1)),
@@ -197,7 +204,7 @@ class ChoiceTest extends Specification:
             )
           }
 
-          "Choice &&&! Error" >> {
+          "Choice &&&! Error" >>{
             prog.handleWith(hC &&&! hE)
             .run === picker(
               Right(Vector(1)),

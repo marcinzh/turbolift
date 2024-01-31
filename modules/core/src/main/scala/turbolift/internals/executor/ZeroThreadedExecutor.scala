@@ -1,7 +1,7 @@
 package turbolift.internals.executor
 import scala.annotation.tailrec
 import turbolift.Computation
-import turbolift.internals.engine.{Config, FiberImpl, FiberLink}
+import turbolift.internals.engine.{FiberImpl, FiberLink}
 
 
 private[internals] final class ZeroThreadedExecutor extends FiberLink with Executor:

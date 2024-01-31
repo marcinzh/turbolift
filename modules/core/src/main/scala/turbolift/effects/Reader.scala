@@ -1,6 +1,6 @@
 package turbolift.effects
 import turbolift.{!!, Effect, Signature}
-import turbolift.effects.default_handlers.readerHandler
+import turbolift.handlers.readerHandler
 
 
 trait ReaderSignature[R] extends Signature:
@@ -16,5 +16,8 @@ trait Reader[R] extends Effect[ReaderSignature[R]] with ReaderSignature[R]:
   final override def localPut[A, U <: this.type](r: R)(body: A !! U): A !! U = perform(_.localPut(r)(body))
   final override def localModify[A, U <: this.type](f: R => R)(body: A !! U): A !! U = perform(_.localModify(f)(body))
 
-  /** Default handler for this effect. */
-  def handler(initial: R): ThisHandler.Free.Id = this.readerHandler(initial)
+
+object Reader:
+  extension [R](fx: Reader[R])
+    /** Default handler for this effect. */
+    def handler(initial: R): fx.ThisHandler.FromId.ToId.Free = fx.readerHandler(initial)

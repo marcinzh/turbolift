@@ -10,6 +10,3 @@ trait CanPerform[Z <: Signature] extends Signature:
    *  method into the [[turbolift.Computation Computation]] monad.
    */
   final def perform[A, U <: ThisEffect](f: (z: Z & Signature { type ThisEffect = U }) => z.!@![A, U]): A !! U = new CC.Perform(this, f)
-
-  /** Like `!!.pure(a)`, but with effect-set up-casted to `ThisEffect` */
-  final def pure[A](a: A): A !! ThisEffect = !!.pure(a)

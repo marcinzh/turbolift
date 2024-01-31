@@ -1,10 +1,10 @@
 package turbolift
-import scala.util.{Try, Success, Failure}
-import turbolift.effects.{ChoiceSignature, Each, IO}
+import turbolift.effects.{ChoiceSignature, IO, Each}
 import turbolift.internals.auxx.CanPartiallyHandle
 import turbolift.internals.effect.AnyChoice
 import turbolift.internals.primitives.Primitives
 import turbolift.internals.executor.Executor
+import turbolift.io.Outcome
 import turbolift.mode.Mode
 
 
@@ -89,14 +89,28 @@ sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift]
   /** Composes 2 independent computations sequentially, discarding result of the second. */
   final def &&<![B, U2 <: U](that: => B !! U2): A !! U2 = flatMap(a => that.map(_ => a))
 
+  /** Races 2 computations.
+   *
+   * Runs both computations parallelly, each in fresh fiber.
+   * Once one of them finishes, the other is cancelled.
+   */
+  final def |![A2 >: A, U2 <: U & IO](that: A2 !! U2): A2 !! U2 = Primitives.orPar(this, that)
+
+  /** Sequential "or-else" operator.
+   *
+   * Runs the first computations in fresh fiber.
+   * If it ends up cancelled, the second computation is run.
+   */
+  final def ||![A2 >: A, U2 <: U & IO](that: => A2 !! U2): A2 !! U2 = Primitives.orSeq(this, () => that)
+
   /** Applies `plus` operation from the innermost `Choice` effect in the current scope.
    *
    * Similar to `<|>` operator of `Alternative`.
    */
   final def ++![A2 >: A, U2 <: U & ChoiceSignature](that: => A2 !! U2): A2 !! U2 = AnyChoice.plus(this, that)
 
-  /** Applies filter, using `fail` operation from the innermost `Choice` effect in the current scope. */
-  final def withFilter[U2 <: U & ChoiceSignature](f: A => Boolean): A !! U2 = flatMap(a => if f(a) then !!.pure(a) else !!.fail)
+  /** Applies filter, using `empty` operation from the innermost `Choice` effect in the current scope. */
+  final def withFilter[U2 <: U & ChoiceSignature](f: A => Boolean): A !! U2 = flatMap(a => if f(a) then !!.pure(a) else !!.empty)
 
   /** Widens the set of requested effects. */
   final def upCast[U2 <: U] = this: A !! U2
@@ -104,6 +118,7 @@ sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift]
   private[turbolift] final def untyped = this.asInstanceOf[Any !! Any]
 
   final override def toString = s"turbolift.Computation@${hashCode.toHexString}"
+
 
 /**
   * Use the `!!` alias to access methods of this companion object.
@@ -121,15 +136,25 @@ object Computation:
   private[turbolift] type Untyped = Computation[Any, Any]
 
   /** Same as `!!.pure(())`. */
-  val unit = pure(())
+  val unit: Unit !! Any = pure(())
+
+  /** Same as `!!.pure(None)`. */
+  val none: Option[Nothing] !! Any = pure(None)
+
+  /** Same as `!!.pure(Nil)`. */
+  val nil: List[Nothing] !! Any = pure(Nil)
+
+  /** Same as `!!.pure(Vector())`. */
+  val vector: Vector[Nothing] !! Any = pure(Vector())
 
   def pure[A](a: A): A !! Any = Primitives.pure(a)
-  def defer[A, U](ua: => A !! U): A !! U = unit.flatMap(_ => ua)
-  
+
   def impure[A](a: => A): A !! Any = Primitives.impure(() => a)
 
-  /** Executes `fail` operation from the innermost `Choice` effect in the current scope. */
-  def fail: Nothing !! ChoiceSignature = AnyChoice.fail
+  def defer[A, U](comp: => A !! U): A !! U = unit.flatMap(_ => comp)
+
+  /** Executes `empty` operation from the innermost `Choice` effect in the current scope. */
+  def empty: Nothing !! ChoiceSignature = AnyChoice.empty
 
   /** Handles `Each` effect. */
   def every[A, U](body: A !! (U & Each)): Vector[A] !! U = body.handleWith(Each.handler)
@@ -137,7 +162,7 @@ object Computation:
   /** Handles `Each` effect, discarding the result. */
   def everyVoid[A, U](body: Unit !! (U & Each)): Unit !! U = body.handleWith(Each.void)
 
-  /** Executes the computation, if the condition is true. */
+  /** Like `if`-`then` statement, but the body is a computation */
   def when[U](cond: Boolean)(body: => Unit !! U): Unit !! U = if cond then body else unit
 
   /** Repeats the computation, given number of times. */
@@ -208,9 +233,9 @@ object Computation:
   def iterateUntil[A, U](init: A, cond: A => Boolean)(body: A => A !! U): A !! U =
     iterateWhile(init, a => !cond(a))(body)
 
-  def isParallel: Boolean !! Any = Primitives.configAsk(_.isParallelismRequested)
+  def isParallel: Boolean !! Any = Primitives.envAsk(_.isParallelismRequested)
   def isSequential: Boolean !! Any = isParallel.map(!_)
-  def parallellyIf[A, U](cond: Boolean)(body: A !! U): A !! U = Primitives.configMod(_.par(cond), body)
+  def parallellyIf[A, U](cond: Boolean)(body: A !! U): A !! U = Primitives.envMod(_.par(cond), body)
   def sequentiallyIf[A, U](cond: Boolean)(body: A !! U): A !! U = parallellyIf(!cond)(body)
   def parallelly[A, U](body: A !! U): A !! U = parallellyIf(true)(body)
   def sequentially[A, U](body: A !! U): A !! U = parallellyIf(false)(body)
@@ -229,12 +254,12 @@ object Computation:
 
   extension [A, U >: IO](thiz: Computation[A, U])
     /** Runs the computation, provided that it requests IO effect only, or none at all. */
-    def unsafeRun(using mode: Mode = Mode.default): Try[A] = Executor.pick(mode).runSync(thiz)
+    def unsafeRun(using mode: Mode = Mode.default): Outcome[A] = Executor.pick(mode).runSync(thiz)
 
-    def unsafeRunST: Try[A] = Executor.ST.runSync(thiz)
-    def unsafeRunMT: Try[A] = Executor.MT.runSync(thiz)
+    def unsafeRunST: Outcome[A] = Executor.ST.runSync(thiz)
+    def unsafeRunMT: Outcome[A] = Executor.MT.runSync(thiz)
 
-    def unsafeRunAsync(using mode: Mode = Mode.default)(callback: Try[A] => Unit): Unit = Executor.pick(mode).runAsync(thiz, callback)
+    def unsafeRunAsync(using mode: Mode = Mode.default)(callback: Outcome[A] => Unit): Unit = Executor.pick(mode).runAsync(thiz, callback)
 
 
   extension [A, U](thiz: Computation[A, U])
@@ -278,14 +303,15 @@ object Computation:
 
   extension [U](thiz: Computation[Boolean, U])
     /** Like `while` statement, but the condition and the body are computations. */
-    def while_!![U2 <: U](body: => Unit !! U2): Unit !! U2 = !!.repeatWhile(thiz)(body)
+    def whileEff[U2 <: U](body: => Unit !! U2): Unit !! U2 = !!.repeatWhile(thiz)(body)
 
     /** Like `while` statement, but the condition and the body are computations. */
-    def until_!![U2 <: U](body: => Unit !! U2): Unit !! U2 = !!.repeatUntil(thiz)(body)
+    def untilEff[U2 <: U](body: => Unit !! U2): Unit !! U2 = !!.repeatUntil(thiz)(body)
 
     /** Like `if` statement, but the condition and the body are computations. */
-    def if_!![U2 <: U](thenBody: => Unit !! U2)(elseBody: => Unit !! U2): Unit !! U2 =
+    def ifEff[U2 <: U](thenBody: => Unit !! U2)(elseBody: => Unit !! U2): Unit !! U2 =
       thiz.flatMap(if _ then thenBody else elseBody)
+
 
 
   //---------- Apply ----------
