@@ -16,11 +16,11 @@ The File System effect example is often used as their demonstrator of reinterpre
 <h3 id="2-define-the-signature">2. Define the signature</h3>
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">trait</span> <span class="nc">FileSystemSignature</span> <span class="k">extends</span> <span class="nc">Signature</span><span class="k">:</span>
-  <span class="kt">def</span> <span class="kt">readFile</span><span class="o">(</span><span class="kt">path:</span> <span class="kt">String</span><span class="o">)</span><span class="kt">:</span> <span class="kt">String</span> <span class="kt">!@!</span> <span class="o">(</span><span class="kt">ThisEffect</span> <span class="kt">&amp;</span> <span class="kt">FileError</span><span class="o">)</span>
-  <span class="kt">def</span> <span class="kt">writeFile</span><span class="o">(</span><span class="kt">path:</span> <span class="kt">String</span><span class="o">,</span> <span class="kt">contents:</span> <span class="kt">String</span><span class="o">)</span><span class="k">:</span> <span class="kt">Unit</span> <span class="kt">!@!</span> <span class="kt">ThisEffect</span>
+  <span class="kt">def</span> <span class="kt">readFile</span><span class="o">(</span><span class="kt">path:</span> <span class="kt">String</span><span class="o">)</span><span class="kt">:</span> <span class="kt">String</span> <span class="kt">!@!</span> <span class="kt">ThisEffect</span>
+  <span class="k">def</span> <span class="nf">writeFile</span><span class="o">(</span><span class="n">path</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">contents</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span><span class="k">:</span> <span class="kt">Unit</span> <span class="kt">!@!</span> <span class="kt">ThisEffect</span>
 </code></pre></div></div>
 
-<p>Let’s also instantiate the custom <code class="language-plaintext highlighter-rouge">FileError</code> effect, that we used in the signature:</p>
+<p>Let’s also instantiate custom <code class="language-plaintext highlighter-rouge">FileError</code> effect, that we will be using in handler:</p>
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">case</span> <span class="k">object</span> <span class="nc">FileError</span> <span class="k">extends</span> <span class="nc">Error</span><span class="o">[</span><span class="kt">FileErrorCause</span><span class="o">]</span>
 <span class="k">type</span> <span class="kt">FileError</span> <span class="o">=</span> <span class="nv">FileError</span><span class="o">.</span><span class="py">type</span>
@@ -46,24 +46,28 @@ The File System effect example is often used as their demonstrator of reinterpre
   <span class="k">def</span> <span class="nf">inMemoryHandler</span> <span class="k">=</span>
     <span class="c1">// Internal state:</span>
     <span class="k">case</span> <span class="k">object</span> <span class="nc">S</span> <span class="k">extends</span> <span class="nc">State</span><span class="o">[</span><span class="kt">Map</span><span class="o">[</span><span class="kt">String</span>, <span class="kt">String</span><span class="o">]]</span>
+    <span class="k">type</span> <span class="kt">S</span> <span class="o">=</span> <span class="nv">S</span><span class="o">.</span><span class="py">type</span>
 
-    <span class="k">new</span> <span class="nv">fx</span><span class="o">.</span><span class="py">Proxy</span><span class="o">[</span><span class="kt">S.</span><span class="k">type</span><span class="o">]</span> <span class="k">with</span> <span class="nc">FileSystemSignature</span><span class="k">:</span>
+    <span class="c1">// Our proxy depends on 2 effects: `S` and `FileError`</span>
+    <span class="k">new</span> <span class="nv">fx</span><span class="o">.</span><span class="py">impl</span><span class="o">.</span><span class="py">Proxy</span><span class="o">[</span><span class="kt">S</span> <span class="kt">&amp;</span> <span class="kt">FileError</span><span class="o">]</span> <span class="k">with</span> <span class="nc">FileSystemSignature</span><span class="k">:</span>
       <span class="kt">override</span> <span class="kt">def</span> <span class="kt">readFile</span><span class="o">(</span><span class="kt">path:</span> <span class="kt">String</span><span class="o">)</span> <span class="o">=</span>
-        <span class="n">k</span> <span class="k">=&gt;</span> <span class="nv">S</span><span class="o">.</span><span class="py">gets</span><span class="o">(</span><span class="nv">_</span><span class="o">.</span><span class="py">get</span><span class="o">(</span><span class="n">path</span><span class="o">)).</span><span class="py">flatMap</span> <span class="o">{</span>
+        <span class="nv">S</span><span class="o">.</span><span class="py">gets</span><span class="o">(</span><span class="nv">_</span><span class="o">.</span><span class="py">get</span><span class="o">(</span><span class="n">path</span><span class="o">)).</span><span class="py">flatMap</span> <span class="o">{</span>
           <span class="k">case</span> <span class="nc">Some</span><span class="o">(</span><span class="n">contents</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="o">!!.</span><span class="py">pure</span><span class="o">(</span><span class="n">contents</span><span class="o">)</span>
-          <span class="k">case</span> <span class="nc">None</span> <span class="k">=&gt;</span> <span class="nv">k</span><span class="o">.</span><span class="py">escape</span><span class="o">(</span><span class="nv">FileError</span><span class="o">.</span><span class="py">raise</span><span class="o">(</span><span class="nv">FileErrorCause</span><span class="o">.</span><span class="py">NoSuchFile</span><span class="o">(</span><span class="n">path</span><span class="o">)))</span>
+          <span class="k">case</span> <span class="nc">None</span> <span class="k">=&gt;</span> <span class="nv">FileError</span><span class="o">.</span><span class="py">raise</span><span class="o">(</span><span class="nv">FileErrorCause</span><span class="o">.</span><span class="py">NoSuchFile</span><span class="o">(</span><span class="n">path</span><span class="o">))</span>
         <span class="o">}</span>
 
       <span class="k">override</span> <span class="k">def</span> <span class="nf">writeFile</span><span class="o">(</span><span class="n">path</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">contents</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">=</span>
-        <span class="k">_</span> <span class="k">=&gt;</span> <span class="nv">S</span><span class="o">.</span><span class="py">modify</span><span class="o">(</span><span class="nv">_</span><span class="o">.</span><span class="py">updated</span><span class="o">(</span><span class="n">path</span><span class="o">,</span> <span class="n">contents</span><span class="o">))</span>
+        <span class="nv">S</span><span class="o">.</span><span class="py">modify</span><span class="o">(</span><span class="nv">_</span><span class="o">.</span><span class="py">updated</span><span class="o">(</span><span class="n">path</span><span class="o">,</span> <span class="n">contents</span><span class="o">))</span>
 
     <span class="o">.</span><span class="py">toHandler</span>
-    <span class="o">.</span><span class="py">provideWith</span><span class="o">(</span><span class="nv">S</span><span class="o">.</span><span class="py">handler</span><span class="o">(</span><span class="nc">Map</span><span class="o">()).</span><span class="py">dropState</span><span class="o">)</span>
+    <span class="o">.</span><span class="py">partiallyProvideWith</span><span class="o">[</span><span class="kt">FileError</span><span class="o">](</span><span class="nv">S</span><span class="o">.</span><span class="py">handler</span><span class="o">(</span><span class="nc">Map</span><span class="o">()).</span><span class="py">dropState</span><span class="o">)</span>
 </code></pre></div></div>
 
-<p>The <code class="language-plaintext highlighter-rouge">provideWith</code> method composes 2 dependent handlers,
-such that the latter handles dependency introduced by the former
-(<code class="language-plaintext highlighter-rouge">S</code> effect in this case).</p>
+<p>Our handler has 2 dependencies: <code class="language-plaintext highlighter-rouge">S</code> and <code class="language-plaintext highlighter-rouge">FileError</code> effects.
+Using <code class="language-plaintext highlighter-rouge">partiallyProvideWith</code> method, we modify the handler in such a way,
+that dependency on <code class="language-plaintext highlighter-rouge">S</code> is removed (satisfied), but dependency on <code class="language-plaintext highlighter-rouge">FileError</code> remains.
+This way, we hide handler’s internal state from the outside world. 
+Responsibility to handle the error effect though, is passed on the user.</p>
 
 <hr />
 
@@ -84,7 +88,7 @@ such that the latter handles dependency introduced by the former
     <span class="k">_</span> <span class="k">&lt;-</span> <span class="nv">MyFS</span><span class="o">.</span><span class="py">writeFile</span><span class="o">(</span><span class="s">"hello.txt"</span><span class="o">,</span> <span class="s">"Hello world!"</span><span class="o">)</span>
     <span class="n">contents</span> <span class="k">&lt;-</span> <span class="nv">MyFS</span><span class="o">.</span><span class="py">readFile</span><span class="o">(</span><span class="s">"hello.txt"</span><span class="o">)</span>
   <span class="k">yield</span> <span class="n">contents</span>
-<span class="c1">// program: Computation[String, ThisEffect &amp; FileError] = turbolift.Computation@28bf73f0</span>
+<span class="c1">// program: Computation[String, ThisEffect] = turbolift.Computation@57cb2751</span>
 
 <span class="k">val</span> <span class="nv">result</span> <span class="k">=</span> <span class="n">program</span>
   <span class="o">.</span><span class="py">handleWith</span><span class="o">(</span><span class="nv">MyFS</span><span class="o">.</span><span class="py">inMemoryHandler</span><span class="o">)</span>

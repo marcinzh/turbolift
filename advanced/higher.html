@@ -51,19 +51,24 @@ before the <code class="language-plaintext highlighter-rouge">catchAll</code> op
   <span class="o">}</span> <span class="o">{</span>
     <span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span> <span class="o">!!.</span><span class="py">pure</span><span class="o">(</span><span class="s">"nvm"</span><span class="o">)</span>
   <span class="o">}</span>
-<span class="c1">// program: Computation[String, MyState &amp; MyError] = turbolift.Computation@15371614</span>
+<span class="c1">// program: Computation[Computation[String, Any], MyState &amp; MyError] = turbolift.Computation@7057de79</span>
 
 <span class="k">val</span> <span class="nv">result1</span> <span class="k">=</span> <span class="n">program</span>
   <span class="o">.</span><span class="py">handleWith</span><span class="o">(</span><span class="nv">MyError</span><span class="o">.</span><span class="py">handler</span><span class="o">)</span>
   <span class="o">.</span><span class="py">handleWith</span><span class="o">(</span><span class="nv">MyState</span><span class="o">.</span><span class="py">handler</span><span class="o">(</span><span class="mi">0</span><span class="o">))</span>
   <span class="o">.</span><span class="py">run</span>
-<span class="c1">// result1: Tuple2[Either[String, String], Int] = (Right(value = "nvm"), 42)</span>
+<span class="c1">// result1: Tuple2[Either[String, Computation[String, Any]], Int] = (</span>
+<span class="c1">//   Right(value = turbolift.Computation@7a21442d),</span>
+<span class="c1">//   42</span>
+<span class="c1">// )</span>
 
 <span class="k">val</span> <span class="nv">result2</span> <span class="k">=</span> <span class="n">program</span>
   <span class="o">.</span><span class="py">handleWith</span><span class="o">(</span><span class="nv">MyState</span><span class="o">.</span><span class="py">handler</span><span class="o">(</span><span class="mi">0</span><span class="o">))</span>
   <span class="o">.</span><span class="py">handleWith</span><span class="o">(</span><span class="nv">MyError</span><span class="o">.</span><span class="py">handler</span><span class="o">)</span>
   <span class="o">.</span><span class="py">run</span>
-<span class="c1">// result2: Either[String, Tuple2[String, Int]] = Right(value = ("nvm", 42))</span>
+<span class="c1">// result2: Either[String, Tuple2[Computation[String, Any], Int]] = Right(</span>
+<span class="c1">//   value = (turbolift.Computation@16d9025c, 42)</span>
+<span class="c1">// )</span>
 </code></pre></div></div>
 
 <h3 id="-bonus-feature">🎁 Bonus feature</h3>
