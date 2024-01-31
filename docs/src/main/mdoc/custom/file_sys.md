@@ -23,11 +23,11 @@ import turbolift.effects.{State, Error}
 
 ```scala mdoc
 trait FileSystemSignature extends Signature:
-  def readFile(path: String): String !@! (ThisEffect & FileError)
+  def readFile(path: String): String !@! ThisEffect
   def writeFile(path: String, contents: String): Unit !@! ThisEffect
 ```
 
-Let's also instantiate the custom `FileError` effect, that we used in the signature:
+Let's also instantiate custom `FileError` effect, that we will be using in handler:
 
 ```scala mdoc
 case object FileError extends Error[FileErrorCause]
@@ -56,24 +56,28 @@ extension (fx: FileSystemEffect)
   def inMemoryHandler =
     // Internal state:
     case object S extends State[Map[String, String]]
+    type S = S.type
 
-    new fx.Proxy[S.type] with FileSystemSignature:
+    // Our proxy depends on 2 effects: `S` and `FileError`
+    new fx.impl.Proxy[S & FileError] with FileSystemSignature:
       override def readFile(path: String) =
-        k => S.gets(_.get(path)).flatMap {
+        S.gets(_.get(path)).flatMap {
           case Some(contents) => !!.pure(contents)
-          case None => k.escape(FileError.raise(FileErrorCause.NoSuchFile(path)))
+          case None => FileError.raise(FileErrorCause.NoSuchFile(path))
         }
 
       override def writeFile(path: String, contents: String) =
-        _ => S.modify(_.updated(path, contents))
+        S.modify(_.updated(path, contents))
 
     .toHandler
-    .provideWith(S.handler(Map()).dropState)
+    .partiallyProvideWith[FileError](S.handler(Map()).dropState)
 ```
 
-The `provideWith` method composes 2 dependent handlers,
-such that the latter handles dependency introduced by the former
-(`S` effect in this case).
+Our handler has 2 dependencies: `S` and `FileError` effects.
+Using `partiallyProvideWith` method, we modify the handler in such a way,
+that dependency on `S` is removed (satisfied), but dependency on `FileError` remains.
+This way, we hide handler's internal state from the outside world. 
+Responsibility to handle the error effect though, is passed on the user.
 
 ---
 

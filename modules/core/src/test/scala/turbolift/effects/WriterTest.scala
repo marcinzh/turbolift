@@ -14,7 +14,7 @@ class WriterTest extends Specification:
     def header = s"With handler = ${name}"
     def handler[W, W1, Fx <: WriterEffect[W, W1]](fx: Fx)(using AccumZero[W, W1]): fx.ThisHandler.FromId[(_, W), IO] =
       apply(
-        fx.handlers.local.flatTap([X] => (_: (X, W)) => !!.unit.upCast[IO]),
+        fx.handlers.local.tapEffK([X] => (_: (X, W)) => !!.unit.upCast[IO]),
         fx.handlers.shared,
       )
 
@@ -25,31 +25,31 @@ class WriterTest extends Specification:
     Fragment.foreach(Pickers) { picker =>
       val h = picker.handler(W)
       picker.header >> {
-        "tell" >> {
+        "tell" >>{
           W.tell(1)
           .handleWith(h)
           .unsafeRun.get === ((), 1)
         }
 
-        "listen" >> {
+        "listen" >>{
           W.listen(W.tell(1))
           .handleWith(h)
           .unsafeRun.get === (((), 1), 1)
         }
 
-        "censor" >> {
+        "censor" >>{
           W.censor(_ + 1)(W.tell(1))
           .handleWith(h)
           .unsafeRun.get === ((), 2)
         }
 
-        "mute" >> {
+        "mute" >>{
           W.mute(W.tell(1))
           .handleWith(h)
           .unsafeRun.get === ((), 0)
         }
 
-        "pass" >> {
+        "pass" >>{
           W.pass(W.tell(1) **! !!.pure(_ + 2))
           .handleWith(h)
           .unsafeRun.get === ((), 3)
@@ -61,14 +61,14 @@ class WriterTest extends Specification:
   "Combined ops" >> {
     Fragment.foreach(Pickers) { picker =>
       picker.header >> {
-        "tell x2" >> {
+        "tell x2" >>{
           case object W extends Writer[String]
           (W.tell("a") &&! W.tell("b"))
           .handleWith(picker.handler(W).justState)
           .unsafeRun.get === "ab"
         }
 
-        "tell & listen" >> {
+        "tell & listen" >>{
           case object W extends Writer[String]
           (for
             _ <- W.tell("a")
@@ -80,7 +80,7 @@ class WriterTest extends Specification:
           .unsafeRun.get === ("bc", "abcd")
         }
 
-        "2 writers" >> {
+        "2 writers" >>{
           case object W1 extends Writer[Int]
           case object W2 extends Writer[String]
           (for
@@ -102,31 +102,31 @@ class WriterTest extends Specification:
     Fragment.foreach(Pickers) { picker =>
       val h = picker.handler(W).justState
       picker.header >> {
-        "tell x2 using *!" >> {
+        "tell x2 using *!" >>{
           (W.tell("a") *! W.tell("b"))
           .handleWith(h)
           .unsafeRun.get === "ab"
         }
 
-        "tell x2 using &!" >> {
+        "tell x2 using &!" >>{
           (W.tell("a") &! W.tell("b"))
           .handleWith(h)
           .unsafeRun.get === "ab"
         }
 
-        "tell x3 using &&!(&!)" >> {
+        "tell x3 using &&!(&!)" >>{
           (W.tell("a") &&! (W.tell("b") &! W.tell("c")))
           .handleWith(h)
           .unsafeRun.get === "abc"
         }
 
-        "tell x3 using &!(&&!)" >> {
+        "tell x3 using &!(&&!)" >>{
           (W.tell("a") &! (W.tell("b") &&! W.tell("c")))
           .handleWith(h)
           .unsafeRun.get === "abc"
         }
 
-        "tell & censor" >> {
+        "tell & censor" >>{
           (W.tell("a") &&!
           W.censor(x => s"($x)") {
             W.tell("b") &! (
@@ -147,7 +147,7 @@ class WriterTest extends Specification:
   "Into collections" >> {
     Fragment.foreach(Pickers) { picker =>
       picker.header >> {
-        "WriterK" >> {
+        "WriterK" >>{
           case object W extends WriterK[Vector, Char]
           (for
             _ <- W.tell('a')
@@ -158,7 +158,7 @@ class WriterTest extends Specification:
           .unsafeRun.get === "abcd".toVector
         }
 
-        "WriterGK" >> {
+        "WriterGK" >>{
           case object W extends WriterGK[Map, String, Vector, Int]
           (for
             _ <- W.tell("a", 1)

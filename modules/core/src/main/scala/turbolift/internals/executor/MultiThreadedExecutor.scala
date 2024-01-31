@@ -1,7 +1,7 @@
 package turbolift.internals.executor
 import java.lang.ThreadLocal
 import turbolift.Computation
-import turbolift.internals.engine.{Config, FiberImpl, FiberLink, AnyCallback}
+import turbolift.internals.engine.{FiberImpl, FiberLink, AnyCallback}
 
 
 private[turbolift] final class MultiThreadedExecutor(maxBusyThreads: Int) extends FiberLink with Executor:

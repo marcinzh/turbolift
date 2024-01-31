@@ -55,8 +55,8 @@ Or better, **two** handlers:
 ```scala mdoc
 extension (fx: FlipEffect)
   def findAll =
-    new fx.Stateless[Vector] with fx.Sequential with FlipSignature:
-      override def onPure[A](a: A) = Vector(a)
+    new fx.impl.Stateless.FromId.Free[Vector] with fx.impl.Sequential with FlipSignature:
+      override def onReturn(a: Unknown) = !!.pure(Vector(a))
 
       override def fail = _ => !!.pure(Vector())
 
@@ -72,8 +72,8 @@ extension (fx: FlipEffect)
 ```scala mdoc
 extension (fx: FlipEffect)
   def findFirst =
-    new fx.Stateless[Option] with fx.Sequential with FlipSignature:
-      override def onPure[A](a: A) = Some(a)
+    new fx.impl.Stateless.FromId.Free[Option] with fx.impl.Sequential with FlipSignature:
+      override def onReturn(a: Unknown) = !!.pure(Some(a))
 
       override def fail = _ => !!.pure(None)
 

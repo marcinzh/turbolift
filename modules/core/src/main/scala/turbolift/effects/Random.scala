@@ -1,6 +1,6 @@
 package turbolift.effects
 import turbolift.{!!, Signature, Effect}
-import turbolift.effects.default_handlers.{randomHandler_local, randomHandler_shared}
+import turbolift.handlers.{randomHandler_local, randomHandler_shared}
 
 
 trait RandomSignature extends Signature:
@@ -36,18 +36,21 @@ trait RandomEffect extends Effect[RandomSignature] with RandomSignature:
   final override def nextBytes(n: Int): Array[Byte] !@! ThisEffect = perform(_.nextBytes(n))
   final override def setSeed(seed: Long): Unit !! this.type = perform(_.setSeed(seed))
 
-  /** Default handler for this effect. */
-  def handler: ThisHandler.Id[IO] = handlers.shared
-
-  /** Default handler for this effect. */
-  def handler(seed: Long): ThisHandler.Id[IO] = handlers.shared(seed)
-
   /** Predefined handlers for this effect. */
   object handlers:
-    def local: ThisHandler.Id[IO] = RandomEffect.this.randomHandler_local
-    def shared: ThisHandler.Id[IO] = RandomEffect.this.randomHandler_shared
-    def local(seed: Long): ThisHandler.Free.Id = RandomEffect.this.randomHandler_local(seed)
-    def shared(seed: Long): ThisHandler.Id[IO] = RandomEffect.this.randomHandler_shared(seed)
+    def local: ThisHandler.FromId.ToId[IO] = RandomEffect.this.randomHandler_local
+    def shared: ThisHandler.FromId.ToId[IO] = RandomEffect.this.randomHandler_shared
+    def local(seed: Long): ThisHandler.FromId.ToId.Free = RandomEffect.this.randomHandler_local(seed)
+    def shared(seed: Long): ThisHandler.FromId.ToId[IO] = RandomEffect.this.randomHandler_shared(seed)
+
+
+object RandomEffect:
+  extension (fx: RandomEffect)
+    /** Default handler for this effect. */
+    def handler: fx.ThisHandler.FromId.ToId[IO] = fx.randomHandler_shared
+
+    /** Default handler for this effect. */
+    def handler(seed: Long): fx.ThisHandler.FromId.ToId[IO] = fx.randomHandler_shared(seed)
 
 
 /** Predefined instance of this effect. */

@@ -1,7 +1,7 @@
 package turbolift.effects
 import turbolift.{!!, Effect, Signature}
 import turbolift.typeclass.AccumZero
-import turbolift.effects.default_handlers.{writerHandler_local, writerHandler_shared}
+import turbolift.handlers.{writerHandler_local, writerHandler_shared}
 
 
 trait WriterSignature[W, W1] extends Signature:
@@ -19,17 +19,20 @@ trait WriterEffect[W, W1] extends Effect[WriterSignature[W, W1]] with WriterSign
   final override def mute[A, U <: this.type](body: A !! U): A !! U = perform(_.mute(body))
   final override def listen[A, U <: this.type](body: A !! U): (A, W) !! U = perform(_.listen(body))
   final override def censor[A, U <: this.type](f: W => W)(body: A !! U): A !! U = perform(_.censor(f)(body))
-  final override def pass[A, U <: this.type](body: (A, W => W) !! U): A !@! U = perform(_.pass(body))
+  final override def pass[A, U <: this.type](body: (A, W => W) !! U): A !! U = perform(_.pass(body))
 
   final def tell[K, V1](k: K, v: V1)(implicit ev: ((K, V1)) <:< W1): Unit !! this.type = tell(ev((k, v)))
 
-  /** Default handler for this effect. */
-  def handler(implicit W: AccumZero[W, W1]): ThisHandler.Free[(_, W)] = handlers.local
-
   /** Predefined handlers for this effect. */
   object handlers:
-    def local(implicit W: AccumZero[W, W1]): ThisHandler.Free[(_, W)] = WriterEffect.this.writerHandler_local
+    def local(implicit W: AccumZero[W, W1]): ThisHandler.FromId.Free[(_, W)] = WriterEffect.this.writerHandler_local
     def shared(implicit W: AccumZero[W, W1]): ThisHandler.FromId[(_, W), IO] = WriterEffect.this.writerHandler_shared
+
+
+object WriterEffect:
+  extension [W, W1](fx: WriterEffect[W, W1])
+    /** Default handler for this effect. */
+    def handler(implicit W: AccumZero[W, W1]): fx.ThisHandler.FromId.Free[(_, W)] = fx.writerHandler_local
 
 
 trait Writer[W] extends WriterEffect[W, W]

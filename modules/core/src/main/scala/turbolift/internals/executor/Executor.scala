@@ -1,24 +1,24 @@
 package turbolift.internals.executor
-import scala.util.Try
 import turbolift.Computation
 import turbolift.effects.IO
 import turbolift.mode.Mode
-import turbolift.internals.engine.{Config, FiberImpl, AnyCallback}
+import turbolift.io.Outcome
+import turbolift.internals.engine.{Env, FiberImpl, AnyCallback}
 
 
 private[internals] trait Executor:
   def start(fiber: FiberImpl): Unit
   def enqueue(fiber: FiberImpl): Unit
 
-  final def runSync[A](comp: Computation[A, ?]): Try[A] =
-    val config = Config.default(executor = this)
-    val fiber = new FiberImpl(comp, config)
+  final def runSync[A](comp: Computation[A, ?]): Outcome[A] =
+    val env = Env.default(executor = this)
+    val fiber = new FiberImpl(comp, env)
     start(fiber)
     fiber.unsafeAwait()
 
-  final def runAsync[A](comp: Computation[A, IO], callback: Try[A] => Unit): Unit =
-    val config = Config.default(executor = this)
-    val fiber = new FiberImpl(comp, config, callback.asInstanceOf[AnyCallback])
+  final def runAsync[A](comp: Computation[A, IO], callback: Outcome[A] => Unit): Unit =
+    val env = Env.default(executor = this)
+    val fiber = new FiberImpl(comp, env, callback.asInstanceOf[AnyCallback])
     start(fiber)
 
 

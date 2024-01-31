@@ -7,28 +7,28 @@ import turbolift.mode.ST
 
 class ReaderTest extends Specification:
   "Basic ops" >> {
-    "ask" >> {
+    "ask" >>{
       case object R extends Reader[Int]
       R.ask
       .handleWith(R.handler(1))
       .run === 1
     }
 
-    "asks" >> {
+    "asks" >>{
       case object R extends Reader[(Int, Int)]
       R.asks(_._1)
       .handleWith(R.handler((1, 2)))
       .run === 1
     }
 
-    "localPut" >> {
+    "localPut" >>{
       case object R extends Reader[Int]
       R.localPut(2) { R.ask }
       .handleWith(R.handler(1))
       .run === 2
     }
 
-    "localModify" >> {
+    "localModify" >>{
       case object R extends Reader[Int]
       R.localModify(_ + 2) { R.ask }
       .handleWith(R.handler(1))
@@ -38,21 +38,21 @@ class ReaderTest extends Specification:
 
 
   "Combined ops" >> {
-    "ask **! localPut" >> {
+    "ask **! localPut" >>{
       case object R extends Reader[Int]
       (R.ask **! R.localPut(2) { R.ask })
       .handleWith(R.handler(1))
       .run === (1, 2)
     }
 
-    "localPut **! ask" >> {
+    "localPut **! ask" >>{
       case object R extends Reader[Int]
       (R.localPut(2) { R.ask } **! R.ask)
       .handleWith(R.handler(1))
       .run === (2, 1)
     }
 
-    "nested localModify x1" >> {
+    "nested localModify x1" >>{
       case object R extends Reader[Int]
       (
         R.ask **!
@@ -66,7 +66,7 @@ class ReaderTest extends Specification:
     }
 
 
-    "nested localModify x2" >> {
+    "nested localModify x2" >>{
       case object R extends Reader[Int]
       (
         R.ask **!
@@ -83,7 +83,7 @@ class ReaderTest extends Specification:
       .run === ((1, ((2, 12), 2)), 1)
     }
 
-    "nested localModify x3" >> {
+    "nested localModify x3" >>{
       case object R extends Reader[Int]
       (
         R.ask **!
@@ -110,19 +110,32 @@ class ReaderTest extends Specification:
     case object R extends Reader[Int]
     val h = R.handler(1)
 
-    "ask *! localPut" >> {
+    "ask *! ask" >>{
+      (R.ask *! R.ask)
+      .handleWith(h)
+      .run === ((1, 1))
+    }
+
+    "localPut { ask *! ask }" >>{
+      R.localPut(2):
+        R.ask *! R.ask
+      .handleWith(h)
+      .run === ((2, 2))
+    }
+
+    "ask *! localPut" >>{
       (R.ask *! R.localPut(2)(R.ask))
       .handleWith(h)
       .run === ((1, 2))
     }
 
-    "localPut *! ask" >> {
+    "localPut *! ask" >>{
       (R.localPut(2)(R.ask) *! R.ask)
       .handleWith(h)
       .run === ((2, 1))
     }
 
-    "nested localModify" >> {
+    "nested localModify" >>{
       R.localModify(_ + 1) {
         R.ask *!
         R.localModify(_ + 10) { R.ask } *!

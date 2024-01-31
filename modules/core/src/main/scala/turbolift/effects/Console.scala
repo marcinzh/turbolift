@@ -1,10 +1,11 @@
 package turbolift.effects
 import scala.io.AnsiColor
 import turbolift.{!!, Signature, Effect}
-import turbolift.effects.default_handlers.consoleHandler
+import turbolift.handlers.consoleHandler
 
 
 trait ConsoleSignature extends Signature:
+  def readChar: Option[Char] !@! ThisEffect
   def readLine: String !@! ThisEffect
   def print(text: String): Unit !@! ThisEffect
   def printErr(text: String): Unit !@! ThisEffect
@@ -13,6 +14,7 @@ trait ConsoleSignature extends Signature:
 
 
 trait ConsoleEffect extends Effect[ConsoleSignature] with ConsoleSignature with AnsiColor:
+  final override def readChar: Option[Char] !! this.type = perform(_.readChar)
   final override def readLine: String !! this.type = perform(_.readLine)
   final override def print(text: String): Unit !! this.type = perform(_.print(text))
   final override def printErr(text: String): Unit !! this.type = perform(_.printErr(text))
@@ -23,8 +25,12 @@ trait ConsoleEffect extends Effect[ConsoleSignature] with ConsoleSignature with 
   final def println(text: String) = printLine(text)
   final def printlnErr(text: String) = printLineErr(text)
 
-  /** Default handler for this effect. */
-  def handler: ThisHandler.Id[IO] = consoleHandler.apply(this)
+
+object ConsoleEffect:
+  extension (fx: ConsoleEffect)
+    /** Default handler for this effect. */
+    def handler: fx.ThisHandler.FromId.ToId[IO] = fx.consoleHandler
+
 
 /** Predefined instance of this effect. */
 case object Console extends ConsoleEffect

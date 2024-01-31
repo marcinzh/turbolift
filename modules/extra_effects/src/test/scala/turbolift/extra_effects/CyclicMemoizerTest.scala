@@ -4,7 +4,7 @@ import org.specs2.execute.Result
 import turbolift.!!
 import turbolift.Extensions._
 import turbolift.effects.WriterK
-import turbolift.extra_effects.CyclicMemoizer
+import turbolift.effects.CyclicMemoizer
 import turbolift.mode.ST
 
 

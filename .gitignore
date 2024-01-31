@@ -4,6 +4,7 @@
 # sbt specific
 .bsp/
 .bloop/
+.metals/
 .cache/
 .history/
 .lib/

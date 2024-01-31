@@ -1,5 +1,5 @@
 package turbolift
-import turbolift.internals.extensions.AllOrphanedExtensions
+import turbolift.internals.extensions._
 
 /** Orphaned extensions.
  *
@@ -10,4 +10,8 @@ import turbolift.internals.extensions.AllOrphanedExtensions
  *  import turbolift.Extensions._
  *  }}}
  */
-object Extensions extends AllOrphanedExtensions
+object Extensions
+  extends MiscExtensions
+  with FoldExtensions
+  with MapFilterExtensions
+  with TraverseExtensions

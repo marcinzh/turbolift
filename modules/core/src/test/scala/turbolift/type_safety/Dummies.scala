@@ -19,9 +19,9 @@ object Dummies {
   type H2 = h2.type
   type H3 = h3.type
 
-  type H12 = Handler.Free[[X] =>> (Double, (String, X)), Fx1 & Fx2]
-  type H21 = Handler.Free[[X] =>> (String, (Double, X)), Fx1 & Fx2]
-  type H321 = Handler.Free[[X] =>> (String, (Double, X)), Fx1 & Fx2 & Fx3]
+  type H12 = Handler.FromId.Free[[X] =>> (Double, (String, X)), Fx1 & Fx2]
+  type H21 = Handler.FromId.Free[[X] =>> (String, (Double, X)), Fx1 & Fx2]
+  type H321 = Handler.FromId.Free[[X] =>> (String, (Double, X)), Fx1 & Fx2 & Fx3]
 
   class Whatever
   def any[T] : T = ???

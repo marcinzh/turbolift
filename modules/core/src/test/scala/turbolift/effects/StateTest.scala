@@ -13,7 +13,7 @@ class StateTest extends Specification:
     def header = s"With handler = ${name}"
     def handler[S, Fx <: State[S]](fx: Fx): S => fx.ThisHandler.FromId[(_, S), IO] =
       s => apply(
-        fx.handlers.local(s).flatTap([X] => (_: (X, S)) => !!.unit.upCast[IO]),
+        fx.handlers.local(s).tapEffK([X] => (_: (X, S)) => !!.unit.upCast[IO]),
         fx.handlers.shared(s),
       )
 
@@ -24,19 +24,19 @@ class StateTest extends Specification:
       case object S extends State[Int]
       val h = picker.handler(S)
       picker.header >> {
-        "get" >> {
+        "get" >>{
           S.get
           .handleWith(h(1))
           .unsafeRun.get === (1, 1)
         }
 
-        "put" >> {
+        "put" >>{
           S.put(2)
           .handleWith(h(1))
           .unsafeRun.get === ((), 2)
         }
 
-        "modify" >> {
+        "modify" >>{
           S.modify(_ + 10)
           .handleWith(h(1))
           .unsafeRun.get === ((), 11)
@@ -48,7 +48,7 @@ class StateTest extends Specification:
   "Combined ops" >> {
     Fragment.foreach(Pickers) { picker =>
       picker.header >> {
-        "put & get" >> {
+        "put & get" >>{
           case object S extends State[Int]
           (for
             a <- S.get
@@ -59,7 +59,7 @@ class StateTest extends Specification:
           .unsafeRun.get === ((1, 2), 2)
         }
           
-        "2 states interleaved" >> {
+        "2 states interleaved" >>{
           case object S1 extends State[Int]
           case object S2 extends State[Int]
           (for
