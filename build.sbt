@@ -1,5 +1,5 @@
 ThisBuild / organization := "io.github.marcinzh"
-ThisBuild / version := "0.72.0"
+ThisBuild / version := "0.73.0-SNAPSHOT"
 ThisBuild / scalaVersion := "3.3.1"
 ThisBuild / scalacOptions ++= Seq(
   "-deprecation",
@@ -25,7 +25,7 @@ lazy val root = project
   .in(file("."))
   .settings(name := "turbolift-root")
   .settings(sourcesInBase := false)
-  .settings(dontPublishMe: _*)
+  .settings(publish / skip := true)
   .aggregate(core, extra_effects, devel, examples)
 
 lazy val core = project
@@ -50,18 +50,18 @@ lazy val extra_effects = project
 lazy val examples = project
   .in(file("modules/examples"))
   .settings(name := "turbolift-examples")
-  .settings(dontPublishMe: _*)
+  .settings(publish / skip := true)
   .dependsOn(core, extra_effects)
 
 lazy val devel = project
   .in(file("modules/devel"))
   .settings(name := "turbolift-devel")
-  .settings(dontPublishMe: _*)
+  .settings(publish / skip := true)
   .settings(libraryDependencies += Deps.jol)
   .dependsOn(core, extra_effects)
 
 lazy val site = (project in file("docs"))
-  .settings(dontPublishMe: _*)
+  .settings(publish / skip := true)
   .settings(moduleName := "site")
   .enablePlugins(MicrositesPlugin)
   .enablePlugins(MdocPlugin)
@@ -97,12 +97,6 @@ lazy val site = (project in file("docs"))
 
 //=================================================
 
-lazy val dontPublishMe = Seq(
-  publish := {},
-  publishLocal := {},
-  publishArtifact := false
-)
-
 ThisBuild / watchBeforeCommand := Watch.clearScreen
 ThisBuild / watchTriggeredMessage := Watch.clearScreenOnTrigger
 ThisBuild / watchForceTriggerOnAnyChange := true
@@ -125,6 +119,7 @@ ThisBuild / organizationName := "marcinzh"
 ThisBuild / homepage := Some(url("https://github.com/marcinzh/turbolift"))
 ThisBuild / scmInfo := Some(ScmInfo(url("https://github.com/marcinzh/turbolift"), "scm:git@github.com:marcinzh/turbolift.git"))
 ThisBuild / licenses := List("MIT" -> new URL("http://www.opensource.org/licenses/MIT"))
+ThisBuild / versionScheme := Some("semver-spec")
 ThisBuild / pomIncludeRepository := { _ => false }
 ThisBuild / publishMavenStyle := true
 ThisBuild / publishTo := {
