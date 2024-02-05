@@ -14,7 +14,7 @@ trait Choice extends Effect[ChoiceSignature] with ChoiceSignature:
   final override val empty: Nothing !! this.type = perform(_.empty)
   final override def choose[A](as: Iterable[A]): A !! this.type = perform(_.choose(as))
 
-  final def plus[A, U <: this.type](lhs: A !! U, rhs: => A !! U): A !! U = choose(Vector(lhs, !!.defer(rhs))).flatten
+  final def plus[A, U <: this.type](lhs: A !! U, rhs: => A !! U): A !! U = choose(Vector(lhs, !!.impureEff(rhs))).flatten
 
   final def apply[A](as: A*): A !! this.type = choose(as.toVector)
 

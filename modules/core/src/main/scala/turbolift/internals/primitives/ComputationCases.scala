@@ -26,3 +26,4 @@ private[turbolift] object ComputationCases:
   final class DoSnap[A, B, U](val body: A !! U, val fun: Snap[A] => B !! U) extends Unsealed[B, U](Tags.DoSnap)
   final class Unsnap[A](val snap: Snap[A]) extends Unsealed[A, Any](Tags.Unsnap)
   object Yield extends Unsealed[Unit, Any](Tags.Yield)
+  final class Try[A, U](val thunk: () => A) extends Unsealed[A, U](Tags.Try)

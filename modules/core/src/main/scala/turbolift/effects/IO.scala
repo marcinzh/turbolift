@@ -3,6 +3,7 @@ import scala.util.{Try, Success => TrySuccess, Failure => TryFailure}
 import turbolift.{!!, Signature}
 import turbolift.io.{Cause, Snap}
 import turbolift.internals.primitives.Primitives
+import turbolift.internals.primitives.{ComputationCases => CC}
 
 
 sealed trait IO extends Signature
@@ -17,28 +18,29 @@ sealed trait IO extends Signature
 case object IO extends IO:
   final override type ThisEffect = IO
 
-  def apply[A](value: => A): A !! IO = Primitives.impure(() => value)
+  def apply[A](value: => A): A !! IO = CC.Try(() => value)
+
+  def cancel: Nothing !! IO = Primitives.unsnap(Snap.Cancelled)
+
+  def yeld: Unit !! IO = Primitives.yeld
 
   def blocking[A](value: => A): A !! IO =
     //@#@TODO
     apply(value)
 
 
-  def cancel: Nothing !! IO = Primitives.unsnap(Snap.Cancelled)
-
-  def yeld: Unit !! IO = Primitives.yeld
-
-
   //---------- Exceptions ----------
 
 
-  def fail(e: Throwable): Nothing !! IO = unsnap(Snap.Failure(Cause.Thrown(e)))
+  def raise(e: Throwable): Nothing !! IO = fail(Cause.Thrown(e))
 
-  def fromOption[A](ee: Option[A])(e: => Throwable): A !! IO = ee.fold(fail(e))(!!.pure)
+  def fail(c: Cause): Nothing !! IO = unsnap(Snap.Failure(c))
 
-  def fromEither[A](ee: Either[Throwable, A]): A !! IO = ee.fold(fail, !!.pure)
+  def fromOption[A](ee: Option[A])(e: => Throwable): A !! IO = ee.fold(raise(e))(!!.pure)
 
-  def fromTry[A](ee: Try[A]): A !! IO = ee.fold(fail, !!.pure)
+  def fromEither[A](ee: Either[Throwable, A]): A !! IO = ee.fold(raise, !!.pure)
+
+  def fromTry[A](ee: Try[A]): A !! IO = ee.fold(raise, !!.pure)
 
   def toOption[A, U <: IO](body: A !! U): Option[A] !! U = toTry(body).map(_.toOption)
 
@@ -60,7 +62,7 @@ case object IO extends IO:
   def catchSome[A, U <: IO](body: A !! U)(f: PartialFunction[Throwable, A]): A !! U = catchSomeEff(body)(f.andThen(!!.pure))
 
   def catchSomeEff[A, U <: IO](body: A !! U)(f: PartialFunction[Throwable, A !! U]): A !! U =
-    catchAllEff(body)(f.applyOrElse(_, fail))
+    catchAllEff(body)(f.applyOrElse(_, raise))
 
   def onFailure[A, U <: IO](body: A !! U)(f: Throwable => Unit !! U): A !! U =
     snap(body):

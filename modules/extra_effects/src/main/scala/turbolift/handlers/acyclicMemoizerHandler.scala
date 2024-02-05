@@ -19,7 +19,7 @@ extension [K, V](fx: AcyclicMemoizer[K, V])
             case Some(v) => !!.pure(v)
             case None =>
               for
-                v <- !!.defer(f(k))
+                v <- f(k)
                 _ <- Storage.modify(_.updated(k, v))
               yield v
 

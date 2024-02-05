@@ -263,18 +263,8 @@ import Cause.{Cancelled => CancelPayload}
 
         case Tags.Impure =>
           val theImpure = payload.asInstanceOf[CC.Impure[Any, Any]]
-          var ok = true
-          val payload2 =
-            try
-              theImpure.thunk()
-            catch case e: Throwable =>
-              ok = false
-              Cause(e)
-          if ok then
-            loopStep(payload2, step, stack, store, env, mark, fresh)
-          else
-            val step2 = env.prompt.unwind
-            loopStep(payload2, step2, stack, store, env, Mark.none, fresh)
+          val payload2 = theImpure.thunk()
+          loopStep(payload2, step, stack, store, env, mark, fresh)
 
         case Tags.Resume =>
           val theResume = payload.asInstanceOf[CC.Resume[Any, Stan, Any]]
@@ -518,6 +508,23 @@ import Cause.{Cancelled => CancelPayload}
             val completionBits1 = if CancelPayload == payload then Bits.Completion_Cancelled else Bits.Completion_Failure
             val completionBits2 = setResult(completionBits1, payload)
             endOfLoop(tick2, completionBits2)
+
+        case _ => (tag: @switch) match
+          case Tags.Try =>
+            val theTry = payload.asInstanceOf[CC.Try[Any, Any]]
+            var ok = true
+            val payload2 =
+              try
+                theTry.thunk()
+              catch case e: Throwable =>
+                ok = false
+                Cause(e)
+            if ok then
+              loopStep(payload2, step, stack, store, env, mark, fresh)
+            else
+              val step2 = env.prompt.unwind
+              loopStep(payload2, step2, stack, store, env, Mark.none, fresh)
+
 
     else
       suspend(0, tag, payload, step, stack, store, env, mark)

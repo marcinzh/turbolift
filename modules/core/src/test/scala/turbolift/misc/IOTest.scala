@@ -8,9 +8,9 @@ import turbolift.mode.ST
 
 class IOTest extends Specification:
   "Basic ops" >> {
-    "fail" >>{
+    "raise" >>{
       val e = new Exception("e")
-      IO.fail(e).unsafeRun === Outcome.Failure(Cause.Thrown(e))
+      IO.raise(e).unsafeRun === Outcome.Failure(Cause.Thrown(e))
     }
 
     "cancel" >>{

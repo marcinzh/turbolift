@@ -16,8 +16,8 @@ class BinaryOpTest extends Specification:
   val aa = !!.pure(a)
   val bb = !!.pure(b)
   val cc = IO.cancel
-  val ff = IO.fail(fx)
-  val gg = IO.fail(gx)
+  val ff = IO.raise(fx)
+  val gg = IO.raise(gx)
 
 
   "sequential" >> {

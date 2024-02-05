@@ -1,4 +1,6 @@
 package turbolift.io
+import turbolift.!!
+import turbolift.effects.IO
 import scala.util.{Try, Success => TrySuccess, Failure => TryFailure}
 import Outcome.{Success, Failure, Cancelled, NotSuccess}
 
@@ -57,6 +59,20 @@ sealed abstract class Outcome[+A]:
 
   final def toOption: Option[A] = toTry.toOption
   final def toEither: Either[Throwable, A] = toTry.toEither
+
+
+  final def run: A !! IO =
+    this match
+      case Success(a) => !!.pure(a)
+      case Failure(c) => IO.fail(c)
+      case Cancelled => IO.cancel
+
+
+  final def flatRun[B, U](using ev: A <:< (B !! U)): B !! (U & IO) =
+    this match
+      case Success(a) => ev(a)
+      case Failure(c) => IO.fail(c)
+      case Cancelled => IO.cancel
 
 
 object Outcome:

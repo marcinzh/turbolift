@@ -33,7 +33,8 @@ sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift]
   final def map[B](f: A => B): B !! U = Primitives.map(this, f)
   final def flatMap[B, U2 <: U](f: A => B !! U2): B !! U2 = Primitives.flatMap(this, f)
   final def flatten[B, U2 <: U](implicit ev: A <:< (B !! U2)): B !! U2 = flatMap(ev)
-  final def flatTap[B, U2 <: U](f: A => B !! U2): A !! U2 = flatMap(a => f(a).as(a))
+  @deprecated final def flatTap[B, U2 <: U](f: A => B !! U2): A !! U2 = tapEff(f)
+  final def tapEff[B, U2 <: U](f: A => B !! U2): A !! U2 = flatMap(a => f(a).as(a))
 
   /** Composes 2 independent computations sequentially */
   final def zip[B, U2 <: U](that: => B !! U2): (A, B) !! U2 = flatMap(a => that.map((a, _)))
@@ -151,7 +152,8 @@ object Computation:
 
   def impure[A](a: => A): A !! Any = Primitives.impure(() => a)
 
-  def defer[A, U](comp: => A !! U): A !! U = unit.flatMap(_ => comp)
+  def impureEff[A, U](comp: => A !! U): A !! U = unit.flatMap(_ => comp)
+  @deprecated def defer[A, U](comp: => A !! U): A !! U = impureEff(comp)
 
   /** Executes `empty` operation from the innermost `Choice` effect in the current scope. */
   def empty: Nothing !! ChoiceSignature = AnyChoice.empty

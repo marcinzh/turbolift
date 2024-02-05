@@ -30,6 +30,8 @@ private[turbolift] object Tags:
   inline val Step_Push           = 25
   inline val Step_Pop            = 26
   inline val Step_Unwind         = 27
+  //================================
+  inline val Try                 = 28
 
 
   def toStr(tag: Int) =
