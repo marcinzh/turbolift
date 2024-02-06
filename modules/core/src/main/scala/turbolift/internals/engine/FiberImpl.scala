@@ -210,6 +210,9 @@ import Cause.{Cancelled => CancelPayload}
       ): FiberImpl =
         innerLoop(tick2, comp.tag, comp, step, stack, store, env, mark, fresh)
 
+      inline def loopCancel(stack: Stack, store: Store, env: Env, fresh: ControlImpl): FiberImpl =
+        innerLoop(tick2, Tags.Step_Unwind, CancelPayload, Step.Cancel, stack, store, env, Mark.none, fresh)
+
       (tag: @switch) match
         case Tags.MapFlat =>
           val theMap = payload.asInstanceOf[CC.Map[Any, Any]]
@@ -337,7 +340,7 @@ import Cause.{Cancelled => CancelPayload}
               fiberLeft.innerLoop(tick2, theZipPar.lhs.tag, theZipPar.lhs, SC.Pop, stack2, storeLeft, env, Mark.none, fresh)
             else
               //// Must have been cancelled meanwhile
-              loopStep(CancelPayload, Step.Cancel, stack, store, env, Mark.none, fresh)
+              loopCancel(stack, store, env, fresh)
           else
             //// Fallback to sequential
             val comp2 = CC.ZipSeq(theZipPar.lhs, () => theZipPar.rhs, theZipPar.fun)
@@ -364,7 +367,7 @@ import Cause.{Cancelled => CancelPayload}
               fiberLeft.innerLoop(tick2, theOrPar.lhs.tag, theOrPar.lhs, SC.Pop, stack2, storeLeft, env, Mark.none, fresh)
             else
               //// Must have been cancelled meanwhile
-              loopStep(CancelPayload, Step.Cancel, stack, store, env, Mark.none, fresh)
+              loopCancel(stack, store, env, fresh)
           else
             //// Fallback to sequential
             val comp2 = CC.OrSeq(theOrPar.lhs, () => theOrPar.rhs)
@@ -380,7 +383,7 @@ import Cause.{Cancelled => CancelPayload}
             fiberLeft.innerLoop(tick2, theOrSeq.lhs.tag, theOrSeq.lhs, SC.Pop, stack2, storeLeft, env, Mark.none, fresh)
           else
             //// Must have been cancelled meanwhile
-            loopStep(CancelPayload, Step.Cancel, stack, store, env, Mark.none, fresh)
+            loopCancel(stack, store, env, fresh)
 
         case Tags.Step_ZipSeqLeft =>
           val theZipSeqLeft = step.asInstanceOf[SC.ZipSeqLeft]
@@ -393,53 +396,6 @@ import Cause.{Cancelled => CancelPayload}
           val step2 = theZipSeqRight.next
           val payload2 = theZipSeqRight.fun(theZipSeqRight.doneLeft, payload)
           loopStep(payload2, step2, stack, store, env, mark, fresh)
-
-        case Tags.EnvAsk =>
-          val theEnvAsk = payload.asInstanceOf[CC.EnvAsk[Any]]
-          val value = theEnvAsk.fun(env)
-          loopStep(value, step, stack, store, env, mark, fresh)
-
-        case Tags.EnvMod =>
-          val theEnvMod = payload.asInstanceOf[CC.EnvMod[Any, Any]]
-          val env2 = theEnvMod.fun(env)
-          if env2 eq env then
-            loopComp(theEnvMod.body, step, stack, store, env, mark, fresh)
-          else
-            //@#@TODO avoid stack split, like in any other HOE
-            OpSplit.forceSplitAndThen(stack, store, mark): (stack, store) =>
-              val location = stack.locatePrompt(env.prompt)
-              val (stack2, store2) = OpPush.pushLocal(stack, store, step, env.prompt, location, env2.asStan, guard = null)
-              loopComp(theEnvMod.body, SC.Pop, stack2, store2, env2, Mark.none, fresh)
-
-        case Tags.DoSnap =>
-          OpSplit.forceSplitAndThen(stack, store, mark): (stack, store) =>
-            val theDoSnap = payload.asInstanceOf[CC.DoSnap[Any, Any, Any]]
-            val location = stack.locatePrompt(env.prompt)
-            val (stack2, store2) = OpPush.pushLocal(stack, store, step, env.prompt, location, env.asStan, theDoSnap.fun)
-            loopComp(theDoSnap.body, SC.Pop, stack2, store2, env, Mark.none, fresh)
-
-        case Tags.Unsnap =>
-          val theUnsnap = payload.asInstanceOf[CC.Unsnap[Any]]
-          //@#@TODO forbid uncancelling, it wouldnt work correctly anyway
-          theUnsnap.snap match
-            case Snap.Success(payload2) =>
-              loopStep(payload2, step, stack, store, env, mark, fresh)
-            case Snap.Failure(payload2) =>
-              val step2 = env.prompt.unwind
-              loopStep(payload2, step2, stack, store, env, Mark.none, fresh)
-            case theAborted: Snap.Aborted =>
-              val payload2 = theAborted.value
-              val step2 = theAborted.prompt.unwind
-              loopStep(payload2, step2, stack, store, env, Mark.none, fresh)
-            case Snap.Cancelled =>
-              selfCancel()
-              val step2 = Step.Cancel
-              val payload2 = CancelPayload
-              loopStep(payload2, step2, stack, store, env, Mark.none, fresh)
-
-        case Tags.Yield =>
-          suspend(-1, step.tag, (), step, stack, store, env, mark)
-          this
 
         case Tags.Handle =>
           OpSplit.forceSplitAndThen(stack, store, mark): (stack, store) =>
@@ -525,6 +481,50 @@ import Cause.{Cancelled => CancelPayload}
               val step2 = env.prompt.unwind
               loopStep(payload2, step2, stack, store, env, Mark.none, fresh)
 
+          case Tags.DoSnap =>
+            OpSplit.forceSplitAndThen(stack, store, mark): (stack, store) =>
+              val theDoSnap = payload.asInstanceOf[CC.DoSnap[Any, Any, Any]]
+              val location = stack.locatePrompt(env.prompt)
+              val (stack2, store2) = OpPush.pushLocal(stack, store, step, env.prompt, location, env.asStan, theDoSnap.fun)
+              loopComp(theDoSnap.body, SC.Pop, stack2, store2, env, Mark.none, fresh)
+
+          case Tags.Unsnap =>
+            val theUnsnap = payload.asInstanceOf[CC.Unsnap[Any]]
+            //@#@TODO forbid uncancelling, it wouldnt work correctly anyway
+            theUnsnap.snap match
+              case Snap.Success(payload2) =>
+                loopStep(payload2, step, stack, store, env, mark, fresh)
+              case Snap.Failure(payload2) =>
+                val step2 = env.prompt.unwind
+                loopStep(payload2, step2, stack, store, env, Mark.none, fresh)
+              case theAborted: Snap.Aborted =>
+                val payload2 = theAborted.value
+                val step2 = theAborted.prompt.unwind
+                loopStep(payload2, step2, stack, store, env, Mark.none, fresh)
+              case Snap.Cancelled =>
+                selfCancel()
+                loopCancel(stack, store, env, fresh)
+
+          case Tags.EnvAsk =>
+            val theEnvAsk = payload.asInstanceOf[CC.EnvAsk[Any]]
+            val value = theEnvAsk.fun(env)
+            loopStep(value, step, stack, store, env, mark, fresh)
+
+          case Tags.EnvMod =>
+            val theEnvMod = payload.asInstanceOf[CC.EnvMod[Any, Any]]
+            val env2 = theEnvMod.fun(env)
+            if env2 eq env then
+              loopComp(theEnvMod.body, step, stack, store, env, mark, fresh)
+            else
+              //@#@TODO avoid stack split, like in any other HOE
+              OpSplit.forceSplitAndThen(stack, store, mark): (stack, store) =>
+                val location = stack.locatePrompt(env.prompt)
+                val (stack2, store2) = OpPush.pushLocal(stack, store, step, env.prompt, location, env2.asStan, guard = null)
+                loopComp(theEnvMod.body, SC.Pop, stack2, store2, env2, Mark.none, fresh)
+
+          case Tags.Yield =>
+            suspend(YIELD, step.tag, (), step, stack, store, env, mark)
+            this
 
     else
       suspend(0, tag, payload, step, stack, store, env, mark)

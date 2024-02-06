@@ -9,6 +9,8 @@ private[engine] type GuardFunc[A, B, U] = Snap[A] => B !! U
 private[engine] type AnyGuardFunc = GuardFunc[Any, Any, Any]
 private[internals] type AnyCallback = Outcome[Any] => Unit
 
+private[engine] inline val YIELD = -1
+
 private[engine] def panic(msg: String): Nothing = throw new Exceptions.Panic(msg)
 private[engine] def impossible: Nothing = panic("impossible happened")
 private[engine] def despair: Nothing =

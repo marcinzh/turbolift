@@ -21,17 +21,16 @@ private[turbolift] object Tags:
   inline val OrSeq               = 16
   inline val Step_ZipSeqLeft     = 17
   inline val Step_ZipSeqRight    = 18
-  inline val EnvAsk              = 19
-  inline val EnvMod              = 20
-  inline val DoSnap              = 21
-  inline val Unsnap              = 22
-  inline val Yield               = 23
-  inline val Handle              = 24
-  inline val Step_Push           = 25
-  inline val Step_Pop            = 26
-  inline val Step_Unwind         = 27
-  //================================
-  inline val Try                 = 28
+  inline val Handle              = 19
+  inline val Step_Push           = 20
+  inline val Step_Pop            = 21
+  inline val Step_Unwind         = 22
+  inline val Try                 = 23
+  inline val DoSnap              = 24
+  inline val Unsnap              = 25
+  inline val EnvAsk              = 26
+  inline val EnvMod              = 27
+  inline val Yield               = 28
 
 
   def toStr(tag: Int) =
@@ -55,13 +54,14 @@ private[turbolift] object Tags:
       case OrSeq               => "OrSeq"
       case Step_ZipSeqLeft     => "Step_ZipSeqLeft"
       case Step_ZipSeqRight    => "Step_ZipSeqRight"
-      case EnvAsk              => "EnvAsk"
-      case EnvMod              => "EnvMod"
-      case DoSnap              => "DoSnap"
-      case Unsnap              => "Unsnap"
-      case Yield               => "Yield"
       case Handle              => "Handle"
       case Step_Push           => "Step_Push"
       case Step_Pop            => "Step_Pop"
       case Step_Unwind         => "Step_Unwind"
+      case Try                 => "Try"
+      case DoSnap              => "DoSnap"
+      case Unsnap              => "Unsnap"
+      case EnvAsk              => "EnvAsk"
+      case EnvMod              => "EnvMod"
+      case Yield               => "Yield"
       case _                   => s"Tag($tag)"
