@@ -18,7 +18,11 @@ sealed trait IO extends Signature
 case object IO extends IO:
   final override type ThisEffect = IO
 
-  def apply[A](value: => A): A !! IO = CC.Try(() => value)
+  def apply[A](value: => A): A !! IO = CC.Try(() => value, false)
+
+  def doTry[A](value: => A): Try[A] !! IO = CC.Try(() => value, true)
+
+  def doEither[A](value: => A): Either[Throwable, A] !! IO = doTry(value).map(_.toEither)
 
   def cancel: Nothing !! IO = Primitives.unsnap(Snap.Cancelled)
 
@@ -27,6 +31,7 @@ case object IO extends IO:
   def blocking[A](value: => A): A !! IO =
     //@#@TODO
     apply(value)
+
 
 
   //---------- Exceptions ----------
@@ -66,7 +71,12 @@ case object IO extends IO:
 
   def onFailure[A, U <: IO](body: A !! U)(f: Throwable => Unit !! U): A !! U =
     snap(body):
-      case cc @ Snap.Failure(c) => f(c.last) &&! unsnap(cc)
+      case ss @ Snap.Failure(c) => f(c.last) &&! unsnap(ss)
+      case aa => unsnap(aa)
+
+  def onCancel[A, U <: IO](body: A !! U)(comp: Unit !! U): A !! U =
+    snap(body):
+      case ss @ Snap.Cancelled => comp &&! unsnap(ss)
       case aa => unsnap(aa)
 
 
@@ -76,6 +86,9 @@ case object IO extends IO:
   def unsnap[A](aa: Snap[A]): A !! IO = Primitives.unsnap(aa)
 
   def snap[A, B, U <: IO](body: A !! U)(f: Snap[A] => B !! U): B !! U = Primitives.snap(body)(f)
+
+  //@#@TODO more primitive
+  def simplerSnap[A, B, U <: IO](body: A !! U): Snap[A] !! U = ??? //Primitives.snap(body)(f)
 
 
   //---------- Resource ----------

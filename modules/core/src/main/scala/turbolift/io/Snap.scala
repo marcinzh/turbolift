@@ -1,4 +1,6 @@
 package turbolift.io
+import turbolift.!!
+import turbolift.effects.IO
 import turbolift.internals.engine.Prompt
 import scala.util.{Try, Success => TrySuccess, Failure => TryFailure}
 
@@ -17,6 +19,15 @@ sealed abstract class Snap[+A]:
       case Snap.Failure(c) => c.toTry
       case Snap.Cancelled => TryFailure(Exceptions.Cancelled)
       case Snap.Aborted(a) => TryFailure(Exceptions.Aborted(a))
+
+  final def toEither: Either[Throwable, A] =
+    (this: @unchecked) match
+      case Snap.Success(a) => Right(a)
+      case Snap.Failure(c) => c.toEither
+      case Snap.Cancelled => Left(Exceptions.Cancelled)
+      case Snap.Aborted(a) => Left(Exceptions.Aborted(a))
+
+  final def run: A !! IO = IO.unsnap(this)
 
 
 object Snap:

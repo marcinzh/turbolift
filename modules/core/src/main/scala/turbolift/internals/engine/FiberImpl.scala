@@ -1,5 +1,6 @@
 package turbolift.internals.engine
 import scala.annotation.{tailrec, switch}
+import scala.util.{Try, Success => TrySuccess, Failure => TryFailure}
 import turbolift.{Computation, Signature}
 import turbolift.io.{Fiber, Snap, Outcome, Cause, Exceptions}
 import turbolift.interpreter.Control
@@ -467,19 +468,25 @@ import Cause.{Cancelled => CancelPayload}
 
         case _ => (tag: @switch) match
           case Tags.Try =>
-            val theTry = payload.asInstanceOf[CC.Try[Any, Any]]
-            var ok = true
-            val payload2 =
-              try
-                theTry.thunk()
-              catch case e: Throwable =>
-                ok = false
-                Cause(e)
-            if ok then
+            val theTry = payload.asInstanceOf[CC.Try[Any, Any, Any]]
+            var result: Any = null
+            var throwable = null.asInstanceOf[Throwable]
+            try
+              result = theTry.thunk()
+            catch
+              case e: Throwable => throwable = e
+            val ok = throwable eq null
+            if theTry.toTry then
+              val payload2 = if ok then TrySuccess(result) else TryFailure(throwable)
               loopStep(payload2, step, stack, store, env, mark, fresh)
             else
-              val step2 = env.prompt.unwind
-              loopStep(payload2, step2, stack, store, env, Mark.none, fresh)
+              if ok then
+                val payload2 = result
+                loopStep(payload2, step, stack, store, env, mark, fresh)
+              else
+                val step2 = env.prompt.unwind
+                val payload2 = Cause(throwable)
+                loopStep(payload2, step2, stack, store, env, Mark.none, fresh)
 
           case Tags.DoSnap =>
             OpSplit.forceSplitAndThen(stack, store, mark): (stack, store) =>
