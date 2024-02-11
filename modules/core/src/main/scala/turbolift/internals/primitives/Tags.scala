@@ -25,12 +25,13 @@ private[turbolift] object Tags:
   inline val Step_Push           = 20
   inline val Step_Pop            = 21
   inline val Step_Unwind         = 22
-  inline val Try                 = 23
-  inline val DoSnap              = 24
-  inline val Unsnap              = 25
-  inline val EnvAsk              = 26
-  inline val EnvMod              = 27
-  inline val Yield               = 28
+  inline val DoIO                = 23
+  inline val DoTry               = 24
+  inline val DoSnap              = 25
+  inline val Unsnap              = 26
+  inline val EnvAsk              = 27
+  inline val EnvMod              = 28
+  inline val Yield               = 29
 
 
   def toStr(tag: Int) =
@@ -58,7 +59,8 @@ private[turbolift] object Tags:
       case Step_Push           => "Step_Push"
       case Step_Pop            => "Step_Pop"
       case Step_Unwind         => "Step_Unwind"
-      case Try                 => "Try"
+      case DoIO                => "DoIO"
+      case DoTry               => "DoTry"
       case DoSnap              => "DoSnap"
       case Unsnap              => "Unsnap"
       case EnvAsk              => "EnvAsk"

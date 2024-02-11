@@ -1,4 +1,5 @@
 package turbolift.internals.primitives
+import scala.util.Try
 import turbolift.{!!, Signature}
 import turbolift.Computation.{Unsealed, Untyped}
 import turbolift.HandlerCases.Primitive
@@ -21,9 +22,10 @@ private[turbolift] object ComputationCases:
   final class Escape[A, S, U](val control: Control.Untyped, val body: Untyped, val stan: S) extends Unsealed[A, U](Tags.Escape)
   final class Abort[A, U](val control: Control.Untyped, val value: Any) extends Unsealed[A, U](Tags.Abort)
   final class Handle[A, U, F[+_], G[+_], L, N](val body: F[A] !! (U & L), val handler: Primitive[F, G, L, N]) extends Unsealed[G[A], U & N](Tags.Handle)
+  final class DoIO[A, U](val thunk: () => A) extends Unsealed[A, U](Tags.DoIO)
+  final class DoTry[A, U](val thunk: () => A) extends Unsealed[Try[A], U](Tags.DoTry)
+  final class DoSnap[A, U](val body: A !! U) extends Unsealed[Snap[A], U](Tags.DoSnap)
+  final class Unsnap[A, U](val snap: Snap[A]) extends Unsealed[A, U](Tags.Unsnap)
   final class EnvAsk[A](val fun: Env => A) extends Unsealed[A, Any](Tags.EnvAsk)
   final class EnvMod[A, U](val fun: Env => Env, val body: A !! U) extends Unsealed[A, U](Tags.EnvMod)
-  final class DoSnap[A, U](val body: A !! U) extends Unsealed[Snap[A], U](Tags.DoSnap)
-  final class Unsnap[A](val snap: Snap[A]) extends Unsealed[A, Any](Tags.Unsnap)
-  final class Try[A, B, U](val thunk: () => A, val toTry: Boolean) extends Unsealed[B, U](Tags.Try)
   object Yield extends Unsealed[Unit, Any](Tags.Yield)

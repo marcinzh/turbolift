@@ -2,7 +2,6 @@ package turbolift.effects
 import scala.util.{Try, Success => TrySuccess, Failure => TryFailure}
 import turbolift.{!!, Signature}
 import turbolift.io.{Cause, Snap}
-import turbolift.internals.primitives.Primitives
 import turbolift.internals.primitives.{ComputationCases => CC}
 
 
@@ -18,15 +17,15 @@ sealed trait IO extends Signature
 case object IO extends IO:
   final override type ThisEffect = IO
 
-  def apply[A](value: => A): A !! IO = CC.Try(() => value, false)
+  def apply[A](value: => A): A !! IO = CC.DoIO(() => value)
 
-  def doTry[A](value: => A): Try[A] !! IO = CC.Try(() => value, true)
+  def doTry[A](value: => A): Try[A] !! IO = CC.DoTry(() => value)
 
   def doEither[A](value: => A): Either[Throwable, A] !! IO = doTry(value).map(_.toEither)
 
-  def cancel: Nothing !! IO = Primitives.unsnap(Snap.Cancelled)
+  def cancel: Nothing !! IO = unsnap(Snap.Cancelled)
 
-  def yeld: Unit !! IO = Primitives.yeld
+  def yeld: Unit !! IO = CC.Yield
 
   def blocking[A](value: => A): A !! IO =
     //@#@TODO
@@ -82,15 +81,14 @@ case object IO extends IO:
   //---------- Snap ----------
 
 
-  def unsnap[A](aa: Snap[A]): A !! IO = Primitives.unsnap(aa)
+  def unsnap[A](aa: Snap[A]): A !! IO = CC.Unsnap(aa)
 
-  // def snap[A, B, U <: IO](body: A !! U)(f: Snap[A] => B !! U): B !! U = Primitives.snap(body)(f)
-  def snap[A, U <: IO](body: A !! U): Snap[A] !! U = Primitives.snap(body)
+  def snap[A, U <: IO](body: A !! U): Snap[A] !! U = CC.DoSnap(body)
 
 
   //---------- Resource ----------
 
 
-  def guarantee[A, U](release: Unit !! U)(body: A !! U): A !! U =
-    Primitives.snap(body).flatMap: aa =>
-      release &&! Primitives.unsnap(aa)
+  def guarantee[A, U <: IO](release: Unit !! U)(body: A !! U): A !! U =
+    snap(body).flatMap: aa =>
+      release &&! unsnap(aa)

@@ -466,26 +466,28 @@ import Cause.{Cancelled => CancelPayload}
             endOfLoop(tick2, completionBits2)
 
         case _ => (tag: @switch) match
-          case Tags.Try =>
-            val theTry = payload.asInstanceOf[CC.Try[Any, Any, Any]]
+          case Tags.DoIO =>
+            val theSideEffect = payload.asInstanceOf[CC.DoIO[Any, Any]]
             var result: Any = null
             var throwable = null.asInstanceOf[Throwable]
-            try
-              result = theTry.thunk()
-            catch
-              case e: Throwable => throwable = e
-            val ok = throwable eq null
-            if theTry.toTry then
-              val payload2 = if ok then TrySuccess(result) else TryFailure(throwable)
+            try result = theSideEffect.thunk()
+            catch case e: Throwable => throwable = e
+            if throwable eq null then
+              val payload2 = result
               loopStep(payload2, step, stack, store, env, mark, fresh)
             else
-              if ok then
-                val payload2 = result
-                loopStep(payload2, step, stack, store, env, mark, fresh)
-              else
-                val step2 = Step.Throw
-                val payload2 = Cause(throwable)
-                loopStep(payload2, step2, stack, store, env, Mark.none, fresh)
+              val step2 = Step.Throw
+              val payload2 = Cause(throwable)
+              loopStep(payload2, step2, stack, store, env, Mark.none, fresh)
+
+          case Tags.DoTry =>
+            val theDoTry = payload.asInstanceOf[CC.DoTry[Any, Any]]
+            var result: Any = null
+            var throwable = null.asInstanceOf[Throwable]
+            try result = theDoTry.thunk()
+            catch case e: Throwable => throwable = e
+            val payload2 = if throwable eq null then TrySuccess(result) else TryFailure(throwable)
+            loopStep(payload2, step, stack, store, env, mark, fresh)
 
           case Tags.DoSnap =>
             OpSplit.forceSplitAndThen(stack, store, mark): (stack, store) =>
@@ -495,7 +497,7 @@ import Cause.{Cancelled => CancelPayload}
               loopComp(theDoSnap.body, SC.Pop, stack2, store2, env, Mark.none, fresh)
 
           case Tags.Unsnap =>
-            val theUnsnap = payload.asInstanceOf[CC.Unsnap[Any]]
+            val theUnsnap = payload.asInstanceOf[CC.Unsnap[Any, Any]]
             //@#@TODO forbid uncancelling, it wouldnt work correctly anyway
             theUnsnap.snap match
               case Snap.Success(payload2) =>
