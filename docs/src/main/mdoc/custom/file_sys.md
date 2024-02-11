@@ -27,7 +27,18 @@ trait FileSystemSignature extends Signature:
   def writeFile(path: String, contents: String): Unit !@! ThisEffect
 ```
 
-Let's also instantiate custom `FileError` effect, that we will be using in handler:
+### 3. Define the effect type
+
+```scala mdoc
+trait FileSystemEffect extends Effect[FileSystemSignature] with FileSystemSignature:
+  // Boilerplate:
+  final override def readFile(path: String) = perform(_.readFile(path))
+  final override def writeFile(path: String, contents: String) = perform(_.writeFile(path, contents))
+```
+
+### 4. Define a handler
+
+Instantiate custom `FileError` effect, that we will be using in the handler:
 
 ```scala mdoc
 case object FileError extends Error[FileErrorCause]
@@ -40,16 +51,7 @@ enum FileErrorCause:
     case NoSuchFile(path) => s"No such file found: $path"
 ```
 
-### 3. Define the effect type
-
-```scala mdoc
-trait FileSystemEffect extends Effect[FileSystemSignature] with FileSystemSignature:
-  // Boilerplate:
-  final override def readFile(path: String) = perform(_.readFile(path))
-  final override def writeFile(path: String, contents: String) = perform(_.writeFile(path, contents))
-```
-
-### 4. Define a handler
+The handler itself:
 
 ```scala mdoc
 extension (fx: FileSystemEffect)
