@@ -25,8 +25,8 @@ private[internals] final class Pile private (
   )
 
 
-  def pushLocal(step: Step, stan: Stan, guard: AnyGuardFunc | Null, height: Int): Pile =
-    val newFrame = topFrame.pushNext(step, stan, guard, height - maxHeight, isLocal = true)
+  def pushLocal(step: Step, stan: Stan, height: Int, isGuard: Boolean): Pile =
+    val newFrame = topFrame.pushNext(step, stan, height - maxHeight, isLocal = true, isGuard = isGuard)
     copy(
       topFrame = newFrame,
       maxHeight = height,
@@ -97,9 +97,9 @@ private[internals] final class Pile private (
 
 
 private[engine] object Pile:
-  def pushFirst(step: Step, guard: AnyGuardFunc | Null, height: Int, isLocal: Boolean): Pile =
+  def pushFirst(step: Step, height: Int, isLocal: Boolean, isGuard: Boolean): Pile =
     new Pile(
-      topFrame = Frame.pushFirst(step, guard, isLocal),
+      topFrame = Frame.pushFirst(step, isLocal, isGuard),
       minHeight = height,
       maxHeight = height,
       hasBase = !isLocal,

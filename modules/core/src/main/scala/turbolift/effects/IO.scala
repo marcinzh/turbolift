@@ -33,7 +33,6 @@ case object IO extends IO:
     apply(value)
 
 
-
   //---------- Exceptions ----------
 
 
@@ -52,7 +51,7 @@ case object IO extends IO:
   def toEither[A, U <: IO](body: A !! U): Either[Throwable, A] !! U = toTry(body).map(_.toEither)
 
   def toTry[A, U <: IO](body: A !! U): Try[A] !! U =
-    snap(body):
+    snap(body).flatMap:
       case Snap.Success(a) => !!.pure(TrySuccess(a)) 
       case Snap.Failure(c) => !!.pure(c.toTry) 
       case aa: Snap.NotSuccess => unsnap(aa)
@@ -60,7 +59,7 @@ case object IO extends IO:
   def catchAll[A, U <: IO](body: A !! U)(f: Throwable => A): A !! U = catchAllEff(body)(f.andThen(!!.pure))
 
   def catchAllEff[A, U <: IO](body: A !! U)(f: Throwable => A !! U): A !! U =
-    snap(body):
+    snap(body).flatMap:
       case Snap.Failure(e) => f(e.last)
       case aa => unsnap(aa)
 
@@ -70,12 +69,12 @@ case object IO extends IO:
     catchAllEff(body)(f.applyOrElse(_, raise))
 
   def onFailure[A, U <: IO](body: A !! U)(f: Throwable => Unit !! U): A !! U =
-    snap(body):
+    snap(body).flatMap:
       case ss @ Snap.Failure(c) => f(c.last) &&! unsnap(ss)
       case aa => unsnap(aa)
 
   def onCancel[A, U <: IO](body: A !! U)(comp: Unit !! U): A !! U =
-    snap(body):
+    snap(body).flatMap:
       case ss @ Snap.Cancelled => comp &&! unsnap(ss)
       case aa => unsnap(aa)
 
@@ -85,14 +84,13 @@ case object IO extends IO:
 
   def unsnap[A](aa: Snap[A]): A !! IO = Primitives.unsnap(aa)
 
-  def snap[A, B, U <: IO](body: A !! U)(f: Snap[A] => B !! U): B !! U = Primitives.snap(body)(f)
-
-  //@#@TODO more primitive
-  def simplerSnap[A, B, U <: IO](body: A !! U): Snap[A] !! U = ??? //Primitives.snap(body)(f)
+  // def snap[A, B, U <: IO](body: A !! U)(f: Snap[A] => B !! U): B !! U = Primitives.snap(body)(f)
+  def snap[A, U <: IO](body: A !! U): Snap[A] !! U = Primitives.snap(body)
 
 
   //---------- Resource ----------
 
 
   def guarantee[A, U](release: Unit !! U)(body: A !! U): A !! U =
-    Primitives.snap(body)(aa => release &&! Primitives.unsnap(aa))
+    Primitives.snap(body).flatMap: aa =>
+      release &&! Primitives.unsnap(aa)

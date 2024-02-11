@@ -23,7 +23,7 @@ private[turbolift] object ComputationCases:
   final class Handle[A, U, F[+_], G[+_], L, N](val body: F[A] !! (U & L), val handler: Primitive[F, G, L, N]) extends Unsealed[G[A], U & N](Tags.Handle)
   final class EnvAsk[A](val fun: Env => A) extends Unsealed[A, Any](Tags.EnvAsk)
   final class EnvMod[A, U](val fun: Env => Env, val body: A !! U) extends Unsealed[A, U](Tags.EnvMod)
-  final class DoSnap[A, B, U](val body: A !! U, val fun: Snap[A] => B !! U) extends Unsealed[B, U](Tags.DoSnap)
+  final class DoSnap[A, U](val body: A !! U) extends Unsealed[Snap[A], U](Tags.DoSnap)
   final class Unsnap[A](val snap: Snap[A]) extends Unsealed[A, Any](Tags.Unsnap)
   final class Try[A, B, U](val thunk: () => A, val toTry: Boolean) extends Unsealed[B, U](Tags.Try)
   object Yield extends Unsealed[Unit, Any](Tags.Yield)

@@ -294,7 +294,7 @@ import Cause.{Cancelled => CancelPayload}
             val step2 = SC.Capture(control.prompt, aside = step, next = control.step)
             val (stack2, store2) = OpSplice.spliceForLocal(stack, store, step, control, mark)
             val location = stack2.locatePrompt(control.prompt) //@#@OPTY already found
-            OpPush.pushLocal(stack2, store2, step2, control.prompt, location, theLocal.stan, guard = null)
+            OpPush.pushLocal(stack2, store2, step2, control.prompt, location, theLocal.stan, isGuard = false)
           loopComp(comp2, SC.Pop, stack3, store3, env, Mark.none, fresh)
 
         case Tags.Abort =>
@@ -425,13 +425,12 @@ import Cause.{Cancelled => CancelPayload}
             if stack.canPop then
               val (stack2, store2, step2, prompt, frame, stan) = OpPush.pop(stack, store)
               if prompt.isRoot then
-                if frame.guard == null then
+                if !frame.isGuard then
                   val env2 = frame.stan.asEnv
                   loopStep(payload, step2, stack2, store2, env2, Mark.none, fresh)
                 else
-                  val snap = Snap.Success(payload)
-                  val comp2 = frame.guard(snap)
-                  loopComp(comp2, step2, stack2, store2, env, Mark.none, fresh)
+                  val payload2 = Snap.Success(payload)
+                  loopStep(payload2, step2, stack2, store2, env, Mark.none, fresh)
               else
                 val comp2 = prompt.interpreter.onReturn(payload, stan)
                 loopComp(comp2, step2, stack2, store2, env, Mark.none, fresh)
@@ -445,11 +444,11 @@ import Cause.{Cancelled => CancelPayload}
           if stack.canPop then
             val (stack2, store2, step2, prompt, frame, stan) = OpPush.pop(stack, store)
             if prompt.isRoot then
-              if frame.guard == null then
+              if !frame.isGuard then
                 val env2 = frame.stan.asEnv
                 loopStep(payload, step, stack2, store2, env2, Mark.none, fresh)
               else
-                val snap =
+                val payload2 =
                   if theUnwind.prompt == null then
                     if theUnwind.cancel then
                       Snap.Cancelled
@@ -457,8 +456,7 @@ import Cause.{Cancelled => CancelPayload}
                       Snap.Failure(payload.asInstanceOf[Cause])
                   else
                     Snap.Aborted(payload, theUnwind.prompt)
-                val comp2 = frame.guard(snap)
-                loopComp(comp2, step2, stack2, store2, env, Mark.none, fresh)
+                loopStep(payload2, step2, stack2, store2, env, Mark.none, fresh)
             else
               val step3 = if prompt == theUnwind.prompt then step2 else step
               loopStep(payload, step3, stack2, store2, env, Mark.none, fresh)
@@ -491,9 +489,9 @@ import Cause.{Cancelled => CancelPayload}
 
           case Tags.DoSnap =>
             OpSplit.forceSplitAndThen(stack, store, mark): (stack, store) =>
-              val theDoSnap = payload.asInstanceOf[CC.DoSnap[Any, Any, Any]]
+              val theDoSnap = payload.asInstanceOf[CC.DoSnap[Any, Any]]
               val location = stack.locatePrompt(env.prompt)
-              val (stack2, store2) = OpPush.pushLocal(stack, store, step, env.prompt, location, env.asStan, theDoSnap.fun)
+              val (stack2, store2) = OpPush.pushLocal(stack, store, step, env.prompt, location, env.asStan, isGuard = true)
               loopComp(theDoSnap.body, SC.Pop, stack2, store2, env, Mark.none, fresh)
 
           case Tags.Unsnap =>
@@ -527,7 +525,7 @@ import Cause.{Cancelled => CancelPayload}
               //@#@TODO avoid stack split, like in any other HOE
               OpSplit.forceSplitAndThen(stack, store, mark): (stack, store) =>
                 val location = stack.locatePrompt(env.prompt)
-                val (stack2, store2) = OpPush.pushLocal(stack, store, step, env.prompt, location, env2.asStan, guard = null)
+                val (stack2, store2) = OpPush.pushLocal(stack, store, step, env.prompt, location, env2.asStan, isGuard = false)
                 loopComp(theEnvMod.body, SC.Pop, stack2, store2, env2, Mark.none, fresh)
 
           case Tags.Yield =>

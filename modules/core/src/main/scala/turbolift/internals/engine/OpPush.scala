@@ -18,26 +18,26 @@ private[engine] object OpPush:
           val newStore = newStoreSeg ::? moreStore
           (newStack, newStore)
     else
-      newTopSegment(stack, store, step, prompt, stan, guard = null, isLocal = false)
+      newTopSegment(stack, store, step, prompt, stan, isLocal = false, isGuard = false)
 
 
-  def pushLocal(stack: Stack, store: Store, step: Step, prompt: Prompt, location: Location.Deep, stan: Stan, guard: AnyGuardFunc | Null): (Stack, Store) =
+  def pushLocal(stack: Stack, store: Store, step: Step, prompt: Prompt, location: Location.Deep, stan: Stan, isGuard: Boolean): (Stack, Store) =
     if location.segmentDepth == 0 then
       stack.deconsAndThen: (oldStackSeg, moreStack, moreStep) =>
         store.deconsAndThen: (oldStoreSeg, moreStore) =>
           val loc = location.asShallow
           val oldStan = oldStoreSeg.getOrElseVoidSh(loc)
           val newStoreSeg = oldStoreSeg.setIfNotVoidSh(loc, stan)
-          val newStackSeg = oldStackSeg.pushNextLocal(loc, step, oldStan, guard)
+          val newStackSeg = oldStackSeg.pushNextLocal(loc, step, oldStan, isGuard)
           val newStack = newStackSeg ::? (moreStack, moreStep)
           val newStore = newStoreSeg ::? moreStore
           (newStack, newStore)
     else
-      newTopSegment(stack, store, step, prompt, stan, guard, isLocal = true)
+      newTopSegment(stack, store, step, prompt, stan, isLocal = true, isGuard = isGuard)
 
 
-  private def newTopSegment(stack: Stack, store: Store, step: Step, prompt: Prompt, stan: Stan, guard: AnyGuardFunc | Null, isLocal: Boolean): (Stack, Store) =
-    val newStackSeg = StackSegment.pushFirst(prompt, guard, isLocal)
+  private def newTopSegment(stack: Stack, store: Store, step: Step, prompt: Prompt, stan: Stan, isLocal: Boolean, isGuard: Boolean): (Stack, Store) =
+    val newStackSeg = StackSegment.pushFirst(prompt, isLocal, isGuard)
     val newStoreSeg = StoreSegment.pushFirst(stan)
     val newStack = newStackSeg ::? (stack, step)
     val newStore = newStoreSeg ::? store

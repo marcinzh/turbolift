@@ -19,7 +19,7 @@ private[turbolift] object Primitives:
   inline def envAsk[A](f: Env => A): A !! Any = CC.EnvAsk(f)
   inline def envMod[A, U](f: Env => Env, body: A !! U): A !! U = CC.EnvMod(f, body)
   
-  inline def snap[A, B, U](body: A !! U)(fun: Snap[A] => B !! U): B !! U = CC.DoSnap(body, fun)
+  inline def snap[A, U](body: A !! U): Snap[A] !! U = CC.DoSnap(body)
   inline def unsnap[A](snap: Snap[A]): A !! Any = CC.Unsnap(snap)
   inline def yeld: Unit !! Any = CC.Yield
 
