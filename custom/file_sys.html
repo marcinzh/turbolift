@@ -20,7 +20,17 @@ The File System effect example is often used as their demonstrator of reinterpre
   <span class="k">def</span> <span class="nf">writeFile</span><span class="o">(</span><span class="n">path</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">contents</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span><span class="k">:</span> <span class="kt">Unit</span> <span class="kt">!@!</span> <span class="kt">ThisEffect</span>
 </code></pre></div></div>
 
-<p>Let’s also instantiate custom <code class="language-plaintext highlighter-rouge">FileError</code> effect, that we will be using in handler:</p>
+<h3 id="3-define-the-effect-type">3. Define the effect type</h3>
+
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">trait</span> <span class="nc">FileSystemEffect</span> <span class="k">extends</span> <span class="nc">Effect</span><span class="o">[</span><span class="kt">FileSystemSignature</span><span class="o">]</span> <span class="k">with</span> <span class="nc">FileSystemSignature</span><span class="k">:</span>
+  <span class="c1">// Boilerplate:</span>
+  <span class="k">final</span> <span class="k">override</span> <span class="k">def</span> <span class="nf">readFile</span><span class="o">(</span><span class="n">path</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">=</span> <span class="nf">perform</span><span class="o">(</span><span class="nv">_</span><span class="o">.</span><span class="py">readFile</span><span class="o">(</span><span class="n">path</span><span class="o">))</span>
+  <span class="k">final</span> <span class="k">override</span> <span class="k">def</span> <span class="nf">writeFile</span><span class="o">(</span><span class="n">path</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">contents</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">=</span> <span class="nf">perform</span><span class="o">(</span><span class="nv">_</span><span class="o">.</span><span class="py">writeFile</span><span class="o">(</span><span class="n">path</span><span class="o">,</span> <span class="n">contents</span><span class="o">))</span>
+</code></pre></div></div>
+
+<h3 id="4-define-a-handler">4. Define a handler</h3>
+
+<p>Instantiate custom <code class="language-plaintext highlighter-rouge">FileError</code> effect, that we will be using in the handler:</p>
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">case</span> <span class="k">object</span> <span class="nc">FileError</span> <span class="k">extends</span> <span class="nc">Error</span><span class="o">[</span><span class="kt">FileErrorCause</span><span class="o">]</span>
 <span class="k">type</span> <span class="kt">FileError</span> <span class="o">=</span> <span class="nv">FileError</span><span class="o">.</span><span class="py">type</span>
@@ -32,15 +42,7 @@ The File System effect example is often used as their demonstrator of reinterpre
     <span class="k">case</span> <span class="nc">NoSuchFile</span><span class="o">(</span><span class="n">path</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">s</span><span class="s">"No such file found: $path"</span>
 </code></pre></div></div>
 
-<h3 id="3-define-the-effect-type">3. Define the effect type</h3>
-
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">trait</span> <span class="nc">FileSystemEffect</span> <span class="k">extends</span> <span class="nc">Effect</span><span class="o">[</span><span class="kt">FileSystemSignature</span><span class="o">]</span> <span class="k">with</span> <span class="nc">FileSystemSignature</span><span class="k">:</span>
-  <span class="c1">// Boilerplate:</span>
-  <span class="k">final</span> <span class="k">override</span> <span class="k">def</span> <span class="nf">readFile</span><span class="o">(</span><span class="n">path</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">=</span> <span class="nf">perform</span><span class="o">(</span><span class="nv">_</span><span class="o">.</span><span class="py">readFile</span><span class="o">(</span><span class="n">path</span><span class="o">))</span>
-  <span class="k">final</span> <span class="k">override</span> <span class="k">def</span> <span class="nf">writeFile</span><span class="o">(</span><span class="n">path</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">contents</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">=</span> <span class="nf">perform</span><span class="o">(</span><span class="nv">_</span><span class="o">.</span><span class="py">writeFile</span><span class="o">(</span><span class="n">path</span><span class="o">,</span> <span class="n">contents</span><span class="o">))</span>
-</code></pre></div></div>
-
-<h3 id="4-define-a-handler">4. Define a handler</h3>
+<p>The handler itself:</p>
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nf">extension</span> <span class="o">(</span><span class="n">fx</span><span class="k">:</span> <span class="kt">FileSystemEffect</span><span class="o">)</span>
   <span class="k">def</span> <span class="nf">inMemoryHandler</span> <span class="k">=</span>
@@ -88,7 +90,7 @@ Responsibility to handle the error effect though, is passed on the user.</p>
     <span class="k">_</span> <span class="k">&lt;-</span> <span class="nv">MyFS</span><span class="o">.</span><span class="py">writeFile</span><span class="o">(</span><span class="s">"hello.txt"</span><span class="o">,</span> <span class="s">"Hello world!"</span><span class="o">)</span>
     <span class="n">contents</span> <span class="k">&lt;-</span> <span class="nv">MyFS</span><span class="o">.</span><span class="py">readFile</span><span class="o">(</span><span class="s">"hello.txt"</span><span class="o">)</span>
   <span class="k">yield</span> <span class="n">contents</span>
-<span class="c1">// program: Computation[String, ThisEffect] = turbolift.Computation@57cb2751</span>
+<span class="c1">// program: Computation[String, ThisEffect] = turbolift.Computation@207fedc5</span>
 
 <span class="k">val</span> <span class="nv">result</span> <span class="k">=</span> <span class="n">program</span>
   <span class="o">.</span><span class="py">handleWith</span><span class="o">(</span><span class="nv">MyFS</span><span class="o">.</span><span class="py">inMemoryHandler</span><span class="o">)</span>
