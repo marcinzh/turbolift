@@ -451,9 +451,10 @@ import Cause.{Cancelled => CancelPayload}
               else
                 val snap =
                   if theUnwind.prompt == null then
-                    Snap.Cancelled
-                  else if theUnwind.prompt.isRoot then
-                    Snap.Failure(payload.asInstanceOf[Cause])
+                    if theUnwind.cancel then
+                      Snap.Cancelled
+                    else
+                      Snap.Failure(payload.asInstanceOf[Cause])
                   else
                     Snap.Aborted(payload, theUnwind.prompt)
                 val comp2 = frame.guard(snap)
@@ -484,7 +485,7 @@ import Cause.{Cancelled => CancelPayload}
                 val payload2 = result
                 loopStep(payload2, step, stack, store, env, mark, fresh)
               else
-                val step2 = env.prompt.unwind
+                val step2 = Step.Throw
                 val payload2 = Cause(throwable)
                 loopStep(payload2, step2, stack, store, env, Mark.none, fresh)
 
@@ -502,7 +503,7 @@ import Cause.{Cancelled => CancelPayload}
               case Snap.Success(payload2) =>
                 loopStep(payload2, step, stack, store, env, mark, fresh)
               case Snap.Failure(payload2) =>
-                val step2 = env.prompt.unwind
+                val step2 = Step.Throw
                 loopStep(payload2, step2, stack, store, env, Mark.none, fresh)
               case theAborted: Snap.Aborted =>
                 val payload2 = theAborted.value
@@ -696,9 +697,9 @@ import Cause.{Cancelled => CancelPayload}
 
 
   private def endRaceWithFailure(payload: Any): FiberImpl =
-    suspendedTag = Tags.Step_Unwind
+    suspendedTag = Step.Throw.tag
     suspendedPayload = payload
-    suspendedStep = suspendedEnv.nn.prompt.unwind
+    suspendedStep = Step.Throw
     this
 
 

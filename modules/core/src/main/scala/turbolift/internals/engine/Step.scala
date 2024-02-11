@@ -16,13 +16,14 @@ private[engine] object StepCases:
   final class Capture(val prompt: Prompt, val aside: Step, override val next: Step) extends Step(Tags.Step_Capture)
   final class Push(val body: AnyComp, val prompt: Prompt, override val next: Step) extends Step(Tags.Step_Push)
   sealed abstract class HasNoNext(_tag: Byte) extends Step(_tag) { override val next: Null = null }
-  final class Unwind(val prompt: Prompt | Null) extends HasNoNext(Tags.Step_Unwind)
+  final class Unwind(val prompt: Prompt | Null, val cancel: Boolean) extends HasNoNext(Tags.Step_Unwind)
   case object Bridge extends HasNoNext(Tags.Step_Bridge)
   case object Pop extends HasNoNext(Tags.Step_Pop)
 
 
 private[engine] object Step:
-  val Cancel = Unwind(null)
+  val Cancel = Unwind(null, true)
+  val Throw = Unwind(null, false)
 
   def toStr(step: Step): String =
     def loop(todo: Step, acc: Vector[String]): Vector[String] = 
