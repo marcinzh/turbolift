@@ -3,22 +3,21 @@ import turbolift.Computation
 import turbolift.effects.IO
 import turbolift.mode.Mode
 import turbolift.io.Outcome
-import turbolift.internals.engine.{Env, FiberImpl, AnyCallback}
+import turbolift.internals.engine.FiberImpl
 
 
 private[internals] trait Executor:
   def start(fiber: FiberImpl): Unit
-  def enqueue(fiber: FiberImpl): Unit
+  def resume(fiber: FiberImpl): Unit
+  def detectReentry(): Boolean
 
   final def runSync[A](comp: Computation[A, ?]): Outcome[A] =
-    val env = Env.default(executor = this)
-    val fiber = new FiberImpl(comp, env)
+    val fiber = FiberImpl.create(comp, this)
     start(fiber)
     fiber.unsafeAwait()
 
   final def runAsync[A](comp: Computation[A, IO], callback: Outcome[A] => Unit): Unit =
-    val env = Env.default(executor = this)
-    val fiber = new FiberImpl(comp, env, callback.asInstanceOf[AnyCallback])
+    val fiber = FiberImpl.create(comp, this, callback)
     start(fiber)
 
 

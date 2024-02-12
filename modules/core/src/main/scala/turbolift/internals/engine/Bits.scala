@@ -5,76 +5,60 @@ private[engine] object Bits:
   
   //// Common: (UNSHIFTED)
 
-  inline val Child_None  = 0
-  inline val Child_Left  = 1
-  inline val Child_Right = 2
-  inline val Child_Both  = 3
-  inline val Child_Mask  = 3
+  inline val Racer_None  = 0
+  inline val Racer_Left  = 1
+  inline val Racer_Right = 2
+  inline val Racer_Both  = 3
+  inline val Racer_Mask  = 0x3
 
-  inline val Outcome_Pending    = 0
-  inline val Outcome_Success    = 1
-  inline val Outcome_Cancelled  = 2
-  inline val Outcome_Failure    = 3
-  inline val Outcome_Mask       = 0xf
+  //// Same for constantBits and varyingBits
+  def getRacer(bits: Int): Int = bits & Racer_Mask
 
-  //// constantBits: [tree ; which_child_am_i]
+  //// constantBits: [reentry ; tree ; racer]
 
   inline val Tree_Root   =   0 << Tree_Shift
   inline val Tree_ZipPar =   1 << Tree_Shift
   inline val Tree_OrPar  =   2 << Tree_Shift
   inline val Tree_OrSeq  =   3 << Tree_Shift
-  inline val Tree_Mask   = 0xf << Tree_Shift
-  inline val Tree_Shift  = 4
+  inline val Tree_Mask   = 0x7 << Tree_Shift
+  inline val Tree_Shift  = 2
+
+  inline val Const_Reentry = 0x80
+
   def isRoot(bits: Int): Boolean = (bits & Tree_Mask) == Tree_Root
+  def isReentry(bits: Int): Boolean = (bits & Const_Reentry) != 0
 
-  inline def ZipPar_Left  = (Tree_ZipPar | Child_Left).toByte
-  inline def ZipPar_Right = (Tree_ZipPar | Child_Right).toByte
-  inline def OrPar_Left   = (Tree_OrPar | Child_Left).toByte
-  inline def OrPar_Right  = (Tree_OrPar | Child_Right).toByte
-  inline def OrSeq        = (Tree_OrSeq | Child_Left).toByte
+  inline def ZipPar_Left  = (Tree_ZipPar | Racer_Left).toByte
+  inline def ZipPar_Right = (Tree_ZipPar | Racer_Right).toByte
+  inline def OrPar_Left   = (Tree_OrPar | Racer_Left).toByte
+  inline def OrPar_Right  = (Tree_OrPar | Racer_Right).toByte
+  inline def OrSeq        = (Tree_OrSeq | Racer_Left).toByte
 
-  //// varyingBits:  [other ; cancellation ; completion ; winner-outcome ; awaiting-child]
+  //// varyingBits:  [cancellation ; completion ; racer]
 
-  //@#@TODO no longer needed, just use Child_XXX
-  inline val Awaiting_None  = Child_None  << Awaiting_Shift 
-  inline val Awaiting_Left  = Child_Left  << Awaiting_Shift 
-  inline val Awaiting_Right = Child_Right << Awaiting_Shift 
-  inline val Awaiting_Both  = Child_Both  << Awaiting_Shift 
-  inline val Awaiting_Mask  = Child_Mask  << Awaiting_Shift 
-  inline val Awaiting_Shift = 0
-
-  inline val Winner_Success    = Outcome_Success   << Winner_Shift
-  inline val Winner_Cancelled  = Outcome_Cancelled << Winner_Shift
-  inline val Winner_Failure    = Outcome_Failure   << Winner_Shift
-  inline val Winner_Mask       = Outcome_Mask      << Winner_Shift
-  inline val Winner_Shift      = 4
-
-  inline val Completion_Pending    = Outcome_Pending   << Completion_Shift
-  inline val Completion_Success    = Outcome_Success   << Completion_Shift
-  inline val Completion_Cancelled  = Outcome_Cancelled << Completion_Shift
-  inline val Completion_Failure    = Outcome_Failure   << Completion_Shift
-  inline val Completion_Mask       = Outcome_Mask      << Completion_Shift
-  inline val Completion_Shift      = 8
+  inline val Completion_Pending    = 0   << Completion_Shift
+  inline val Completion_Success    = 1   << Completion_Shift
+  inline val Completion_Cancelled  = 2   << Completion_Shift
+  inline val Completion_Failure    = 3   << Completion_Shift
+  inline val Completion_Mask       = 0x3 << Completion_Shift
+  inline val Completion_Shift      = 2
 
   inline val Cancellation_Sent       = 0x1 << Cancellation_Shift
   inline val Cancellation_Received   = 0x2 << Cancellation_Shift
-  inline val Cancellation_Mask       = 0xf << Cancellation_Shift
-  inline val Cancellation_Shift      = 12
-
-  inline val Other_Substitute = 0x1 << Other_Shift 
-  inline val Other_Shift      = 16
+  inline val Cancellation_Suppressed = 0x4 << Cancellation_Shift
+  inline val Cancellation_Mask       = 0x7 << Cancellation_Shift
+  inline val Cancellation_Shift      = 4
 
   def isPending(bits: Int): Boolean = (bits & Completion_Mask) == 0
-  def isSubstitute(bits: Int): Boolean = (bits & Other_Substitute) != 0
   def isCancellationSent(bits: Int): Boolean = (bits & Cancellation_Sent) != 0
   def isCancellationReceived(bits: Int): Boolean = (bits & Cancellation_Received) != 0
   def isCancellationUnreceived(bits: Int): Boolean = (bits & (Cancellation_Sent | Cancellation_Received)) == Cancellation_Sent
 
   //// raced
 
-  private inline val Raced_S = Outcome_Success - 1
-  private inline val Raced_C = Outcome_Cancelled - 1
-  private inline val Raced_F = Outcome_Failure - 1
+  private inline val Raced_S = (Completion_Success   >>> Completion_Shift) - 1
+  private inline val Raced_C = (Completion_Cancelled >>> Completion_Shift) - 1
+  private inline val Raced_F = (Completion_Failure   >>> Completion_Shift) - 1
   
   inline val Raced_SS = Raced_S + Raced_S * 3
   inline val Raced_SC = Raced_S + Raced_C * 3

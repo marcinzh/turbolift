@@ -3,6 +3,6 @@ import turbolift.io.Warp
 
 
 private[turbolift] final class WarpImpl private (
-) extends Warp.Unsealed:
+) extends Link with Warp.Unsealed:
   //@#@TODO
   ;

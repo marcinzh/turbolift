@@ -1,30 +1,24 @@
 package turbolift.internals.executor
 import scala.annotation.tailrec
 import turbolift.Computation
-import turbolift.internals.engine.{FiberImpl, FiberLink}
+import turbolift.internals.engine.{FiberImpl, Link}
 
 
-private[internals] final class ZeroThreadedExecutor extends FiberLink with Executor:
-  {
-    linkWithSelf()
-  }
+private[internals] final class ZeroThreadedExecutor extends Link.Queue with Executor:
+  override def detectReentry(): Boolean = !isEmpty //// Not always correct, but harmless
 
-  override def start(fiber: FiberImpl): Unit =
-    drain(fiber)
-    fiber.doFinalize()
+  override def start(fiber: FiberImpl): Unit = drain(fiber)
 
-  override def enqueue(fiber: FiberImpl): Unit = insertLast(fiber)
+  override def resume(fiber: FiberImpl): Unit = enqueue(fiber)
 
   @tailrec private def drain(fiber: FiberImpl): Unit =
     val yielder = fiber.run()
-    val isPending = yielder.isPending
-
-    if isLinkedWithSelf then
-      if isPending then
+    if yielder.isPending then
+      if isEmpty then
         drain(yielder)
       else
-        ()
+        enqueue(yielder)
+        drain(dequeue())
     else
-      if isPending then
-        insertLast(yielder)
-      drain(removeFirst())
+      if !isEmpty then
+        drain(dequeue())

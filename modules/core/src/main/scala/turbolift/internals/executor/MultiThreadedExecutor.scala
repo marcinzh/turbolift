@@ -1,67 +1,69 @@
 package turbolift.internals.executor
 import java.lang.ThreadLocal
 import turbolift.Computation
-import turbolift.internals.engine.{FiberImpl, FiberLink, AnyCallback}
+import turbolift.internals.engine.{FiberImpl, Link}
 
 
-private[turbolift] final class MultiThreadedExecutor(maxBusyThreads: Int) extends FiberLink with Executor:
+private[turbolift] final class MultiThreadedExecutor(maxBusyThreads: Int) extends Link.Queue with Executor:
   private var idleCounter: Int = maxBusyThreads
   protected[this] val pad3, pad4, pad5, pad6, pad7 = 0L
 
-  {
-    linkWithSelf()
-  }
+
+  override def detectReentry(): Boolean =
+    MultiThreadedExecutor.currentVar.get != null
 
 
   override def start(fiber: FiberImpl): Unit =
-    val current = MultiThreadedExecutor.currentVar.get
-    if current == null then
-      enqueue(fiber)
+    if !fiber.isReentry then
+      resume(fiber)
     else
-      fiber.setSubstitute()
       awaken(fiber)
 
 
-  override def enqueue(fiber: FiberImpl): Unit =
+  override def resume(fiber: FiberImpl): Unit =
     val doAwaken =
       synchronized {
         if idleCounter > 0 then
           idleCounter = idleCounter - 1
           true
         else
-          insertLast(fiber)
+          enqueue(fiber)
           false
       }
     if doAwaken then
       awaken(fiber)
 
 
-  private def awaken(fiber: FiberImpl): Unit =
-    Pool.instance.execute { () =>
+  private def awaken(initial: FiberImpl): Unit =
+    Pool.instance.execute(new Run(initial))
+
+
+  private final class Run(private var todo: FiberImpl | Null) extends Runnable:
+    override def run(): Unit =
       MultiThreadedExecutor.currentVar.set(MultiThreadedExecutor.this)
-      var yielder: FiberImpl = null.asInstanceOf[FiberImpl]
-      var todo: FiberImpl | Null = fiber
       while todo != null do
-        yielder = todo.run()
-        todo = dequeue(yielder)
-      if yielder.isRoot then
-        yielder.doFinalize()
-    }
+        val yielder = todo.nn.run()
+        todo = take(yielder)
 
 
-  private def dequeue(yielder: FiberImpl): FiberImpl | Null =
-    val isPending = yielder.isPending
-    val isSubstitute = yielder.isSubstitute
-    synchronized {
-      if isLinkedWithSelf then
-        if !isPending && !isSubstitute then
-          idleCounter = idleCounter + 1
-        if isPending then yielder else null
-      else
-        if isPending then
-          insertLast(yielder)
-        if !isSubstitute then removeFirst() else null
-    }
+  private def take(yielder: FiberImpl): FiberImpl | Null =
+    if yielder.isPending then
+      synchronized {
+        if isEmpty then
+          yielder
+        else
+          enqueue(yielder)
+          dequeue()
+      }
+    else
+      synchronized {
+        if isEmpty then
+          if !yielder.isReentry then
+            idleCounter = idleCounter + 1
+          null
+        else
+          dequeue()
+      }
 
 
 object MultiThreadedExecutor:

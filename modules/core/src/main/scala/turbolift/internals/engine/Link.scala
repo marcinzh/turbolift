@@ -1,11 +1,9 @@
 package turbolift.internals.engine
-// import java.util.concurrent.atomic.AtomicInteger
 
 
-// private[internals] abstract class FiberLink extends AtomicInteger:
-private[internals] abstract class FiberLink:
-  protected var linkLeft: FiberLink | Null = null
-  protected var linkRight: FiberLink | Null = null
+private[internals] abstract class Link:
+  protected var linkLeft: Link | Null = null
+  protected var linkRight: Link | Null = null
 
   final def toFiber: FiberImpl = asInstanceOf[FiberImpl]
 
@@ -27,7 +25,7 @@ private[internals] abstract class FiberLink:
     prev.linkWith(next)
     that.clearLinks()
 
-  final inline def linkWith(that: FiberLink): Unit =
+  final inline def linkWith(that: Link): Unit =
     this.linkRight = that
     that.linkLeft = this
 
@@ -37,4 +35,15 @@ private[internals] abstract class FiberLink:
 
   final def linkWithSelf(): Unit = linkWith(this)
   final def isLinkedWithSelf: Boolean = isLinkedWith(this)
-  final def isLinkedWith(that: FiberLink): Boolean = this.linkRight == that
+  final def isLinkedWith(that: Link): Boolean = this.linkRight == that
+
+
+private[internals] object Link:
+  class Queue extends Link:
+    {
+      linkWithSelf()
+    }
+
+    final def isEmpty: Boolean = isLinkedWithSelf
+    final def enqueue(fiber: FiberImpl): Unit = insertLast(fiber)
+    final def dequeue(): FiberImpl = removeFirst().toFiber
