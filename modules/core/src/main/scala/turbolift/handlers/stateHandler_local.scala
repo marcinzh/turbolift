@@ -5,7 +5,7 @@ import turbolift.effects.{State, StateSignature}
 
 extension [S](fx: State[S])
   def stateHandler_local(initial: S): fx.ThisHandler.FromId.Free[(_, S)] =
-    new fx.impl.Stateful.FromId.Free[(_, S)] with fx.impl.Sequential with StateSignature[S]:
+    new fx.impl.Stateful.FromId.Free[(_, S)] with fx.impl.Sequential.Restartable with StateSignature[S]:
       override type Stan = S
 
       override def tailResumptiveHint: Boolean = true
@@ -13,6 +13,8 @@ extension [S](fx: State[S])
       override def onInitial: S !! Any = !!.pure(initial)
 
       override def onReturn(a: Unknown, s: S): (Unknown, S) !! Any = !!.pure((a, s))
+
+      override def onRestart(a_s: (Unknown, S)): Unknown !! ThisEffect = fx.put(a_s._2) &&! !!.pure(a_s._1)
 
       override val get: S !@! ThisEffect = (k, s) => k(s)
 

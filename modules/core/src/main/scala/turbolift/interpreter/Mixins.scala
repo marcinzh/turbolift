@@ -29,8 +29,14 @@ object Mixins:
 
 
   /** Mixin trait for interpreters, that prohibit parallelism. */
-  trait Sequential extends HasNotZip with HasNotForkJoin with HasNotRestart:
-    private[turbolift] final override def makeFeatures: Features = Features.Sequential
+  trait Sequential extends Sequential.Default
+
+  object Sequential:
+    trait Default extends HasNotZip with HasNotForkJoin with HasNotRestart:
+      private[turbolift] final override def makeFeatures: Features = Features.Sequential
+
+    trait Restartable extends HasNotZip with HasNotForkJoin:
+      private[turbolift] final override def makeFeatures: Features = Features.Sequential | Features.Restart
 
 
   /** Mixin trait for interpreters, that allow parallelism. */

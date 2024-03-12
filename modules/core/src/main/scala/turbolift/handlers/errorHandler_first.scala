@@ -6,8 +6,13 @@ import turbolift.effects.{ErrorEffect, ErrorSignature}
 
 extension [E, E1](fx: ErrorEffect[E, E1])
   def errorHandler_first(using E: One[E, E1]): fx.ThisHandler.FromId.Free[Either[E, _]] =
-    new fx.impl.Stateless.FromId.Free[Either[E, _]] with fx.impl.Sequential with ErrorSignature[E, E1]:
+    new fx.impl.Stateless.FromId.Free[Either[E, _]] with fx.impl.Sequential.Restartable with ErrorSignature[E, E1]:
       override def onReturn(a: Unknown): Either[E, Unknown] !! Any = !!.pure(Right(a))
+
+      override def onRestart(aa: Either[E, Unknown]): Unknown !! ThisEffect =
+        aa match
+          case Right(a) => !!.pure(a)
+          case Left(e) => fx.raises(e)
 
       override def raise(e: E1): Nothing !@! ThisEffect = raises(E.one(e))
 
