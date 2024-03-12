@@ -583,7 +583,7 @@ import FiberImpl.{InnerLoopResult, Bye}
 
 
   private def endRaceWithSuccessBoth(payloadLeft: Any, payloadRight: Any): Unit =
-    val comp = OpCascaded.zipAndReintro(
+    val comp = OpCascaded.zipAndRestart(
       stack = suspendedStack.nn,
       ftorLeft = payloadLeft,
       ftorRight = payloadRight,
@@ -593,7 +593,7 @@ import FiberImpl.{InnerLoopResult, Bye}
 
 
   private def endRaceWithSuccessOne(payload: Any): Unit =
-    val comp = OpCascaded.reintro(
+    val comp = OpCascaded.restart(
       stack = suspendedStack.nn,
       ftor = payload,
     )

@@ -4,7 +4,7 @@ import turbolift.!!
 
 
 private[engine] object OpCascaded:
-  def reintro(stack: Stack, ftor: Any): AnyComp =
+  def restart(stack: Stack, ftor: Any): AnyComp =
     def loop(todo: Stack): AnyComp =
       todo.deconsAndThen: (seg, more, _) =>
         val comp = 
@@ -12,7 +12,7 @@ private[engine] object OpCascaded:
             !!.pure(ftor)
           else
             loop(more)
-        reintroSegment(seg, comp)
+        restartSegment(seg, comp)
     loop(stack)
 
 
@@ -47,22 +47,22 @@ private[engine] object OpCascaded:
     ???
 
 
-  def zipAndReintro(stack: Stack, ftorLeft: Any, ftorRight: Any, fun: (Any, Any) => Any): AnyComp =
+  def zipAndRestart(stack: Stack, ftorLeft: Any, ftorRight: Any, fun: (Any, Any) => Any): AnyComp =
     val ftorOut = zip(stack, ftorLeft, ftorRight, fun)
-    reintro(stack, ftorOut)
+    restart(stack, ftorOut)
 
   //------------------------------------------------------------
   // Segmentwise
   //------------------------------------------------------------
 
-  private def reintroSegment(seg: StackSegment, comp: AnyComp): AnyComp =
+  private def restartSegment(seg: StackSegment, comp: AnyComp): AnyComp =
     val n = seg.prompts.size
     @tailrec def loop(i: Int, accum: AnyComp): AnyComp =
       if i < n then
         val p = seg.prompts(i)
         val i2 = i + 1
-        if p.hasReintro then
-          loop(i2, accum.flatMap(p.interpreter.onReintro))
+        if p.hasRestart then
+          loop(i2, accum.flatMap(p.interpreter.onRestart))
         else
           loop(i2, accum)
       else

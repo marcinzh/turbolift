@@ -11,7 +11,7 @@ extension (fx: Choice)
 
       override def onReturn(a: Unknown): Option[Unknown] !! Any = !!.pure(Some(a))
 
-      override def onReintro(as: Option[Unknown]): Unknown !! ThisEffect =
+      override def onRestart(as: Option[Unknown]): Unknown !! ThisEffect =
         as match
           case Some(a) => !!.pure(a)
           case None => fx.empty

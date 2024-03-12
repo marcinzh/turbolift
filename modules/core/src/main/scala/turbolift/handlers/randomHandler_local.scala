@@ -15,7 +15,7 @@ extension (fx: RandomEffect)
 
       override def onReturn(a: Unknown, s: Splitmix64): (Unknown, Splitmix64) !! Any = !!.pure((a, s))
 
-      override def onReintro(aa: (Unknown, Splitmix64)) =
+      override def onRestart(aa: (Unknown, Splitmix64)) =
         val (a, s) = aa
         fx.setSeed(s.value) &&! !!.pure(a)
 

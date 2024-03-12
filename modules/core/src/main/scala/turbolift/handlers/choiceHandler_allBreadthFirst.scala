@@ -18,7 +18,7 @@ extension (fx: Choice)
       override def onReturn(a: Unknown, q: Stan): Vector[Unknown] !! Ambient =
         q.addDone(a).drain
 
-      override def onReintro(as: Vector[Unknown]): Unknown !! ThisEffect =
+      override def onRestart(as: Vector[Unknown]): Unknown !! ThisEffect =
         fx.choose(as)
 
       override def onZip[A, B, C](as: Vector[A], bs: Vector[B], k: (A, B) => C): Vector[C] =

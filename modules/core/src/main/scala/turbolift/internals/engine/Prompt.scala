@@ -17,7 +17,7 @@ private[turbolift] final class Prompt(val interpreter: Interpreter.Untyped):
   def isStateful = features.isStateful
   def isStateless = features.isStateless
   def isParallel = features.isParallel
-  def hasReintro = features.hasReintro
+  def hasRestart = features.hasRestart
   def hasZip = features.hasZip
   def hasForkJoin = features.hasForkJoin
 

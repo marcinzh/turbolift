@@ -16,7 +16,7 @@ private[turbolift] object Features extends Features_opaque:
     def isSequential: Boolean   = (thiz & SEQUENTIAL) != 0
     def hasZip: Boolean         = (thiz & ZIP) != 0
     def hasForkJoin: Boolean    = (thiz & FORKJOIN) != 0
-    def hasReintro: Boolean     = (thiz & REINTRO) != 0
+    def hasRestart: Boolean     = (thiz & RESTART) != 0
     def isRoot: Boolean         = (thiz & ROOT) != 0
     def isTailResump: Boolean   = (thiz & TAILRESUMP) != 0
 
@@ -28,7 +28,7 @@ private[turbolift] object Features extends Features_opaque:
   private inline val CHOICE         = 0x4
   private inline val ZIP            = 0x8
   private inline val FORKJOIN       = 0x10
-  private inline val REINTRO        = 0x20
+  private inline val RESTART        = 0x20
   //--------------------------------------
   private inline val MASK           = 0x3F
   private inline val ROOT           = 0x40
@@ -41,7 +41,7 @@ private[turbolift] object Features extends Features_opaque:
   def Choice: Features      = CHOICE
   def Zip: Features         = ZIP
   def ForkJoin: Features    = FORKJOIN
-  def Reintro: Features     = REINTRO
+  def Restart: Features     = RESTART
   def Root: Features        = ROOT
   def TailResump: Features  = TAILRESUMP
   def Mask: Features        = MASK

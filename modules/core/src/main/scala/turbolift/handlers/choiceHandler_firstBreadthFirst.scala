@@ -18,7 +18,7 @@ extension (fx: Choice)
       override def onReturn(a: Unknown, q: Stan): Option[Unknown] !! Any =
         !!.pure(Some(a))
 
-      override def onReintro(as: Option[Unknown]): Unknown !! ThisEffect =
+      override def onRestart(as: Option[Unknown]): Unknown !! ThisEffect =
         fx.fromOption(as)
 
       override def onZip[A, B, C](as: Option[A], bs: Option[B], k: (A, B) => C): Option[C] =

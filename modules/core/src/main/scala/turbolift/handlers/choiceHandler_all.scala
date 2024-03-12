@@ -11,7 +11,7 @@ extension (fx: Choice)
 
       override def onReturn(a: Unknown): Vector[Unknown] !! Any = !!.pure(Vector(a))
 
-      override def onReintro(as: Vector[Unknown]): Unknown !! ThisEffect = fx.choose(as)
+      override def onRestart(as: Vector[Unknown]): Unknown !! ThisEffect = fx.choose(as)
 
       override def onZip[A, B, C](as: Vector[A], bs: Vector[B], k: (A, B) => C): Vector[C] =
         as.flatMap(a => bs.map(b => k(a, b)))

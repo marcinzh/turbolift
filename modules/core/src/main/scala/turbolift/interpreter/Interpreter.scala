@@ -54,7 +54,7 @@ sealed trait Interpreter extends Signature:
 
   def onInitial: Stan !! Dependency
   def onReturn(aa: From[Unknown], s: Stan): To[Unknown] !! Ambient
-  def onReintro(aa: To[Unknown]): Unknown !! ThisEffect
+  def onRestart(aa: To[Unknown]): Unknown !! ThisEffect
   def onZip[A, B, C](aa: To[A], bb: To[B], k: (A, B) => C): To[C]
   def onFork(s: Stan): (Stan, Stan)
   def onJoin(s1: Stan, s2: Stan): Stan
