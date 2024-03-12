@@ -10,46 +10,36 @@ import turbolift.!!
  *  No need to import these definitions, because [[turbolift.Effect]] trait exports them for convenience.
  */
 object Mixins:
-  private def unimplemented: Nothing = sys.error("Intentionally unimplemented")
+  private[interpreter] def unimplemented: Nothing = sys.error("Intentionally unimplemented")
 
-  protected sealed trait HasNotRestart extends Interpreter.Unsealed:
+  private[interpreter] sealed trait HasNotRestart extends Interpreter.Unsealed:
     final override def onRestart(aa: To[Unknown]): Unknown !! ThisEffect = unimplemented
 
-  protected sealed trait HasNotForkJoin extends Interpreter.Unsealed:
+  private[interpreter] sealed trait HasNotForkJoin extends Interpreter.Unsealed:
     final override def onFork(s: Stan): (Stan, Stan) = unimplemented
     final override def onJoin(s1: Stan, s2: Stan): Stan = unimplemented
 
-  protected sealed trait HasNotZip extends Interpreter.Unsealed:
+  private[interpreter] sealed trait HasNotZip extends Interpreter.Unsealed:
     final override def onZip[A, B, C](aa: To[A], bb: To[B], k: (A, B) => C): To[C] = unimplemented
   
-  //@#@TODO remove
-  private[interpreter] trait Root extends HasNotZip with HasNotForkJoin with HasNotRestart:
-    private[turbolift] final override def makeFeatures: Features = Features.Root | Features.Stateful
-    final override def onInitial: Stan !! Dependency = unimplemented
-
 
   /** Mixin trait for interpreters, that prohibit parallelism. */
   trait Sequential extends Sequential.Default
 
   object Sequential:
-    trait Default extends HasNotZip with HasNotForkJoin with HasNotRestart:
-      private[turbolift] final override def makeFeatures: Features = Features.Sequential
+    trait Default extends HasNotZip with HasNotForkJoin with HasNotRestart
 
-    trait Restartable extends HasNotZip with HasNotForkJoin:
-      private[turbolift] final override def makeFeatures: Features = Features.Sequential | Features.Restart
+    trait Restartable extends HasNotZip with HasNotForkJoin
 
 
   /** Mixin trait for interpreters, that allow parallelism. */
   trait Parallel extends Parallel.Default
 
   object Parallel:
-    trait Default extends HasNotForkJoin:
-      private[turbolift] final override def makeFeatures: Features = Features.Zip | Features.Restart
+    trait Default extends HasNotForkJoin
 
-    trait Trivial extends HasNotZip with HasNotForkJoin with HasNotRestart:
-      private[turbolift] final override def makeFeatures: Features = Features.Empty
+    trait Trivial extends HasNotZip with HasNotForkJoin with HasNotRestart
 
     trait ForkJoin extends Interpreter.Unsealed:
-      private[turbolift] final override def makeFeatures: Features = Features.Zip | Features.Restart | Features.ForkJoin
       //@#@TODO
       final override def onJoin(s1: Stan, s2: Stan): Stan = unimplemented

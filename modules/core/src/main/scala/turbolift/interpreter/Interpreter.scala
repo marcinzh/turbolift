@@ -68,14 +68,21 @@ sealed trait Interpreter extends Signature:
   final def toHandler: ThisHandler = HC.Primitive[From, To, ThisEffect, Dependency](this)
 
   final val features: Features =
-    Seq(
-      makeFeatures,
+    val primary = Seq(
       Features.cond(Features.Choice, isInstanceOf[ChoiceSignature]),
       Features.cond(Features.Stateful, isInstanceOf[Interpreter.Stateful[?, ?, ?]]),
+      Features.cond(Features.Root, this eq Interpreter.Root),
+      Features.cond(Features.Restart, !isInstanceOf[Mixins.HasNotRestart]),
+      Features.cond(Features.ForkJoin, !isInstanceOf[Mixins.HasNotForkJoin]),
+      Features.cond(Features.Zip, !isInstanceOf[Mixins.HasNotZip]),
       Features.cond(Features.TailResump, tailResumptiveHint),
     ).reduce(_ | _)
+    Seq(
+      primary,
+      Features.cond(Features.Stateful, primary.isRoot),
+      Features.cond(Features.Sequential, !(primary.hasZip | isInstanceOf[Mixins.Parallel.Trivial])),
+    ).reduce(_ | _)
 
-  private[interpreter] def makeFeatures: Features
 
   private[turbolift] def enumSignatures: Array[Signature]
   private[turbolift] final val signatures: Array[Signature] =
@@ -168,12 +175,13 @@ object Interpreter:
     final override type !@![A, U] = NullarySem[A, U] | BinarySem[A, U]
 
 
-  private[turbolift] case object Root extends Mixins.Root:
+  private[turbolift] case object Root extends Mixins.Parallel.Trivial:
     final override type From[+A] = A
     final override type To[+A] = A
     final override type Dependency = Any
     final override type Stan = Any
     final override type Ambient = Any
 
+    final override def onInitial: Stan !! Dependency = Mixins.unimplemented
     final override def onReturn(a: Unknown, s: Any): Unknown !! Any = !!.pure(a)
     override def enumSignatures = Array(IO)
