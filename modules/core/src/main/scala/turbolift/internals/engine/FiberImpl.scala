@@ -191,7 +191,7 @@ import FiberImpl.{InnerLoopResult, Bye}
             val step2 = SC.Capture(control.prompt, aside = step, next = control.step)
             val (stack2, store2) = OpSplice.spliceForLocal(stack, store, step, control, mark)
             val location = stack2.locatePrompt(control.prompt) //@#@OPTY already found
-            OpPush.pushLocal(stack2, store2, step2, control.prompt, location, theLocal.stan, isGuard = false)
+            OpPush.pushLocal(stack2, store2, step2, control.prompt, location, theLocal.stan, FrameKind.plain)
           loopComp(comp2, SC.Pop, stack3, store3, env, Mark.none, fresh)
 
         case Tags.Abort =>
@@ -390,7 +390,7 @@ import FiberImpl.{InnerLoopResult, Bye}
             OpSplit.forceSplitAndThen(stack, store, mark): (stack, store) =>
               val theDoSnap = payload.asInstanceOf[CC.DoSnap[Any, Any]]
               val location = stack.locatePrompt(env.prompt)
-              val (stack2, store2) = OpPush.pushLocal(stack, store, step, env.prompt, location, env.asStan, isGuard = true)
+              val (stack2, store2) = OpPush.pushLocal(stack, store, step, env.prompt, location, env.asStan, FrameKind.guard)
               loopComp(theDoSnap.body, SC.Pop, stack2, store2, env, Mark.none, fresh)
 
           case Tags.Unsnap =>
@@ -424,7 +424,7 @@ import FiberImpl.{InnerLoopResult, Bye}
               //@#@TODO avoid stack split, like in any other HOE
               OpSplit.forceSplitAndThen(stack, store, mark): (stack, store) =>
                 val location = stack.locatePrompt(env.prompt)
-                val (stack2, store2) = OpPush.pushLocal(stack, store, step, env.prompt, location, env2.asStan, isGuard = false)
+                val (stack2, store2) = OpPush.pushLocal(stack, store, step, env.prompt, location, env2.asStan, FrameKind.plain)
                 loopComp(theEnvMod.body, SC.Pop, stack2, store2, env2, Mark.none, fresh)
 
           case Tags.Yield =>

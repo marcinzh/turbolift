@@ -4,7 +4,7 @@ import scala.annotation.tailrec
 
 private[engine] final class Frame private (
   val next: Frame | Null,
-  private val packed: Int,
+  private val packed: FramePacked,
   val step: Step,
   val stan: Stan,
 ):
@@ -12,7 +12,7 @@ private[engine] final class Frame private (
 
   private def copy(
     next: Frame | Null = next,
-    packed: Int = packed,
+    packed: FramePacked = packed,
     step: Step = step,
     stan: Stan = stan,
   ): Frame =
@@ -24,9 +24,10 @@ private[engine] final class Frame private (
     )
 
 
-  def delta: Int = packed >> Frame.SHIFT
-  def isLocal: Boolean = (packed & Frame.LOCAL) != 0
-  def isGuard: Boolean = (packed & Frame.GUARD) != 0
+  def delta: Int = packed.delta
+  def kind: FrameKind = packed.kind
+  def isLocal: Boolean = packed.isLocal
+  def isGuard: Boolean = packed.isGuard
   def isBase: Boolean = !isLocal
   def hasNext: Boolean = next != null
 
@@ -36,19 +37,19 @@ private[engine] final class Frame private (
     if next == null then initial else next.nn.computeBottomHeight(initial - delta)
 
 
-  def pushNext(step: Step, stan: Stan, delta: Int, isLocal: Boolean, isGuard: Boolean): Frame =
+  def pushNext(step: Step, stan: Stan, delta: Int, isLocal: Boolean, kind: FrameKind): Frame =
     new Frame(
       next = this,
-      packed = Frame.makePacked(delta, isLocal, isGuard),
+      packed = FramePacked(delta, isLocal, kind),
       step = step,
       stan = stan,
     )
 
 
   def bridge: Frame =
-    copy(
+    new Frame(
       next = null,
-      packed = Frame.makePacked(0, isLocal, isGuard),
+      packed = packed.clearDelta,
       step = StepCases.Bridge,
       stan = Stan.nul,
     )
@@ -96,21 +97,12 @@ private[engine] final class Frame private (
 
 
 private[engine] object Frame:
-  val base: Frame = pushFirst(StepCases.Pop, isLocal = false, isGuard = false)
+  val base: Frame = pushFirst(StepCases.Pop, isLocal = false, FrameKind.plain)
 
-  def pushFirst(step: Step, isLocal: Boolean, isGuard: Boolean): Frame =
+  def pushFirst(step: Step, isLocal: Boolean, kind: FrameKind): Frame =
     new Frame(
       next = null,
-      packed = Frame.makePacked(0, isLocal, isGuard),
+      packed = FramePacked(0, isLocal, kind),
       step = step,
       stan = Stan.nul,
     )
-
-  private[this] def makePacked(delta: Int, isLocal: Boolean, isGuard: Boolean): Int =
-    (if isLocal then LOCAL else 0) |
-    (if isGuard then GUARD else 0) |
-    (delta << 2)
-
-  private[this] inline val LOCAL = 0x1
-  private[this] inline val GUARD = 0x2
-  private[this] inline val SHIFT = 2

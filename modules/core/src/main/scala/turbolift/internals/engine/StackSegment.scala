@@ -74,7 +74,7 @@ private[engine] final class StackSegment private (
   def pushBase(loc: Location.Shallow, step: Step, prompt: Prompt): StackSegment =
     //@#@OPTY share components when possible
     val newFork = fork.pushBaseWithFork(loc, StepCases.Pop, prompt, Pile.base(loc.promptIndex), null)
-    val newPile = Pile.pushFirst(step, height = frameCount, isLocal = false, isGuard = false)
+    val newPile = Pile.pushFirst(step, height = frameCount, isLocal = false, FrameKind.plain)
     pushBaseWithFork(loc, step, prompt, newPile, newFork)
 
 
@@ -114,9 +114,9 @@ private[engine] final class StackSegment private (
     )
 
 
-  def pushNextLocal(loc: Location.Shallow, step: Step, savedStan: Stan, isGuard: Boolean): StackSegment =
+  def pushNextLocal(loc: Location.Shallow, step: Step, savedStan: Stan, kind: FrameKind): StackSegment =
     val oldPile = piles(loc.promptIndex)
-    val newPile = oldPile.pushLocal(step, savedStan, height = frameCount, isGuard)
+    val newPile = oldPile.pushLocal(step, savedStan, height = frameCount, kind)
     copy(
       piles = piles.updated(loc.promptIndex, newPile),
       frameCount = frameCount + 1,
@@ -148,12 +148,12 @@ private[engine] object StackSegment:
 
 
   def initial(prompt: Prompt): StackSegment =
-    pushFirst(prompt, isLocal = false, isGuard = false)
+    pushFirst(prompt, isLocal = false, kind = FrameKind.plain)
 
 
-  def pushFirst(prompt: Prompt, isLocal: Boolean, isGuard: Boolean): StackSegment =
+  def pushFirst(prompt: Prompt, isLocal: Boolean, kind: FrameKind): StackSegment =
     val newSeg =
-      val newPile = Pile.pushFirst(StepCases.Pop, height = 0, isLocal = isLocal, isGuard = isGuard)
+      val newPile = Pile.pushFirst(StepCases.Pop, 0, isLocal, kind)
       val newLoc = Location.Shallow(0, 0, prompt.isStateful)
       new StackSegment(
         signatures = prompt.signatures,

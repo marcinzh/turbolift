@@ -18,26 +18,26 @@ private[engine] object OpPush:
           val newStore = newStoreSeg ::? moreStore
           (newStack, newStore)
     else
-      newTopSegment(stack, store, step, prompt, stan, isLocal = false, isGuard = false)
+      newTopSegment(stack, store, step, prompt, stan, isLocal = false, FrameKind.plain)
 
 
-  def pushLocal(stack: Stack, store: Store, step: Step, prompt: Prompt, location: Location.Deep, stan: Stan, isGuard: Boolean): (Stack, Store) =
+  def pushLocal(stack: Stack, store: Store, step: Step, prompt: Prompt, location: Location.Deep, stan: Stan, kind: FrameKind): (Stack, Store) =
     if location.segmentDepth == 0 then
       stack.deconsAndThen: (oldStackSeg, moreStack, moreStep) =>
         store.deconsAndThen: (oldStoreSeg, moreStore) =>
           val loc = location.asShallow
           val oldStan = oldStoreSeg.getOrElseVoidSh(loc)
           val newStoreSeg = oldStoreSeg.setIfNotVoidSh(loc, stan)
-          val newStackSeg = oldStackSeg.pushNextLocal(loc, step, oldStan, isGuard)
+          val newStackSeg = oldStackSeg.pushNextLocal(loc, step, oldStan, kind)
           val newStack = newStackSeg ::? (moreStack, moreStep)
           val newStore = newStoreSeg ::? moreStore
           (newStack, newStore)
     else
-      newTopSegment(stack, store, step, prompt, stan, isLocal = true, isGuard = isGuard)
+      newTopSegment(stack, store, step, prompt, stan, isLocal = true, kind)
 
 
-  private def newTopSegment(stack: Stack, store: Store, step: Step, prompt: Prompt, stan: Stan, isLocal: Boolean, isGuard: Boolean): (Stack, Store) =
-    val newStackSeg = StackSegment.pushFirst(prompt, isLocal, isGuard)
+  private def newTopSegment(stack: Stack, store: Store, step: Step, prompt: Prompt, stan: Stan, isLocal: Boolean, kind: FrameKind): (Stack, Store) =
+    val newStackSeg = StackSegment.pushFirst(prompt, isLocal, kind)
     val newStoreSeg = StoreSegment.pushFirst(stan)
     val newStack = newStackSeg ::? (stack, step)
     val newStore = newStoreSeg ::? store
