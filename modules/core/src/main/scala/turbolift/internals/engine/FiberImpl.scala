@@ -8,7 +8,7 @@ import turbolift.internals.primitives.{Tags, ComputationCases => CC}
 import turbolift.internals.executor.Executor
 import turbolift.internals.engine.{StepCases => SC}
 import Cause.{Cancelled => CancelPayload}
-import FiberImpl.{InnerLoopResult, Bye}
+import FiberImpl.{InnerLoopResult, Become}
 
 
 //// public for now, to make JOL work
@@ -26,7 +26,7 @@ import FiberImpl.{InnerLoopResult, Bye}
   private var suspendedMark: Mark = Mark.none
 
 
-  def run(): FiberImpl =
+  def run(): Halt =
     assert(isPending)
     assert(isSuspended)
     try
@@ -36,8 +36,8 @@ import FiberImpl.{InnerLoopResult, Bye}
       case e => endOfFiber(new Exceptions.Unhandled(e))
 
 
-  @tailrec private def outerLoop(tickHigh: Short, lastTickLow: Short = 0): FiberImpl =
-    if isPending && tickHigh >= 0 then
+  @tailrec private def outerLoop(tickHigh: Short, lastTickLow: Short = 0, fresh: ControlImpl | Null = null): Halt =
+    if tickHigh >= 0 then
       assert(isSuspended)
 
       val nextTickLow: Short =
@@ -66,15 +66,15 @@ import FiberImpl.{InnerLoopResult, Bye}
           store    = currentStore,
           mark     = currentMark,
           env      = currentEnv,
-          fresh    = new ControlImpl,
+          fresh    = if fresh != null then fresh else new ControlImpl,
         )
 
       result match
-        case Bye.Become(that, tickLow2) => that.outerLoop(tickHigh, tickLow2)
-        case Bye.Yield(that) => that
         case that: FiberImpl => that.outerLoop((tickHigh - 1).toShort)
+        case Become(that, tickLow2, fresh) => that.outerLoop(tickHigh, tickLow2, fresh)
+        case halt: Halt => halt
     else
-      this
+      Halt.Yield(this)
 
 
   //===================================================================
@@ -429,7 +429,7 @@ import FiberImpl.{InnerLoopResult, Bye}
 
           case Tags.Yield =>
             suspend(step.tag, (), step, stack, store, env, mark)
-            Bye.Yield(this)
+            Halt.Yield(this)
 
     else
       suspend(tag, payload, step, stack, store, env, mark)
@@ -441,19 +441,22 @@ import FiberImpl.{InnerLoopResult, Bye}
   //===================================================================
 
 
+  private def retire: Halt = Halt.retire(isReentry)
+
+
   private def endOfFiber(tick: Short, fresh: ControlImpl): InnerLoopResult =
     //@#@TODO more
     if isRoot then
       doFinalize()
-      this
+      retire
     else
       if endRace() then
-        Bye.Become(getArbiter, tick)
+        Become(getArbiter, tick, fresh)
       else
-        this
+        retire
 
 
-  @tailrec private def endOfFiber(e: Throwable): FiberImpl =
+  @tailrec private def endOfFiber(e: Throwable): Halt =
     if !isRoot then
       getArbiter.endOfFiber(e)
     else
@@ -461,7 +464,7 @@ import FiberImpl.{InnerLoopResult, Bye}
       // e.printStackTrace()
       setResultHard(Cause(e))
       doFinalize()
-      this
+      retire
 
 
   //===================================================================
@@ -823,8 +826,8 @@ import FiberImpl.{InnerLoopResult, Bye}
   override def toString: String = s"Fiber#%08x".format(hashCode)
 
   def isReentry: Boolean = Bits.isReentry(constantBits)
-  def isPending: Boolean = Bits.isPending(varyingBits)
 
+  private def isPending: Boolean = Bits.isPending(varyingBits)
   private def isRoot: Boolean = Bits.isRoot(constantBits)
   private def getCompletion: Int = varyingBits & Bits.Completion_Mask
 
@@ -841,15 +844,13 @@ import FiberImpl.{InnerLoopResult, Bye}
 private[internals] object FiberImpl:
   type Callback = Outcome[Nothing] => Unit
 
-  private type InnerLoopResult = FiberImpl | Bye
-  private enum Bye:
-    case Become(fiber: FiberImpl, tick: Short)
-    case Yield(fiber: FiberImpl)
+  private type InnerLoopResult = FiberImpl | Become | Halt
+  private final case class Become(fiber: FiberImpl, tickLow: Short, fresh: ControlImpl)
 
-  def create(comp: Computation[?, ?], executor: Executor, owner: Callback | Null = null): FiberImpl =
-    val reentryBit = if executor.detectReentry() then Bits.Const_Reentry else 0
+  def create(comp: Computation[?, ?], executor: Executor, isReentry: Boolean, owner: Callback | Null = null): FiberImpl =
+    val reentryBit = if isReentry then Bits.Const_Reentry else 0
     val constantBits = (Bits.Tree_Root | reentryBit).toByte
-    val fiber = new FiberImpl(constantBits, null)
+    val fiber = new FiberImpl(constantBits, owner.asInstanceOf[AnyCallback])
     val env = Env.default(executor = executor)
     fiber.suspendInitial(comp.untyped, env)
     fiber

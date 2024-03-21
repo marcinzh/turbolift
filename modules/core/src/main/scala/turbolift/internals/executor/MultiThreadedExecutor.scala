@@ -1,7 +1,7 @@
 package turbolift.internals.executor
 import java.lang.ThreadLocal
 import turbolift.Computation
-import turbolift.internals.engine.{FiberImpl, Link}
+import turbolift.internals.engine.{FiberImpl, Halt, Link}
 
 
 private[turbolift] final class MultiThreadedExecutor(maxBusyThreads: Int) extends Link.Queue with Executor:
@@ -9,7 +9,7 @@ private[turbolift] final class MultiThreadedExecutor(maxBusyThreads: Int) extend
   protected[this] val pad3, pad4, pad5, pad6, pad7 = 0L
 
 
-  override def detectReentry(): Boolean =
+  override protected def detectReentry(): Boolean =
     MultiThreadedExecutor.currentVar.get != null
 
 
@@ -42,28 +42,26 @@ private[turbolift] final class MultiThreadedExecutor(maxBusyThreads: Int) extend
     override def run(): Unit =
       MultiThreadedExecutor.currentVar.set(MultiThreadedExecutor.this)
       while todo != null do
-        val yielder = todo.nn.run()
-        todo = take(yielder)
+        val halt = todo.nn.run()
+        todo = halt match
+          case Halt.Yield(yielder) =>
+            synchronized {
+              if isEmpty then
+                yielder
+              else
+                enqueue(yielder)
+                dequeue()
+            }
 
-
-  private def take(yielder: FiberImpl): FiberImpl | Null =
-    if yielder.isPending then
-      synchronized {
-        if isEmpty then
-          yielder
-        else
-          enqueue(yielder)
-          dequeue()
-      }
-    else
-      synchronized {
-        if isEmpty then
-          if !yielder.isReentry then
-            idleCounter = idleCounter + 1
-          null
-        else
-          dequeue()
-      }
+          case Halt.Retire(reentry) =>
+            synchronized {
+              if isEmpty then
+                if !reentry then
+                  idleCounter = idleCounter + 1
+                null
+              else
+                dequeue()
+            }
 
 
 object MultiThreadedExecutor:
