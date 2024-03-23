@@ -468,6 +468,115 @@ import FiberImpl.{InnerLoopResult, Become}
 
 
   //===================================================================
+  // Finalization
+  //===================================================================
+
+
+  private def setResult(completionBits: Int, payload: Any): Unit =
+    synchronized {
+      //// If cancellation was sent before reaching completion, override the completion.
+      val completionBits2 =
+        if Bits.isCancellationUnreceived(varyingBits) then
+          suspendedPayload = CancelPayload
+          Bits.Completion_Cancelled
+        else
+          suspendedPayload = payload
+          completionBits
+      varyingBits = (varyingBits | completionBits2).toByte
+    }
+
+
+  private def setResultHard(cause: Cause): Unit =
+    //// If cancellation was sent before reaching completion, ignore it.
+    synchronized {
+      varyingBits = (varyingBits | Bits.Completion_Failure).toByte
+      suspendedPayload = cause
+    }
+
+
+  private def makeOutcome[A]: Outcome[A] =
+    varyingBits & Bits.Completion_Mask match
+      case Bits.Completion_Success   => Outcome.Success(suspendedPayload.asInstanceOf[A])
+      case Bits.Completion_Failure   => Outcome.Failure(suspendedPayload.asInstanceOf[Cause])
+      case Bits.Completion_Cancelled => Outcome.Cancelled
+
+
+  def unsafeAwait[A](): Outcome[A] =
+    synchronized {
+      if isPending then
+        wait()
+    }
+    makeOutcome
+
+
+  private def doFinalize(): Unit =
+    owner match
+      case null => synchronized { notify() }
+      case f: AnyCallback => f(makeOutcome)
+      case _: FiberImpl => impossible
+
+
+  //===================================================================
+  // Cancelling
+  //===================================================================
+
+
+  private def cancellationCheck(): Boolean =
+    synchronized {
+      if Bits.isCancellationUnreceived(varyingBits) then
+        varyingBits = (varyingBits | Bits.Cancellation_Received).toByte
+        true
+      else
+        false
+    }
+
+
+  private def selfCancel(): Unit =
+    synchronized {
+      varyingBits = (varyingBits | Bits.Cancellation_Sent | Bits.Cancellation_Received).toByte
+    }
+
+
+  private def cancelRacerTree(): Unit =
+    cancelLoop(this, Bits.Racer_None)
+
+
+  @tailrec private def cancelLoop(limit: FiberImpl, comingFromRacer: Int): Unit =
+    val nextToVisit: FiberImpl | Null = comingFromRacer match
+      case Bits.Racer_None =>
+        //// coming from parent
+        synchronized {
+          val bits = varyingBits
+          if Bits.isPending(bits) && !Bits.isCancellationSent(bits) then
+            varyingBits = (bits | Bits.Cancellation_Sent).toByte
+            Bits.getRacer(bits) match
+              case Bits.Racer_None => null
+              case Bits.Racer_Right => getRightRacer
+              case _ => getLeftRacer
+          else
+            null
+        }
+      case Bits.Racer_Left =>
+        synchronized {
+          if Bits.isPending(varyingBits) then
+            Bits.getRacer(varyingBits) match
+              case Bits.Racer_Right => getRightRacer
+              case _ => null
+          else
+            null
+        }
+      case Bits.Racer_Right => null
+
+    if nextToVisit != null then
+      //// descent to first/next racer
+      nextToVisit.cancelLoop(limit, Bits.Racer_None)
+    else
+      //// backtrack to arbiter
+      if this != limit then
+        getArbiter.cancelLoop(limit, whichRacerAmI)
+
+
+  //===================================================================
   // Race
   //===================================================================
 
@@ -615,115 +724,6 @@ import FiberImpl.{InnerLoopResult, Become}
 
   private def endRaceWithFailure(payload: Any): Unit =
     suspendAsFailure(payload.asInstanceOf[Cause])
-
-
-  //===================================================================
-  // Finalization
-  //===================================================================
-
-
-  private def setResult(completionBits: Int, payload: Any): Unit =
-    synchronized {
-      //// If cancellation was sent before reaching completion, override the completion.
-      val completionBits2 =
-        if Bits.isCancellationUnreceived(varyingBits) then
-          suspendedPayload = CancelPayload
-          Bits.Completion_Cancelled
-        else
-          suspendedPayload = payload
-          completionBits
-      varyingBits = (varyingBits | completionBits2).toByte
-    }
-
-
-  private def setResultHard(cause: Cause): Unit =
-    //// If cancellation was sent before reaching completion, ignore it.
-    synchronized {
-      varyingBits = (varyingBits | Bits.Completion_Failure).toByte
-      suspendedPayload = cause
-    }
-
-
-  private def makeOutcome[A]: Outcome[A] =
-    varyingBits & Bits.Completion_Mask match
-      case Bits.Completion_Success   => Outcome.Success(suspendedPayload.asInstanceOf[A])
-      case Bits.Completion_Failure   => Outcome.Failure(suspendedPayload.asInstanceOf[Cause])
-      case Bits.Completion_Cancelled => Outcome.Cancelled
-
-
-  def unsafeAwait[A](): Outcome[A] =
-    synchronized {
-      if isPending then
-        wait()
-    }
-    makeOutcome
-
-
-  private def doFinalize(): Unit =
-    owner match
-      case null => synchronized { notify() }
-      case f: AnyCallback => f(makeOutcome)
-      case _: FiberImpl => impossible
-
-
-  //===================================================================
-  // Cancelling
-  //===================================================================
-
-
-  private def cancellationCheck(): Boolean =
-    synchronized {
-      if Bits.isCancellationUnreceived(varyingBits) then
-        varyingBits = (varyingBits | Bits.Cancellation_Received).toByte
-        true
-      else
-        false
-    }
-
-
-  private def selfCancel(): Unit =
-    synchronized {
-      varyingBits = (varyingBits | Bits.Cancellation_Sent | Bits.Cancellation_Received).toByte
-    }
-
-
-  private def cancelRacerTree(): Unit =
-    cancelLoop(this, Bits.Racer_None)
-
-
-  @tailrec private def cancelLoop(limit: FiberImpl, comingFromRacer: Int): Unit =
-    val nextToVisit: FiberImpl | Null = comingFromRacer match
-      case Bits.Racer_None =>
-        //// coming from parent
-        synchronized {
-          val bits = varyingBits
-          if Bits.isPending(bits) && !Bits.isCancellationSent(bits) then
-            varyingBits = (bits | Bits.Cancellation_Sent).toByte
-            Bits.getRacer(bits) match
-              case Bits.Racer_None => null
-              case Bits.Racer_Right => getRightRacer
-              case _ => getLeftRacer
-          else
-            null
-        }
-      case Bits.Racer_Left =>
-        synchronized {
-          if Bits.isPending(varyingBits) then
-            Bits.getRacer(varyingBits) match
-              case Bits.Racer_Right => getRightRacer
-              case _ => null
-          else
-            null
-        }
-      case Bits.Racer_Right => null
-
-    if nextToVisit != null then
-      //// descent to first/next racer
-      nextToVisit.cancelLoop(limit, Bits.Racer_None)
-    else
-      //// backtrack to arbiter
-      if this != limit then
-        getArbiter.cancelLoop(limit, whichRacerAmI)
 
 
   //===================================================================
