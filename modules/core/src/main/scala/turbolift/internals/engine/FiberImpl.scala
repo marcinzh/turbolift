@@ -29,11 +29,7 @@ import FiberImpl.{InnerLoopResult, Become}
   def run(): Halt =
     assert(isPending)
     assert(isSuspended)
-    try
-      outerLoop(suspendedEnv.nn.tickHigh)
-    catch
-      case e: Exceptions.Panic => endOfFiber(e)
-      case e => endOfFiber(new Exceptions.Unhandled(e))
+    outerLoop(suspendedEnv.nn.tickHigh)
 
 
   @tailrec private def outerLoop(tickHigh: Short, lastTickLow: Short = 0, fresh: ControlImpl | Null = null): Halt =
@@ -57,17 +53,22 @@ import FiberImpl.{InnerLoopResult, Become}
         val currentEnv     = suspendedEnv.nn
         val currentMark    = suspendedMark
         clearSuspension()
-        innerLoop(
-          tick     = nextTickLow,
-          tag      = currentTag,
-          payload  = currentPayload,
-          step     = currentStep,
-          stack    = currentStack,
-          store    = currentStore,
-          mark     = currentMark,
-          env      = currentEnv,
-          fresh    = if fresh != null then fresh else new ControlImpl,
-        )
+        try
+          innerLoop(
+            tick     = nextTickLow,
+            tag      = currentTag,
+            payload  = currentPayload,
+            step     = currentStep,
+            stack    = currentStack,
+            store    = currentStore,
+            mark     = currentMark,
+            env      = currentEnv,
+            fresh    = if fresh != null then fresh else new ControlImpl,
+          )
+        catch e =>
+          val e2 = if e.isInstanceOf[Exceptions.Panic] then e else new Exceptions.Unhandled(e)
+          val c = Cause(e2)
+          endOfFiber(0, Bits.Completion_Failure, c, null)
 
       result match
         case that: FiberImpl => that.outerLoop((tickHigh - 1).toShort)
@@ -332,8 +333,7 @@ import FiberImpl.{InnerLoopResult, Become}
                 val comp2 = prompt.interpreter.onReturn(payload, stan)
                 loopComp(comp2, step2, stack2, store2, env, Mark.none, fresh)
             else
-              setResult(Bits.Completion_Success, payload)
-              endOfFiber(tick2, fresh)
+              endOfFiber(tick2, Bits.Completion_Success, payload, fresh)
 
         case Tags.Step_Unwind =>
           mark.mustBeEmpty()
@@ -359,8 +359,7 @@ import FiberImpl.{InnerLoopResult, Become}
               loopStep(payload, step3, stack2, store2, env, Mark.none, fresh)
           else
             val completionBits = if CancelPayload == payload then Bits.Completion_Cancelled else Bits.Completion_Failure
-            setResult(completionBits, payload)
-            endOfFiber(tick2, fresh)
+            endOfFiber(tick2, completionBits, payload, fresh)
 
         case _ => (tag: @switch) match
           case Tags.DoIO =>
@@ -437,61 +436,47 @@ import FiberImpl.{InnerLoopResult, Become}
 
 
   //===================================================================
-  // End Of Fiber
-  //===================================================================
-
-
-  private def retire: Halt = Halt.retire(isReentry)
-
-
-  private def endOfFiber(tick: Short, fresh: ControlImpl): InnerLoopResult =
-    //@#@TODO more
-    if isRoot then
-      doFinalize()
-      retire
-    else
-      if endRace() then
-        Become(getArbiter, tick, fresh)
-      else
-        retire
-
-
-  @tailrec private def endOfFiber(e: Throwable): Halt =
-    if !isRoot then
-      getArbiter.endOfFiber(e)
-    else
-      // println(e)
-      // e.printStackTrace()
-      setResultHard(Cause(e))
-      doFinalize()
-      retire
-
-
-  //===================================================================
   // Finalization
   //===================================================================
 
 
-  private def setResult(completionBits: Int, payload: Any): Unit =
+  private def endOfFiber(tick: Short, initialCompletionBits: Int, initialPayload: Any, fresh: ControlImpl | Null): InnerLoopResult =
+    //// Set completion & payload
     synchronized {
-      //// If cancellation was sent before reaching completion, override the completion.
-      val completionBits2 =
-        if Bits.isCancellationUnreceived(varyingBits) then
-          suspendedPayload = CancelPayload
-          Bits.Completion_Cancelled
+      if Bits.isCancellationUnreceived(varyingBits) then
+        //// If cancellation was signalled before reaching completion, it overrides the completion.
+        suspendedPayload = CancelPayload
+        varyingBits = (varyingBits | Bits.Completion_Cancelled | Bits.Cancellation_Received).toByte
+      else
+        suspendedPayload = initialPayload
+        varyingBits = (varyingBits | initialCompletionBits).toByte
+    }
+
+    //// If this is a RACER, notify the ARBITER.
+    val isLastRacer =
+      if isRacer then
+        endRace()
+      else
+        false
+
+    //// Pass the torch
+    owner match
+      case _: FiberImpl =>
+        if isLastRacer then
+          Become(getArbiter, tick, fresh)
         else
-          suspendedPayload = payload
-          completionBits
-      varyingBits = (varyingBits | completionBits2).toByte
-    }
+          retire
+
+      case f: AnyCallback =>
+        f(makeOutcome)
+        retire
+
+      case null =>
+        synchronized { notify() }
+        retire
 
 
-  private def setResultHard(cause: Cause): Unit =
-    //// If cancellation was sent before reaching completion, ignore it.
-    synchronized {
-      varyingBits = (varyingBits | Bits.Completion_Failure).toByte
-      suspendedPayload = cause
-    }
+  private def retire: Halt = Halt.retire(isReentry)
 
 
   private def makeOutcome[A]: Outcome[A] =
@@ -507,13 +492,6 @@ import FiberImpl.{InnerLoopResult, Become}
         wait()
     }
     makeOutcome
-
-
-  private def doFinalize(): Unit =
-    owner match
-      case null => synchronized { notify() }
-      case f: AnyCallback => f(makeOutcome)
-      case _: FiberImpl => impossible
 
 
   //===================================================================
@@ -832,6 +810,7 @@ import FiberImpl.{InnerLoopResult, Become}
   private def getCompletion: Int = varyingBits & Bits.Completion_Mask
 
   private def whichRacerAmI: Int = constantBits & Bits.Racer_Mask
+  private def isRacer: Boolean = whichRacerAmI != Bits.Racer_None
   private def getArbiter: FiberImpl = owner.asInstanceOf[FiberImpl]
   private def getLeftRacer: FiberImpl = linkLeft.asInstanceOf[FiberImpl]
   private def getRightRacer: FiberImpl = linkRight.asInstanceOf[FiberImpl]
@@ -845,7 +824,7 @@ private[internals] object FiberImpl:
   type Callback = Outcome[Nothing] => Unit
 
   private type InnerLoopResult = FiberImpl | Become | Halt
-  private final case class Become(fiber: FiberImpl, tickLow: Short, fresh: ControlImpl)
+  private final case class Become(fiber: FiberImpl, tickLow: Short, fresh: ControlImpl | Null)
 
   def create(comp: Computation[?, ?], executor: Executor, isReentry: Boolean, owner: Callback | Null = null): FiberImpl =
     val reentryBit = if isReentry then Bits.Const_Reentry else 0
