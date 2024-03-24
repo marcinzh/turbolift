@@ -461,9 +461,9 @@ import FiberImpl.{InnerLoopResult, Become}
 
     //// Pass the torch
     owner match
-      case _: FiberImpl =>
+      case arbiter: FiberImpl =>
         if isLastRacer then
-          Become(getArbiter, tick, fresh)
+          Become(arbiter, tick, fresh)
         else
           retire
 
@@ -480,7 +480,7 @@ import FiberImpl.{InnerLoopResult, Become}
 
 
   private def makeOutcome[A]: Outcome[A] =
-    varyingBits & Bits.Completion_Mask match
+    getCompletion match
       case Bits.Completion_Success   => Outcome.Success(suspendedPayload.asInstanceOf[A])
       case Bits.Completion_Failure   => Outcome.Failure(suspendedPayload.asInstanceOf[Cause])
       case Bits.Completion_Cancelled => Outcome.Cancelled
