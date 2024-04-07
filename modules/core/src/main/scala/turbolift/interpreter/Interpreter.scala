@@ -71,7 +71,7 @@ sealed trait Interpreter extends Signature:
     val primary = Seq(
       Features.cond(Features.Choice, isInstanceOf[ChoiceSignature]),
       Features.cond(Features.Stateful, isInstanceOf[Interpreter.Stateful[?, ?, ?]]),
-      Features.cond(Features.Root, this eq Interpreter.Root),
+      Features.cond(Features.Io, this eq Interpreter.Io),
       Features.cond(Features.Restart, !isInstanceOf[Mixins.HasNotRestart]),
       Features.cond(Features.ForkJoin, !isInstanceOf[Mixins.HasNotForkJoin]),
       Features.cond(Features.Zip, !isInstanceOf[Mixins.HasNotZip]),
@@ -79,7 +79,7 @@ sealed trait Interpreter extends Signature:
     ).reduce(_ | _)
     Seq(
       primary,
-      Features.cond(Features.Stateful, primary.isRoot),
+      Features.cond(Features.Stateful, primary.isIo),
       Features.cond(Features.Sequential, !(primary.hasZip | isInstanceOf[Mixins.Parallel.Trivial])),
     ).reduce(_ | _)
 
@@ -175,7 +175,7 @@ object Interpreter:
     final override type !@![A, U] = NullarySem[A, U] | BinarySem[A, U]
 
 
-  private[turbolift] case object Root extends Mixins.Parallel.Trivial:
+  private[turbolift] case object Io extends Mixins.Parallel.Trivial:
     final override type From[+A] = A
     final override type To[+A] = A
     final override type Dependency = Any
@@ -184,4 +184,4 @@ object Interpreter:
 
     final override def onInitial: Stan !! Dependency = Mixins.unimplemented
     final override def onReturn(a: Unknown, s: Any): Unknown !! Any = !!.pure(a)
-    override def enumSignatures = Array(IO)
+    override def enumSignatures = Array(IO) //// `IO` = interface, `Io` = implementation

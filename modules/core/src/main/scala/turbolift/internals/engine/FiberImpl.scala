@@ -322,7 +322,7 @@ import FiberImpl.{InnerLoopResult, Become}
           OpSplit.forceSplitAndThen(stack, store, mark): (stack, store) =>
             if stack.canPop then
               val (stack2, store2, step2, prompt, frame, stan) = OpPush.pop(stack, store)
-              if prompt.isRoot then
+              if prompt.isIo then
                 if !frame.isGuard then
                   val env2 = frame.stan.asEnv
                   loopStep(payload, step2, stack2, store2, env2, Mark.none, fresh)
@@ -340,7 +340,7 @@ import FiberImpl.{InnerLoopResult, Become}
           val theUnwind = step.asInstanceOf[SC.Unwind]
           if stack.canPop then
             val (stack2, store2, step2, prompt, frame, stan) = OpPush.pop(stack, store)
-            if prompt.isRoot then
+            if prompt.isIo then
               if !frame.isGuard then
                 val env2 = frame.stan.asEnv
                 loopStep(payload, step, stack2, store2, env2, Mark.none, fresh)
@@ -388,8 +388,8 @@ import FiberImpl.{InnerLoopResult, Become}
           case Tags.DoSnap =>
             OpSplit.forceSplitAndThen(stack, store, mark): (stack, store) =>
               val theDoSnap = payload.asInstanceOf[CC.DoSnap[Any, Any]]
-              val location = stack.locatePrompt(env.prompt)
-              val (stack2, store2) = OpPush.pushLocal(stack, store, step, env.prompt, location, env.asStan, FrameKind.guard)
+              val location = stack.locatePrompt(Prompt.io)
+              val (stack2, store2) = OpPush.pushLocal(stack, store, step, Prompt.io, location, env.asStan, FrameKind.guard)
               loopComp(theDoSnap.body, SC.Pop, stack2, store2, env, Mark.none, fresh)
 
           case Tags.Unsnap =>
@@ -422,8 +422,8 @@ import FiberImpl.{InnerLoopResult, Become}
             else
               //@#@TODO avoid stack split, like in any other HOE
               OpSplit.forceSplitAndThen(stack, store, mark): (stack, store) =>
-                val location = stack.locatePrompt(env.prompt)
-                val (stack2, store2) = OpPush.pushLocal(stack, store, step, env.prompt, location, env2.asStan, FrameKind.plain)
+                val location = stack.locatePrompt(Prompt.io)
+                val (stack2, store2) = OpPush.pushLocal(stack, store, step, Prompt.io, location, env2.asStan, FrameKind.plain)
                 loopComp(theEnvMod.body, SC.Pop, stack2, store2, env2, Mark.none, fresh)
 
           case Tags.Yield =>
@@ -721,7 +721,7 @@ import FiberImpl.{InnerLoopResult, Become}
     suspendedTag     = comp.tag
     suspendedPayload = comp
     suspendedStep    = SC.Pop
-    suspendedStack   = Stack.initial(env.prompt)
+    suspendedStack   = Stack.initial
     suspendedStore   = Store.initial(env)
     suspendedEnv     = env
     suspendedMark    = Mark.none

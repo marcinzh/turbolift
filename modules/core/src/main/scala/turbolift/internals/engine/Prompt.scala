@@ -12,7 +12,7 @@ private[turbolift] final class Prompt(val interpreter: Interpreter.Untyped):
   private var lazyWarp: WarpImpl = null.asInstanceOf[WarpImpl]
 
 
-  def isRoot = features.isRoot
+  def isIo = features.isIo
   def signatures = interpreter.signatures
   def isStateful = features.isStateful
   def isStateless = features.isStateless
@@ -24,3 +24,7 @@ private[turbolift] final class Prompt(val interpreter: Interpreter.Untyped):
   def asMark: Mark = Mark.wrap(this)
 
   override def toString = signatures.mkString("&")
+
+
+object Prompt:
+  val io: Prompt = new Prompt(Interpreter.Io.untyped)

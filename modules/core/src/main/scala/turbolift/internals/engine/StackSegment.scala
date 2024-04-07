@@ -147,8 +147,8 @@ private[engine] object StackSegment:
     )
 
 
-  def initial(prompt: Prompt): StackSegment =
-    pushFirst(prompt, isLocal = false, kind = FrameKind.plain)
+  val initial: StackSegment =
+    pushFirst(Prompt.io, isLocal = false, kind = FrameKind.plain)
 
 
   def pushFirst(prompt: Prompt, isLocal: Boolean, kind: FrameKind): StackSegment =

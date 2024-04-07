@@ -112,4 +112,4 @@ private[engine] abstract class Stack:
 
 
 private[engine] object Stack:
-  def initial(prompt: Prompt): Stack = StackSegment.initial(prompt).asStack
+  def initial: Stack = StackSegment.initial.asStack
