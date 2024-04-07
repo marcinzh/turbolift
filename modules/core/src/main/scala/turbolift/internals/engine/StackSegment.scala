@@ -72,17 +72,30 @@ private[engine] final class StackSegment private (
 
 
   def pushBase(loc: Location.Shallow, step: Step, prompt: Prompt): StackSegment =
-    //@#@OPTY share components when possible
-    val newFork = fork.pushBaseWithFork(loc, StepCases.Pop, prompt, Pile.base(loc.promptIndex), null)
-    val newPile = Pile.pushFirst(step, height = frameCount, isLocal = false, FrameKind.plain)
-    pushBaseWithFork(loc, step, prompt, newPile, newFork)
+    //// shared {{
+    val newSignatures = signatures ++ prompt.signatures
+    val newLocations = locations ++ Array.fill(prompt.signatures.size)(loc)
+    val newPrompts = prompts :+ prompt
+    //// }}
+    val newFork =
+      val pile1 = Pile.base(loc.promptIndex)
+      fork.pushBaseWithFork(pile1, prompt, newSignatures, newLocations, newPrompts, forkOrNull = null)
+    val pile2 = Pile.pushFirst(step, height = frameCount, isLocal = false, FrameKind.plain)
+    pushBaseWithFork(pile2, prompt, newSignatures, newLocations, newPrompts, forkOrNull = newFork)
 
 
-  private def pushBaseWithFork(loc: Location.Shallow, step: Step, prompt: Prompt, pile: Pile, forkOrNull: StackSegment | Null): StackSegment =
+  private def pushBaseWithFork(
+    pile: Pile,
+    prompt: Prompt,
+    newSignatures: Array[Signature],
+    newLocations: Array[Location.Shallow],
+    newPrompts: Array[Prompt],
+    forkOrNull: StackSegment | Null,
+  ): StackSegment =
     new StackSegment(
-      signatures = signatures ++ prompt.signatures,
-      locations = locations ++ Array.fill(prompt.signatures.size)(loc),
-      prompts = prompts :+ prompt,
+      signatures = newSignatures,
+      locations = newLocations,
+      prompts = newPrompts,
       piles = piles :+ pile,
       frameCount = frameCount + 1,
       features = features | prompt.features.mask,
