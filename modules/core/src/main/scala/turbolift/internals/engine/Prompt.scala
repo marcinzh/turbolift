@@ -6,7 +6,7 @@ import turbolift.interpreter.Interpreter
 private[turbolift] final class Prompt(val interpreter: Interpreter.Untyped):
   val features = interpreter.features
   val stanCount: Byte = if features.isStateful then 1 else 0
-  val unwind: Step = StepCases.Unwind(this, false)
+  val unwind: Step = StepCases.Unwind(Step.UnwindKind.Abort, this)
   
   //@#@TODO
   private var lazyWarp: WarpImpl = null.asInstanceOf[WarpImpl]

@@ -16,14 +16,22 @@ private[engine] object StepCases:
   final class Capture(val prompt: Prompt, val aside: Step, override val next: Step) extends Step(Tags.Step_Capture)
   final class Push(val body: AnyComp, val prompt: Prompt, override val next: Step) extends Step(Tags.Step_Push)
   sealed abstract class HasNoNext(_tag: Byte) extends Step(_tag) { override val next: Null = null }
-  final class Unwind(val prompt: Prompt | Null, val cancel: Boolean) extends HasNoNext(Tags.Step_Unwind)
+  final class Unwind(val kind: Step.UnwindKind, val prompt: Prompt | Null) extends HasNoNext(Tags.Step_Unwind)
   case object Bridge extends HasNoNext(Tags.Step_Bridge)
-  case object Pop extends HasNoNext(Tags.Step_Pop)
+  export Step.Pop
 
 
 private[engine] object Step:
-  val Cancel = Unwind(null, true)
-  val Throw = Unwind(null, false)
+  val Pop = new StepCases.Unwind(UnwindKind.Pop, null)
+  val Cancel = new StepCases.Unwind(UnwindKind.Cancel, null)
+  val Throw = new StepCases.Unwind(UnwindKind.Throw, null)
+
+  enum UnwindKind:
+    def isPop = this == UnwindKind.Pop
+    case Pop
+    case Abort
+    case Cancel
+    case Throw
 
   def toStr(step: Step): String =
     def loop(todo: Step, acc: Vector[String]): Vector[String] = 
@@ -33,7 +41,8 @@ private[engine] object Step:
         case x: ZipSeqRight => loop(x.next, acc :+ "ZipSeqRight")
         case x: Capture => loop(x.next, acc :+ s"Cap(@${x.prompt} aside=${toStr(x.aside)})")
         case x: Push => loop(x.next, acc :+ s"Push(${x.prompt})")
-        case x: Unwind => acc :+ s"Unwind(${x.prompt})"
-        case Pop => acc :+ "Pop"
+        case x: Unwind => x.kind.match
+          case UnwindKind.Abort => acc :+ s"Abort(${x.prompt})"
+          case k => acc :+ k.toString
         case Bridge => acc :+ "Bridge"
     loop(step, Vector()).mkString("{", ";", "}")

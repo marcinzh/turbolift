@@ -318,48 +318,40 @@ import FiberImpl.{InnerLoopResult, Become}
           val comp2 = thePush.body
           loopComp(comp2, SC.Pop, stack2, store2, env, Mark.none, fresh)
 
-        case Tags.Step_Pop =>
+        case Tags.Step_Unwind =>
+          val theUnwind = step.asInstanceOf[SC.Unwind]
+          if !theUnwind.kind.isPop then mark.mustBeEmpty()
           OpSplit.forceSplitAndThen(stack, store, mark): (stack, store) =>
             if stack.canPop then
               val (stack2, store2, step2, prompt, frame, stan) = OpPush.pop(stack, store)
               if prompt.isIo then
-                if !frame.isGuard then
-                  val env2 = frame.stan.asEnv
-                  loopStep(payload, step2, stack2, store2, env2, Mark.none, fresh)
-                else
-                  val payload2 = Snap.Success(payload)
-                  loopStep(payload2, step2, stack2, store2, env, Mark.none, fresh)
-              else
-                val comp2 = prompt.interpreter.onReturn(payload, stan)
-                loopComp(comp2, step2, stack2, store2, env, Mark.none, fresh)
-            else
-              endOfFiber(tick2, Bits.Completion_Success, payload, fresh)
+                frame.kind.unwrap match
+                  case FrameKind.PLAIN =>
+                    val env2 = frame.stan.asEnv
+                    val step3 = if theUnwind.kind.isPop then step2 else step
+                    loopStep(payload, step3, stack2, store2, env2, Mark.none, fresh)
 
-        case Tags.Step_Unwind =>
-          mark.mustBeEmpty()
-          val theUnwind = step.asInstanceOf[SC.Unwind]
-          if stack.canPop then
-            val (stack2, store2, step2, prompt, frame, stan) = OpPush.pop(stack, store)
-            if prompt.isIo then
-              if !frame.isGuard then
-                val env2 = frame.stan.asEnv
-                loopStep(payload, step, stack2, store2, env2, Mark.none, fresh)
+                  case FrameKind.GUARD =>
+                    val payload2 = theUnwind.kind match
+                      case Step.UnwindKind.Pop    => Snap.Success(payload)
+                      case Step.UnwindKind.Abort  => Snap.Aborted(payload, theUnwind.prompt.nn)
+                      case Step.UnwindKind.Cancel => Snap.Cancelled
+                      case Step.UnwindKind.Throw  => Snap.Failure(payload.asInstanceOf[Cause])
+                    loopStep(payload2, step2, stack2, store2, env, Mark.none, fresh)
               else
-                val payload2 =
-                  if theUnwind.prompt == null then
-                    if theUnwind.cancel then
-                      Snap.Cancelled
-                    else
-                      Snap.Failure(payload.asInstanceOf[Cause])
-                  else
-                    Snap.Aborted(payload, theUnwind.prompt)
-                loopStep(payload2, step2, stack2, store2, env, Mark.none, fresh)
+                if theUnwind.kind.isPop then
+                  val comp2 = prompt.interpreter.onReturn(payload, stan)
+                  loopComp(comp2, step2, stack2, store2, env, Mark.none, fresh)
+                else
+                  val step3 = if prompt == theUnwind.prompt then step2 else step
+                  loopStep(payload, step3, stack2, store2, env, Mark.none, fresh)
             else
-              val step3 = if prompt == theUnwind.prompt then step2 else step
-              loopStep(payload, step3, stack2, store2, env, Mark.none, fresh)
-          else
-            val completionBits = if CancelPayload == payload then Bits.Completion_Cancelled else Bits.Completion_Failure
-            endOfFiber(tick2, completionBits, payload, fresh)
+              val completionBits = theUnwind.kind match
+                case Step.UnwindKind.Pop    => Bits.Completion_Success
+                case Step.UnwindKind.Abort  => impossible
+                case Step.UnwindKind.Cancel => Bits.Completion_Cancelled
+                case Step.UnwindKind.Throw  => Bits.Completion_Failure
+              endOfFiber(tick2, completionBits, payload, fresh)
 
         case _ => (tag: @switch) match
           case Tags.DoIO =>
