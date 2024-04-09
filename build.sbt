@@ -95,15 +95,13 @@ lazy val site = (project in file("docs"))
   ))
   .dependsOn(core)
 
-//=================================================
+//-------------------------------------------------
 
 ThisBuild / watchBeforeCommand := Watch.clearScreen
 ThisBuild / watchTriggeredMessage := Watch.clearScreenOnTrigger
 ThisBuild / watchForceTriggerOnAnyChange := true
 
 Test / parallelExecution := false
-
-// build.sbt
 
 val cls = taskKey[Unit]("Clears the console the hard way")
 
@@ -112,7 +110,7 @@ cls := {
 }
 
 
-//=================================================
+//-------------------------------------------------
 
 ThisBuild / description := "Algebraic Effects for Scala 3"
 ThisBuild / organizationName := "marcinzh"

@@ -32,7 +32,7 @@ case object HandlerShadowing extends Example:
     Console.BLUE,
   )
 
-  //===== Effect =====
+  //----- Effect -----
 
   trait KonsoleSignature extends Signature:
     def log(text: String): Unit !@! ThisEffect
@@ -42,7 +42,7 @@ case object HandlerShadowing extends Example:
 
   type Konsole = Konsole.type
 
-  //===== Handlers =====
+  //----- Handlers -----
 
   extension (fx: Konsole)
     def plain =
@@ -79,7 +79,7 @@ case object HandlerShadowing extends Example:
       .toHandler
       .partiallyProvideWith[Konsole](S.handler(0).dropState)
 
-  //===== Run =====
+  //----- Run -----
 
   override def apply() =
     val lines = Utils.paragraph(lorem, 40)

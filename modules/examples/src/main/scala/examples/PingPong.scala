@@ -10,7 +10,7 @@ case object PingPong extends Example:
     Example adapted from "Handling Bidirectional Control Flow" paper.
   """
 
-  //===== Effects =====
+  //----- Effects -----
 
   trait PingSignature extends Signature:
     def ping: Unit !@! (ThisEffect & Pong)
@@ -28,7 +28,7 @@ case object PingPong extends Example:
 
   type Pong = Pong.type
 
-  //===== Handlers =====
+  //----- Handlers -----
 
   extension (fx: Ping)
     def ponger =
@@ -54,7 +54,7 @@ case object PingPong extends Example:
       .toHandler
       .partiallyProvideWith[Console](S.handler(0).dropState)
 
-  //===== Run =====
+  //----- Run -----
 
   override def apply(): Unit =
     Ping.ping

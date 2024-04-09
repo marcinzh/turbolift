@@ -77,9 +77,9 @@ import Cause.{Cancelled => CancelPayload}
       Halt.Yield(this)
 
 
-  //===================================================================
+  //-------------------------------------------------------------------
   // Inner Loop
-  //===================================================================
+  //-------------------------------------------------------------------
 
 
   @tailrec private def innerLoop(
@@ -345,19 +345,19 @@ import Cause.{Cancelled => CancelPayload}
                   val step3 = if prompt == theUnwind.prompt then step2 else step
                   loopStep(payload, step3, stack2, store2, env, Mark.none, fresh)
             else
-              val completionBits = theUnwind.kind match
+              val completion = theUnwind.kind match
                 case Step.UnwindKind.Pop    => Bits.Completion_Success
                 case Step.UnwindKind.Abort  => impossible
                 case Step.UnwindKind.Cancel => Bits.Completion_Cancelled
                 case Step.UnwindKind.Throw  => Bits.Completion_Failure
-              endOfFiber(tick2, completionBits, payload, fresh)
+              endOfFiber(tick2, completion, payload, fresh)
 
         case _ => (tag: @switch) match
           case Tags.DoIO =>
-            val theSideEffect = payload.asInstanceOf[CC.DoIO[Any, Any]]
+            val theDoIO = payload.asInstanceOf[CC.DoIO[Any, Any]]
             var result: Any = null
             var throwable = null.asInstanceOf[Throwable]
-            try result = theSideEffect.thunk()
+            try result = theDoIO.thunk()
             catch case e: Throwable => throwable = e
             if throwable eq null then
               val payload2 = result
@@ -426,12 +426,12 @@ import Cause.{Cancelled => CancelPayload}
       Halt.Reset
 
 
-  //===================================================================
+  //-------------------------------------------------------------------
   // Finalization
-  //===================================================================
+  //-------------------------------------------------------------------
 
 
-  private def endOfFiber(tick: Short, initialCompletionBits: Int, initialPayload: Any, fresh: ControlImpl | Null): Halt.Loop =
+  private def endOfFiber(tick: Short, initialCompletion: Int, initialPayload: Any, fresh: ControlImpl | Null): Halt.Loop =
     //// Set completion & payload
     synchronized {
       if Bits.isCancellationUnreceived(varyingBits) then
@@ -440,7 +440,7 @@ import Cause.{Cancelled => CancelPayload}
         varyingBits = (varyingBits | Bits.Completion_Cancelled | Bits.Cancellation_Received).toByte
       else
         suspendedPayload = initialPayload
-        varyingBits = (varyingBits | initialCompletionBits).toByte
+        varyingBits = (varyingBits | initialCompletion).toByte
     }
 
     //// If this is a RACER, notify the ARBITER.
@@ -485,9 +485,9 @@ import Cause.{Cancelled => CancelPayload}
     makeOutcome
 
 
-  //===================================================================
+  //-------------------------------------------------------------------
   // Cancelling
-  //===================================================================
+  //-------------------------------------------------------------------
 
 
   private def cancellationCheck(): Boolean =
@@ -545,9 +545,9 @@ import Cause.{Cancelled => CancelPayload}
         getArbiter.cancelLoop(limit, whichRacerAmI)
 
 
-  //===================================================================
+  //-------------------------------------------------------------------
   // Race
-  //===================================================================
+  //-------------------------------------------------------------------
 
   
   //// Called by the ARBITER on itself
@@ -695,9 +695,9 @@ import Cause.{Cancelled => CancelPayload}
     suspendAsFailure(payload.asInstanceOf[Cause])
 
 
-  //===================================================================
+  //-------------------------------------------------------------------
   // Suspend
-  //===================================================================
+  //-------------------------------------------------------------------
 
 
   private def isSuspended: Boolean = suspendedStack != null
@@ -787,9 +787,9 @@ import Cause.{Cancelled => CancelPayload}
     suspendedMark = Mark.none
 
 
-  //===================================================================
+  //-------------------------------------------------------------------
   // Misc
-  //===================================================================
+  //-------------------------------------------------------------------
 
 
   override def toString: String = s"Fiber#%08x".format(hashCode)
