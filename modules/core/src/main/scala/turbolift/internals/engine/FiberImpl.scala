@@ -8,7 +8,6 @@ import turbolift.internals.primitives.{Tags, ComputationCases => CC}
 import turbolift.internals.executor.Executor
 import turbolift.internals.engine.{StepCases => SC}
 import Cause.{Cancelled => CancelPayload}
-import FiberImpl.{InnerLoopResult, Become}
 
 
 //// public for now, to make JOL work
@@ -71,8 +70,8 @@ import FiberImpl.{InnerLoopResult, Become}
           endOfFiber(0, Bits.Completion_Failure, c, null)
 
       result match
-        case that: FiberImpl => that.outerLoop((tickHigh - 1).toShort)
-        case Become(that, tickLow2, fresh) => that.outerLoop(tickHigh, tickLow2, fresh)
+        case Halt.Reset => outerLoop((tickHigh - 1).toShort)
+        case Halt.Become(that, tickLow2, fresh) => that.outerLoop(tickHigh, tickLow2, fresh)
         case halt: Halt => halt
     else
       Halt.Yield(this)
@@ -93,23 +92,23 @@ import FiberImpl.{InnerLoopResult, Become}
     env: Env,
     mark: Mark,
     fresh: ControlImpl,
-  ): InnerLoopResult =
+  ): Halt.Loop =
     if tick > 0 then
       val tick2 = (tick - 1).toShort
 
       inline def loopStep(
         payload: Any, step: Step, stack: Stack, store: Store,
         env: Env, mark: Mark, fresh: ControlImpl
-      ): InnerLoopResult =
+      ): Halt.Loop =
         innerLoop(tick2, step.tag, payload, step, stack, store, env, mark, fresh)
 
       inline def loopComp(
         comp: Computation[?, ?], step: Step, stack: Stack, store: Store,
         env: Env, mark: Mark, fresh: ControlImpl
-      ): InnerLoopResult =
+      ): Halt.Loop =
         innerLoop(tick2, comp.tag, comp, step, stack, store, env, mark, fresh)
 
-      inline def loopCancel(stack: Stack, store: Store, env: Env, fresh: ControlImpl): InnerLoopResult =
+      inline def loopCancel(stack: Stack, store: Store, env: Env, fresh: ControlImpl): Halt.Loop =
         innerLoop(tick2, Tags.Step_Unwind, CancelPayload, Step.Cancel, stack, store, env, Mark.none, fresh)
 
       (tag: @switch) match
@@ -424,7 +423,7 @@ import FiberImpl.{InnerLoopResult, Become}
 
     else
       suspend(tag, payload, step, stack, store, env, mark)
-      this
+      Halt.Reset
 
 
   //===================================================================
@@ -432,7 +431,7 @@ import FiberImpl.{InnerLoopResult, Become}
   //===================================================================
 
 
-  private def endOfFiber(tick: Short, initialCompletionBits: Int, initialPayload: Any, fresh: ControlImpl | Null): InnerLoopResult =
+  private def endOfFiber(tick: Short, initialCompletionBits: Int, initialPayload: Any, fresh: ControlImpl | Null): Halt.Loop =
     //// Set completion & payload
     synchronized {
       if Bits.isCancellationUnreceived(varyingBits) then
@@ -455,7 +454,7 @@ import FiberImpl.{InnerLoopResult, Become}
     owner match
       case arbiter: FiberImpl =>
         if isLastRacer then
-          Become(arbiter, tick, fresh)
+          Halt.Become(arbiter, tick, fresh)
         else
           retire
 
@@ -814,9 +813,6 @@ import FiberImpl.{InnerLoopResult, Become}
 
 private[internals] object FiberImpl:
   type Callback = Outcome[Nothing] => Unit
-
-  private type InnerLoopResult = FiberImpl | Become | Halt
-  private final case class Become(fiber: FiberImpl, tickLow: Short, fresh: ControlImpl | Null)
 
   def create(comp: Computation[?, ?], executor: Executor, isReentry: Boolean, owner: Callback | Null = null): FiberImpl =
     val reentryBit = if isReentry then Bits.Const_Reentry else 0
