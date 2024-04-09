@@ -2,10 +2,10 @@ package turbolift.internals.engine
 import turbolift.interpreter.Void
 
 
-private[engine] opaque type Local = Any
+private opaque type Local = Any
 
 
-private[engine] object Local:
+private object Local:
   def void: Local = Void
   def nul: Local = null
 

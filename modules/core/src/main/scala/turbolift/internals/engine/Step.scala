@@ -4,12 +4,12 @@ import turbolift.internals.primitives.Tags
 import StepCases._
 
 
-private[engine] sealed abstract class Step(val tag: Byte):
+private sealed abstract class Step(val tag: Byte):
   val next: Step | Null
   final override def toString: String = Step.toStr(this)
 
 
-private[engine] object StepCases:
+private object StepCases:
   final class More(_tag: Byte, val fun: Any => Any, override val next: Step) extends Step(_tag)
   final class ZipSeqLeft(val todoRight: () => AnyComp, val fun: (Any, Any) => Any, override val next: Step) extends Step(Tags.Step_ZipSeqLeft)
   final class ZipSeqRight(val doneLeft: Any, val fun: (Any, Any) => Any, override val next: Step) extends Step(Tags.Step_ZipSeqRight)
@@ -17,10 +17,11 @@ private[engine] object StepCases:
   sealed abstract class HasNoNext(_tag: Byte) extends Step(_tag) { override val next: Null = null }
   final class Unwind(val kind: Step.UnwindKind, val prompt: Prompt | Null) extends HasNoNext(Tags.Step_Unwind)
   case object Bridge extends HasNoNext(Tags.Step_Bridge)
+
   export Step.Pop
 
 
-private[engine] object Step:
+private object Step:
   val Pop = new StepCases.Unwind(UnwindKind.Pop, null)
   val Cancel = new StepCases.Unwind(UnwindKind.Cancel, null)
   val Throw = new StepCases.Unwind(UnwindKind.Throw, null)

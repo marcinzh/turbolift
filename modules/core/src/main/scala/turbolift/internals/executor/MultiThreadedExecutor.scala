@@ -1,20 +1,27 @@
 package turbolift.internals.executor
 import java.lang.ThreadLocal
+import java.util.concurrent.ArrayBlockingQueue
+import scala.annotation.tailrec
 import turbolift.Computation
-import turbolift.internals.engine.{FiberImpl, Halt, Link}
+import turbolift.io.Outcome
+import turbolift.internals.engine.{FiberImpl, WaiterLink, Halt}
 
 
-private[turbolift] final class MultiThreadedExecutor(maxBusyThreads: Int) extends Link.Queue with Executor:
+private[turbolift] final class MultiThreadedExecutor(maxBusyThreads: Int) extends WaiterLink.Queue with Executor:
   enclosing =>
   private var idleCounter: Int = maxBusyThreads
-  protected[this] val pad3, pad4, pad5, pad6, pad7 = 0L
+  protected[this] val pad1, pad2, pad3, pad4 = 0L
 
 
-  override protected def detectReentry(): Boolean =
-    MultiThreadedExecutor.currentVar.get != null
+  override def runSync[A](comp: Computation[A, ?], name: String): Outcome[A] =
+    val queue = new ArrayBlockingQueue[Outcome[A]](1)
+    runAsync(comp, name, queue.offer)
+    queue.take().nn
 
 
-  override def start(fiber: FiberImpl, isReentry: Boolean): Unit =
+  override def runAsync[A](comp: Computation[A, ?], name: String, callback: Outcome[A] => Unit): Unit =
+    val isReentry = MultiThreadedExecutor.currentVar.get != null
+    val fiber = FiberImpl.create(comp, this, name, isReentry, callback)
     if !isReentry then
       resume(fiber)
     else
@@ -65,7 +72,7 @@ private[turbolift] final class MultiThreadedExecutor(maxBusyThreads: Int) extend
             }
 
 
-object MultiThreadedExecutor:
+private[turbolift] object MultiThreadedExecutor:
   def apply(f: Int => Int): MultiThreadedExecutor =
     val cpus = Runtime.getRuntime.nn.availableProcessors()
     new MultiThreadedExecutor(f(cpus))

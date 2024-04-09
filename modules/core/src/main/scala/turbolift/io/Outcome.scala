@@ -76,6 +76,8 @@ sealed abstract class Outcome[+A]:
 
 
 object Outcome:
+  val unit: Outcome[Unit] = Outcome.Success(())
+
   def fromTry[A](aa: Try[A]): Outcome[A] =
     aa match
       case TrySuccess(a) => Outcome.Success(a)

@@ -1,6 +1,5 @@
 package turbolift.internals.engine
 import turbolift.interpreter.Continuation
-import turbolift.Signature
 
 
 private[engine] final class ContImpl(
@@ -8,5 +7,4 @@ private[engine] final class ContImpl(
   val store: Store,
   val step: Step,
   val location: Location.Deep,
-) extends Continuation[Any, Any, Any, Any]:
-  ;
+) extends Continuation[Any, Any, Any, Any]

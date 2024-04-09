@@ -4,7 +4,7 @@ import turbolift.!!
 
 /** Degenerate state of stateless [[Interpreter]]. 
  *
- *Like `Unit`, but takes 0 bytes of storage in fiber's state. Do not use explicitly.
+ * Like `Unit`, but takes 0 bytes of storage in fiber's state. Do not use explicitly.
  */
 sealed abstract class Void
 

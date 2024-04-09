@@ -2,7 +2,7 @@ package turbolift.internals.engine
 import scala.annotation.tailrec
 
 
-private[engine] final class Frame private (
+private final class Frame private (
   val next: Frame | Null,
   private val packed: FramePacked,
   val step: Step,
@@ -96,7 +96,7 @@ private[engine] final class Frame private (
       s"$s;${next.toString}"
 
 
-private[engine] object Frame:
+private object Frame:
   val base: Frame = pushFirst(StepCases.Pop, isNested = false, FrameKind.plain)
 
   def pushFirst(step: Step, isNested: Boolean, kind: FrameKind): Frame =

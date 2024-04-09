@@ -4,7 +4,7 @@ import turbolift.Signature
 import turbolift.interpreter.Features
 
 
-private[engine] final class StackSegment private (
+private final class StackSegment private (
   val signatures: Array[Signature],
   val locations: Array[Location.Shallow],
   val prompts: Array[Prompt],
@@ -56,6 +56,13 @@ private[engine] final class StackSegment private (
       asStack
     else
       StackNel(this, stack, step.nn).asStack
+
+
+  def hasSamePromptsAsSeg(that: StackSegment): Boolean =
+    if this eq that then
+      true
+    else
+      prompts.sameElements(that.prompts)
 
 
   def locateHighestPile: Location.Shallow =
@@ -147,7 +154,7 @@ private[engine] final class StackSegment private (
     )
 
 
-private[engine] object StackSegment:
+private object StackSegment:
   private val emptyFork: StackSegment =
     new StackSegment(
       signatures = Array(),

@@ -62,4 +62,4 @@ case object YieldReplace extends Example:
       _ <- Console.println(s"output: $ys")
     yield ())
     .handleWith(Console.handler)
-    .unsafeRun
+    .runIO

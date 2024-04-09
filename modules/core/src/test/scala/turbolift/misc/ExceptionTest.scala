@@ -5,7 +5,7 @@ import turbolift.mode.ST
 
 
 class ExceptionTest extends Specification:
-  def bad = !!.impure(throw Error("bad"))
+  def bad = !!.impure(throw new Error("bad") { override def printStackTrace() = () } )
   def ook = !!.pure(42)
 
   "Basic ops" >> {

@@ -5,6 +5,8 @@ import scala.util.control.ControlThrowable
 object Exceptions:
   case object Cancelled extends ControlThrowable("Fiber cancelled.")
 
+  final class Pending extends RuntimeException("Fiber pending.")
+  
   final class Aborted(value: Any) extends ControlThrowable
 
   final class Unhandled(throwable: Throwable) extends RuntimeException(throwable)

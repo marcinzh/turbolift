@@ -58,4 +58,4 @@ case object PingPong extends Example:
     .handleWith(Pong.pinger(10))
     .handleWith(Ping.ponger)
     .handleWith(Console.handler)
-    .unsafeRun
+    .runIO

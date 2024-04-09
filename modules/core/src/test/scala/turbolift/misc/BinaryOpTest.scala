@@ -3,7 +3,6 @@ import org.specs2.mutable._
 import turbolift.!!
 import turbolift.effects.IO
 import turbolift.io.{Outcome, Cause}
-// import turbolift.mode.ST
 
 
 class BinaryOpTest extends Specification:
@@ -69,32 +68,6 @@ class BinaryOpTest extends Specification:
 
 
   "parallel" >> {
-    "*!" >> {
-      "left wins" >> {
-        "success *! success" >>{ (aw *! bl).unsafeRun === Outcome.Success((a, b)) }
-        "success *! cancel"  >>{ (aw *! cl).unsafeRun === Outcome.Cancelled }
-        "success *! failure" >>{ (aw *! gl).unsafeRun === Outcome.Failure(g) }
-        "cancel *! success"  >>{ (cw *! bl).unsafeRun === Outcome.Cancelled }
-        "cancel *! cancel"   >>{ (cw *! cl).unsafeRun === Outcome.Cancelled }
-        "cancel *! failure"  >>{ (cw *! gl).unsafeRun === Outcome.Cancelled }
-        "failure *! success" >>{ (fw *! bl).unsafeRun === Outcome.Failure(f) }
-        "failure *! cancel"  >>{ (fw *! cl).unsafeRun === Outcome.Failure(f) }
-        "failure *! failure" >>{ (fw *! gl).unsafeRun === Outcome.Failure(f) }
-      }
-
-      "right wins" >> {
-        "success *! success" >>{ (al *! bw).unsafeRun === Outcome.Success((a, b)) }
-        "success *! cancel"  >>{ (al *! cw).unsafeRun === Outcome.Cancelled }
-        "success *! failure" >>{ (al *! gw).unsafeRun === Outcome.Failure(g) }
-        "cancel *! success"  >>{ (cl *! bw).unsafeRun === Outcome.Cancelled }
-        "cancel *! cancel"   >>{ (cl *! cw).unsafeRun === Outcome.Cancelled }
-        "cancel *! failure"  >>{ (cl *! gw).unsafeRun === Outcome.Failure(g) }
-        "failure *! success" >>{ (fl *! bw).unsafeRun === Outcome.Failure(f) }
-        "failure *! cancel"  >>{ (fl *! cw).unsafeRun === Outcome.Cancelled }
-        "failure *! failure" >>{ (fl *! gw).unsafeRun === Outcome.Failure(g) }
-      }
-    }
-
     "&!" >> {
       "left wins" >> {
         "success &! success" >>{ (aw &! bl).unsafeRun === Outcome.Success(b) }

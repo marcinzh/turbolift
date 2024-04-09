@@ -8,7 +8,6 @@ ThisBuild / scalacOptions ++= Seq(
   "-Ykind-projector:underscores",
   "-Xfatal-warnings",
 )
-Compile / scalacOptions += "-Wnonunit-statement"
 
 val Deps = {
   val specs2_v = "5.4.0"

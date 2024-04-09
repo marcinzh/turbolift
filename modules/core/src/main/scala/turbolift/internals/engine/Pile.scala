@@ -39,6 +39,10 @@ private[internals] final class Pile private (
       maxHeight = maxHeight - topFrame.delta,
     )
 
+  //------------------------------------------------------------------------------
+  //@#@TODO separate `splitHi` & `splitLo` no longer needed. Make single `split`
+  //------------------------------------------------------------------------------
+
   //// `splitHi` doesn't use `Local` param. It's here only to make `splitHi` have the same type as `splitLo`
   def splitHi(divHeight: Int, oldLocal: Local): (Pile | Null, Local) =
     (splitHiForReal(divHeight), oldLocal)
@@ -96,7 +100,7 @@ private[internals] final class Pile private (
     s"$b$a"
 
 
-private[engine] object Pile:
+private object Pile:
   def pushFirst(step: Step, height: Int, isNested: Boolean, kind: FrameKind): Pile =
     new Pile(
       topFrame = Frame.pushFirst(step, isNested, kind),

@@ -1,9 +1,10 @@
 package turbolift.internals.primitives
-import scala.util.Try
+import java.util.concurrent.TimeUnit
 import turbolift.{!!, Signature}
 import turbolift.Computation.{Unsealed, Untyped}
 import turbolift.HandlerCases.Primitive
-import turbolift.io.Snap
+import turbolift.effects.IO
+import turbolift.io.{Snap, Fiber, Warp, OnceVarGet}
 import turbolift.interpreter.{Interpreter, Continuation}
 import turbolift.internals.engine.{Env}
 
@@ -17,7 +18,7 @@ private[turbolift] object ComputationCases:
   final class OrPar[A, U](val lhs: A !! U, val rhs: A !! U) extends Unsealed[A, U](Tags.OrPar)
   final class OrSeq[A, U](val lhs: A !! U, val rhsFun: () => A !! U) extends Unsealed[A, U](Tags.OrSeq)
   final class Impure[A, U](val thunk: () => A) extends Unsealed[A, U](Tags.Impure)
-  final class LocalGet(val interp: Interpreter.Untyped) extends Unsealed[Any, Any](Tags.LocalGet) { def cast[S] = asInstanceOf[S !! Any] }
+  final class LocalGet(val interp: Interpreter.Untyped) extends Unsealed[Any, Any](Tags.LocalGet)
   final class LocalPut[S](val interp: Interpreter.Untyped, val local: S) extends Unsealed[Unit, Any](Tags.LocalPut)
   final class LocalUpdate[A, S](val interp: Interpreter.Untyped, val fun: S => (A, S)) extends Unsealed[A, Any](Tags.LocalUpdate)
   final class Resume[A, B, S, U](val cont: Continuation[A, B, S, U], val value: A, val local: S) extends Unsealed[B, U](Tags.Resume)
@@ -25,12 +26,19 @@ private[turbolift] object ComputationCases:
   final class Capture[A, B, S, U](val interp: Interpreter.Untyped, val fun: ContFun[A, B, S, U]) extends Unsealed[A, U](Tags.Capture)
   final class Abort[A, U](val interp: Interpreter.Untyped, val value: Any) extends Unsealed[A, U](Tags.Abort)
   final class Handle[A, U, F[+_], G[+_], L, N](val body: F[A] !! (U & L), val handler: Primitive[F, G, L, N]) extends Unsealed[G[A], U & N](Tags.Handle)
-  final class DoIO[A, U](val thunk: () => A) extends Unsealed[A, U](Tags.DoIO)
-  final class DoTry[A, U](val thunk: () => A) extends Unsealed[Try[A], U](Tags.DoTry)
+  final class DoIO[A, B](val thunk: () => A, val isAttempt: Boolean) extends Unsealed[B, IO](Tags.DoIO)
   final class DoSnap[A, U](val body: A !! U) extends Unsealed[Snap[A], U](Tags.DoSnap)
   final class Unsnap[A, U](val snap: Snap[A]) extends Unsealed[A, U](Tags.Unsnap)
   final class EnvAsk[A](val fun: Env => A) extends Unsealed[A, Any](Tags.EnvAsk)
   final class EnvMod[A, U](val fun: Env => Env, val body: A !! U) extends Unsealed[A, U](Tags.EnvMod)
+  final class ForkFiber[A, U](val warp: Warp | Null, val comp: A !! U, val name: String) extends Unsealed[Fiber[A, U], Any](Tags.ForkFiber)
+  final class AwaitFiber[A, U](val fiber: Fiber.Untyped, val isCancel: Boolean, val isVoid: Boolean) extends Unsealed[A, U](Tags.AwaitFiber)
+  object CurrentFiber extends Unsealed[Fiber.Untyped, Any](Tags.CurrentFiber)
+  final class SpawnWarp[A, U](val warp: Warp | Null, val body: A !! (U & Warp), val name: String) extends Unsealed[A, U](Tags.SpawnWarp)
+  final class AwaitWarp(val warp: Warp, val isCancel: Boolean) extends Unsealed[Unit, IO](Tags.AwaitWarp)
+  final class AwaitOnceVar[A](val ovar: OnceVarGet[A]) extends Unsealed[A, IO](Tags.AwaitOnceVar)
+  final class Blocking[A, B](val thunk: () => A, isAttempt: Boolean) extends Unsealed[B, IO](Tags.Blocking)
+  final class Sleep(val length: Long, val unit: TimeUnit = TimeUnit.MILLISECONDS) extends Unsealed[Unit, IO](Tags.Sleep)
   object Yield extends Unsealed[Unit, Any](Tags.Yield)
 
 

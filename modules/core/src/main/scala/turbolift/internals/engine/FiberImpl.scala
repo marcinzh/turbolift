@@ -1,20 +1,19 @@
 package turbolift.internals.engine
 import scala.annotation.{tailrec, switch}
-import scala.util.{Try, Success => TrySuccess, Failure => TryFailure}
 import turbolift.{Computation, Signature}
-import turbolift.io.{Fiber, Snap, Outcome, Cause, Exceptions}
+import turbolift.io.{Fiber, Zipper, Warp, OnceVar, Snap, Outcome, Cause, Exceptions}
 import turbolift.internals.primitives.{Tags, ComputationCases => CC}
 import turbolift.internals.executor.Executor
 import turbolift.internals.engine.{StepCases => SC}
 import Cause.{Cancelled => CancelPayload}
 
 
-//// public for now, to make JOL work
-/*private[turbolift]*/ final class FiberImpl private (
+private[turbolift] final class FiberImpl private (
   private val constantBits: Byte,
-  private var owner: Owner,
-) extends Link with Fiber.Unsealed:
-  private var varyingBits: Byte = 0
+  private var theParent: WarpImpl | FiberImpl,
+  private var theName: String,
+  private val joinStack: Stack | Null = null,
+) extends ChildLink with Fiber.Unsealed:
   private var suspendedTag: Byte = 0
   private var suspendedPayload: Any = null
   private var suspendedStep: Step | Null = null
@@ -24,54 +23,53 @@ import Cause.{Cancelled => CancelPayload}
 
 
   def run(): Halt =
-    assert(isPending)
     assert(isSuspended)
-    outerLoop(suspendedEnv.nn.tickHigh, 0, new Cache)
+    theOwnership = Bits.Ownership_Self
+    outerLoop(0, 0, new Cache)
 
 
   @tailrec private def outerLoop(tickHigh: Short, lastTickLow: Short, cache: Cache): Halt =
-    if tickHigh >= 0 then
-      assert(isSuspended)
+    val nextTickLow: Short =
+      if lastTickLow == 0 then
+        if cancellationCheck() then
+          suspendAsCancelled()
+        suspendedEnv.nn.tickLow
+      else
+        lastTickLow
 
-      val nextTickLow: Short =
-        if lastTickLow == 0 then
-          if cancellationCheck() then
-            suspendAsCancelled()
-          suspendedEnv.nn.tickLow
+    val result =
+      val currentTag     = suspendedTag
+      val currentPayload = suspendedPayload.nn
+      val currentStep    = suspendedStep.nn
+      val currentStack   = suspendedStack.nn
+      val currentStore   = suspendedStore.nn
+      val currentEnv     = suspendedEnv.nn
+      clearSuspension()
+      try
+        innerLoop(
+          tick     = nextTickLow,
+          tag      = currentTag,
+          payload  = currentPayload,
+          step     = currentStep,
+          stack    = currentStack,
+          store    = currentStore,
+          env      = currentEnv,
+          cache    = cache,
+        )
+      catch e =>
+        // e.printStackTrace()
+        val e2 = if e.isInstanceOf[Exceptions.Panic] then e else new Exceptions.Unhandled(e)
+        val c = Cause(e2)
+        endOfFiber(0, Bits.Completion_Failure, c)
+
+    result match
+      case Halt.Reset =>
+        if tickHigh < suspendedEnv.nn.tickHigh then
+          outerLoop((tickHigh + 1).toShort, 0, cache)
         else
-          lastTickLow
-
-      val result =
-        val currentTag     = suspendedTag
-        val currentPayload = suspendedPayload.nn
-        val currentStep    = suspendedStep.nn
-        val currentStack   = suspendedStack.nn
-        val currentStore   = suspendedStore.nn
-        val currentEnv     = suspendedEnv.nn
-        clearSuspension()
-        try
-          innerLoop(
-            tick     = nextTickLow,
-            tag      = currentTag,
-            payload  = currentPayload,
-            step     = currentStep,
-            stack    = currentStack,
-            store    = currentStore,
-            env      = currentEnv,
-            cache    = cache,
-          )
-        catch e =>
-          // e.printStackTrace()
-          val e2 = if e.isInstanceOf[Exceptions.Panic] then e else new Exceptions.Unhandled(e)
-          val c = Cause(e2)
-          endOfFiber(0, Bits.Completion_Failure, c)
-
-      result match
-        case Halt.Reset => outerLoop((tickHigh - 1).toShort, 0, cache)
-        case Halt.Become(that, tickLow2) => that.outerLoop(tickHigh, tickLow2, cache)
-        case halt: Halt => halt
-    else
-      Halt.Yield(this)
+          Halt.Yield(this)
+      case Halt.Become(that, tickLow2) => that.outerLoop(tickHigh, tickLow2, cache)
+      case halt: Halt => halt
 
 
   //-------------------------------------------------------------------
@@ -196,14 +194,14 @@ import Cause.{Cancelled => CancelPayload}
             stackLo = stack,
             storeLo = store,
           )
-          val env2 = OpSplit.findTopmostEnv(stack2, store2)
+          val env2 = FiberImpl.findTopmostEnv(stack2, store2)
           loopStep(theResume.value, cont.step, stack2, store2, env2, cache)
 
         case Tags.Capture =>
           val theCapture = payload.asInstanceOf[CC.Capture[Any, Any, Any, Any]]
           stack.locatePrompt(theCapture.interp, cache)
           val (stackHi, storeHi, stepMid, stackLo, storeLo) = OpSplit.split(stack, store, cache.location)
-          val envLo = OpSplit.findTopmostEnv(stackLo, storeLo)
+          val envLo = FiberImpl.findTopmostEnv(stackLo, storeLo)
           stackHi.locatePrompt(theCapture.interp, cache)
           val cont = new ContImpl(stackHi, storeHi, step, cache.location)
           val comp2 = (theCapture.fun: @unchecked) match
@@ -221,8 +219,8 @@ import Cause.{Cancelled => CancelPayload}
           val theZipPar = payload.asInstanceOf[CC.ZipPar[Any, Any, Any, Any]]
           //@#@TODO Too conservative? Should check for `features.isParallel` at `mark`, instead of at stack top
           if stack.head.features.isParallel && env.isParallelismRequested then
-            val fiberLeft = new FiberImpl(Bits.ZipPar_Left, this)
-            val fiberRight = new FiberImpl(Bits.ZipPar_Right, this)
+            val fiberLeft = new FiberImpl(Bits.ZipPar_Left, this, "")
+            val fiberRight = new FiberImpl(Bits.ZipPar_Right, this, "")
             if tryStartRace(fiberLeft, fiberRight) then
               val (storeTmp, storeLeft) = OpCascaded.fork(stack, store)
               val (storeDown, storeRight) = OpCascaded.fork(stack, storeTmp)
@@ -248,8 +246,8 @@ import Cause.{Cancelled => CancelPayload}
         case Tags.OrPar =>
           val theOrPar = payload.asInstanceOf[CC.OrPar[Any, Any]]
           if stack.head.features.isParallel && env.isParallelismRequested then
-            val fiberLeft = new FiberImpl(Bits.OrPar_Left, this)
-            val fiberRight = new FiberImpl(Bits.OrPar_Right, this)
+            val fiberLeft = new FiberImpl(Bits.OrPar_Left, this, "")
+            val fiberRight = new FiberImpl(Bits.OrPar_Right, this, "")
             if tryStartRace(fiberLeft, fiberRight) then
               val (storeTmp, storeLeft) = OpCascaded.fork(stack, store)
               val (storeDown, storeRight) = OpCascaded.fork(stack, storeTmp)
@@ -268,7 +266,7 @@ import Cause.{Cancelled => CancelPayload}
 
         case Tags.OrSeq =>
           val theOrSeq = payload.asInstanceOf[CC.OrSeq[Any, Any]]
-          val fiberLeft = new FiberImpl(Bits.OrSeq, this)
+          val fiberLeft = new FiberImpl(Bits.OrSeq, this, "")
           if tryStartRaceOfOne(fiberLeft) then
             val (storeDown, storeLeft) = OpCascaded.fork(stack, store)
             suspendForRace(theOrSeq.rhsFun, step, stack, storeDown, env)
@@ -326,6 +324,16 @@ import Cause.{Cancelled => CancelPayload}
                     case Step.UnwindKind.Cancel => Snap.Cancelled
                     case Step.UnwindKind.Throw  => Snap.Failure(payload.asInstanceOf[Cause])
                   loopStep(payload2, step2, stack2, store2, env, cache)
+
+                case FrameKind.WARP =>
+                  val step3 = if theUnwind.kind.isPop then step2 else step
+                  suspend(step3.tag, payload, step3, stack2, store2, env)
+                  env.currentWarp.tryGetCancelledBy(this) match
+                    case Bits.WaiterSubscribed => Halt.ThreadDisowned
+                    case Bits.WaiterAlreadyCancelled => impossible //// Latch is set
+                    case Bits.WaiteeAlreadyCompleted =>
+                      clearSuspension()
+                      loopStep(payload, step3, stack2, store2, env, cache)
             else
               if theUnwind.kind.isPop then
                 val comp2 = prompt.interpreter.onReturn(payload, local)
@@ -345,25 +353,22 @@ import Cause.{Cancelled => CancelPayload}
           case Tags.DoIO =>
             val theDoIO = payload.asInstanceOf[CC.DoIO[Any, Any]]
             var result: Any = null
-            var throwable = null.asInstanceOf[Throwable]
-            try result = theDoIO.thunk()
-            catch case e: Throwable => throwable = e
-            if throwable eq null then
-              val payload2 = result
+            var throwable: Throwable | Null = null
+            try
+              result = theDoIO.thunk()
+            catch
+              case e => throwable = e
+            if throwable == null then
+              val payload2 = if theDoIO.isAttempt then Right(result) else result
               loopStep(payload2, step, stack, store, env, cache)
             else
-              val step2 = Step.Throw
-              val payload2 = Cause(throwable)
-              loopStep(payload2, step2, stack, store, env, cache)
-
-          case Tags.DoTry =>
-            val theDoTry = payload.asInstanceOf[CC.DoTry[Any, Any]]
-            var result: Any = null
-            var throwable = null.asInstanceOf[Throwable]
-            try result = theDoTry.thunk()
-            catch case e: Throwable => throwable = e
-            val payload2 = if throwable eq null then TrySuccess(result) else TryFailure(throwable)
-            loopStep(payload2, step, stack, store, env, cache)
+              if theDoIO.isAttempt then
+                val payload2 = Left(throwable)
+                loopStep(payload2, step, stack, store, env, cache)
+              else
+                val step2 = Step.Throw
+                val payload2 = Cause(throwable.nn)
+                loopStep(payload2, step2, stack, store, env, cache)
 
           case Tags.DoSnap =>
             val theDoSnap = payload.asInstanceOf[CC.DoSnap[Any, Any]]
@@ -385,7 +390,7 @@ import Cause.{Cancelled => CancelPayload}
                 val step2 = theAborted.prompt.unwind
                 loopStep(payload2, step2, stack, store, env, cache)
               case Snap.Cancelled =>
-                selfCancel()
+                cancelBySelf()
                 loopCancel(stack, store, env, cache)
 
           case Tags.EnvAsk =>
@@ -403,6 +408,153 @@ import Cause.{Cancelled => CancelPayload}
               val (stack2, store2) = OpPush.pushNested(stack, store, step, Prompt.io, location, env2.asLocal, FrameKind.plain)
               loopComp(theEnvMod.body, SC.Pop, stack2, store2, env2, cache)
 
+          case Tags.AwaitOnceVar =>
+            val theOnceVarGet = payload.asInstanceOf[CC.AwaitOnceVar[Any]]
+            val ovar = theOnceVarGet.ovar.asImpl
+            val value = ovar.theContent
+            if OnceVarImpl.Empty != value then
+              loopStep(value, step, stack, store, env, cache)
+            else
+              suspend(Tags.NotifyOnceVar, ovar, step, stack, store, env)
+              ovar.tryGetAwaitedBy(this) match
+                case Bits.WaiterSubscribed => Halt.ThreadDisowned
+                case Bits.WaiterAlreadyCancelled =>
+                  clearSuspension()
+                  loopCancel(stack, store, env, cache)
+                case Bits.WaiteeAlreadyCompleted =>
+                  clearSuspension()
+                  val value = ovar.theContent
+                  loopStep(value, step, stack, store, env, cache)
+
+          case Tags.NotifyOnceVar =>
+            val ovar = payload.asInstanceOf[OnceVarImpl]
+            val value = ovar.theContent
+            loopStep(value, step, stack, store, env, cache)
+
+          case Tags.ForkFiber =>
+            val theForkFiber = payload.asInstanceOf[CC.ForkFiber[Any, Any]]
+            val warp = if theForkFiber.warp != null then theForkFiber.warp.nn.asImpl else env.currentWarp
+            val (storeDown, storeFork) = OpCascaded.fork(stack, store)
+            val stackFork = stack.makeFork
+            val child = new FiberImpl(Bits.Tree_Explicit.toByte, warp, theForkFiber.name, stackFork)
+            child.suspend(theForkFiber.comp.tag, theForkFiber.comp, SC.Pop, stackFork, storeFork, env)
+            if warp.tryAddFiber(child) then
+              child.resume()
+              loopStep(child, step, stack, storeDown, env, cache)
+            else
+              child.suspendAsCancelled()
+              loopStep(child, step, stack, store, env, cache)
+
+          case Tags.AwaitFiber =>
+            val theAwaitFiber = payload.asInstanceOf[CC.AwaitFiber[Any, Any]]
+            val waitee = theAwaitFiber.fiber.asImpl
+            if this != waitee then
+              val tag2: Byte = if theAwaitFiber.isVoid then Tags.NotifyFiberVoid else Tags.NotifyFiber
+              suspend(tag2, waitee, step, stack, store, env)
+              val tried =
+                if theAwaitFiber.isCancel
+                then waitee.tryGetCancelledBy(this)
+                else waitee.tryGetAwaitedBy(this)
+              tried match
+                case Bits.WaiterSubscribed => Halt.ThreadDisowned
+                case Bits.WaiterAlreadyCancelled =>
+                  clearSuspension()
+                  loopCancel(stack, store, env, cache)
+                case Bits.WaiteeAlreadyCompleted =>
+                  clearSuspension()
+                  val payload2 = if theAwaitFiber.isVoid then () else waitee.getOrMakeZipper
+                  loopStep(payload2, step, stack, store, env, cache)
+            else
+              if theAwaitFiber.isCancel then
+                cancelBySelf()
+                loopCancel(stack, store, env, cache)
+              else
+                val zombie = new Blocker.Zombie(this)
+                suspend(step.tag, zombie, step, stack, store, env)
+                if tryGetBlocked() then
+                  Halt.ThreadDisowned
+                else
+                  clearSuspension()
+                  loopCancel(stack, store, env, cache)
+
+          case Tags.NotifyFiber =>
+            val waitee = payload.asInstanceOf[FiberImpl]
+            val zipper = waitee.getOrMakeZipper
+            loopStep(zipper, step, stack, store, env, cache)
+
+          case Tags.NotifyFiberVoid =>
+            loopStep((), step, stack, store, env, cache)
+
+          case Tags.CurrentFiber =>
+            loopStep(this, step, stack, store, env, cache)
+
+          case Tags.SpawnWarp =>
+            val theSpawnWarp = payload.asInstanceOf[CC.SpawnWarp[Any, Any]]
+            val oldWarp = env.currentWarp
+            val newWarp = new WarpImpl(oldWarp, theSpawnWarp.name)
+            if oldWarp.tryAddWarp(newWarp) then
+              val location = stack.locateIO
+              val env2 = env.copy(currentWarp = newWarp)
+              val (stack2, store2) = OpPush.pushNested(stack, store, step, Prompt.io, location, env2.asLocal, FrameKind.warp)
+              loopComp(theSpawnWarp.body, SC.Pop, stack2, store2, env2, cache)
+            else
+              impossible
+
+          case Tags.AwaitWarp =>
+            val theAwaitWarp = payload.asInstanceOf[CC.AwaitWarp]
+            val warp = theAwaitWarp.warp.asImpl
+            suspend(step.tag, (), step, stack, store, env)
+            val tried =
+              if theAwaitWarp.isCancel
+              then warp.tryGetCancelledBy(this)
+              else warp.tryGetAwaitedBy(this)
+            tried match
+              case Bits.WaiterSubscribed => Halt.ThreadDisowned
+              case Bits.WaiterAlreadyCancelled =>
+                clearSuspension()
+                loopCancel(stack, store, env, cache)
+              case Bits.WaiteeAlreadyCompleted =>
+                clearSuspension()
+                loopStep((), step, stack, store, env, cache)
+
+          case Tags.Blocking =>
+            val theBlocking = payload.asInstanceOf[CC.Blocking[Any, Any]]
+            val blocker = new Blocker.Interruptible(this, theBlocking.thunk)
+            suspend(Tags.NotifyBlocker, blocker, step, stack, store, env)
+            if tryGetBlocked() then
+              blocker.block()
+              Halt.ThreadDisowned
+            else
+              clearSuspension()
+              loopCancel(stack, store, env, cache)
+
+          case Tags.Sleep =>
+            val theSleep = payload.asInstanceOf[CC.Sleep]
+            val blocker = new Blocker.Sleeper(this)
+            suspend(Tags.NotifyBlocker, blocker, step, stack, store, env)
+            if tryGetBlocked() then
+              blocker.sleep(theSleep.length, theSleep.unit)
+              Halt.ThreadDisowned
+            else
+              clearSuspension()
+              loopCancel(stack, store, env, cache)
+
+          case Tags.NotifyBlocker =>
+            val blocker = payload.asInstanceOf[Blocker]
+            val e = blocker.throwable
+            if e == null then
+              val payload2 = blocker.result
+              loopStep(payload2, step, stack, store, env, cache)
+            else
+              val step2 = Step.Throw
+              val payload2 = Cause(e)
+              loopStep(payload2, step2, stack, store, env, cache)
+
+          case Tags.NotifyBlockerAttempt =>
+            val blocker = payload.asInstanceOf[Blocker]
+            val payload2 = blocker.toEither
+            loopStep(payload2, step, stack, store, env, cache)
+
           case Tags.Yield =>
             suspend(step.tag, (), step, stack, store, env)
             Halt.Yield(this)
@@ -417,58 +569,107 @@ import Cause.{Cancelled => CancelPayload}
   //-------------------------------------------------------------------
 
 
-  private def endOfFiber(tick: Short, initialCompletion: Int, initialPayload: Any): Halt.Loop =
-    //// Set completion & payload
-    synchronized {
-      if Bits.isCancellationUnreceived(varyingBits) then
-        //// If cancellation was signalled before reaching completion, it overrides the completion.
-        suspendedPayload = CancelPayload
-        varyingBits = (varyingBits | Bits.Completion_Cancelled | Bits.Cancellation_Received).toByte
+  private def endOfFiber(tick: Short, completion: Int, initialPayload: Any): Halt.Loop =
+    val payload =
+      if isExplicit then
+        ZipperImpl.make(joinStack.nn, initialPayload, completion)
       else
-        suspendedPayload = initialPayload
-        varyingBits = (varyingBits | initialCompletion).toByte
+        initialPayload
+
+    val cancelPayload =
+      if isExplicit then
+        ZipperCases.Cancelled
+      else
+        CancelPayload
+
+    synchronized {
+      if isCancellationUnlatched then
+        //// If cancellation was signalled before reaching completion, it overrides the completion.
+        varyingBits = (varyingBits | Bits.Completion_Cancelled | Bits.Cancellation_Latch).toByte
+        suspendedPayload = cancelPayload
+      else
+        varyingBits = (varyingBits | completion).toByte
+        suspendedPayload = payload
     }
 
-    //// If this is a RACER, notify the ARBITER.
-    val isLastRacer =
-      if isRacer then
-        endRace()
-      else
-        false
+    //// As a RACER:
+    val isLastRacer = if isRacer then endRace() else false
 
-    //// Pass the torch
-    owner match
+    //// As a WAITEE:
+    notifyAllWaiters()
+
+    //// As a RACER or CHILD:
+    theParent match
       case arbiter: FiberImpl =>
         if isLastRacer then
           Halt.Become(arbiter, tick)
         else
           retire
 
-      case f: AnyCallback =>
-        f(makeOutcome)
-        retire
-
-      case null =>
-        synchronized { notify() }
+      case warp: WarpImpl =>
+        warp.removeFiber(this)
+        if isRoot then
+          warp.unsafeCancelAndForget()
         retire
 
 
   private def retire: Halt = Halt.retire(isReentry)
 
 
-  private def makeOutcome[A]: Outcome[A] =
+  def makeOutcome[A]: Outcome[A] = makeOutcome(false)
+  
+
+  private def makeOutcome[A](void: Boolean): Outcome[A] =
     getCompletion match
-      case Bits.Completion_Success   => Outcome.Success(suspendedPayload.asInstanceOf[A])
+      case Bits.Completion_Success   => Outcome.Success((if void then null else suspendedPayload).asInstanceOf[A])
       case Bits.Completion_Failure   => Outcome.Failure(suspendedPayload.asInstanceOf[Cause])
       case Bits.Completion_Cancelled => Outcome.Cancelled
 
 
-  def unsafeAwait[A](): Outcome[A] =
+  private def getOrMakeZipper: ZipperImpl =
+    if isExplicit then
+      suspendedPayload.asInstanceOf[ZipperImpl]
+    else
+      ZipperImpl.make(Stack.initial, suspendedPayload, getCompletion)
+
+
+  private def getOrMakeZipper(payload: Any, completion: Int): ZipperImpl =
+    if isExplicit then
+      suspendedPayload.asInstanceOf[ZipperImpl]
+    else
+      ZipperImpl.make(Stack.initial, payload, completion)
+
+
+  //-------------------------------------------------------------------
+  // Awaiting
+  //-------------------------------------------------------------------
+
+
+  private def tryGetBlocked(): Boolean =
     synchronized {
-      if isPending then
-        wait()
+      if isCancellationUnlatched then
+        setCancellationLatch()
+        false
+      else
+        theOwnership = Bits.Ownership_Blocker
+        true
     }
-    makeOutcome
+
+
+  private def tryGetAwaitedBy(waiter: FiberImpl): Int =
+    waiter.synchronized {
+      if isCancellationUnlatched then
+        setCancellationLatch()
+        Bits.WaiterAlreadyCancelled
+      else
+        synchronized {
+          if isPending then
+            subscribeWaiterUnsync(waiter)
+            Bits.WaiterSubscribed
+          else
+            Bits.WaiteeAlreadyCompleted
+         }
+    }
 
 
   //-------------------------------------------------------------------
@@ -476,59 +677,149 @@ import Cause.{Cancelled => CancelPayload}
   //-------------------------------------------------------------------
 
 
+  private[engine] def isCancellationUnlatched: Boolean = Bits.isCancellationUnlatched(varyingBits)
+
+
+  private[engine] def setCancellationLatch(): Unit =
+    varyingBits = (varyingBits | Bits.Cancellation_Latch).toByte
+
+
   private def cancellationCheck(): Boolean =
     synchronized {
-      if Bits.isCancellationUnreceived(varyingBits) then
-        varyingBits = (varyingBits | Bits.Cancellation_Received).toByte
+      if isCancellationUnlatched then
+        setCancellationLatch()
         true
       else
         false
     }
 
 
-  private def selfCancel(): Unit =
+  private def cancelBySelf(): Unit =
     synchronized {
-      varyingBits = (varyingBits | Bits.Cancellation_Sent | Bits.Cancellation_Received).toByte
+      varyingBits = (varyingBits | Bits.Cancellation_Signal | Bits.Cancellation_Latch).toByte
     }
 
 
-  private def cancelRacerTree(): Unit =
-    cancelLoop(this, Bits.Racer_None)
+  private def cancelByWinner(): Unit =
+    deepCancelLoop(this)
 
 
-  @tailrec private def cancelLoop(limit: FiberImpl, comingFromRacer: Int): Unit =
-    val nextToVisit: FiberImpl | Null = comingFromRacer match
-      case Bits.Racer_None =>
-        //// coming from parent
-        synchronized {
-          val bits = varyingBits
-          if Bits.isPending(bits) && !Bits.isCancellationSent(bits) then
-            varyingBits = (bits | Bits.Cancellation_Sent).toByte
-            Bits.getRacer(bits) match
-              case Bits.Racer_None => null
-              case Bits.Racer_Right => getRightRacer
-              case _ => getLeftRacer
-          else
-            null
-        }
-      case Bits.Racer_Left =>
-        synchronized {
-          if Bits.isPending(varyingBits) then
-            Bits.getRacer(varyingBits) match
-              case Bits.Racer_Right => getRightRacer
-              case _ => null
-          else
-            null
-        }
-      case Bits.Racer_Right => null
+  private def tryGetCancelledBy(canceller: FiberImpl): Int =
+    var savedLeftRacer: WaiterLink | Null = null
+    var savedRightRacer: WaiterLink | Null = null
+    var savedVaryingBits: Byte = 0
+    var savedOwnership: Byte = 0
+    var savedPayload: Any = null
+    var willDescend = false
 
-    if nextToVisit != null then
-      //// descent to first/next racer
-      nextToVisit.cancelLoop(limit, Bits.Racer_None)
+    val result =
+      canceller.synchronized {
+        if canceller.isCancellationUnlatched then
+          canceller.setCancellationLatch()
+          Bits.WaiterAlreadyCancelled
+        else
+          synchronized {
+            if isPending then
+              if !isCancelled then
+                varyingBits = (varyingBits | Bits.Cancellation_Signal).toByte
+                willDescend = true
+                savedLeftRacer = prevWaiter
+                savedRightRacer = nextWaiter
+                savedOwnership = theOwnership
+                savedVaryingBits = varyingBits
+                savedPayload = suspendedPayload
+              subscribeWaiterUnsync(canceller)
+              Bits.WaiterSubscribed
+            else
+              Bits.WaiteeAlreadyCompleted
+           }
+      }
+
+    if willDescend then
+      val racer = doDescend(savedLeftRacer, savedRightRacer, savedVaryingBits, savedOwnership, savedPayload)
+      if racer != null then
+        racer.deepCancelLoop(this)
+    result
+
+
+  //// Same as `tryGetCancelledBy(canceller)`, except:
+  //// - doesn't synchronize on the `canceller`
+  //// - doesn't subscribe the `canceller`
+  //// - doesn't initiate `deepCancelLoop`
+  //// - returns first pending racer, instead of Int code
+  private[engine] override def deepCancelDown(): ChildLink | Null =
+    var savedLeftRacer: WaiterLink | Null = null
+    var savedRightRacer: WaiterLink | Null = null
+    var savedVaryingBits: Byte = 0
+    var savedOwnership: Byte = 0
+    var savedPayload: Any = null
+
+    val willDescend =
+      synchronized {
+        if isPendingAndNotCancelled then
+          varyingBits = (varyingBits | Bits.Cancellation_Signal).toByte
+          savedLeftRacer = prevWaiter
+          savedRightRacer = nextWaiter
+          savedOwnership = theOwnership
+          savedVaryingBits = varyingBits
+          savedPayload = suspendedPayload
+          true
+        else
+          false
+      }
+
+    if willDescend then
+      doDescend(savedLeftRacer, savedRightRacer, savedVaryingBits, savedOwnership, savedPayload)
     else
-      //// backtrack to arbiter
-      if this != limit then
-        getArbiter.cancelLoop(limit, whichRacerAmI)
+      null
+
+
+  private[engine] override def deepCancelRight(): ChildLink | Null =
+    if whichRacerAmI == Bits.Racer_Left then
+      getArbiter.tryGetRightRacer
+    else
+      //// Equals null for the right RACER, bcoz racer's parent is a fiber, not a warp.
+      nextChild
+
+
+  private def tryGetRightRacer: FiberImpl | Null =
+    synchronized {
+      if isPending && (getArbiterBits == Bits.Arbiter_Right) then
+        getRightRacer
+      else
+        null
+    }
+
+
+  private[engine] override def deepCancelUp(): ChildLink =
+    theParent match
+      case fiber: FiberImpl => fiber
+      case warp: WarpImpl => warp
+
+
+  private def doDescend(
+    savedLeftRacer: WaiterLink | Null,
+    savedRightRacer: WaiterLink | Null,
+    savedVaryingBits: Byte,
+    savedOwnership: Byte,
+    savedPayload: Any,
+  ): FiberImpl | Null =
+    savedOwnership match
+      case Bits.Ownership_Self =>
+        Bits.getArbiter(savedVaryingBits) match
+          case Bits.Arbiter_None => null
+          case Bits.Arbiter_Right => savedRightRacer.asInstanceOf[FiberImpl]
+          case _ => savedLeftRacer.asInstanceOf[FiberImpl]
+
+      case Bits.Ownership_Waitee =>
+        val waitee = savedPayload.asInstanceOf[Waitee]
+        waitee.unsubscribeWaiter(this)
+        null
+
+      case Bits.Ownership_Blocker =>
+        val blocker = savedPayload.asInstanceOf[Blocker]
+        blocker.unblock()
+        null
 
 
   //-------------------------------------------------------------------
@@ -544,19 +835,15 @@ import Cause.{Cancelled => CancelPayload}
     tryStartRaceExt(leftRacer, null, Bits.Racer_Left)
 
   private def tryStartRaceExt(leftRacer: FiberImpl, rightRacer: FiberImpl | Null, awaitingBits: Int): Boolean =
-    val ok = 
-      synchronized {
-        //// Since we are synchronizing, let's check for Cancel signal too
-        if Bits.isCancellationUnreceived(varyingBits) then
-          varyingBits = (varyingBits | Bits.Cancellation_Received).toByte
-          false
-        else
-          varyingBits = (varyingBits | awaitingBits).toByte
-          true
-      }
-    if ok then
-      setRacers(leftRacer, rightRacer)
-    ok
+    synchronized {
+      if isCancellationUnlatched then
+        setCancellationLatch()
+        false
+      else
+        varyingBits = (varyingBits | awaitingBits).toByte
+        setRacers(leftRacer, rightRacer)
+        true
+    }
 
 
   //// Called by the RACER on its ARBITER
@@ -586,7 +873,7 @@ import Cause.{Cancelled => CancelPayload}
       case Bits.Tree_ZipPar =>
         if loser != null then
           if getCompletion != Bits.Completion_Success then
-            loser.cancelRacerTree()
+            loser.cancelByWinner()
           false
         else
           arbiter.endRaceForZipPar()
@@ -595,7 +882,7 @@ import Cause.{Cancelled => CancelPayload}
       case Bits.Tree_OrPar =>
         if loser != null then
           if getCompletion != Bits.Completion_Cancelled then
-            loser.cancelRacerTree()
+            loser.cancelByWinner()
           false
         else
           arbiter.endRaceForOrPar()
@@ -619,7 +906,7 @@ import Cause.{Cancelled => CancelPayload}
       case Bits.Raced_SS => endRaceWithSuccessBoth(payloadLeft, payloadRight)
       case Bits.Raced_FC | Bits.Raced_FS => endRaceWithFailure(payloadLeft)
       case Bits.Raced_SF | Bits.Raced_CF => endRaceWithFailure(payloadRight)
-      case _ => endRaceCancelled()
+      case _ => endRaceWithCancelled()
 
 
   private def endRaceForOrPar(): Unit =
@@ -635,7 +922,7 @@ import Cause.{Cancelled => CancelPayload}
       case Bits.Raced_CS => endRaceWithSuccessOne(payloadRight)
       case Bits.Raced_FC => endRaceWithFailure(payloadLeft)
       case Bits.Raced_CF => endRaceWithFailure(payloadRight)
-      case _ => endRaceCancelled()
+      case _ => endRaceWithCancelled()
 
 
   private def endRaceForOrSeq(): Unit =
@@ -672,8 +959,8 @@ import Cause.{Cancelled => CancelPayload}
     suspendAsSuccessComp(comp)
 
 
-  private def endRaceCancelled(): Unit =
-    selfCancel()
+  private def endRaceWithCancelled(): Unit =
+    cancelBySelf()
     suspendAsCancelled()
 
 
@@ -686,12 +973,12 @@ import Cause.{Cancelled => CancelPayload}
   //-------------------------------------------------------------------
 
 
-  private def isSuspended: Boolean = suspendedStack != null
-
-
-  private def resume(): Unit =
+  def resume(): Unit =
     assert(isSuspended)
     suspendedEnv.nn.executor.resume(this)
+
+
+  private def isSuspended: Boolean = suspendedStack != null
 
 
   private def suspendInitial(comp: AnyComp, env: Env): Unit =
@@ -766,35 +1053,111 @@ import Cause.{Cancelled => CancelPayload}
 
 
   //-------------------------------------------------------------------
+  // Public API
+  //-------------------------------------------------------------------
+
+
+  override def toString: String = name
+
+
+  override def name: String =
+    if theName.isEmpty then
+      theName = s"Fib#%04X".format(hashCode & 0xFFFF)
+    theName
+
+
+  override def parent: Fiber.Untyped | Warp =
+    theParent match
+      case fiber: FiberImpl => fiber.untyped
+      case warp: WarpImpl => warp
+
+
+  override def unsafeCancelAndForget(): Unit = doCancelAndForget()
+
+
+  override def unsafeStatus(): Fiber.Status =
+    var savedLeftLink: WaiterLink | Null = null
+    var savedRightLink: WaiterLink | Null = null
+    var savedVaryingBits: Byte = 0
+    var savedOwnership: Byte = 0
+    var savedPayload: Any = null
+    synchronized {
+      savedVaryingBits = varyingBits
+      savedOwnership = theOwnership
+      savedPayload = suspendedPayload
+      savedLeftLink = prevWaiter
+      savedRightLink = nextWaiter
+    }
+    if Bits.isPending(savedVaryingBits) then
+      val role =
+        def l = savedLeftLink.nn.asFiber
+        def r = savedRightLink.nn.asFiber
+        def w = savedPayload.asInstanceOf[Fiber.Untyped | Warp | OnceVar.Untyped]
+        import Fiber.Role
+        theOwnership match
+          case Bits.Ownership_Self =>
+            Bits.getArbiter(savedVaryingBits) match
+              case Bits.Arbiter_None => if savedLeftLink == null then Role.Runner else Role.Standby
+              case Bits.Arbiter_Left => Role.Arbiter(List(l))
+              case Bits.Arbiter_Right => Role.Arbiter(List(r))
+              case Bits.Arbiter_Both => Role.Arbiter(List(l, r))
+          case Bits.Ownership_Waitee => Role.Waiter(w)
+          case Bits.Ownership_Blocker => Role.Blocker
+      val isCancelled = Bits.isCancellationSignalled(savedVaryingBits)
+      Fiber.Status.Pending(role, isCancelled = isCancelled, isRacer = isRacer)
+    else
+      Fiber.Status.Completed(makeOutcome(void = true))
+
+
+  override def unsafePoll(): Option[Zipper.Untyped] =
+    var savedBits: Int = 0
+    var savedPayload: Any = null
+    synchronized {
+      savedBits = varyingBits
+      savedPayload = suspendedPayload
+    }
+    Bits.getCompletion(savedBits) match
+      case Bits.Completion_Pending => None
+      case completion => Some(getOrMakeZipper(savedPayload, completion))
+
+
+  //-------------------------------------------------------------------
   // Misc
   //-------------------------------------------------------------------
 
 
-  override def toString: String = s"Fiber#%08x".format(hashCode)
-
-  private def isPending: Boolean = Bits.isPending(varyingBits)
   private def isRoot: Boolean = Bits.isRoot(constantBits)
+  private def isExplicit: Boolean = Bits.isExplicit(constantBits)
   private def isReentry: Boolean = Bits.isReentry(constantBits)
-  private def getCompletion: Int = varyingBits & Bits.Completion_Mask
+  private def getCompletion: Int = Bits.getCompletion(varyingBits)
+  private def getArbiterBits: Int = Bits.getArbiter(varyingBits)
 
   private def whichRacerAmI: Int = constantBits & Bits.Racer_Mask
   private def isRacer: Boolean = whichRacerAmI != Bits.Racer_None
-  private def getArbiter: FiberImpl = owner.asInstanceOf[FiberImpl]
-  private def getLeftRacer: FiberImpl = linkLeft.asInstanceOf[FiberImpl]
-  private def getRightRacer: FiberImpl = linkRight.asInstanceOf[FiberImpl]
-  private def clearRacers(): Unit = clearLinks()
+  private def getArbiter: FiberImpl = theParent.asInstanceOf[FiberImpl]
+  private def getLeftRacer: FiberImpl = prevWaiter.asInstanceOf[FiberImpl]
+  private def getRightRacer: FiberImpl = nextWaiter.asInstanceOf[FiberImpl]
+  private def clearRacers(): Unit = clearWaiterLink()
   private def setRacers(left: FiberImpl, right: FiberImpl | Null): Unit =
-    linkLeft = left
-    linkRight = right
+    prevWaiter = left
+    nextWaiter = right
 
 
-private[internals] object FiberImpl:
+private[turbolift] object FiberImpl:
   type Callback = Outcome[Nothing] => Unit
 
-  def create(comp: Computation[?, ?], executor: Executor, isReentry: Boolean, owner: Callback | Null = null): FiberImpl =
+  def create(comp: Computation[?, ?], executor: Executor, name: String, isReentry: Boolean, callback: Callback): FiberImpl =
     val reentryBit = if isReentry then Bits.Const_Reentry else 0
     val constantBits = (Bits.Tree_Root | reentryBit).toByte
-    val fiber = new FiberImpl(constantBits, owner.asInstanceOf[AnyCallback])
-    val env = Env.default(executor = executor)
+    val warp = WarpImpl.initial()
+    val fiber = new FiberImpl(constantBits, warp, name)
+    warp.tryAddFiber(fiber)
+    warp.initMain(fiber, callback.asInstanceOf[AnyCallback])
+    val env = Env.initial(warp, executor)
     fiber.suspendInitial(comp.untyped, env)
     fiber
+
+
+  def findTopmostEnv(stack: Stack, store: Store): Env =
+    val loc = stack.locateIO
+    store.get(loc).asEnv

@@ -5,7 +5,7 @@ import turbolift.internals.auxx.IdConst._
 import turbolift.internals.effect.AnyChoice
 import turbolift.internals.primitives.Primitives
 import turbolift.internals.executor.Executor
-import turbolift.io.Outcome
+import turbolift.io.{Outcome, Fiber, Warp}
 import turbolift.mode.Mode
 
 
@@ -117,9 +117,28 @@ sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift]
   /** Widens the set of requested effects. */
   final def upCast[U2 <: U] = this: A !! U2
 
+  final def cast[A2, U2]: A2 !! U2 = asInstanceOf[Computation[A2, U2]]
+
   private[turbolift] final def untyped = this.asInstanceOf[Any !! Any]
 
   final override def toString = s"turbolift.Computation@${hashCode.toHexString}"
+
+  //---------- IO operations in postfix syntax ----------
+
+  /** Run this computation in a new fiber. */
+  final def fork: Fiber[A, U] !! (IO & Warp) = Fiber.fork(this)
+
+  /** Like [[fork]], but the fiber is created as a child of specific warp, rather than the current warp. */
+  final def forkAt(warp: Warp): Fiber[A, U] !! IO = Fiber.forkAt(warp)(this)
+
+  final def onFailure[U2 <: U & IO](f: Throwable => Unit !! U2): A !! U2 = IO.onFailure(this)(f)
+
+  final def onCancel[U2 <: U & IO](comp: Unit !! U2): A !! U2 = IO.onCancel(this)(comp)
+
+  final def guarantee[U2 <: U & IO](release: Unit !! U2): A !! U2 = IO.guarantee(release)(this)
+
+  /** Syntax for giving names to fibers. */
+  final def named[A2 >: A, U2 <: U](name: String) = new Computation.NamedSyntax[A2, U2](this, name)
 
 
 /**
@@ -249,20 +268,26 @@ object Computation:
 
   extension [A](thiz: Computation[A, Any])
     /** Runs the computation, provided that it requests no effects. */
-    def run(using mode: Mode = Mode.default): A = Executor.pick(mode).runSync(thiz).get
+    def run(using mode: Mode = Mode.default): A = Executor.pick(mode).runSync(thiz, "").get
 
-    def runST: A = Executor.ST.runSync(thiz).get
-    def runMT: A = Executor.MT.runSync(thiz).get
+    def runST: A = Executor.ST.runSync(thiz, "").get
+    def runMT: A = Executor.MT.runSync(thiz, "").get
 
 
-  extension [A, U >: IO](thiz: Computation[A, U])
+  extension [A](thiz: Computation[A, IO & Warp])
     /** Runs the computation, provided that it requests IO effect only, or none at all. */
-    def unsafeRun(using mode: Mode = Mode.default): Outcome[A] = Executor.pick(mode).runSync(thiz)
+    def runIO(using mode: Mode = Mode.default): Outcome[A] = Executor.pick(mode).runSync(thiz, "")
 
-    def unsafeRunST: Outcome[A] = Executor.ST.runSync(thiz)
-    def unsafeRunMT: Outcome[A] = Executor.MT.runSync(thiz)
+    def runAsync(using mode: Mode = Mode.default)(callback: Outcome[A] => Unit): Unit = Executor.pick(mode).runAsync(thiz, "", callback)
 
-    def unsafeRunAsync(using mode: Mode = Mode.default)(callback: Outcome[A] => Unit): Unit = Executor.pick(mode).runAsync(thiz, callback)
+    def runIOST: Outcome[A] = Executor.ST.runSync(thiz, "")
+    def runIOMT: Outcome[A] = Executor.MT.runSync(thiz, "")
+
+    /*@deprecated*/ def unsafeRun(using mode: Mode = Mode.default): Outcome[A] = runIO
+    /*@deprecated*/ def unsafeRunAsync(using mode: Mode = Mode.default)(callback: Outcome[A] => Unit): Unit = runAsync(callback)
+    /*@deprecated*/ def unsafeRunST: Outcome[A] = Executor.ST.runSync(thiz, "")
+    /*@deprecated*/ def unsafeRunMT: Outcome[A] = Executor.MT.runSync(thiz, "")
+
 
 
   extension [A, U](thiz: Computation[A, U])
@@ -316,8 +341,7 @@ object Computation:
       thiz.flatMap(if _ then thenBody else elseBody)
 
 
-
-  //---------- Apply ----------
+  //---------- Syntax ----------
 
 
   final class HandleWithSyntax[A, U, V](thiz: A !! U):
@@ -335,3 +359,13 @@ object Computation:
     def apply[F[+_], L, N, V2 <: V & N](h: Handler[Const[A], F, L, N])(implicit ev: CanPartiallyHandle[V, U, L]): F[A] !! V2 =
       const(h)
 
+
+  final class NamedSyntax[A, U](val comp: Computation[A, U], val name: String):
+    def fork: Fiber[A, U] !! (IO & Warp) = Fiber.named(name).fork(comp)
+    def forkAt(warp: Warp): Fiber[A, U] !! IO = Fiber.named(name).forkAt(warp)(comp)
+    def run(using mode: Mode = Mode.default, ev: Any <:< U): Outcome[A] = Executor.pick(mode).runSync(comp, name)
+
+  object NamedSyntax:
+    extension [A](thiz: NamedSyntax[A, IO & Warp])
+      def runIO(using mode: Mode = Mode.default): Outcome[A] = Executor.pick(mode).runSync(thiz.comp, thiz.name)
+      def runAsync(using mode: Mode = Mode.default)(callback: Outcome[A] => Unit): Unit = Executor.pick(mode).runAsync(thiz.comp,thiz. name, callback)

@@ -99,5 +99,5 @@ case object HandlerShadowing extends Example:
       println(line)
       println(title)
       println(line)
-      prog.handleWith(handler).unsafeRun
+      prog.handleWith(handler).runIO.get
       println

@@ -3,14 +3,11 @@ import turbolift.Signature
 import turbolift.interpreter.Interpreter
 
 
+//@#@TODO obsolete, just use Interpreter.Untyped
 private[turbolift] final class Prompt(val interpreter: Interpreter.Untyped):
   val features = interpreter.features
   val localCount: Byte = if features.isStateful then 1 else 0
   val unwind: Step = StepCases.Unwind(Step.UnwindKind.Abort, this)
-  
-  //@#@TODO
-  private var lazyWarp: WarpImpl = null.asInstanceOf[WarpImpl]
-
 
   def isIo = features.isIo
   def signatures = interpreter.signatures
@@ -24,5 +21,5 @@ private[turbolift] final class Prompt(val interpreter: Interpreter.Untyped):
   override def toString = signatures.mkString("&")
 
 
-object Prompt:
+private object Prompt:
   val io: Prompt = new Prompt(Interpreter.Io.untyped)

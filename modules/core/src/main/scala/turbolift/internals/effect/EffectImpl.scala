@@ -11,8 +11,6 @@ final class EffectImpl[Fx](sigs: Array[Signature]):
   // private[turbolift] def signatures: Array[Signature]
   sealed trait ThisInterpreter extends IC.Unsealed:
     final override type Elim = Fx
-    //@#@
-    // final override type ThisEffect = Fx
     private[turbolift] final override def enumSignatures: Array[Signature] = sigs
 
 
