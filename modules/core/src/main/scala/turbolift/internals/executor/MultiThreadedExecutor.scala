@@ -13,8 +13,8 @@ private[turbolift] final class MultiThreadedExecutor(maxBusyThreads: Int) extend
     MultiThreadedExecutor.currentVar.get != null
 
 
-  override def start(fiber: FiberImpl): Unit =
-    if !fiber.isReentry then
+  override def start(fiber: FiberImpl, isReentry: Boolean): Unit =
+    if !isReentry then
       resume(fiber)
     else
       awaken(fiber)

@@ -7,18 +7,20 @@ import turbolift.internals.engine.FiberImpl
 
 
 private[internals] trait Executor:
-  def start(fiber: FiberImpl): Unit
+  def start(fiber: FiberImpl, isReentry: Boolean): Unit
   def resume(fiber: FiberImpl): Unit
   protected def detectReentry(): Boolean
 
   final def runSync[A](comp: Computation[A, ?]): Outcome[A] =
-    val fiber = FiberImpl.create(comp, this, detectReentry())
-    start(fiber)
+    val isReentry = detectReentry()
+    val fiber = FiberImpl.create(comp, this, isReentry)
+    start(fiber, isReentry)
     fiber.unsafeAwait()
 
   final def runAsync[A](comp: Computation[A, IO], callback: Outcome[A] => Unit): Unit =
-    val fiber = FiberImpl.create(comp, this, detectReentry(), callback)
-    start(fiber)
+    val isReentry = detectReentry()
+    val fiber = FiberImpl.create(comp, this, isReentry, callback)
+    start(fiber, isReentry)
 
 
 object Executor:

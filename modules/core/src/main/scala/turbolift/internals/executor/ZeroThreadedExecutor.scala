@@ -7,7 +7,7 @@ import turbolift.internals.engine.{FiberImpl, Halt, Link}
 private[internals] final class ZeroThreadedExecutor extends Link.Queue with Executor:
   override protected def detectReentry(): Boolean = !isEmpty //// Not always correct, but harmless
 
-  override def start(fiber: FiberImpl): Unit = drain(fiber)
+  override def start(fiber: FiberImpl, isReentry: Boolean): Unit = drain(fiber)
 
   override def resume(fiber: FiberImpl): Unit = enqueue(fiber)
 

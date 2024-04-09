@@ -794,10 +794,9 @@ import Cause.{Cancelled => CancelPayload}
 
   override def toString: String = s"Fiber#%08x".format(hashCode)
 
-  def isReentry: Boolean = Bits.isReentry(constantBits)
-
   private def isPending: Boolean = Bits.isPending(varyingBits)
   private def isRoot: Boolean = Bits.isRoot(constantBits)
+  private def isReentry: Boolean = Bits.isReentry(constantBits)
   private def getCompletion: Int = varyingBits & Bits.Completion_Mask
 
   private def whichRacerAmI: Int = constantBits & Bits.Racer_Mask
