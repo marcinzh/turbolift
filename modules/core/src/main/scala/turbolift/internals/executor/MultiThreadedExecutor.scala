@@ -5,6 +5,7 @@ import turbolift.internals.engine.{FiberImpl, Halt, Link}
 
 
 private[turbolift] final class MultiThreadedExecutor(maxBusyThreads: Int) extends Link.Queue with Executor:
+  enclosing =>
   private var idleCounter: Int = maxBusyThreads
   protected[this] val pad3, pad4, pad5, pad6, pad7 = 0L
 
@@ -40,12 +41,12 @@ private[turbolift] final class MultiThreadedExecutor(maxBusyThreads: Int) extend
 
   private final class Run(private var todo: FiberImpl | Null) extends Runnable:
     override def run(): Unit =
-      MultiThreadedExecutor.currentVar.set(MultiThreadedExecutor.this)
+      MultiThreadedExecutor.currentVar.set(enclosing)
       while todo != null do
         val halt = todo.nn.run()
         todo = halt match
           case Halt.Yield(yielder) =>
-            synchronized {
+            enclosing.synchronized {
               if isEmpty then
                 yielder
               else
@@ -54,7 +55,7 @@ private[turbolift] final class MultiThreadedExecutor(maxBusyThreads: Int) extend
             }
 
           case Halt.Retire(reentry) =>
-            synchronized {
+            enclosing.synchronized {
               if isEmpty then
                 if !reentry then
                   idleCounter = idleCounter + 1
