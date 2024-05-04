@@ -21,8 +21,6 @@ private[turbolift] final class Prompt(val interpreter: Interpreter.Untyped):
   def hasZip = features.hasZip
   def hasForkJoin = features.hasForkJoin
 
-  def asMark: Mark = Mark.wrap(this)
-
   override def toString = signatures.mkString("&")
 
 

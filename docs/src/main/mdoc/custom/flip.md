@@ -58,9 +58,9 @@ extension (fx: FlipEffect)
     new fx.impl.Stateless.FromId.Free[Vector] with fx.impl.Sequential with FlipSignature:
       override def onReturn(a: Unknown) = !!.pure(Vector(a))
 
-      override def fail = _ => !!.pure(Vector())
+      override def fail = Control.abort(Vector())
 
-      override def flip = k =>
+      override def flip = Control.capture: k =>
         for
           as <- k(true)
           bs <- k(false)
@@ -75,13 +75,12 @@ extension (fx: FlipEffect)
     new fx.impl.Stateless.FromId.Free[Option] with fx.impl.Sequential with FlipSignature:
       override def onReturn(a: Unknown) = !!.pure(Some(a))
 
-      override def fail = _ => !!.pure(None)
+      override def fail = Control.abort(None)
 
-      override def flip = k =>
-        k(true).flatMap {
+      override def flip = Control.capture: k =>
+        k(true).flatMap:
           case None => k(false)
           case some => !!.pure(some)
-        }
 
     .toHandler
 ```

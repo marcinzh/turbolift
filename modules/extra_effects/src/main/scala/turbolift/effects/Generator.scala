@@ -51,13 +51,12 @@ trait ProducerEffect[A] extends Effect[ProducerSignature[A]] with ProducerSignat
 
   final def handler[U]: ThisHandler[Const[Unit], Const[Step[A, U]], Any] =
     new impl.Stateless[Const[Unit], Const[Step[A, U]], Any] with impl.Sequential with ProducerSignature[A]:
-      override def topmostOnlyHint = true
-
       override def onReturn(aa: Unit): Step[A, U] !! Any =
         Step.End.pure_!!
 
       override def yeld(value: A): Unit !@! ThisEffect =
-        k => Step.Yield(value, k.resume(())).pure_!!
+        Control.capture: k =>
+          Step.Yield(value, k.resume(())).pure_!!
 
     .toHandler
 
@@ -71,8 +70,6 @@ trait ConsumerEffect[A] extends Effect[ConsumerSignature[A]] with ConsumerSignat
 
   final def handler[U](initial: Step[A, U] !! U): ThisHandler[Const[Unit], Const[Unit], U] =
     new impl.Stateful[Const[Unit], Const[Unit], U] with impl.Sequential with ConsumerSignature[A]:
-      override def topmostOnlyHint = true
-
       override type Local = Step[A, U] !! U
 
       override def onInitial = initial.pure_!!
@@ -80,7 +77,7 @@ trait ConsumerEffect[A] extends Effect[ConsumerSignature[A]] with ConsumerSignat
       override def onReturn(a: Unit, s: Local) = !!.unit
 
       override def await: A !@! ThisEffect =
-        (k, s) =>
+        Control.captureGet: (k, s) =>
           s.flatMap:
             case Step.End => !!.unit
             case Step.Yield(a, s2) => k(a, s2)

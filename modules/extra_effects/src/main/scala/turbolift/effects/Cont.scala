@@ -14,14 +14,10 @@ trait Cont[R] extends Effect[ContSignature[R]] with ContSignature[R]:
 
   def handler: ThisHandler[Const[R], Const[R], Any] =
     new impl.Stateless[Const[R], Const[R], Any] with impl.Sequential with ContSignature[R]:
-      override def topmostOnlyHint = true
-
       override def onReturn(r: R) = !!.pure(r)
 
-      override def shift[A, U <: ThisEffect](f: (A => R !! U) => R !! U): A !@! U =
-        k => k.escapeAndForget(f(k.resume(_)))
+      override def shift[A, U <: ThisEffect](f: (A => R !! U) => R !! U): A !@! U = Control.capture(f)
 
-      override def reset[U <: ThisEffect](body: R !! U): R !@! U =
-        k => k.delimitAndResume(body)
+      override def reset[U <: ThisEffect](body: R !! U): R !@! U = Control.delimit(body)
 
     .toHandler

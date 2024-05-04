@@ -6,12 +6,10 @@ import scala.collection.immutable.Queue
 import QueO.Cont
 
 
-extension (fx: ChoiceEffect)
+extension [Fx <: ChoiceEffect](fx: Fx)
   def choiceHandler_firstBreadthFirst: fx.ThisHandler[Identity, Option, Any] =
     new fx.impl.Stateful[Identity, Option, Any] with fx.impl.Parallel with ChoiceSignature:
-      override type Local = QueO[Unknown, Ambient]
-
-      override def multishotHint: Boolean = true
+      override type Local = QueO[Unknown, Fx]
 
       override def onInitial = QueO.empty.pure_!!
 
@@ -25,10 +23,12 @@ extension (fx: ChoiceEffect)
         as.flatMap(a => bs.map(b => k(a, b)))
 
       override def empty: Nothing !@! ThisEffect =
-        (_, q) => q.drain
+        Control.captureGet: (_, q) =>
+          q.drain
 
       override def choose[A](as: Iterable[A]): A !@! ThisEffect =
-        (k, q) => q.addTodo(as.iterator.map(a => k(a, _))).drain
+        Control.captureGet: (k, q) =>
+          q.addTodo(as.iterator.map(a => k(a, _))).drain
 
     .toHandler
 

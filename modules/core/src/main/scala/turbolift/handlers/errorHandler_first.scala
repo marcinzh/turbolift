@@ -17,17 +17,13 @@ extension [E, E1](fx: ErrorEffect[E, E1])
 
       override def raise(e: E1): Nothing !@! ThisEffect = raises(E.one(e))
 
-      override def raises(e: E): Nothing !@! ThisEffect = k => k.abort(Left(e))
+      override def raises(e: E): Nothing !@! ThisEffect = Control.abort(Left(e))
 
-      override def toEither[A, U <: ThisEffect](body: A !! U): Either[E, A] !@! U =
-        k => k.delimitAndResume(body)
+      override def toEither[A, U <: ThisEffect](body: A !! U): Either[E, A] !@! U = Control.delimit(body)
 
       override def catchAllEff[A, U <: ThisEffect](body: A !! U)(f: E => A !! U): A !@! U =
-        k => k.delimit(body).flatMap:
-          case (Right(a), k) => k(a)
-          case (Left(e), k) => k.escapeAndResume(f(e))
-          // case (Left(e), k) => k.delimit(f(e)).flatMap:
-          //   case (Right(a), k) => k(a)
-          //   case (Left(e), k) => !!.pure(Left(e))
+        Control.delimit(body).flatMap:
+          case Right(a) => !!.pure(a)
+          case Left(e) => f(e)
 
     .toHandler

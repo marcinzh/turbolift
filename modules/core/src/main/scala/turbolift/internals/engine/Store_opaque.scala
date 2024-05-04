@@ -45,6 +45,10 @@ private[engine] trait Store_opaque:
       loop(thiz, l.segmentDepth)
 
 
+    final def modify(l: Location.Deep, f: Local => Local): Store =
+      ???
+
+
     final def getOrElseVoid(l: Location.Deep): Local =
       if l.isStateful then
         get(l)

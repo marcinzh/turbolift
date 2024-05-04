@@ -10,8 +10,6 @@ extension (fx: RandomEffect)
     new fx.impl.Stateful[Identity, (_, Splitmix64), Any] with fx.impl.Parallel.ForkJoin with RandomSignature:
       override type Local = Splitmix64
 
-      override def tailResumptiveHint: Boolean = true
-
       override def onInitial: Local !! Any = !!.pure(Splitmix64(seed))
 
       override def onReturn(a: Unknown, s: Splitmix64): (Unknown, Splitmix64) !! Any = !!.pure((a, s))
@@ -31,9 +29,9 @@ extension (fx: RandomEffect)
         (k(a, b), s)
 
       inline def simple[A](inline f: Splitmix64 => A): A !@! ThisEffect =
-        (k, s) =>
+        Local.update: s =>
           val s2 = s.next
-          k(f(s2), s2)
+          (f(s2), s2)
 
       override def nextBoolean: Boolean !@! ThisEffect = simple(x => (x.value & 1) != 0)
       override def nextInt: Int !@! ThisEffect = simple(_.value.toInt)
@@ -58,9 +56,9 @@ extension (fx: RandomEffect)
       override def between(minInclusive: Float, maxExclusive: Float): Float !@! ThisEffect =
         between(maxExclusive - minInclusive, _.floor.toFloat + minInclusive)
 
-      override def nextGaussian: Double !@! ThisEffect = (k, s) => k.tupled(s.gaussian)
-      override def nextBytes(n: Int): Array[Byte] !@! ThisEffect = (k, s) => k.tupled(s.bytes(n))
-      override def setSeed(seed: Long): Unit !@! ThisEffect = (k, s) => k((), s.seed(seed))
+      override def nextGaussian: Double !! ThisEffect = Local.update(_.gaussian)
+      override def nextBytes(n: Int): Array[Byte] !! ThisEffect = Local.update(_.bytes(n))
+      override def setSeed(seed: Long): Unit !! ThisEffect = Local.modify(_.seed(seed))
 
     .toHandler
     .dropState

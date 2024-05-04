@@ -24,50 +24,54 @@ sealed trait Interpreter extends Signature:
   /** Output of this interpreter. */
   type To[+A]
 
-  /** Set of effects that this interpreter depends on. */
-  type Dependency
+  /** Set of effects eliminated from computation by this interpreter. */
+  type Elim
+
+  /** Set of effects introduced into computation by this interpreter (a.k.a. dependencies). */
+  type Intro
 
   /** Local state of this interpreter. */
   type Local
 
   /** Phantom type meaning the unknown part of the continuation's answer type.
     *
-    * Full answer type is `To[Unknown] !! Ambient`.
+    * Full answer type is `To[Unknown] !@! Intro`.
     * The `To[+_]` part is known to this interpreter.
-    * The `Unknown` and `Ambient` parts however, are not.
-    * They specific to place(s) where the handler (obtained from this interpreter) would be applied.
+    * The `Unknown` part however, is not.
+    * It's specific to place(s) where the handler (obtained from this interpreter) would be applied.
     */
   type Unknown
 
-  /** Phantom type meaning set of effects remaining after handling this effect. */
-  type Ambient
+  final override type ThisEffect = Elim
+  final override type !@![+A, U] = A !! (U & Intro)
+
+  //@#@TEMP
+  final type ThatEffect = Elim & Intro
+
 
   /** Alias for [[turbolift.Handler Handler]], specialized for this interperter. */
-  final type ThisHandler = Handler[From, To, ThisEffect, Dependency]
+  final type ThisHandler = Handler[From, To, Elim, Intro]
 
-  /** Alias for [[Control]], specialized for this interperter. */
-  final type ThisControl[-A, U] = Control[A, Unknown, Local, To, U & Dependency, Ambient]
+  /** An instance of [[Local]] dedicated for this interpreter. */
+  val Local = new turbolift.interpreter.Local[Local, Elim](untyped)
 
-  final type NullarySem[A, U] = A !! (U & Dependency)
-  final type UnarySem[A, U] = ThisControl[A, U] => To[Unknown] !! Ambient
-  final type BinarySem[A, U] = (ThisControl[A, U], Local) => To[Unknown] !! Ambient
+  /** An instance of [[Control]] dedicated for this interpreter. */
+  val Control = new turbolift.interpreter.Control[Local, Unknown, To, Elim & Intro](untyped)
 
-  def onInitial: Local !! Dependency
-  def onReturn(aa: From[Unknown], s: Local): To[Unknown] !! Ambient
+  def onInitial: Local !! Intro
+  def onReturn(aa: From[Unknown], s: Local): To[Unknown] !! ThatEffect
   def onRestart(aa: To[Unknown]): Unknown !! ThisEffect
   def onZip[A, B, C](aa: To[A], bb: To[B], k: (A, B) => C): To[C]
   def onFork(s: Local): (Local, Local)
   def onJoin(s1: Local, s2: Local): Local
 
-  def tailResumptiveHint: Boolean = false
-  def topmostOnlyHint: Boolean = false
-  def multishotHint: Boolean = false
+  //@#@TODO
   def resurceUnsafeHint: Boolean = false
 
   /** Creates a [[turbolift.Handler Handler]] from this interpreter. */
-  final def toHandler: ThisHandler = HC.Primitive[From, To, ThisEffect, Dependency](this)
+  final def toHandler: ThisHandler = HC.Primitive[From, To, ThisEffect, Intro](this)
 
-  final val features: Features =
+  private[turbolift] final val features: Features =
     val primary = Seq(
       Features.cond(Features.Choice, isInstanceOf[ChoiceSignature]),
       Features.cond(Features.Stateful, isInstanceOf[Interpreter.Stateful[?, ?, ?]]),
@@ -75,7 +79,6 @@ sealed trait Interpreter extends Signature:
       Features.cond(Features.Restart, !isInstanceOf[Mixins.HasNotRestart]),
       Features.cond(Features.ForkJoin, !isInstanceOf[Mixins.HasNotForkJoin]),
       Features.cond(Features.Zip, !isInstanceOf[Mixins.HasNotZip]),
-      Features.cond(Features.TailResump, tailResumptiveHint),
     ).reduce(_ | _)
     Seq(
       primary,
@@ -100,15 +103,15 @@ object Interpreter:
   private[turbolift] type Apply[F[+_], G[+_], L, N] = Interpreter {
     type From[+X] = F[X]
     type To[+X] = G[X]
-    type ThisEffect = L
-    type Dependency = N
+    type Elim = L
+    type Intro = N
   }
 
   private[turbolift] type Untyped = Interpreter {
     type From[+X] = X
     type To[+X] = X
-    type ThisEffect = Any
-    type Dependency = Any
+    type Elim = Any
+    type Intro = Any
     type Local = Any
     type Unknown = Any
   }
@@ -126,12 +129,11 @@ object Interpreter:
   abstract class Proxy[Fx] extends Interpreter with Mixins.Parallel.Trivial: //// subclassed by Effect
     final override type From[+A] = A
     final override type To[+A] = A
-    final override type Dependency = Fx
+    final override type Intro = Fx
     final override type Local = Void
-    final override type !@![A, U] = NullarySem[A, U]
 
-    final override def onInitial: Local !! Dependency = Void.pure
-    final override def onReturn(a: Unknown, s: Void): Unknown !! Ambient = !!.pure(a)
+    final override def onInitial: Local !! Intro = Void.pure
+    final override def onReturn(a: Unknown, s: Void): Unknown !! Any = !!.pure(a)
 
 
   /** Base class for any user-defined [[Interpreter]], that has no internal state.
@@ -147,17 +149,15 @@ object Interpreter:
   abstract class Stateless[F[+_], G[+_], Fx] extends Interpreter: //// subclassed by Effect
     final override type From[+A] = F[A]
     final override type To[+A] = G[A]
-    final override type Dependency = Fx
-    override type Ambient <: Fx
+    final override type Intro = Fx
     final override type Local = Void
-    final override type !@![A, U] = NullarySem[A, U] | UnarySem[A, U]
 
-    final override def onInitial: Local !! Dependency = Void.pure
-    final override def onReturn(aa: From[Unknown], s: Void): To[Unknown] !! Ambient = onReturn(aa)
-    def onReturn(aa: From[Unknown]): To[Unknown] !! Ambient
+    final override def onInitial: Local !! Intro = Void.pure
+    final override def onReturn(aa: From[Unknown], s: Void): To[Unknown] !! ThatEffect = onReturn(aa)
+    def onReturn(aa: From[Unknown]): To[Unknown] !! Intro
 
 
-  /** Base class for any user-defined stateful [[Interpreter]] Interpreter, that has internal state.
+  /** Base class for any user-defined [[Interpreter]] Interpreter, that has local state.
     * 
     * User-defined [[Stateful]] interpreter must also inherit one of
     * [[Features.Sequential Sequential]] or
@@ -170,18 +170,15 @@ object Interpreter:
   abstract class Stateful[F[+_], G[+_], Fx] extends Interpreter: //// subclassed by Effect
     final override type From[+A] = F[A]
     final override type To[+A] = G[A]
-    final override type Dependency = Fx
-    override type Ambient <: Fx
-    final override type !@![A, U] = NullarySem[A, U] | BinarySem[A, U]
+    final override type Intro = Fx
 
 
   private[turbolift] case object Io extends Mixins.Parallel.Trivial:
     final override type From[+A] = A
     final override type To[+A] = A
-    final override type Dependency = Any
+    final override type Intro = Any
     final override type Local = Any
-    final override type Ambient = Any
 
-    final override def onInitial: Local !! Dependency = Mixins.unimplemented
+    final override def onInitial: Local !! Intro = Mixins.unimplemented
     final override def onReturn(a: Unknown, s: Any): Unknown !! Any = !!.pure(a)
     override def enumSignatures = Array(IO) //// `IO` = interface, `Io` = implementation

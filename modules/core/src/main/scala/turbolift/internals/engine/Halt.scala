@@ -12,7 +12,7 @@ private[internals] object Halt:
   //// Result of `innerLoop`
   private[engine] sealed abstract class Loop
   private[engine] case object Reset extends Loop
-  private[engine] final case class Become(fiber: FiberImpl, tickLow: Short, fresh: ControlImpl | Null) extends Loop
+  private[engine] final case class Become(fiber: FiberImpl, tickLow: Short) extends Loop
 
   private[engine] def retire(reentry: Boolean): Halt = if reentry then RetireTrue else RetireFalse
   private val RetireTrue = Retire(true)

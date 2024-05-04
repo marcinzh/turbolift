@@ -4,77 +4,53 @@ import turbolift.interpreter.Features
 
 
 private[engine] object OpSplit:
-  inline def forceSplitAndThen[T](stack: Stack, store: Store, mark: Mark)(inline cb: (Stack, Store) => T): T =
-    val prompt = mark.unwrap
-    if prompt == null then
-      cb(stack, store)
-    else
-      val (stack2, store2, _) = splitLo(stack, store, prompt)
-      cb(stack2, store2)
+  def findTopmostEnv(stack: Stack, store: Store): Env =
+    val loc = stack.locateIO
+    store.get(loc).asEnv
 
 
-  def splitLo(stack: Stack, store: Store, prompt: Prompt): (Stack, Store, Step) =
-    @tailrec def loop(todoStack: Stack, todoStore: Store): (Stack, Store, Step) =
-      todoStack.deconsAndThen: (oldStackSeg, moreStack, moreStep) =>
-        todoStore.deconsAndThen: (oldStoreSeg, moreStore) =>
-          val promptIndex = oldStackSeg.prompts.indexOf(prompt)
-          if promptIndex >= 0 then
-            val divPile = oldStackSeg.piles(promptIndex)
-            val divHeight = divPile.maxHeight
-            if divHeight == 0 then
-              //// Fast path: stack has already been split at this prompt
-              (moreStack.nn, moreStore.nn, moreStep.nn)
-            else
-              //// Slow path: split this segment
-              val divStep = divPile.topFrame.step
-              val newFrameCount = divHeight
-              val (newStackSeg, newStoreSeg) = migrate(oldStackSeg, oldStoreSeg, newFrameCount, _.splitLo(divHeight, _))
-              val newStack = newStackSeg ::? (moreStack, moreStep)
-              val newStore = newStoreSeg ::? moreStore
-              (newStack, newStore, divStep)
-          else
-            loop(
-              todoStack = moreStack.nn,
-              todoStore = moreStore.nn,
-            )
-    loop(stack, store)
-
-
-  def splitHi(stack: Stack, store: Store, location: Location.Deep): (Stack, Store) =
+  def split(stack: Stack, store: Store, location: Location.Deep): (Stack, Store, Step, Stack, Store) =
     @tailrec def loop(
       todoStack: Stack,
       todoStore: Store,
-      depth: Int,
       accumStack: Stack | Null,
       accumStore: Store | Null,
-      accumStep: Step | Null
-    ): (Stack, Store) =
+      accumStep: Step | Null,
+      depth: Int,
+    ): (Stack, Store, Step, Stack, Store) =
       todoStack.deconsAndThen: (oldStackSeg, moreStack, moreStep) =>
         todoStore.deconsAndThen: (oldStoreSeg, moreStore) =>
           if depth == 0 then
-            val divHeight = oldStackSeg.piles(location.promptIndex).maxHeight
+            val divPile = oldStackSeg.piles(location.promptIndex)
+            val divHeight = divPile.maxHeight
             if divHeight == 0 then
               //// Fast path: stack has already been split at this location
-              val newStack = oldStackSeg ::? (accumStack, accumStep)
-              val newStore = oldStoreSeg ::? accumStore
-              (newStack, newStore)
+              val newStackHi = oldStackSeg ::? (accumStack, accumStep)
+              val newStoreHi = oldStoreSeg ::? accumStore
+              (newStackHi, newStoreHi, moreStep.nn, moreStack.nn, moreStore.nn)
             else
               //// Slow path: split this segment
-              val newFrameCount = oldStackSeg.frameCount - divHeight
-              val (newStackSeg, newStoreSeg) = migrate(oldStackSeg, oldStoreSeg, newFrameCount, _.splitHi(divHeight, _))
-              val newStack = newStackSeg ::? (accumStack, accumStep)
-              val newStore = newStoreSeg ::? accumStore
-              (newStack, newStore)
+              val frameCountHi = oldStackSeg.frameCount - divHeight
+              val frameCountLo = divHeight
+              //@#@OPTY do hi & lo in one go
+              val (newStackSegHi, newStoreSegHi) = migrate(oldStackSeg, oldStoreSeg, frameCountHi, _.splitHi(divHeight, _))
+              val (newStackSegLo, newStoreSegLo) = migrate(oldStackSeg, oldStoreSeg, frameCountLo, _.splitLo(divHeight, _))
+              val newStackHi = newStackSegHi ::? (accumStack, accumStep)
+              val newStoreHi = newStoreSegHi ::? accumStore
+              val newStackLo = newStackSegLo ::? (moreStack, moreStep)
+              val newStoreLo = newStoreSegLo ::? moreStore
+              val stepMid = divPile.topFrame.step
+              (newStackHi, newStoreHi, stepMid, newStackLo, newStoreLo)
           else
             loop(
               todoStack = moreStack.nn,
               todoStore = moreStore.nn,
-              depth = depth - 1,
               accumStack = oldStackSeg ::? (accumStack, accumStep),
               accumStore = oldStoreSeg ::? accumStore,
               accumStep = moreStep.nn,
+              depth = depth - 1,
             )
-    loop(stack, store, location.segmentDepth, null, null, null)
+    loop(stack, store, null, null, null,  location.segmentDepth)
 
 
   private def migrate(
