@@ -22,4 +22,4 @@ trait CyclicMemoizer[K, V] extends Effect[CyclicMemoizerSignature[K, V]] with Cy
       recur
 
   /** Default handler for this effect. */
-  def handler: ThisHandler.FromId.ToId.Free = this.cyclicMemoizerHandler
+  def handler: ThisHandler[Identity, Identity, Any] = this.cyclicMemoizerHandler

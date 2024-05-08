@@ -2,10 +2,11 @@ package turbolift.handlers
 import turbolift.!!
 import turbolift.effects.{AcyclicMemoizer, AcyclicMemoizerSignature}
 import turbolift.effects.State
+import turbolift.Extensions._
 
 
 extension [K, V](fx: AcyclicMemoizer[K, V])
-  def acyclicMemoizerHandler: fx.ThisHandler.FromId.ToId.Free =
+  def acyclicMemoizerHandler: fx.ThisHandler[Identity, Identity, Any] =
     case object Storage extends State[Map[K, V]]
 
     new fx.impl.Proxy[Storage.type] with AcyclicMemoizerSignature[K, V]:

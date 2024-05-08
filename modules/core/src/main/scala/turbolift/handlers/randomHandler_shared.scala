@@ -2,10 +2,11 @@ package turbolift.handlers
 import scala.util.{Random => ScalaRandom}
 import turbolift.!!
 import turbolift.effects.{RandomEffect, RandomSignature, IO}
+import turbolift.Extensions._
 
 
 extension (fx: RandomEffect)
-  def randomHandler_shared(seed: Long): fx.ThisHandler.FromId.ToId[IO] =
+  def randomHandler_shared(seed: Long): fx.ThisHandler[Identity, Identity, IO] =
     IO(new ScalaRandom(seed)) >>=! { rng =>
       new fx.impl.Proxy[IO] with RandomSignature:
         override def nextBoolean: Boolean !@! ThisEffect = IO(rng.nextBoolean)
@@ -25,5 +26,5 @@ extension (fx: RandomEffect)
       .toHandler
     }
 
-  def randomHandler_shared: fx.ThisHandler.FromId.ToId[IO] =
+  def randomHandler_shared: fx.ThisHandler[Identity, Identity, IO] =
     IO(ScalaRandom.nextLong) >>=! (randomHandler_shared(_))

@@ -1,11 +1,11 @@
 package turbolift.handlers
 import turbolift.!!
-import turbolift.effects.State
-import turbolift.effects.{CyclicMemoizer, CyclicMemoizerSignature}
+import turbolift.effects.{CyclicMemoizer, CyclicMemoizerSignature, State}
+import turbolift.Extensions._
 
 
 extension [K, V](fx: CyclicMemoizer[K, V])
-  def cyclicMemoizerHandler: fx.ThisHandler.FromId.ToId.Free =
+  def cyclicMemoizerHandler: fx.ThisHandler[Identity, Identity, Any] =
     case object Storage extends State[Map[K, Thunk[V]]]
 
     new fx.impl.Proxy[Storage.type] with CyclicMemoizerSignature[K, V]:

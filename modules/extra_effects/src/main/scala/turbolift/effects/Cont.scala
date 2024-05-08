@@ -12,8 +12,8 @@ trait Cont[R] extends Effect[ContSignature[R]] with ContSignature[R]:
   final override def reset[U <: this.type](body: R !! U): R !! U = perform(_.reset(body))
 
 
-  def handler: ThisHandler.FromConst.ToConst.Free[R, R] =
-    new impl.Stateless.FromConst.ToConst.Free[R, R] with impl.Sequential with ContSignature[R]:
+  def handler: ThisHandler[Const[R], Const[R], Any] =
+    new impl.Stateless[Const[R], Const[R], Any] with impl.Sequential with ContSignature[R]:
       override def topmostOnlyHint = true
 
       override def onReturn(r: R) = !!.pure(r)

@@ -31,21 +31,18 @@ trait ErrorEffect[E, E1] extends Effect[ErrorSignature[E, E1]] with ErrorSignatu
 
   /** Predefined handlers for this effect. */
   object handlers:
-    def first(using One[E, E1]): ThisHandler.FromId.Free[Either[E, _]] = ErrorEffect.this.errorHandler_first
-    def all(using Accum[E, E1]): ThisHandler.FromId.Free[Either[E, _]] = ErrorEffect.this.errorHandler_all
+    def first(using One[E, E1]): ThisHandler[Identity, Either[E, _], Any] = ErrorEffect.this.errorHandler_first
+    def all(using Accum[E, E1]): ThisHandler[Identity, Either[E, _], Any] = ErrorEffect.this.errorHandler_all
 
 
-object ErrorEffect:
-  extension [E, E1](fx: ErrorEffect[E, E1])
-    /** Default handler for this effect. */
-    def handler(using E: One[E, E1]): fx.ThisHandler.FromId.Free[Either[E, _]] = fx.errorHandler_first
+trait Error[E] extends ErrorEffect[E, E]:
+  export handlers.{first => handler}
 
+trait ErrorK[F[_], E] extends ErrorEffect[F[E], E]:
+  export handlers.{first => handler}
 
+trait ErrorG[M[_, _], K, V] extends ErrorEffect[M[K, V], (K, V)]:
+  export handlers.{first => handler}
 
-trait Error[E] extends ErrorEffect[E, E]
-
-trait ErrorK[F[_], E] extends ErrorEffect[F[E], E]
-
-trait ErrorG[M[_, _], K, V] extends ErrorEffect[M[K, V], (K, V)]
-
-trait ErrorGK[M[_, _], K, F[_], V] extends ErrorEffect[M[K, F[V]], (K, V)]
+trait ErrorGK[M[_, _], K, F[_], V] extends ErrorEffect[M[K, F[V]], (K, V)]:
+  export handlers.{first => handler}

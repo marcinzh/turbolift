@@ -12,7 +12,7 @@ class WriterTest extends Specification:
     def apply[T](a: => T, b: => T): T = if round then a else b
     def name = apply("local", "shared")
     def header = s"With handler = ${name}"
-    def handler[W, W1, Fx <: WriterEffect[W, W1]](fx: Fx)(using AccumZero[W, W1]): fx.ThisHandler.FromId[(_, W), IO] =
+    def handler[W, W1, Fx <: WriterEffect[W, W1]](fx: Fx)(using AccumZero[W, W1]): fx.ThisHandler[fx.Identity, (_, W), IO] =
       apply(
         fx.handlers.local.tapEffK([X] => (_: (X, W)) => !!.unit.upCast[IO]),
         fx.handlers.shared,

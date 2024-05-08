@@ -2,10 +2,11 @@ package turbolift.handlers
 import java.lang.{System => JConsole}
 import java.io.{BufferedReader, InputStreamReader}
 import turbolift.effects.{ConsoleSignature, ConsoleEffect, IO}
+import turbolift.Extensions._
 
 
 extension (fx: ConsoleEffect)
-  def consoleHandler: fx.ThisHandler.FromId.ToId[IO] =
+  def consoleHandler: fx.ThisHandler[Identity, Identity, IO] =
     IO(new BufferedReader(new InputStreamReader(JConsole.in))) >>=! { breader =>
       new fx.impl.Proxy[IO] with ConsoleSignature:
         override def readChar: Option[Char] !@! ThisEffect = IO.blocking { val n = breader.nn.read(); Option.when(n >= 0)(n.toChar) }

@@ -8,7 +8,7 @@ import turbolift.effects.{WriterG, WriterGK}
 
 
 extension [K, V](fx: PolyGraph[K, V])
-  def polyGraphHandler(bottom: V): fx.ThisHandler.FromId.Free[(_, Map[K, V])] =
+  def polyGraphHandler(bottom: V): fx.ThisHandler[Identity, (_, Map[K, V]), Any] =
     type Solution = K => V
 
     case object Compute extends WriterG[Map, K, Solution => V]

@@ -1,11 +1,12 @@
 package turbolift.handlers
 import turbolift.!!
-import turbolift.effects.{Reader, ReaderSignature}
+import turbolift.effects.{ReaderEffect, ReaderSignature}
+import turbolift.Extensions._
 
 
-extension [R](fx: Reader[R])
-  def readerHandler(initial: R): fx.ThisHandler.FromId.ToId.Free =
-    new fx.impl.Stateful.FromId.Free[[X] =>> X] with fx.impl.Parallel.Trivial with ReaderSignature[R]:
+extension [R](fx: ReaderEffect[R])
+  def readerHandler(initial: R): fx.ThisHandler[Identity, Identity, Any] =
+    new fx.impl.Stateful[Identity, Identity, Any] with fx.impl.Parallel.Trivial with ReaderSignature[R]:
       override type Stan = R
 
       override def tailResumptiveHint: Boolean = true

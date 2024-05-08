@@ -1,5 +1,6 @@
 package turbolift
 import turbolift.internals.extensions._
+import turbolift.internals.auxx.IdConst
 
 /** Orphaned extensions.
  *
@@ -14,4 +15,5 @@ object Extensions
   extends MiscExtensions
   with FoldExtensions
   with MapFilterExtensions
-  with TraverseExtensions
+  with TraverseExtensions:
+    export IdConst._

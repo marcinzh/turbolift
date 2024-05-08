@@ -25,20 +25,18 @@ trait WriterEffect[W, W1] extends Effect[WriterSignature[W, W1]] with WriterSign
 
   /** Predefined handlers for this effect. */
   object handlers:
-    def local(implicit W: AccumZero[W, W1]): ThisHandler.FromId.Free[(_, W)] = WriterEffect.this.writerHandler_local
-    def shared(implicit W: AccumZero[W, W1]): ThisHandler.FromId[(_, W), IO] = WriterEffect.this.writerHandler_shared
+    def local(implicit W: AccumZero[W, W1]): ThisHandler[Identity, (_, W), Any] = WriterEffect.this.writerHandler_local
+    def shared(implicit W: AccumZero[W, W1]): ThisHandler[Identity, (_, W), IO] = WriterEffect.this.writerHandler_shared
 
 
-object WriterEffect:
-  extension [W, W1](fx: WriterEffect[W, W1])
-    /** Default handler for this effect. */
-    def handler(implicit W: AccumZero[W, W1]): fx.ThisHandler.FromId.Free[(_, W)] = fx.writerHandler_local
+trait Writer[W] extends WriterEffect[W, W]:
+  export handlers.{local => handler}
 
+trait WriterK[F[_], W] extends WriterEffect[F[W], W]:
+  export handlers.{local => handler}
 
-trait Writer[W] extends WriterEffect[W, W]
+trait WriterG[M[_, _], K, V] extends WriterEffect[M[K, V], (K, V)]:
+  export handlers.{local => handler}
 
-trait WriterK[F[_], W] extends WriterEffect[F[W], W]
-
-trait WriterG[M[_, _], K, V] extends WriterEffect[M[K, V], (K, V)]
-
-trait WriterGK[M[_, _], K, F[_], V] extends WriterEffect[M[K, F[V]], (K, V)]
+trait WriterGK[M[_, _], K, F[_], V] extends WriterEffect[M[K, F[V]], (K, V)]:
+  export handlers.{local => handler}

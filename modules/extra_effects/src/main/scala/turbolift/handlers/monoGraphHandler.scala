@@ -9,7 +9,7 @@ import turbolift.effects.{WriterG, WriterGK}
 
 
 extension [K, V](fx: MonoGraph[K, V])
-  def monoGraphHandler(implicit V: Monoid[V]): fx.ThisHandler.FromId.Free[(_, Map[K, V])] =
+  def monoGraphHandler(implicit V: Monoid[V]): fx.ThisHandler[Identity, (_, Map[K, V]), Any] =
     case object IncomingConst extends WriterG[Map, K, V]
     case object OutgoingConst extends WriterG[Map, K, V]
     case object Propagate extends WriterGK[Map, K, Set, K]

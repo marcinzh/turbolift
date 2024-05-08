@@ -1,14 +1,14 @@
 package turbolift.handlers
 import turbolift.!!
 import turbolift.Extensions._
-import turbolift.effects.{Choice, ChoiceSignature}
+import turbolift.effects.{ChoiceEffect, ChoiceSignature}
 import scala.collection.immutable.Queue
 import QueO.Cont
 
 
-extension (fx: Choice)
-  def choiceHandler_firstBreadthFirst: fx.ThisHandler.FromId.Free[Option] =
-    new fx.impl.Stateful.FromId.Free[Option] with fx.impl.Parallel with ChoiceSignature:
+extension (fx: ChoiceEffect)
+  def choiceHandler_firstBreadthFirst: fx.ThisHandler[Identity, Option, Any] =
+    new fx.impl.Stateful[Identity, Option, Any] with fx.impl.Parallel with ChoiceSignature:
       override type Stan = QueO[Unknown, Ambient]
 
       override def multishotHint: Boolean = true

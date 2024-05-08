@@ -18,7 +18,7 @@ trait StateSignature[S] extends Signature:
   def getUpdateGet[A](f: S => (A, S)): (A, S, S) !@! ThisEffect
 
 
-trait State[S] extends Effect[StateSignature[S]] with StateSignature[S]:
+trait StateEffect[S] extends Effect[StateSignature[S]] with StateSignature[S]:
   final override val get: S !! this.type = perform(_.get)
   final override def gets[A](f: S => A): A !! this.type = perform(_.gets(f))
   final override def put(s: S): Unit !! this.type = perform(_.put(s))
@@ -34,11 +34,9 @@ trait State[S] extends Effect[StateSignature[S]] with StateSignature[S]:
 
   /** Predefined handlers for this effect. */
   object handlers:
-    def local(initial: S): ThisHandler.FromId.Free[(_, S)] = State.this.stateHandler_local(initial)
-    def shared(initial: S): ThisHandler.FromId[(_, S), IO] = State.this.stateHandler_shared(initial)
+    def local(initial: S): ThisHandler[Identity, (_, S), Any] = StateEffect.this.stateHandler_local(initial)
+    def shared(initial: S): ThisHandler[Identity, (_, S), IO] = StateEffect.this.stateHandler_shared(initial)
 
 
-object State:
-  extension [S](fx: State[S])
-    /** Default handler for this effect. */
-    def handler(initial: S): fx.ThisHandler.FromId.Free[(_, S)] = fx.stateHandler_local(initial)
+trait State[S] extends StateEffect[S]:
+  export handlers.{local => handler}

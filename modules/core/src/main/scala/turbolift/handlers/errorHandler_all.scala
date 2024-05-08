@@ -3,11 +3,12 @@ import turbolift.!!
 import turbolift.typeclass.Accum
 import turbolift.typeclass.Syntax._
 import turbolift.effects.{ErrorEffect, ErrorSignature}
+import turbolift.Extensions._
 
 
 extension [E, E1](fx: ErrorEffect[E, E1])
-  def errorHandler_all(using E: Accum[E, E1]): fx.ThisHandler.FromId.Free[Either[E, _]] =
-    new fx.impl.Stateless.FromId.Free[Either[E, _]] with fx.impl.Parallel with ErrorSignature[E, E1]:
+  def errorHandler_all(using E: Accum[E, E1]): fx.ThisHandler[Identity, Either[E, _], Any] =
+    new fx.impl.Stateless[Identity, Either[E, _], Any] with fx.impl.Parallel with ErrorSignature[E, E1]:
       override def onReturn(a: Unknown): Either[E, Unknown] !! Any = !!.pure(Right(a))
 
       override def onRestart(aa: Either[E, Unknown]): Unknown !! ThisEffect =

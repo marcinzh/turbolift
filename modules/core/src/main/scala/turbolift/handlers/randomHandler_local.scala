@@ -2,11 +2,12 @@ package turbolift.handlers
 import scala.util.{Random => ScalaRandom}
 import turbolift.!!
 import turbolift.effects.{RandomEffect, RandomSignature, IO}
+import turbolift.Extensions._
 
 
 extension (fx: RandomEffect)
-  def randomHandler_local(seed: Long): fx.ThisHandler.FromId.ToId.Free =
-    new fx.impl.Stateful.FromId.Free[(_, Splitmix64)] with fx.impl.Parallel.ForkJoin with RandomSignature:
+  def randomHandler_local(seed: Long): fx.ThisHandler[Identity, Identity, Any] =
+    new fx.impl.Stateful[Identity, (_, Splitmix64), Any] with fx.impl.Parallel.ForkJoin with RandomSignature:
       override type Stan = Splitmix64
 
       override def tailResumptiveHint: Boolean = true
@@ -65,5 +66,5 @@ extension (fx: RandomEffect)
     .dropState
 
 
-  def randomHandler_local: fx.ThisHandler.FromId.ToId[IO] =
+  def randomHandler_local: fx.ThisHandler[Identity, Identity, IO] =
     IO(ScalaRandom.nextLong) >>=! (randomHandler_local(_))

@@ -36,4 +36,4 @@ trait PolyGraph[K, V] extends Effect[PolyGraphSignature[K, V]] with PolyGraphSig
     def reduce(froms: Vector[K])(f: (V, V) => V) = enclosing.reduce(k, froms)(f)
 
   /** Default handler for this effect. */
-  def handler: V => ThisHandler.FromId.Free[(_, Map[K, V])] = this.polyGraphHandler
+  def handler: V => ThisHandler[Identity, (_, Map[K, V]), Any] = this.polyGraphHandler

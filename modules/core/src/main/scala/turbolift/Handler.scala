@@ -1,6 +1,7 @@
 package turbolift
 import scala.util.{Try, Success, Failure}
 import turbolift.internals.auxx.{CanPartiallyHandle, CanPipe}
+import turbolift.internals.auxx.IdConst._
 import turbolift.interpreter.Interpreter
 import turbolift.internals.primitives.{ComputationCases => CC}
 import turbolift.typeclass.ExtendTuple
@@ -136,104 +137,6 @@ sealed trait Handler[From[+_], To[+_], Elim, Intro]:
 
 
 object Handler:
-  /** Namespace for convenient type aliases of `Handler` class,
-   *  specialized by partially applying some or all of its type parameters.
-   *
-   *  For example: `Handler.FromId.ToId.Free[Fx]`
-   *  is equivalent of `Handler[[X] =>> X, [X] =>> X, Fx, Any]`
-   *
-   *  This works like type-level "fluent interface", where:
-   *  - `FromId` and `FromConst` partially apply `From[+_]` parameter of [[Handler]] class.
-   *  - `ToId` and `ToConst` partially apply `To[+_]` parameter of [[Handler]] class.
-   *  - `Free` partially applies `Intro` parameter of [[Handler]] class.
-   */
-
-  /** Alias for [[Handler]], that has no dependencies. */
-  type Free[F[+_], G[+_], Elim] = Handler[F, G, Elim, Any]
-
-  /** Alias for [[Handler]], where `From[_]` is type-level identity. */
-  type FromId[To[+_], Elim, Intro] = Handler[[X] =>> X, To, Elim, Intro]
-  /** Type-level fluent interface for accessing [[Handler]] type aliases. */
-  object FromId:
-    /** Alias for [[Handler]], where
-      * `From[_]` is type-level identity,
-      * and there are no dependencies.
-      */
-    type Free[To[+_], Elim] = FromId[To, Elim, Any]
-
-    /** Alias for [[Handler]], where
-      * both `From[_]` and `To[_] are type-level identities.
-      */
-    type ToId[Elim, Intro] = FromId[[X] =>> X, Elim, Intro]
-    /** Type-level fluent interface for accessing [[Handler]] type aliases. */
-    object ToId:
-      /** Alias for [[Handler]], where
-        * both `From[_]` and `To[_] are type-level identities,
-        * and there are no dependencies.
-        */
-      type Free[Elim] = ToId[Elim, Any]
-
-    /** Alias for [[Handler]], where
-      * `From[_]` is type-level identity,
-      * and `To[_]` is type-level constant function.
-      */
-    type ToConst[D, Elim, Intro] = FromId[[_] =>> D, Elim, Intro]
-    /** Type-level fluent interface for accessing [[Handler]] type aliases. */
-    object ToConst:
-      /** Alias for [[Handler]], where
-        * `From[_]` is type-level identity,
-        * `To[_]` is type-level constant function,
-        * and there are no dependencies.
-        */
-      type Free[D, Elim] = ToConst[D, Elim, Any]
-
-  /** Alias for [[Handler]], whose `From[_]` is type-level constant function. */
-  type FromConst[C, To[+_], Elim, Intro] = Handler[[_] =>> C, To, Elim, Intro]
-  /** Type-level fluent interface for accessing [[Handler]] type aliases. */
-  object FromConst:
-    /** Alias for [[Handler]], where 
-      * From[_]` is type-level constant function,
-      * and there are no dependencies.
-      */
-    type Free[C, To[+_], Elim] = FromConst[C, To, Elim, Any]
-
-    /** Alias for [[Handler]], where
-      * both `From[_]` and `To[_]` are type-level constant functions.
-      */
-    type ToConst[C, D, Elim, Intro] = FromConst[C, [_] =>> D, Elim, Intro]
-    /** Type-level fluent interface for accessing [[Handler]] type aliases. */
-    object ToConst:
-      /** Alias for [[Handler]], where
-        * both `From[_]` and `To[_]` are type-level constant functions,
-        * and there are no dependencies.
-        */
-      type Free[C, D, Elim] = ToConst[C, D, Elim, Any]
- 
-  /** Alias for [[Handler]], where
-    * `To[_]` is type-level identity.
-    */
-  type ToId[F[+_], Elim, Intro] = Handler[F, [X] =>> X, Elim, Intro]
-  /** Type-level fluent interface for accessing [[Handler]] type aliases. */
-  object ToId:
-    /** Alias for [[Handler]], where
-      * `To[_]` is type-level identity.
-      * and there are no dependencies.
-      */
-    type Free[F[+_], Elim] = ToId[F, Elim, Any]
-
-  /** Alias for [[Handler]], where
-    * `To[_]` is type-level constant function.
-    */
-  type ToConst[F[+_], D, Elim, Intro] = Handler[F, [_] =>> D, Elim, Intro]
-  /** Type-level fluent interface for accessing [[Handler]] type aliases. */
-  object ToConst:
-    /** Alias for [[Handler]], where
-      * `To[_]` is type-level constant function,
-      * and there are no dependencies.
-      */
-    type Free[F[+_], D, Elim] = ToConst[F, D, Elim, Any]
-
-
   /** Transforms a computation of a handler, into a new handler.
    *
    *  Useful for effectful creation of handlers.
@@ -250,16 +153,16 @@ object Handler:
 
   extension [F[+_], S, L, N](thiz: Handler[F, (_, S), L, N])
     /** Alias for [[dropState]]. */
-    def eval: Handler.ToId[F, L, N] = dropState
+    def eval: Handler[F, Identity, L, N] = dropState
 
     /** Alias for [[justState]]. */
-    def exec: Handler.ToConst[F, S, L, N] = justState
+    def exec: Handler[F, Const[S], L, N] = justState
 
     /** Transforms this handler, by dropping the first element of its `Tuple2` result. */
-    def justState: Handler.ToConst[F, S, L, N] = thiz.mapK([A] => (pair: (A, S)) => pair._2)
+    def justState: Handler[F, Const[S], L, N] = thiz.mapK([A] => (pair: (A, S)) => pair._2)
 
     /** Transforms this handler, by dropping the second element of its `Tuple2` result. */
-    def dropState: Handler.ToId[F, L, N] = thiz.mapK([A] => (pair: (A, S)) => pair._1)
+    def dropState: Handler[F, Identity, L, N] = thiz.mapK([A] => (pair: (A, S)) => pair._1)
 
     /** Transforms this handler, by mapping the second element of its `Tuple2` result. */
     def mapState[S2](f: S => S2): Handler[F, (_, S2), L, N] =
@@ -292,7 +195,7 @@ object Handler:
      * }}}
      */
 
-    def ***![S2, S3, L2, N2](that: Handler.FromId[(_, S2), L2, N2])(using ET: ExtendTuple[S, S2, S3]): Handler[F, (_, S3), L & L2, N & N2] =
+    def ***![S2, S3, L2, N2](that: Handler[Identity, (_, S2), L2, N2])(using ET: ExtendTuple[S, S2, S3]): Handler[F, (_, S3), L & L2, N & N2] =
       thiz.composeWith(that).mapK([A] => (pairs: ((A, S), S2)) =>
         val ((a, s), s2) = pairs
         (a, ET.extendTuple(s, s2))
@@ -313,15 +216,15 @@ object Handler:
       thiz.mapK([A] => (result: Option[A]) => result.fold[Try[A]](Failure(e))(Success(_)))
 
     /** Transforms this handler, by deconstructing its `Option` result. */
-    def getOrElse(default: => Nothing): Handler.ToId[F, L, N] =
+    def getOrElse(default: => Nothing): Handler[F, Identity, L, N] =
       thiz.mapK([A] => (result: Option[A]) => result.getOrElse(default))
 
     /** Transforms this handler, by deconstructing its `Option` result. */
-    def getOrDie(message: => String): Handler.ToId[F, L, N] =
+    def getOrDie(message: => String): Handler[F, Identity, L, N] =
       getOrElse(sys.error(message))
 
     /** Transforms this handler, by deconstructing its `Option` result. */
-    def unsafeGet: Handler.ToId[F, L, N] =
+    def unsafeGet: Handler[F, Identity, L, N] =
       thiz.mapK([A] => (result: Option[A]) => result.get)
 
     /** Composes 2 **independent** handlers, also flattening their nested `Option` results.
@@ -331,7 +234,7 @@ object Handler:
      * }}}
      */
     @annotation.targetName("flattenOptions")
-    def |||![L2, N2](that: Handler.FromId[Option, L2, N2]): Handler[F, Option, L & L2, N & N2] =
+    def |||![L2, N2](that: Handler[Identity, Option, L2, N2]): Handler[F, Option, L & L2, N & N2] =
       thiz.composeWith(that).mapK([A] => (options: Option[Option[A]]) => options.flatten)
 
 
@@ -345,11 +248,11 @@ object Handler:
       thiz.mapK([A] => (result: Either[E, A]) => result.toTry)
 
     /** Transforms this handler, by deconstructing its `Either` result. */
-    def getOrElse(default: E => Nothing): Handler.ToId[F, L, N] =
+    def getOrElse(default: E => Nothing): Handler[F, Identity, L, N] =
       thiz.mapK([A] => (result: Either[E, A]) => result.fold(default, x => x))
 
     /** Transforms this handler, by deconstructing its `Either` result. */
-    def getOrDie(message: E => String): Handler.ToId[F, L, N] =
+    def getOrDie(message: E => String): Handler[F, Identity, L, N] =
       getOrElse(e => sys.error(message(e)))
 
     /** Transforms this handler, by mapping the `Left` branch of its `Either` result. */
@@ -377,7 +280,7 @@ object Handler:
      * }}}
      */
     @annotation.targetName("flattenEithers")
-    def |||![E2, L2, N2](that: Handler.FromId[Either[E2, _], L2, N2]): Handler[F, Either[E | E2, _], L & L2, N & N2] =
+    def |||![E2, L2, N2](that: Handler[Identity, Either[E2, _], L2, N2]): Handler[F, Either[E | E2, _], L & L2, N & N2] =
       thiz.composeWith(that).mapK([A] => (eithers: Either[E2, Either[E, A]]) => eithers.flatten: Either[E2 | E, A])
 
 

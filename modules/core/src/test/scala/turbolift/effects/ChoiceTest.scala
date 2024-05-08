@@ -12,7 +12,7 @@ class ChoiceTest extends Specification:
     def apply[T](a: => T, b: => T): T = if round then a else b
     def name = apply("first", "all")
     def header = s"With handler = ${name}"
-    def handler[Fx <: Choice](fx: Fx): fx.ThisHandler.FromId.Free[Vector] =
+    def handler[Fx <: Choice](fx: Fx): fx.ThisHandler[fx.Identity, Vector, Any] =
       apply(
         fx.handlers.first.mapK([X] => (xs: Option[X]) => xs.toVector),
         fx.handlers.all,

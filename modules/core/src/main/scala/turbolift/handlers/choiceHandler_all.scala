@@ -1,12 +1,12 @@
 package turbolift.handlers
 import turbolift.!!
 import turbolift.Extensions._
-import turbolift.effects.{Choice, ChoiceSignature}
+import turbolift.effects.{ChoiceEffect, ChoiceSignature}
 
 
-extension (fx: Choice)
-  def choiceHandler_all: fx.ThisHandler.FromId.Free[Vector] =
-    new fx.impl.Stateless.FromId.Free[Vector] with fx.impl.Parallel with ChoiceSignature:
+extension (fx: ChoiceEffect)
+  def choiceHandler_all: fx.ThisHandler[Identity, Vector, Any] =
+    new fx.impl.Stateless[Identity, Vector, Any] with fx.impl.Parallel with ChoiceSignature:
       override def multishotHint: Boolean = true
 
       override def onReturn(a: Unknown): Vector[Unknown] !! Any = !!.pure(Vector(a))

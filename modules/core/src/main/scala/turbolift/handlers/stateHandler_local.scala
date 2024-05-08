@@ -1,11 +1,12 @@
 package turbolift.handlers
 import turbolift.!!
-import turbolift.effects.{State, StateSignature}
+import turbolift.effects.{StateEffect, StateSignature}
+import turbolift.Extensions._
 
 
-extension [S](fx: State[S])
-  def stateHandler_local(initial: S): fx.ThisHandler.FromId.Free[(_, S)] =
-    new fx.impl.Stateful.FromId.Free[(_, S)] with fx.impl.Sequential.Restartable with StateSignature[S]:
+extension [S](fx: StateEffect[S])
+  def stateHandler_local(initial: S): fx.ThisHandler[Identity, (_, S), Any] =
+    new fx.impl.Stateful[Identity, (_, S), Any] with fx.impl.Sequential.Restartable with StateSignature[S]:
       override type Stan = S
 
       override def tailResumptiveHint: Boolean = true

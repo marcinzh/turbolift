@@ -49,8 +49,8 @@ trait ProducerSignature[A] extends Signature:
 trait ProducerEffect[A] extends Effect[ProducerSignature[A]] with ProducerSignature[A]:
   final override def yeld(value: A): Unit !! this.type = perform(_.yeld(value))
 
-  final def handler[U]: ThisHandler.FromConst.ToConst.Free[Unit, Step[A, U]] =
-    new impl.Stateless.FromConst.ToConst.Free[Unit, Step[A, U]] with impl.Sequential with ProducerSignature[A]:
+  final def handler[U]: ThisHandler[Const[Unit], Const[Step[A, U]], Any] =
+    new impl.Stateless[Const[Unit], Const[Step[A, U]], Any] with impl.Sequential with ProducerSignature[A]:
       override def topmostOnlyHint = true
 
       override def onReturn(aa: Unit): Step[A, U] !! Any =
@@ -69,8 +69,8 @@ trait ConsumerSignature[A] extends Signature:
 trait ConsumerEffect[A] extends Effect[ConsumerSignature[A]] with ConsumerSignature[A]:
   final override def await: A !! this.type = perform(_.await)
 
-  final def handler[U](initial: Step[A, U] !! U): ThisHandler.FromConst.ToConst[Unit, Unit, U] =
-    new impl.Stateful.FromConst.ToConst[Unit, Unit, U] with impl.Sequential with ConsumerSignature[A]:
+  final def handler[U](initial: Step[A, U] !! U): ThisHandler[Const[Unit], Const[Unit], U] =
+    new impl.Stateful[Const[Unit], Const[Unit], U] with impl.Sequential with ConsumerSignature[A]:
       override def topmostOnlyHint = true
 
       override type Stan = Step[A, U] !! U

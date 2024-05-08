@@ -25,13 +25,13 @@ trait ConsoleEffect extends Effect[ConsoleSignature] with ConsoleSignature with 
   final def println(text: String) = printLine(text)
   final def printlnErr(text: String) = printLineErr(text)
 
-
-object ConsoleEffect:
-  extension (fx: ConsoleEffect)
-    /** Default handler for this effect. */
-    def handler: fx.ThisHandler.FromId.ToId[IO] = fx.consoleHandler
+  /** Predefined handlers for this effect. */
+  object handlers:
+    def default: ThisHandler[Identity, Identity, IO] = ConsoleEffect.this.consoleHandler
 
 
 /** Predefined instance of this effect. */
-case object Console extends ConsoleEffect
+case object Console extends ConsoleEffect:
+  export handlers.{default => handler}
+
 type Console = Console.type

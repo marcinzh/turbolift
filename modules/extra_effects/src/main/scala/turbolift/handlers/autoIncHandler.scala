@@ -1,10 +1,10 @@
 package turbolift.handlers
-import turbolift.effects.{AutoInc, AutoIncSignature}
-import turbolift.effects.State
+import turbolift.effects.{AutoInc, AutoIncSignature, State}
+import turbolift.Extensions._
 
 
 extension (fx: AutoInc)
-  def autoIncHandler(initial: Int = 0): fx.ThisHandler.FromId.Free[(_, Int)] =
+  def autoIncHandler(initial: Int = 0): fx.ThisHandler[Identity, (_, Int), Any] =
     case object S extends State[Int]
 
     new fx.impl.Proxy[S.type] with AutoIncSignature:

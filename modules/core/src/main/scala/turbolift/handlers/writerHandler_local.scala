@@ -3,11 +3,12 @@ import turbolift.!!
 import turbolift.typeclass.AccumZero
 import turbolift.typeclass.Syntax._
 import turbolift.effects.{WriterEffect, WriterSignature}
+import turbolift.Extensions._
 
 
 extension [W, W1](fx: WriterEffect[W, W1])
-  def writerHandler_local(implicit W: AccumZero[W, W1]): fx.ThisHandler.FromId.Free[(_, W)] =
-    new fx.impl.Stateful.FromId.Free[(_, W)] with fx.impl.Parallel.ForkJoin with WriterSignature[W, W1]:
+  def writerHandler_local(implicit W: AccumZero[W, W1]): fx.ThisHandler[Identity, (_, W), Any] =
+    new fx.impl.Stateful[Identity, (_, W), Any] with fx.impl.Parallel.ForkJoin with WriterSignature[W, W1]:
       override type Stan = W
       
       override def tailResumptiveHint: Boolean = true
