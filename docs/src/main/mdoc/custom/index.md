@@ -9,26 +9,27 @@ title:  Defining your own effects and handlers
 ### 1. Define a signature for your effect
 
 ```scala mdoc
-import turbolift.Signature
+import turbolift.{!!, Signature}
 
 trait GoogleSignature extends Signature:
-  def countPicturesOf(topic: String): Int !@! ThisEffect
+  def countPicturesOf(topic: String): Int !! ThisEffect
 ```
 
-### 😱 `!@!`
+### What's `ThisEffect`?
 
-`!@![_, ThisEffect]` is somewhat similar to `F[_]` from Tagless Final.
+It's an abstract member type declared in `Signature`. 
+`ThisEffect` provides polymorphism essential for type-level separation between effect's interface (`Effect`) and effect's implementation (`Interpreter`).
+Both `Effect` and `Interpreter` inherit from `Signature`.
 
-The main difference, is that in Turbolift this abstraction is **short lived**.
-It's introduced in `Signature`, and it vanishes in its direct subtrait, `Effect`.
+- On the interface side, `ThisEffect` means a **self-reference** to the effect being defined. It's defined as alias of `this.type`.
 
-Both `!@!` and `ThisEffect` are defined as abstract type members of `Signature`.
-In the next step, once we inherit our signature from an `Effect`, they become (automatically) concretized:
-- `!@![_, _]` becomes an alias of `Computation[_, _]` (just like `!!`)
-- `ThisEffect` becomes an alias of `this.type`
+- On the implementation side, `ThisEffect` defined as type-level set of **dependencies** of the effect being implemented.
 
-Effectively, when writing custom signature,
-`A !@! ThisEffect` should be regarded as `A !! this.type`, in temporary disguise.
+We can compare this to Tagless Final style:
+
+- In Tagless Final style we abstract over the entire monad type: `F[_]`
+
+- In Turbolift our monad type is concrete: `!![_, _]`. Instead, we abstact only over the second parameter of the monad.
 
 ### 2. Define your effect type
 
@@ -65,20 +66,14 @@ import turbolift.{Effect, effect}
 
 ### 3. Define a handler for your effect
 
-Now it's time to make an important choice. There are 2 ways to assign semantics to our effect's operations:
+- See [Flip effect](flip.html#4-define-a-handler) as an example of using **delimited continuations**.
 
-- With `Flow` interpreter: by using **delimited continuations**.
-
-  See [Flip effect](flip.html#4-define-a-handler) example for details.
-
-- With `Proxy` interpreter: by **delegating to other effects** (a.k.a "reinterpretation").
-
-  See [File System](file_sys.html#4-define-a-handler) example for details.
+- See [File System](file_sys.html#4-define-a-handler) as an example of **reinterpretation** (implementing an  effect interms of other effects)
 
 Once the interpreter is defined, we can obtain a handler from it, using `toHandler` method.
 
-
 ### More Information
 
-See [the source](https://github.com/marcinzh/turbolift/tree/master/modules/core/src/main/scala/turbolift/effects)
-of predefined effects and their handlers.
+See the source
+of predefined [effects](https://github.com/marcinzh/turbolift/tree/master/modules/core/src/main/scala/turbolift/effects)
+and their predefined [handlers](https://github.com/marcinzh/turbolift/tree/master/modules/core/src/main/scala/turbolift/handlers).

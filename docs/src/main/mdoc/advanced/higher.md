@@ -58,15 +58,6 @@ val result2 = program
   .run
 ```
 
-### 🎁 Bonus feature
-
-The implementation of HOEs in Turbolift has an accidental consequence.
-It's possible to write an alternative handler for the `Error` effect,
-so that it replicates behavior of Monad Transformers.
-With such handler, state is transactional, when handled before error.
-
-
-
 ---
 
 [^1]: **Warning:** Haskell code ahead.

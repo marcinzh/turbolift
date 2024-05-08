@@ -15,14 +15,15 @@ This is how it looks in Turbolift:
 
 ```scala mdoc
 import turbolift.{!!, Signature, Effect, Handler}
+import turbolift.Extensions._
 ```
 
 ### 2. Define the signature
 
 ```scala mdoc
 trait FlipSignature extends Signature:
-  def flip: Boolean !@! ThisEffect
-  def fail: Nothing !@! ThisEffect
+  def flip: Boolean !! ThisEffect
+  def fail: Nothing !! ThisEffect
 ```
 
 ### 3. Define the effect type
@@ -55,7 +56,7 @@ Or better, **two** handlers:
 ```scala mdoc
 extension (fx: FlipEffect)
   def findAll =
-    new fx.impl.Stateless.FromId.Free[Vector] with fx.impl.Sequential with FlipSignature:
+    new fx.impl.Stateless[Identity, Vector, Any] with fx.impl.Sequential with FlipSignature:
       override def onReturn(a: Unknown) = !!.pure(Vector(a))
 
       override def fail = Control.abort(Vector())
@@ -72,7 +73,7 @@ extension (fx: FlipEffect)
 ```scala mdoc
 extension (fx: FlipEffect)
   def findFirst =
-    new fx.impl.Stateless.FromId.Free[Option] with fx.impl.Sequential with FlipSignature:
+    new fx.impl.Stateless[Identity, Option, Any] with fx.impl.Sequential with FlipSignature:
       override def onReturn(a: Unknown) = !!.pure(Some(a))
 
       override def fail = Control.abort(None)
