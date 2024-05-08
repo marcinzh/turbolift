@@ -5,13 +5,13 @@ import turbolift.handlers.monoGraphHandler
 
 
 trait MonoGraphSignature[K, V] extends Signature:
-  def empty(to: K): Unit !@! ThisEffect
-  def incomingConst(to: K, value: V): Unit !@! ThisEffect
-  def outgoingConst(from: K, value: V): Unit !@! ThisEffect
-  def incoming(to: K, from: K): Unit !@! ThisEffect
-  def incomings(to: K, froms: IterableOnce[K]): Unit !@! ThisEffect
-  def outgoing(from: K, to: K): Unit !@! ThisEffect
-  def outgoings(from: K, tos: IterableOnce[K]): Unit !@! ThisEffect
+  def empty(to: K): Unit !! ThisEffect
+  def incomingConst(to: K, value: V): Unit !! ThisEffect
+  def outgoingConst(from: K, value: V): Unit !! ThisEffect
+  def incoming(to: K, from: K): Unit !! ThisEffect
+  def incomings(to: K, froms: IterableOnce[K]): Unit !! ThisEffect
+  def outgoing(from: K, to: K): Unit !! ThisEffect
+  def outgoings(from: K, tos: IterableOnce[K]): Unit !! ThisEffect
 
 
 trait MonoGraph[K, V] extends Effect[MonoGraphSignature[K, V]] with MonoGraphSignature[K, V]:

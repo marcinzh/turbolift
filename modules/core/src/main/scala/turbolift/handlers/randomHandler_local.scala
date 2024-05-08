@@ -28,32 +28,32 @@ extension (fx: RandomEffect)
         val (b, s) = bb
         (k(a, b), s)
 
-      inline def simple[A](inline f: Splitmix64 => A): A !@! ThisEffect =
+      inline def simple[A](inline f: Splitmix64 => A): A !! ThisEffect =
         Local.update: s =>
           val s2 = s.next
           (f(s2), s2)
 
-      override def nextBoolean: Boolean !@! ThisEffect = simple(x => (x.value & 1) != 0)
-      override def nextInt: Int !@! ThisEffect = simple(_.value.toInt)
-      override def nextInt(n: Int): Int !@! ThisEffect = between(0, n)
-      override def nextLong: Long !@! ThisEffect = simple(_.value)
-      override def nextLong(n: Long): Long !@! ThisEffect = between(0, n)
-      override def nextFloat: Float !@! ThisEffect = simple(_.toDoubleInclusive.toFloat)
-      override def nextDouble: Double !@! ThisEffect = simple(_.toDoubleInclusive)
+      override def nextBoolean: Boolean !! ThisEffect = simple(x => (x.value & 1) != 0)
+      override def nextInt: Int !! ThisEffect = simple(_.value.toInt)
+      override def nextInt(n: Int): Int !! ThisEffect = between(0, n)
+      override def nextLong: Long !! ThisEffect = simple(_.value)
+      override def nextLong(n: Long): Long !! ThisEffect = between(0, n)
+      override def nextFloat: Float !! ThisEffect = simple(_.toDoubleInclusive.toFloat)
+      override def nextDouble: Double !! ThisEffect = simple(_.toDoubleInclusive)
 
-      inline def between[A](range: Double, inline f: Double => A): A !@! ThisEffect =
+      inline def between[A](range: Double, inline f: Double => A): A !! ThisEffect =
         simple(x => f((x.toDoubleExclusive * range).floor))
 
-      override def between(minInclusive: Long, maxExclusive: Long): Long !@! ThisEffect =
+      override def between(minInclusive: Long, maxExclusive: Long): Long !! ThisEffect =
         between((maxExclusive - minInclusive).toDouble, _.floor.toLong + minInclusive)
 
-      override def between(minInclusive: Int, maxExclusive: Int): Int !@! ThisEffect =
+      override def between(minInclusive: Int, maxExclusive: Int): Int !! ThisEffect =
         between(maxExclusive - minInclusive, _.floor.toInt + minInclusive)
 
-      override def between(minInclusive: Double, maxExclusive: Double): Double !@! ThisEffect =
+      override def between(minInclusive: Double, maxExclusive: Double): Double !! ThisEffect =
         between(maxExclusive - minInclusive, _.floor + minInclusive)
 
-      override def between(minInclusive: Float, maxExclusive: Float): Float !@! ThisEffect =
+      override def between(minInclusive: Float, maxExclusive: Float): Float !! ThisEffect =
         between(maxExclusive - minInclusive, _.floor.toFloat + minInclusive)
 
       override def nextGaussian: Double !! ThisEffect = Local.update(_.gaussian)

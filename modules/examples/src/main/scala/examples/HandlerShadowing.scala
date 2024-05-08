@@ -35,10 +35,10 @@ case object HandlerShadowing extends Example:
   //----- Effect -----
 
   trait KonsoleSignature extends Signature:
-    def log(text: String): Unit !@! ThisEffect
+    def log(text: String): Unit !! ThisEffect
 
   case object Konsole extends Effect[KonsoleSignature] with KonsoleSignature:
-    override def log(text: String): Unit !@! ThisEffect = perform(_.log(text))
+    override def log(text: String): Unit !! ThisEffect = perform(_.log(text))
 
   type Konsole = Konsole.type
 
@@ -47,14 +47,14 @@ case object HandlerShadowing extends Example:
   extension (fx: Konsole)
     def plain =
       new fx.impl.Proxy[Any] with KonsoleSignature:
-        override def log(text: String): Unit !@! ThisEffect =
+        override def log(text: String): Unit !! ThisEffect =
           !!.impure(println(text))
       .toHandler
 
 
     def sarcastic =
       new fx.impl.Proxy[Konsole] with KonsoleSignature:
-        override def log(text: String): Unit !@! ThisEffect =
+        override def log(text: String): Unit !! ThisEffect =
           val (text2, _) = text.foldLeft(("", false)) {
             case ((acc, flip), char) =>
               if char.isLetter then
@@ -70,7 +70,7 @@ case object HandlerShadowing extends Example:
     def rainbow =
       case object S extends State[Int]
       new fx.impl.Proxy[S.type & Konsole] with KonsoleSignature:
-        override def log(text: String): Unit !@! ThisEffect =
+        override def log(text: String): Unit !! ThisEffect =
           for
             i <- S.getModify(n => (n + 1) % palette.size)
             color = palette(i)

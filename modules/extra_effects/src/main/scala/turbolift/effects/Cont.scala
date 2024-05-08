@@ -3,8 +3,8 @@ import turbolift.{!!, Signature, Effect}
 
 
 trait ContSignature[R] extends Signature:
-  def shift[A, U <: ThisEffect](f: (A => R !! U) => R !! U): A !@! U
-  def reset[U <: ThisEffect](body: R !! U): R !@! U
+  def shift[A, U <: ThisEffect](f: (A => R !! U) => R !! U): A !! U
+  def reset[U <: ThisEffect](body: R !! U): R !! U
 
 
 trait Cont[R] extends Effect[ContSignature[R]] with ContSignature[R]:
@@ -16,8 +16,8 @@ trait Cont[R] extends Effect[ContSignature[R]] with ContSignature[R]:
     new impl.Stateless[Const[R], Const[R], Any] with impl.Sequential with ContSignature[R]:
       override def onReturn(r: R) = !!.pure(r)
 
-      override def shift[A, U <: ThisEffect](f: (A => R !! U) => R !! U): A !@! U = Control.capture(f)
+      override def shift[A, U <: ThisEffect](f: (A => R !! U) => R !! U): A !! U = Control.capture(f)
 
-      override def reset[U <: ThisEffect](body: R !! U): R !@! U = Control.delimit(body)
+      override def reset[U <: ThisEffect](body: R !! U): R !! U = Control.delimit(body)
 
     .toHandler

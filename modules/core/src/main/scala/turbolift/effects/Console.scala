@@ -5,12 +5,12 @@ import turbolift.handlers.consoleHandler
 
 
 trait ConsoleSignature extends Signature:
-  def readChar: Option[Char] !@! ThisEffect
-  def readLine: String !@! ThisEffect
-  def print(text: String): Unit !@! ThisEffect
-  def printErr(text: String): Unit !@! ThisEffect
-  def printLine(text: String): Unit !@! ThisEffect
-  def printLineErr(text: String): Unit !@! ThisEffect
+  def readChar: Option[Char] !! ThisEffect
+  def readLine: String !! ThisEffect
+  def print(text: String): Unit !! ThisEffect
+  def printErr(text: String): Unit !! ThisEffect
+  def printLine(text: String): Unit !! ThisEffect
+  def printLineErr(text: String): Unit !! ThisEffect
 
 
 trait ConsoleEffect extends Effect[ConsoleSignature] with ConsoleSignature with AnsiColor:

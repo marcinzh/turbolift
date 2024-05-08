@@ -1,4 +1,5 @@
 package turbolift.handlers
+import turbolift.!!
 import turbolift.effects.{AutoInc, AutoIncSignature, State}
 import turbolift.Extensions._
 
@@ -8,7 +9,7 @@ extension (fx: AutoInc)
     case object S extends State[Int]
 
     new fx.impl.Proxy[S.type] with AutoIncSignature:
-      override def next: Int !@! ThisEffect = S.getModify(_ + 1)
+      override def next: Int !! ThisEffect = S.getModify(_ + 1)
 
     .toHandler
     .provideWith(S.handler(initial))

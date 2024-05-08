@@ -9,11 +9,11 @@ extension [K, V](fx: CyclicMemoizer[K, V])
     case object Storage extends State[Map[K, Thunk[V]]]
 
     new fx.impl.Proxy[Storage.type] with CyclicMemoizerSignature[K, V]:
-      override def domain: Set[K] !@! ThisEffect = Storage.gets(_.keySet)
+      override def domain: Set[K] !! ThisEffect = Storage.gets(_.keySet)
 
-      override def toMap: Map[K, V] !@! ThisEffect = Storage.gets(_.view.mapValues(_.apply()).toMap) //@#@TODO mapValues not strict yet
+      override def toMap: Map[K, V] !! ThisEffect = Storage.gets(_.view.mapValues(_.apply()).toMap) //@#@TODO mapValues not strict yet
 
-      override def memo[U <: ThisEffect](f: K => V !! U)(k: K): (() => V) !@! U =
+      override def memo[U <: ThisEffect](f: K => V !! U)(k: K): (() => V) !! U =
         Storage.get.flatMap: m =>
           m.get(k) match
             case Some(thunk) => !!.pure(thunk)

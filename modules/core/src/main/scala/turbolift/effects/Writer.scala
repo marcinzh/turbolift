@@ -5,12 +5,12 @@ import turbolift.handlers.{writerHandler_local, writerHandler_shared}
 
 
 trait WriterSignature[W, W1] extends Signature:
-  def tell(w: W1): Unit !@! ThisEffect
-  def tells(w: W): Unit !@! ThisEffect
-  def mute[A, U <: ThisEffect](body: A !! U): A !@! U
-  def listen[A, U <: ThisEffect](body: A !! U): (A, W) !@! U
-  def censor[A, U <: ThisEffect](f: W => W)(body: A !! U): A !@! U
-  def pass[A, U <: ThisEffect](body: (A, W => W) !! U): A !@! U
+  def tell(w: W1): Unit !! ThisEffect
+  def tells(w: W): Unit !! ThisEffect
+  def mute[A, U <: ThisEffect](body: A !! U): A !! U
+  def listen[A, U <: ThisEffect](body: A !! U): (A, W) !! U
+  def censor[A, U <: ThisEffect](f: W => W)(body: A !! U): A !! U
+  def pass[A, U <: ThisEffect](body: (A, W => W) !! U): A !! U
 
 
 trait WriterEffect[W, W1] extends Effect[WriterSignature[W, W1]] with WriterSignature[W, W1]:

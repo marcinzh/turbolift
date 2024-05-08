@@ -4,20 +4,20 @@ import turbolift.handlers.{randomHandler_local, randomHandler_shared}
 
 
 trait RandomSignature extends Signature:
-  def nextBoolean: Boolean !@! ThisEffect
-  def nextInt: Int !@! ThisEffect
-  def nextInt(n: Int): Int !@! ThisEffect
-  def nextLong: Long !@! ThisEffect
-  def nextLong(n: Long): Long !@! ThisEffect
-  def nextFloat: Float !@! ThisEffect
-  def nextDouble: Double !@! ThisEffect
-  def nextGaussian: Double !@! ThisEffect
-  def between(minInclusive: Int, maxExclusive: Int): Int !@! ThisEffect
-  def between(minInclusive: Long, maxExclusive: Long): Long !@! ThisEffect
-  def between(minInclusive: Float, maxExclusive: Float): Float !@! ThisEffect
-  def between(minInclusive: Double, maxExclusive: Double): Double !@! ThisEffect
-  def nextBytes(n: Int): Array[Byte] !@! ThisEffect
-  def setSeed(seed: Long): Unit !@! ThisEffect
+  def nextBoolean: Boolean !! ThisEffect
+  def nextInt: Int !! ThisEffect
+  def nextInt(n: Int): Int !! ThisEffect
+  def nextLong: Long !! ThisEffect
+  def nextLong(n: Long): Long !! ThisEffect
+  def nextFloat: Float !! ThisEffect
+  def nextDouble: Double !! ThisEffect
+  def nextGaussian: Double !! ThisEffect
+  def between(minInclusive: Int, maxExclusive: Int): Int !! ThisEffect
+  def between(minInclusive: Long, maxExclusive: Long): Long !! ThisEffect
+  def between(minInclusive: Float, maxExclusive: Float): Float !! ThisEffect
+  def between(minInclusive: Double, maxExclusive: Double): Double !! ThisEffect
+  def nextBytes(n: Int): Array[Byte] !! ThisEffect
+  def setSeed(seed: Long): Unit !! ThisEffect
 
 
 trait RandomEffect extends Effect[RandomSignature] with RandomSignature:
@@ -33,7 +33,7 @@ trait RandomEffect extends Effect[RandomSignature] with RandomSignature:
   final override def between(minInclusive: Long, maxExclusive: Long): Long !! this.type = perform(_.between(minInclusive, maxExclusive))
   final override def between(minInclusive: Float, maxExclusive: Float): Float !! this.type = perform(_.between(minInclusive, maxExclusive))
   final override def between(minInclusive: Double, maxExclusive: Double): Double !! this.type = perform(_.between(minInclusive, maxExclusive))
-  final override def nextBytes(n: Int): Array[Byte] !@! ThisEffect = perform(_.nextBytes(n))
+  final override def nextBytes(n: Int): Array[Byte] !! ThisEffect = perform(_.nextBytes(n))
   final override def setSeed(seed: Long): Unit !! this.type = perform(_.setSeed(seed))
 
   /** Predefined handlers for this effect. */

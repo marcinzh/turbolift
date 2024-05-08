@@ -16,13 +16,13 @@ extension [K, V](fx: MonoGraph[K, V])
     type Fx3 = IncomingConst.type & OutgoingConst.type & Propagate.type
 
     new fx.impl.Proxy[Fx3] with MonoGraphSignature[K, V]:
-      override def empty(k: K): Unit !@! ThisEffect = IncomingConst.tell(k, V.empty)
-      override def incomingConst(to: K, value: V): Unit !@! ThisEffect = IncomingConst.tell(to, value)
-      override def outgoingConst(from: K, value: V): Unit !@! ThisEffect = OutgoingConst.tell(from, value)
-      override def outgoing(from: K, to: K): Unit !@! ThisEffect = incoming(to, from)
-      override def incoming(to: K, from: K): Unit !@! ThisEffect = Propagate.tell(from, to)
-      override def incomings(to: K, froms: IterableOnce[K]): Unit !@! ThisEffect = froms.foreachEff(Propagate.tell(_, to))
-      override def outgoings(from: K, tos: IterableOnce[K]): Unit !@! ThisEffect = tos.foreachEff(Propagate.tell(from, _))
+      override def empty(k: K): Unit !! ThisEffect = IncomingConst.tell(k, V.empty)
+      override def incomingConst(to: K, value: V): Unit !! ThisEffect = IncomingConst.tell(to, value)
+      override def outgoingConst(from: K, value: V): Unit !! ThisEffect = OutgoingConst.tell(from, value)
+      override def outgoing(from: K, to: K): Unit !! ThisEffect = incoming(to, from)
+      override def incoming(to: K, from: K): Unit !! ThisEffect = Propagate.tell(from, to)
+      override def incomings(to: K, froms: IterableOnce[K]): Unit !! ThisEffect = froms.foreachEff(Propagate.tell(_, to))
+      override def outgoings(from: K, tos: IterableOnce[K]): Unit !! ThisEffect = tos.foreachEff(Propagate.tell(from, _))
 
     .toHandler
     .provideWith(IncomingConst.handler ***! OutgoingConst.handler ***! Propagate.handler)

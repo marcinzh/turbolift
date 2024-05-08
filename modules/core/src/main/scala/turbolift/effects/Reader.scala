@@ -4,10 +4,10 @@ import turbolift.handlers.readerHandler
 
 
 trait ReaderSignature[R] extends Signature:
-  def ask: R !@! ThisEffect
-  def asks[A](f: R => A): A !@! ThisEffect
-  def localPut[A, U <: ThisEffect](r: R)(body: A !! U): A !@! U
-  def localModify[A, U <: ThisEffect](f: R => R)(body: A !! U): A !@! U
+  def ask: R !! ThisEffect
+  def asks[A](f: R => A): A !! ThisEffect
+  def localPut[A, U <: ThisEffect](r: R)(body: A !! U): A !! U
+  def localModify[A, U <: ThisEffect](f: R => R)(body: A !! U): A !! U
 
 
 trait ReaderEffect[R] extends Effect[ReaderSignature[R]] with ReaderSignature[R]:

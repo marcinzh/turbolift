@@ -14,13 +14,13 @@ extension [Fx <: ChoiceEffect](fx: Fx)
       override def onZip[A, B, C](as: Vector[A], bs: Vector[B], k: (A, B) => C): Vector[C] =
         as.flatMap(a => bs.map(b => k(a, b)))
 
-      override def empty: Nothing !@! ThisEffect = Control.abort(Vector())
+      override def empty: Nothing !! ThisEffect = Control.abort(Vector())
 
-      override def choose[A](as: Iterable[A]): A !@! ThisEffect =
+      override def choose[A](as: Iterable[A]): A !! ThisEffect =
         Control.capture(k => as.iterator.flatMapEff(k(_)))
 
       //@#@TODO choosePar
-      // override def choosePar[A](as: Iterable[A]): A !@! ThisEffect =
+      // override def choosePar[A](as: Iterable[A]): A !! ThisEffect =
       //   k => as.iterator.flatMapParEff(k(_))
 
     .toHandler

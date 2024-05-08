@@ -35,19 +35,14 @@ sealed trait Interpreter extends Signature:
 
   /** Phantom type meaning the unknown part of the continuation's answer type.
     *
-    * Full answer type is `To[Unknown] !@! Intro`.
+    * Full answer type is `To[Unknown] !! Intro`.
     * The `To[+_]` part is known to this interpreter.
     * The `Unknown` part however, is not.
     * It's specific to place(s) where the handler (obtained from this interpreter) would be applied.
     */
   type Unknown
 
-  final override type ThisEffect = Elim
-  final override type !@![+A, U] = A !! (U & Intro)
-
-  //@#@TEMP
-  final type ThatEffect = Elim & Intro
-
+  final override type ThisEffect = Elim & Intro
 
   /** Alias for [[turbolift.Handler Handler]], specialized for this interperter. */
   final type ThisHandler = Handler[From, To, Elim, Intro]
@@ -59,7 +54,7 @@ sealed trait Interpreter extends Signature:
   val Control = new turbolift.interpreter.Control[Local, Unknown, To, Elim & Intro](untyped)
 
   def onInitial: Local !! Intro
-  def onReturn(aa: From[Unknown], s: Local): To[Unknown] !! ThatEffect
+  def onReturn(aa: From[Unknown], s: Local): To[Unknown] !! ThisEffect
   def onRestart(aa: To[Unknown]): Unknown !! ThisEffect
   def onZip[A, B, C](aa: To[A], bb: To[B], k: (A, B) => C): To[C]
   def onFork(s: Local): (Local, Local)
@@ -69,7 +64,7 @@ sealed trait Interpreter extends Signature:
   def resurceUnsafeHint: Boolean = false
 
   /** Creates a [[turbolift.Handler Handler]] from this interpreter. */
-  final def toHandler: ThisHandler = HC.Primitive[From, To, ThisEffect, Intro](this)
+  final def toHandler: ThisHandler = HC.Primitive[From, To, Elim, Intro](this)
 
   private[turbolift] final val features: Features =
     val primary = Seq(
@@ -153,7 +148,7 @@ object Interpreter:
     final override type Local = Void
 
     final override def onInitial: Local !! Intro = Void.pure
-    final override def onReturn(aa: From[Unknown], s: Void): To[Unknown] !! ThatEffect = onReturn(aa)
+    final override def onReturn(aa: From[Unknown], s: Void): To[Unknown] !! ThisEffect = onReturn(aa)
     def onReturn(aa: From[Unknown]): To[Unknown] !! Intro
 
 

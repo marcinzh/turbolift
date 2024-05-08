@@ -6,8 +6,8 @@ import turbolift.handlers.{choiceHandler_allBreadthFirst, choiceHandler_firstBre
 
 
 trait ChoiceSignature extends Signature:
-  def empty: Nothing !@! ThisEffect
-  def choose[A](as: Iterable[A]): A !@! ThisEffect
+  def empty: Nothing !! ThisEffect
+  def choose[A](as: Iterable[A]): A !! ThisEffect
 
 
 trait ChoiceEffect extends Effect[ChoiceSignature] with ChoiceSignature:

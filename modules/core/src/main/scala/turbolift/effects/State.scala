@@ -4,18 +4,18 @@ import turbolift.handlers.{stateHandler_local, stateHandler_shared}
 
 
 trait StateSignature[S] extends Signature:
-  def get: S !@! ThisEffect
-  def gets[A](f: S => A): A !@! ThisEffect
-  def put(s: S): Unit !@! ThisEffect
-  def swap(s: S): S !@! ThisEffect
-  def modify(f: S => S): Unit !@! ThisEffect
-  def modifyGet(f: S => S): S !@! ThisEffect
-  def getModify(f: S => S): S !@! ThisEffect
-  def getModifyGet(f: S => S): (S, S) !@! ThisEffect
-  def update[A](f: S => (A, S)): A !@! ThisEffect
-  def updateGet[A](f: S => (A, S)): (A, S) !@! ThisEffect
-  def getUpdate[A](f: S => (A, S)): (A, S) !@! ThisEffect
-  def getUpdateGet[A](f: S => (A, S)): (A, S, S) !@! ThisEffect
+  def get: S !! ThisEffect
+  def gets[A](f: S => A): A !! ThisEffect
+  def put(s: S): Unit !! ThisEffect
+  def swap(s: S): S !! ThisEffect
+  def modify(f: S => S): Unit !! ThisEffect
+  def modifyGet(f: S => S): S !! ThisEffect
+  def getModify(f: S => S): S !! ThisEffect
+  def getModifyGet(f: S => S): (S, S) !! ThisEffect
+  def update[A](f: S => (A, S)): A !! ThisEffect
+  def updateGet[A](f: S => (A, S)): (A, S) !! ThisEffect
+  def getUpdate[A](f: S => (A, S)): (A, S) !! ThisEffect
+  def getUpdateGet[A](f: S => (A, S)): (A, S, S) !! ThisEffect
 
 
 trait StateEffect[S] extends Effect[StateSignature[S]] with StateSignature[S]:

@@ -16,7 +16,7 @@ import turbolift.internals.auxx.IdConst
  *
  * // Signature:
  * trait GoogleSignature extends Signature:
- *   def countPicturesOf(topic: String): Int !@! ThisEffect
+ *   def countPicturesOf(topic: String): Int !! ThisEffect
  *
  * // Boilerplate:
  * trait Google extends Effect[GoogleSignature] with GoogleSignature:

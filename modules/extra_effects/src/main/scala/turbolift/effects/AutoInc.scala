@@ -4,7 +4,7 @@ import turbolift.handlers.autoIncHandler
 
 
 trait AutoIncSignature extends Signature:
-  def next: Int !@! ThisEffect
+  def next: Int !! ThisEffect
 
 
 trait AutoInc extends Effect[AutoIncSignature] with AutoIncSignature:

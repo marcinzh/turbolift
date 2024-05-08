@@ -22,11 +22,11 @@ extension [Fx <: ChoiceEffect](fx: Fx)
       override def onZip[A, B, C](as: Option[A], bs: Option[B], k: (A, B) => C): Option[C] =
         as.flatMap(a => bs.map(b => k(a, b)))
 
-      override def empty: Nothing !@! ThisEffect =
+      override def empty: Nothing !! ThisEffect =
         Control.captureGet: (_, q) =>
           q.drain
 
-      override def choose[A](as: Iterable[A]): A !@! ThisEffect =
+      override def choose[A](as: Iterable[A]): A !! ThisEffect =
         Control.captureGet: (k, q) =>
           q.addTodo(as.iterator.map(a => k(a, _))).drain
 

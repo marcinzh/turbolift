@@ -18,24 +18,24 @@ extension [K, V](fx: PolyGraph[K, V])
     val computeBottom = computeConst(bottom)
 
     new fx.impl.Proxy[Compute.type & Propagate.type] with PolyGraphSignature[K, V]:
-      override def empty(to: K): Unit !@! ThisEffect = Compute.tell(to, computeBottom)
+      override def empty(to: K): Unit !! ThisEffect = Compute.tell(to, computeBottom)
 
-      override def const(to: K, value: V): Unit !@! ThisEffect = Compute.tell(to, computeConst(value))
+      override def const(to: K, value: V): Unit !! ThisEffect = Compute.tell(to, computeConst(value))
 
-      override def identity(to: K, from: K): Unit !@! ThisEffect =
+      override def identity(to: K, from: K): Unit !! ThisEffect =
         Compute.tell(to, (sol: Solution) => sol(from)) &&!
         Propagate.tell(from, to)
 
-      override def unary(to: K, from: K)(f: V => V): Unit !@! ThisEffect =
+      override def unary(to: K, from: K)(f: V => V): Unit !! ThisEffect =
         Compute.tell(to, (sol: Solution) => f(sol(from))) &&!
         Propagate.tell(from, to)
 
-      override def binary(to: K, from1: K, from2: K)(f: (V, V) => V): Unit !@! ThisEffect =
+      override def binary(to: K, from1: K, from2: K)(f: (V, V) => V): Unit !! ThisEffect =
         Compute.tell(to, (sol: Solution) => f(sol(from1), sol(from2))) &&!
         Propagate.tell(from1, to) &&!
         Propagate.tell(from2, to)
 
-      override def variadic(to: K, froms: Vector[K])(f: Vector[V] => V): Unit !@! ThisEffect =
+      override def variadic(to: K, froms: Vector[K])(f: Vector[V] => V): Unit !! ThisEffect =
         Compute.tell(to, (sol: Solution) => f(froms.map(sol))) &&!
         froms.foreachEff(Propagate.tell(_, to))
 

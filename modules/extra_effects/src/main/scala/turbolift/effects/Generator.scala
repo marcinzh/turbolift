@@ -43,7 +43,7 @@ object Generator:
 
 
 trait ProducerSignature[A] extends Signature:
-  def yeld(value: A): Unit !@! ThisEffect
+  def yeld(value: A): Unit !! ThisEffect
 
 
 trait ProducerEffect[A] extends Effect[ProducerSignature[A]] with ProducerSignature[A]:
@@ -54,7 +54,7 @@ trait ProducerEffect[A] extends Effect[ProducerSignature[A]] with ProducerSignat
       override def onReturn(aa: Unit): Step[A, U] !! Any =
         Step.End.pure_!!
 
-      override def yeld(value: A): Unit !@! ThisEffect =
+      override def yeld(value: A): Unit !! ThisEffect =
         Control.capture: k =>
           Step.Yield(value, k.resume(())).pure_!!
 
@@ -62,7 +62,7 @@ trait ProducerEffect[A] extends Effect[ProducerSignature[A]] with ProducerSignat
 
 
 trait ConsumerSignature[A] extends Signature:
-  def await: A !@! ThisEffect
+  def await: A !! ThisEffect
 
 
 trait ConsumerEffect[A] extends Effect[ConsumerSignature[A]] with ConsumerSignature[A]:
@@ -76,7 +76,7 @@ trait ConsumerEffect[A] extends Effect[ConsumerSignature[A]] with ConsumerSignat
 
       override def onReturn(a: Unit, s: Local) = !!.unit
 
-      override def await: A !@! ThisEffect =
+      override def await: A !! ThisEffect =
         Control.captureGet: (k, s) =>
           s.flatMap:
             case Step.End => !!.unit
