@@ -9,13 +9,13 @@ import QueO.Cont
 extension (fx: ChoiceEffect)
   def choiceHandler_firstBreadthFirst: fx.ThisHandler[Identity, Option, Any] =
     new fx.impl.Stateful[Identity, Option, Any] with fx.impl.Parallel with ChoiceSignature:
-      override type Stan = QueO[Unknown, Ambient]
+      override type Local = QueO[Unknown, Ambient]
 
       override def multishotHint: Boolean = true
 
       override def onInitial = QueO.empty.pure_!!
 
-      override def onReturn(a: Unknown, q: Stan): Option[Unknown] !! Any =
+      override def onReturn(a: Unknown, q: Local): Option[Unknown] !! Any =
         !!.pure(Some(a))
 
       override def onRestart(as: Option[Unknown]): Unknown !! ThisEffect =

@@ -99,8 +99,8 @@ private[engine] object OpCascaded:
             val s0 = storeSeg.geti(j)
             if p.hasForkJoin then
               val (s1, s2) = p.interpreter.onFork(s0)
-              storeSegLeft.setInPlace(j, s1.asStan)
-              storeSegRight.setInPlace(j, s2.asStan)
+              storeSegLeft.setInPlace(j, s1.asLocal)
+              storeSegRight.setInPlace(j, s2.asLocal)
             else
               storeSegLeft.setInPlace(j, s0)
               storeSegRight.setInPlace(j, s0)
@@ -127,7 +127,7 @@ private[engine] object OpCascaded:
               val s2 = storeSegRight.geti(j)
               val s01 = p.interpreter.onJoin(s0, s1)
               val s012 = p.interpreter.onJoin(s01, s2)
-              storeSegOut.setInPlace(j, s012.asStan)
+              storeSegOut.setInPlace(j, s012.asLocal)
             else
               storeSegOut.setInPlace(j, s0)
             loop(i + 1, j + 1)

@@ -11,7 +11,7 @@ private[turbolift] object Tags:
   inline val Impure              = 6
   inline val Resume              = 7
   inline val Escape              = 8
-  inline val Local               = 9
+  inline val Delimit             = 9
   inline val Abort               = 10
   inline val Step_Capture        = 11
   inline val Step_Bridge         = 12
@@ -44,7 +44,7 @@ private[turbolift] object Tags:
       case Impure              => "Impure"
       case Resume              => "Resume"
       case Escape              => "Escape"
-      case Local               => "Local"
+      case Delimit             => "Delimit"
       case Abort               => "Abort"
       case Step_Capture        => "Step_Capture"
       case Step_Bridge         => "Step_Bridge"

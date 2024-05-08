@@ -22,6 +22,6 @@ trait Cont[R] extends Effect[ContSignature[R]] with ContSignature[R]:
         k => k.escapeAndForget(f(k.resume(_)))
 
       override def reset[U <: ThisEffect](body: R !! U): R !@! U =
-        k => k.localAndResume(body)
+        k => k.delimitAndResume(body)
 
     .toHandler

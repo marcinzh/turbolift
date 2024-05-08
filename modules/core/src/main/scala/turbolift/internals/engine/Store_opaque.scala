@@ -17,11 +17,11 @@ private[engine] trait Store_opaque:
         cb(nel.head, nel.tail)
 
 
-    final def get(l: Location.Deep): Stan =
-      @tailrec def loop(todo: Store, depth: Int): Stan =
+    final def get(l: Location.Deep): Local =
+      @tailrec def loop(todo: Store, depth: Int): Local =
         todo.deconsAndThen: (seg, more) =>
           if depth == 0 then
-            seg.geti(l.stanIndex)
+            seg.geti(l.localIndex)
           else
             if more != null then
               loop(more, depth - 1)
@@ -30,11 +30,11 @@ private[engine] trait Store_opaque:
       loop(thiz, l.segmentDepth)
 
 
-    final def set(l: Location.Deep, s: Stan): Store =
+    final def set(l: Location.Deep, s: Local): Store =
       def loop(todo: Store, depth: Int): Store =
         todo.deconsAndThen: (seg, more) =>
           if depth == 0 then
-            val seg2 = seg.seti(l.stanIndex, s)
+            val seg2 = seg.seti(l.localIndex, s)
             seg2 ::? more
           else
             if more != null then
@@ -45,14 +45,14 @@ private[engine] trait Store_opaque:
       loop(thiz, l.segmentDepth)
 
 
-    final def getOrElseVoid(l: Location.Deep): Stan =
+    final def getOrElseVoid(l: Location.Deep): Local =
       if l.isStateful then
         get(l)
       else
-        Stan.void
+        Local.void
 
     
-    final def setIfNotVoid(l: Location.Deep, s: Stan): Store =
+    final def setIfNotVoid(l: Location.Deep, s: Local): Store =
       if s.isVoid then
         thiz
       else

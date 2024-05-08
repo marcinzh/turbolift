@@ -147,9 +147,9 @@ import Cause.{Cancelled => CancelPayload}
                 case fun: Function1[Control.Untyped, AnyComp] => fun(fresh)
                 case fun: Function2[Control.Untyped, Any, AnyComp] => fun(fresh, store.getOrElseVoid(location))
               if comp.tag == Tags.Resume && prompt.features.isTailResump then
-                val theResume = comp.asInstanceOf[CC.Resume[Any, Stan, Any]]
+                val theResume = comp.asInstanceOf[CC.Resume[Any, Local, Any]]
                 val payload2 = theResume.value
-                val store2 = store.setIfNotVoid(location, theResume.stan)
+                val store2 = store.setIfNotVoid(location, theResume.local)
                 loopStep(payload2, step, stack, store2, env, mark, fresh)
               else
                 val step2 = stack.getStepAt(location)
@@ -168,30 +168,30 @@ import Cause.{Cancelled => CancelPayload}
           loopStep(payload2, step, stack, store, env, mark, fresh)
 
         case Tags.Resume =>
-          val theResume = payload.asInstanceOf[CC.Resume[Any, Stan, Any]]
+          val theResume = payload.asInstanceOf[CC.Resume[Any, Local, Any]]
           val control = theResume.control.toImpl
           val step2 = control.step
           val payload2 = theResume.value
-          val (stack2, store2) = OpSplice.spliceForResume(stack, store, step, control, mark, theResume.stan)
+          val (stack2, store2) = OpSplice.spliceForResume(stack, store, step, control, mark, theResume.local)
           loopStep(payload2, step2, stack2, store2, env, Mark.none, fresh)
 
         case Tags.Escape =>
-          val theEscape = payload.asInstanceOf[CC.Escape[Any, Stan, Any]]
+          val theEscape = payload.asInstanceOf[CC.Escape[Any, Local, Any]]
           val control = theEscape.control.toImpl
           val step2 = SC.Capture(control.prompt, aside = step, next = control.step)
           val comp2 = theEscape.body
-          val (stack2, store2) = OpSplice.spliceForEscape(stack, store, step, control, mark, theEscape.stan)
+          val (stack2, store2) = OpSplice.spliceForEscape(stack, store, step, control, mark, theEscape.local)
           loopComp(comp2, step2, stack2, store2, env, Mark.none, fresh)
 
-        case Tags.Local =>
-          val theLocal = payload.asInstanceOf[CC.Local[Any, Stan, Any]]
-          val control = theLocal.control.toImpl
-          val comp2 = theLocal.body
+        case Tags.Delimit =>
+          val theDelimit = payload.asInstanceOf[CC.Delimit[Any, Local, Any]]
+          val control = theDelimit.control.toImpl
+          val comp2 = theDelimit.body
           val (stack3, store3) =
             val step2 = SC.Capture(control.prompt, aside = step, next = control.step)
-            val (stack2, store2) = OpSplice.spliceForLocal(stack, store, step, control, mark)
+            val (stack2, store2) = OpSplice.spliceForDelimit(stack, store, step, control, mark)
             val location = stack2.locatePrompt(control.prompt) //@#@OPTY already found
-            OpPush.pushLocal(stack2, store2, step2, control.prompt, location, theLocal.stan, FrameKind.plain)
+            OpPush.pushNested(stack2, store2, step2, control.prompt, location, theDelimit.local, FrameKind.plain)
           loopComp(comp2, SC.Pop, stack3, store3, env, Mark.none, fresh)
 
         case Tags.Abort =>
@@ -212,9 +212,9 @@ import Cause.{Cancelled => CancelPayload}
               //@#@OPTY fuse
               val location = stack.locatePrompt(prompt)
               val stepMid = stack.getStepAt(location)
-              val stan = store.getOrElseVoid(location)
+              val local = store.getOrElseVoid(location)
               fresh.init(stack, store, theCapture.next, stepMid, prompt, location)
-              (payload, fresh, stan)
+              (payload, fresh, local)
             loopStep(payload2, step2, stack, store, env, mark2, new ControlImpl)
 
         case Tags.Step_Bridge =>
@@ -313,7 +313,7 @@ import Cause.{Cancelled => CancelPayload}
           mark.mustBeEmpty()
           val thePush = step.asInstanceOf[SC.Push]
           val step2 = thePush.next
-          val (stack2, store2) = OpPush.pushBase(stack, store, step2, thePush.prompt, payload.asStan)
+          val (stack2, store2) = OpPush.pushBase(stack, store, step2, thePush.prompt, payload.asLocal)
           val comp2 = thePush.body
           loopComp(comp2, SC.Pop, stack2, store2, env, Mark.none, fresh)
 
@@ -322,11 +322,11 @@ import Cause.{Cancelled => CancelPayload}
           if !theUnwind.kind.isPop then mark.mustBeEmpty()
           OpSplit.forceSplitAndThen(stack, store, mark): (stack, store) =>
             if stack.canPop then
-              val (stack2, store2, step2, prompt, frame, stan) = OpPush.pop(stack, store)
+              val (stack2, store2, step2, prompt, frame, local) = OpPush.pop(stack, store)
               if prompt.isIo then
                 frame.kind.unwrap match
                   case FrameKind.PLAIN =>
-                    val env2 = frame.stan.asEnv
+                    val env2 = frame.local.asEnv
                     val step3 = if theUnwind.kind.isPop then step2 else step
                     loopStep(payload, step3, stack2, store2, env2, Mark.none, fresh)
 
@@ -339,7 +339,7 @@ import Cause.{Cancelled => CancelPayload}
                     loopStep(payload2, step2, stack2, store2, env, Mark.none, fresh)
               else
                 if theUnwind.kind.isPop then
-                  val comp2 = prompt.interpreter.onReturn(payload, stan)
+                  val comp2 = prompt.interpreter.onReturn(payload, local)
                   loopComp(comp2, step2, stack2, store2, env, Mark.none, fresh)
                 else
                   val step3 = if prompt == theUnwind.prompt then step2 else step
@@ -380,7 +380,7 @@ import Cause.{Cancelled => CancelPayload}
             OpSplit.forceSplitAndThen(stack, store, mark): (stack, store) =>
               val theDoSnap = payload.asInstanceOf[CC.DoSnap[Any, Any]]
               val location = stack.locatePrompt(Prompt.io)
-              val (stack2, store2) = OpPush.pushLocal(stack, store, step, Prompt.io, location, env.asStan, FrameKind.guard)
+              val (stack2, store2) = OpPush.pushNested(stack, store, step, Prompt.io, location, env.asLocal, FrameKind.guard)
               loopComp(theDoSnap.body, SC.Pop, stack2, store2, env, Mark.none, fresh)
 
           case Tags.Unsnap =>
@@ -414,7 +414,7 @@ import Cause.{Cancelled => CancelPayload}
               //@#@TODO avoid stack split, like in any other HOE
               OpSplit.forceSplitAndThen(stack, store, mark): (stack, store) =>
                 val location = stack.locatePrompt(Prompt.io)
-                val (stack2, store2) = OpPush.pushLocal(stack, store, step, Prompt.io, location, env2.asStan, FrameKind.plain)
+                val (stack2, store2) = OpPush.pushNested(stack, store, step, Prompt.io, location, env2.asLocal, FrameKind.plain)
                 loopComp(theEnvMod.body, SC.Pop, stack2, store2, env2, Mark.none, fresh)
 
           case Tags.Yield =>

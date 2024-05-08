@@ -7,7 +7,7 @@ import turbolift.Extensions._
 extension [S](fx: StateEffect[S])
   def stateHandler_local(initial: S): fx.ThisHandler[Identity, (_, S), Any] =
     new fx.impl.Stateful[Identity, (_, S), Any] with fx.impl.Sequential.Restartable with StateSignature[S]:
-      override type Stan = S
+      override type Local = S
 
       override def tailResumptiveHint: Boolean = true
 

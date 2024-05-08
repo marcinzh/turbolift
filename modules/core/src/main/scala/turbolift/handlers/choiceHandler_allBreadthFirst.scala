@@ -9,13 +9,13 @@ import QueV.Cont
 extension (fx: ChoiceEffect)
   def choiceHandler_allBreadthFirst: fx.ThisHandler[Identity, Vector, Any] =
     new fx.impl.Stateful[Identity, Vector, Any] with fx.impl.Parallel with ChoiceSignature:
-      override type Stan = QueV[Unknown, Ambient]
+      override type Local = QueV[Unknown, Ambient]
 
       override def multishotHint: Boolean = true
 
       override def onInitial = QueV.empty.pure_!!
 
-      override def onReturn(a: Unknown, q: Stan): Vector[Unknown] !! Ambient =
+      override def onReturn(a: Unknown, q: Local): Vector[Unknown] !! Ambient =
         q.addDone(a).drain
 
       override def onRestart(as: Vector[Unknown]): Unknown !! ThisEffect =

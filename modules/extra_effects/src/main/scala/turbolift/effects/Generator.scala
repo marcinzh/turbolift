@@ -73,11 +73,11 @@ trait ConsumerEffect[A] extends Effect[ConsumerSignature[A]] with ConsumerSignat
     new impl.Stateful[Const[Unit], Const[Unit], U] with impl.Sequential with ConsumerSignature[A]:
       override def topmostOnlyHint = true
 
-      override type Stan = Step[A, U] !! U
+      override type Local = Step[A, U] !! U
 
       override def onInitial = initial.pure_!!
 
-      override def onReturn(a: Unit, s: Stan) = !!.unit
+      override def onReturn(a: Unit, s: Local) = !!.unit
 
       override def await: A !@! ThisEffect =
         (k, s) =>

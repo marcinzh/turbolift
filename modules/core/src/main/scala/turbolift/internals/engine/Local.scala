@@ -2,14 +2,14 @@ package turbolift.internals.engine
 import turbolift.interpreter.Void
 
 
-private[engine] opaque type Stan = Any
+private[engine] opaque type Local = Any
 
 
-private[engine] object Stan:
-  def void: Stan = Void
-  def nul: Stan = null
+private[engine] object Local:
+  def void: Local = Void
+  def nul: Local = null
 
-  extension (thiz: Stan)
+  extension (thiz: Local)
     inline def unwrap: Any = thiz
 
     def isVoid: Boolean = Void == thiz
@@ -18,4 +18,4 @@ private[engine] object Stan:
 
 
 extension (thiz: Any)
-  private[engine] inline def asStan: Stan = thiz
+  private[engine] inline def asLocal: Local = thiz

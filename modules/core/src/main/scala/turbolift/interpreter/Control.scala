@@ -66,6 +66,7 @@ abstract class Control[-A, B, S, F[+_], U, V] extends Function1[A, F[B] !! V]:
   final def escapeAndAbort(body: F[B] !! U): F[B] !! V = escape(body, void).flatMap { case (bb, k, _) => k.abort(bb) }
 
 
+  //@#@TODO doc
   /** Handles given computation locally.
    *
    * Execute `body` in the context, where this continuation has been created,
@@ -86,26 +87,26 @@ abstract class Control[-A, B, S, F[+_], U, V] extends Function1[A, F[B] !! V]:
    *
    * This alternative behavior is similar to the known problem of Monad Transformers: "catch resets state".
    */
-  final def local[X](body: X !! U): (F[X], This) !! V = local(body, void).map { case (xx, k, _) => (xx, k) }
+  final def delimit[X](body: X !! U): (F[X], This) !! V = delimit(body, void).map { case (xx, k, _) => (xx, k) }
 
-  /** Like the unary [[local]], but also with updating the state. */
-  final def local[X](body: X !! U, s: S): (F[X], This, S) !! V = CC.Local(untyped, body.untyped, s)
+  /** Like the unary [[delimit]], but also with updating the state. */
+  final def delimit[X](body: X !! U, s: S): (F[X], This, S) !! V = CC.Delimit(untyped, body.untyped, s)
 
-
-  //@#@TODO doc
-  final def localAndResume[X](body: X !! U)(using ev: F[X] <:< A): F[B] !! V = localAndResume(body, void)
 
   //@#@TODO doc
-  //@#@OPTY fuse
-  final def localAndResume[X](body: X !! U, s: S)(using ev: F[X] <:< A): F[B] !! V =
-    local(body, s).flatMap { case (xx, k, _) => k(ev(xx)) }
-
-  //@#@TODO doc
-  final def localAndForget(body: B !! U): F[B] !! V = localAndForget(body, void)
+  final def delimitAndResume[X](body: X !! U)(using ev: F[X] <:< A): F[B] !! V = delimitAndResume(body, void)
 
   //@#@TODO doc
   //@#@OPTY fuse
-  final def localAndForget(body: B !! U, s: S): F[B] !! V = local(body, s).map(_._1)
+  final def delimitAndResume[X](body: X !! U, s: S)(using ev: F[X] <:< A): F[B] !! V =
+    delimit(body, s).flatMap { case (xx, k, _) => k(ev(xx)) }
+
+  //@#@TODO doc
+  final def delimitAndForget(body: B !! U): F[B] !! V = delimitAndForget(body, void)
+
+  //@#@TODO doc
+  //@#@OPTY fuse
+  final def delimitAndForget(body: B !! U, s: S): F[B] !! V = delimit(body, s).map(_._1)
 
   private type This = Control[A, B, S, F, U, V]
 

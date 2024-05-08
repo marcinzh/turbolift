@@ -28,13 +28,13 @@ extension [E, E1](fx: ErrorEffect[E, E1])
       override def raises(e: E): Nothing !@! ThisEffect = k => k.abort(Left(e))
 
       override def toEither[A, U <: ThisEffect](body: A !! U): Either[E, A] !@! U =
-        k => k.localAndResume(body)
+        k => k.delimitAndResume(body)
 
       override def catchAllEff[A, U <: ThisEffect](body: A !! U)(f: E => A !! U): A !@! U =
-        k => k.local(body).flatMap:
+        k => k.delimit(body).flatMap:
           case (Right(a), k) => k(a)
           case (Left(e), k) => k.escapeAndResume(f(e))
-          // case (Left(e), k) => k.local(f(e)).flatMap:
+          // case (Left(e), k) => k.delimit(f(e)).flatMap:
           //   case (Right(a), k) => k(a)
           //   case (Left(e), k) => !!.pure(Left(e))
 

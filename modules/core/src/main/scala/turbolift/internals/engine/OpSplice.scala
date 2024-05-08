@@ -21,15 +21,15 @@ private[engine] object OpSplice:
     step: Step,
     control: ControlImpl,
     mark: Mark,
-    stan: Stan,
+    local: Local,
   ): (Stack, Store) =
     if isSameStackAs(stack, store, control) && (step eq control.stepMid) then
-      val store2 = store.setIfNotVoid(control.location, stan)
+      val store2 = store.setIfNotVoid(control.location, local)
       (stack, store2)
     else
       val (stackLo, storeLo, stepMid) = forceSplitLo(stack, store, step, mark)
       val (stackHi, storeHi, locHi) = control.forceSplitHi()
-      val storeHi2 = storeHi.setIfNotVoid(locHi, stan)
+      val storeHi2 = storeHi.setIfNotVoid(locHi, local)
       OpSplit.merge(
         stackHi = stackHi,
         storeHi = storeHi2,
@@ -45,15 +45,15 @@ private[engine] object OpSplice:
     step: Step,
     control: ControlImpl,
     mark: Mark,
-    stan: Stan,
+    local: Local,
   ): (Stack, Store) =
     if isSameStackAs(stack, store, control) then
-      val store2 = store.setIfNotVoid(control.location, stan)
+      val store2 = store.setIfNotVoid(control.location, local)
       (stack, store2)
     else
       val (stackLo, storeLo, stepMid) = forceSplitLo(stack, store, step, mark)
       val (stackHi, storeHi, locHi) = control.forceSplitHi()
-      val storeHi2 = storeHi.setIfNotVoid(locHi, stan)
+      val storeHi2 = storeHi.setIfNotVoid(locHi, local)
       OpSplit.merge(
         stackHi = stackHi,
         storeHi = storeHi2,
@@ -63,7 +63,7 @@ private[engine] object OpSplice:
       )
 
 
-  def spliceForLocal(
+  def spliceForDelimit(
     stack: Stack,
     store: Store,
     step: Step,
@@ -91,4 +91,4 @@ private[engine] object OpSplice:
     control: ControlImpl,
     mark: Mark,
   ): (Stack, Store) =
-    spliceForLocal(stack, store, step, control, mark)
+    spliceForDelimit(stack, store, step, control, mark)

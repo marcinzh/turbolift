@@ -27,8 +27,8 @@ sealed trait Interpreter extends Signature:
   /** Set of effects that this interpreter depends on. */
   type Dependency
 
-  /** State of this interpreter. Named `Stan`, to avoid confusion with `State` effect. */
-  type Stan
+  /** Local state of this interpreter. */
+  type Local
 
   /** Phantom type meaning the unknown part of the continuation's answer type.
     *
@@ -46,18 +46,18 @@ sealed trait Interpreter extends Signature:
   final type ThisHandler = Handler[From, To, ThisEffect, Dependency]
 
   /** Alias for [[Control]], specialized for this interperter. */
-  final type ThisControl[-A, U] = Control[A, Unknown, Stan, To, U & Dependency, Ambient]
+  final type ThisControl[-A, U] = Control[A, Unknown, Local, To, U & Dependency, Ambient]
 
   final type NullarySem[A, U] = A !! (U & Dependency)
   final type UnarySem[A, U] = ThisControl[A, U] => To[Unknown] !! Ambient
-  final type BinarySem[A, U] = (ThisControl[A, U], Stan) => To[Unknown] !! Ambient
+  final type BinarySem[A, U] = (ThisControl[A, U], Local) => To[Unknown] !! Ambient
 
-  def onInitial: Stan !! Dependency
-  def onReturn(aa: From[Unknown], s: Stan): To[Unknown] !! Ambient
+  def onInitial: Local !! Dependency
+  def onReturn(aa: From[Unknown], s: Local): To[Unknown] !! Ambient
   def onRestart(aa: To[Unknown]): Unknown !! ThisEffect
   def onZip[A, B, C](aa: To[A], bb: To[B], k: (A, B) => C): To[C]
-  def onFork(s: Stan): (Stan, Stan)
-  def onJoin(s1: Stan, s2: Stan): Stan
+  def onFork(s: Local): (Local, Local)
+  def onJoin(s1: Local, s2: Local): Local
 
   def tailResumptiveHint: Boolean = false
   def topmostOnlyHint: Boolean = false
@@ -109,7 +109,7 @@ object Interpreter:
     type To[+X] = X
     type ThisEffect = Any
     type Dependency = Any
-    type Stan = Any
+    type Local = Any
     type Unknown = Any
   }
 
@@ -127,10 +127,10 @@ object Interpreter:
     final override type From[+A] = A
     final override type To[+A] = A
     final override type Dependency = Fx
-    final override type Stan = Void
+    final override type Local = Void
     final override type !@![A, U] = NullarySem[A, U]
 
-    final override def onInitial: Stan !! Dependency = Void.pure
+    final override def onInitial: Local !! Dependency = Void.pure
     final override def onReturn(a: Unknown, s: Void): Unknown !! Ambient = !!.pure(a)
 
 
@@ -149,10 +149,10 @@ object Interpreter:
     final override type To[+A] = G[A]
     final override type Dependency = Fx
     override type Ambient <: Fx
-    final override type Stan = Void
+    final override type Local = Void
     final override type !@![A, U] = NullarySem[A, U] | UnarySem[A, U]
 
-    final override def onInitial: Stan !! Dependency = Void.pure
+    final override def onInitial: Local !! Dependency = Void.pure
     final override def onReturn(aa: From[Unknown], s: Void): To[Unknown] !! Ambient = onReturn(aa)
     def onReturn(aa: From[Unknown]): To[Unknown] !! Ambient
 
@@ -179,9 +179,9 @@ object Interpreter:
     final override type From[+A] = A
     final override type To[+A] = A
     final override type Dependency = Any
-    final override type Stan = Any
+    final override type Local = Any
     final override type Ambient = Any
 
-    final override def onInitial: Stan !! Dependency = Mixins.unimplemented
+    final override def onInitial: Local !! Dependency = Mixins.unimplemented
     final override def onReturn(a: Unknown, s: Any): Unknown !! Any = !!.pure(a)
     override def enumSignatures = Array(IO) //// `IO` = interface, `Io` = implementation

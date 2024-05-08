@@ -8,11 +8,11 @@ import turbolift.Extensions._
 extension (fx: RandomEffect)
   def randomHandler_local(seed: Long): fx.ThisHandler[Identity, Identity, Any] =
     new fx.impl.Stateful[Identity, (_, Splitmix64), Any] with fx.impl.Parallel.ForkJoin with RandomSignature:
-      override type Stan = Splitmix64
+      override type Local = Splitmix64
 
       override def tailResumptiveHint: Boolean = true
 
-      override def onInitial: Stan !! Any = !!.pure(Splitmix64(seed))
+      override def onInitial: Local !! Any = !!.pure(Splitmix64(seed))
 
       override def onReturn(a: Unknown, s: Splitmix64): (Unknown, Splitmix64) !! Any = !!.pure((a, s))
 
@@ -20,7 +20,7 @@ extension (fx: RandomEffect)
         val (a, s) = aa
         fx.setSeed(s.value) &&! !!.pure(a)
 
-      override def onFork(s: Stan): (Stan, Stan) =
+      override def onFork(s: Local): (Local, Local) =
         val s2 = s.next
         val s3 = s.jump
         (s2, s3)

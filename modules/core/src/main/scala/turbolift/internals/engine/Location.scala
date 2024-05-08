@@ -10,17 +10,17 @@ private[engine] object Location:
 
 
   object Shallow:
-    def apply(promptIndex: Int, stanIndex: Int, isStateful: Boolean): Shallow =
+    def apply(promptIndex: Int, localIndex: Int, isStateful: Boolean): Shallow =
       def isSmall(n: Int) = 0 <= n && n <= 0xF   
       assert(isSmall(promptIndex))
-      assert(isSmall(stanIndex))
+      assert(isSmall(localIndex))
       val h = if isStateful then 1 else 0
-      (stanIndex + (promptIndex << 4) + (h << 8)).toShort
+      (localIndex + (promptIndex << 4) + (h << 8)).toShort
 
     given ClassTag[Shallow] = shallowCT
 
     extension (thiz: Shallow)
-      def stanIndex: Int = A(thiz)
+      def localIndex: Int = A(thiz)
       def promptIndex: Int = B(thiz)
       def isStateful: Boolean = C(thiz)
       def isStateless: Boolean = !isStateful
@@ -28,7 +28,7 @@ private[engine] object Location:
       def withDepth(n: Int): Deep = thiz + (n << 9)
 
       def toStr: String =
-        s"loc{pi=$promptIndex si=$stanIndex s=${if isStateful then 1 else 0}}"
+        s"loc{pi=$promptIndex si=$localIndex s=${if isStateful then 1 else 0}}"
 
 
   object Deep:
@@ -37,7 +37,7 @@ private[engine] object Location:
     given ClassTag[Deep] = deepCT
 
     extension (thiz: Deep)
-      def stanIndex: Int = A(thiz)
+      def localIndex: Int = A(thiz)
       def promptIndex: Int = B(thiz)
       def isStateful: Boolean = C(thiz)
       def isStateless: Boolean = !isStateful
@@ -48,7 +48,7 @@ private[engine] object Location:
       def head: Deep = ABC(thiz)
 
       def toStr: String =
-        val s = if isEmpty then "empty" else s"pi=$promptIndex si=$stanIndex s=${if isStateful then 1 else 0} d=${segmentDepth}"
+        val s = if isEmpty then "empty" else s"pi=$promptIndex si=$localIndex s=${if isStateful then 1 else 0} d=${segmentDepth}"
         s"loc{$s}"
 
   private def A(n: Int): Int     = n & 0xF

@@ -89,9 +89,9 @@ private[engine] object OpSplit:
     (newStackSeg, newStoreSeg)
 
 
-  private type PileSplitter = (Pile, Stan) => (Pile | Null, Stan)
+  private type PileSplitter = (Pile, Local) => (Pile | Null, Local)
 
-  private case class Bundle(prompt: Prompt, pile: Pile, stan: Stan):
+  private case class Bundle(prompt: Prompt, pile: Pile, local: Local):
     def ord = pile.minHeight
 
 
@@ -123,9 +123,9 @@ private[engine] object OpSplit:
     val bundles = new Array[Bundle](oldPromptCount)
 
     var srcPromptIndex: Int = 0
-    var srcStanIndex: Int = 0
+    var srcLocalIndex: Int = 0
     var newPromptCount: Int = 0
-    var newStanCount: Int = 0
+    var newLocalCount: Int = 0
     var newSigCount: Int = 0
     var newFeatures = Features.Empty
     var newForkPromptCount: Int = 0
@@ -135,20 +135,20 @@ private[engine] object OpSplit:
     while srcPromptIndex < oldPromptCount do
       val prompt = oldStackSeg.prompts(srcPromptIndex)
       val oldPile = oldStackSeg.piles(srcPromptIndex)
-      val oldStan = if prompt.isStateless then Stan.void else oldStoreSeg.geti(srcStanIndex)
-      val (newPile, newStan) = pileSplitter(oldPile, oldStan)
+      val oldLocal = if prompt.isStateless then Local.void else oldStoreSeg.geti(srcLocalIndex)
+      val (newPile, newLocal) = pileSplitter(oldPile, oldLocal)
       if newPile != null then
-        bundles(newPromptCount) = Bundle(prompt, newPile, newStan)
+        bundles(newPromptCount) = Bundle(prompt, newPile, newLocal)
         newPromptCount += 1
         newSigCount += prompt.signatures.size
-        newStanCount += prompt.stanCount
+        newLocalCount += prompt.localCount
         newFeatures |= prompt.features.mask
         if newPile.hasBase then
           newForkPromptCount += 1
           newForkSigCount += prompt.signatures.size
           newForkFeatures |= prompt.features.mask
       srcPromptIndex += 1
-      srcStanIndex += prompt.stanCount
+      srcLocalIndex += prompt.localCount
     
     val newStackSeg =
       val newFork = StackSegment.blank(
@@ -166,7 +166,7 @@ private[engine] object OpSplit:
         forkOrNull = newFork,
       )
     //@#@OPTY reuse `oldStoreSeg` if number of elements stays the same
-    val newStoreSeg = StoreSegment.blank(newStanCount)
+    val newStoreSeg = StoreSegment.blank(newLocalCount)
     (newStackSeg, newStoreSeg, bundles, newPromptCount)
 
 
@@ -177,26 +177,26 @@ private[engine] object OpSplit:
     newPromptCount: Int,
   ): Unit =
     var promptIndex: Int = 0
-    var destStanIndex: Int = 0
+    var destLocalIndex: Int = 0
     var destSigIndex: Int = 0
     var destForkPromptIndex: Int = 0
-    var destForkStanIndex: Int = 0
+    var destForkLocalIndex: Int = 0
     var destForkSigIndex: Int = 0
     while promptIndex < newPromptCount do
       val bundle = bundles(promptIndex)
       val prompt = bundle.prompt
-      addPromptInPlace(prompt, bundle.pile, newStackSeg, promptIndex, destStanIndex, destSigIndex)
+      addPromptInPlace(prompt, bundle.pile, newStackSeg, promptIndex, destLocalIndex, destSigIndex)
       if prompt.isStateful then
-        newStoreSeg.setInPlace(destStanIndex, bundle.stan)
+        newStoreSeg.setInPlace(destLocalIndex, bundle.local)
       if bundle.pile.hasBase then
         val forkPile = Pile.base(destForkPromptIndex)
-        addPromptInPlace(prompt, forkPile, newStackSeg.fork, destForkPromptIndex, destForkStanIndex, destForkSigIndex)
+        addPromptInPlace(prompt, forkPile, newStackSeg.fork, destForkPromptIndex, destForkLocalIndex, destForkSigIndex)
         destForkPromptIndex += 1
         destForkSigIndex += prompt.signatures.size
-        destForkStanIndex += prompt.stanCount
+        destForkLocalIndex += prompt.localCount
       promptIndex += 1
       destSigIndex += prompt.signatures.size
-      destStanIndex += prompt.stanCount
+      destLocalIndex += prompt.localCount
 
 
   private def addPromptInPlace(
@@ -204,14 +204,14 @@ private[engine] object OpSplit:
     pile: Pile,
     destStackSeg: StackSegment,
     destPromptIndex: Int,
-    destStanIndex: Int,
+    destLocalIndex: Int,
     destSigIndex: Int,
   ): Unit =
     destStackSeg.prompts(destPromptIndex) = prompt
     destStackSeg.piles(destPromptIndex) = pile
     val loc = Location.Shallow(
       promptIndex = destPromptIndex,
-      stanIndex = destStanIndex,
+      localIndex = destLocalIndex,
       isStateful = prompt.isStateful,
     )
     val sigs = prompt.signatures
@@ -227,7 +227,7 @@ private[engine] object OpSplit:
     storeHi: Store,
     stepMid: Step,
     //@#@OPTY fuse with `store.setIfNotVoid``
-    // stanMid: Stan,
+    // localMid: Local,
     // locationMid: Location.Shallow,
     stackLo: Stack,
     storeLo: Store,
