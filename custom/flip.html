@@ -9,13 +9,14 @@
 <h3 id="1-imports">1. Imports</h3>
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">turbolift.</span><span class="o">{!!,</span> <span class="nc">Signature</span><span class="o">,</span> <span class="nc">Effect</span><span class="o">,</span> <span class="nc">Handler</span><span class="o">}</span>
+<span class="k">import</span> <span class="nn">turbolift.Extensions._</span>
 </code></pre></div></div>
 
 <h3 id="2-define-the-signature">2. Define the signature</h3>
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">trait</span> <span class="nc">FlipSignature</span> <span class="k">extends</span> <span class="nc">Signature</span><span class="k">:</span>
-  <span class="kt">def</span> <span class="kt">flip:</span> <span class="kt">Boolean</span> <span class="kt">!@!</span> <span class="kt">ThisEffect</span>
-  <span class="k">def</span> <span class="nf">fail</span><span class="k">:</span> <span class="kt">Nothing</span> <span class="kt">!@!</span> <span class="kt">ThisEffect</span>
+  <span class="kt">def</span> <span class="kt">flip:</span> <span class="kt">Boolean</span> <span class="kt">!!</span> <span class="kt">ThisEffect</span>
+  <span class="k">def</span> <span class="nf">fail</span><span class="k">:</span> <span class="kt">Nothing</span> <span class="kt">!!</span> <span class="kt">ThisEffect</span>
 </code></pre></div></div>
 
 <h3 id="3-define-the-effect-type">3. Define the effect type</h3>
@@ -45,12 +46,12 @@ They are defined entirely in terms of <code class="language-plaintext highlighte
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nf">extension</span> <span class="o">(</span><span class="n">fx</span><span class="k">:</span> <span class="kt">FlipEffect</span><span class="o">)</span>
   <span class="k">def</span> <span class="nf">findAll</span> <span class="k">=</span>
-    <span class="k">new</span> <span class="nv">fx</span><span class="o">.</span><span class="py">impl</span><span class="o">.</span><span class="py">Stateless</span><span class="o">.</span><span class="py">FromId</span><span class="o">.</span><span class="py">Free</span><span class="o">[</span><span class="kt">Vector</span><span class="o">]</span> <span class="k">with</span> <span class="nv">fx</span><span class="o">.</span><span class="py">impl</span><span class="o">.</span><span class="py">Sequential</span> <span class="k">with</span> <span class="nc">FlipSignature</span><span class="k">:</span>
+    <span class="k">new</span> <span class="nv">fx</span><span class="o">.</span><span class="py">impl</span><span class="o">.</span><span class="py">Stateless</span><span class="o">[</span><span class="kt">Identity</span>, <span class="kt">Vector</span>, <span class="kt">Any</span><span class="o">]</span> <span class="k">with</span> <span class="nv">fx</span><span class="o">.</span><span class="py">impl</span><span class="o">.</span><span class="py">Sequential</span> <span class="k">with</span> <span class="nc">FlipSignature</span><span class="k">:</span>
       <span class="kt">override</span> <span class="kt">def</span> <span class="kt">onReturn</span><span class="o">(</span><span class="kt">a:</span> <span class="kt">Unknown</span><span class="o">)</span> <span class="o">=</span> <span class="o">!!.</span><span class="py">pure</span><span class="o">(</span><span class="nc">Vector</span><span class="o">(</span><span class="n">a</span><span class="o">))</span>
 
-      <span class="k">override</span> <span class="k">def</span> <span class="nf">fail</span> <span class="k">=</span> <span class="k">_</span> <span class="k">=&gt;</span> <span class="o">!!.</span><span class="py">pure</span><span class="o">(</span><span class="nc">Vector</span><span class="o">())</span>
+      <span class="k">override</span> <span class="k">def</span> <span class="nf">fail</span> <span class="k">=</span> <span class="nv">Control</span><span class="o">.</span><span class="py">abort</span><span class="o">(</span><span class="nc">Vector</span><span class="o">())</span>
 
-      <span class="k">override</span> <span class="k">def</span> <span class="nf">flip</span> <span class="k">=</span> <span class="n">k</span> <span class="k">=&gt;</span>
+      <span class="k">override</span> <span class="k">def</span> <span class="nf">flip</span> <span class="k">=</span> <span class="nv">Control</span><span class="o">.</span><span class="py">capture</span><span class="k">:</span> <span class="kt">k</span> <span class="o">=&gt;</span>
         <span class="k">for</span>
           <span class="n">as</span> <span class="k">&lt;-</span> <span class="nf">k</span><span class="o">(</span><span class="kc">true</span><span class="o">)</span>
           <span class="n">bs</span> <span class="k">&lt;-</span> <span class="nf">k</span><span class="o">(</span><span class="kc">false</span><span class="o">)</span>
@@ -61,16 +62,15 @@ They are defined entirely in terms of <code class="language-plaintext highlighte
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nf">extension</span> <span class="o">(</span><span class="n">fx</span><span class="k">:</span> <span class="kt">FlipEffect</span><span class="o">)</span>
   <span class="k">def</span> <span class="nf">findFirst</span> <span class="k">=</span>
-    <span class="k">new</span> <span class="nv">fx</span><span class="o">.</span><span class="py">impl</span><span class="o">.</span><span class="py">Stateless</span><span class="o">.</span><span class="py">FromId</span><span class="o">.</span><span class="py">Free</span><span class="o">[</span><span class="kt">Option</span><span class="o">]</span> <span class="k">with</span> <span class="nv">fx</span><span class="o">.</span><span class="py">impl</span><span class="o">.</span><span class="py">Sequential</span> <span class="k">with</span> <span class="nc">FlipSignature</span><span class="k">:</span>
+    <span class="k">new</span> <span class="nv">fx</span><span class="o">.</span><span class="py">impl</span><span class="o">.</span><span class="py">Stateless</span><span class="o">[</span><span class="kt">Identity</span>, <span class="kt">Option</span>, <span class="kt">Any</span><span class="o">]</span> <span class="k">with</span> <span class="nv">fx</span><span class="o">.</span><span class="py">impl</span><span class="o">.</span><span class="py">Sequential</span> <span class="k">with</span> <span class="nc">FlipSignature</span><span class="k">:</span>
       <span class="kt">override</span> <span class="kt">def</span> <span class="kt">onReturn</span><span class="o">(</span><span class="kt">a:</span> <span class="kt">Unknown</span><span class="o">)</span> <span class="o">=</span> <span class="o">!!.</span><span class="py">pure</span><span class="o">(</span><span class="nc">Some</span><span class="o">(</span><span class="n">a</span><span class="o">))</span>
 
-      <span class="k">override</span> <span class="k">def</span> <span class="nf">fail</span> <span class="k">=</span> <span class="k">_</span> <span class="k">=&gt;</span> <span class="o">!!.</span><span class="py">pure</span><span class="o">(</span><span class="nc">None</span><span class="o">)</span>
+      <span class="k">override</span> <span class="k">def</span> <span class="nf">fail</span> <span class="k">=</span> <span class="nv">Control</span><span class="o">.</span><span class="py">abort</span><span class="o">(</span><span class="nc">None</span><span class="o">)</span>
 
-      <span class="k">override</span> <span class="k">def</span> <span class="nf">flip</span> <span class="k">=</span> <span class="n">k</span> <span class="k">=&gt;</span>
-        <span class="nf">k</span><span class="o">(</span><span class="kc">true</span><span class="o">).</span><span class="py">flatMap</span> <span class="o">{</span>
-          <span class="k">case</span> <span class="nc">None</span> <span class="k">=&gt;</span> <span class="nf">k</span><span class="o">(</span><span class="kc">false</span><span class="o">)</span>
+      <span class="k">override</span> <span class="k">def</span> <span class="nf">flip</span> <span class="k">=</span> <span class="nv">Control</span><span class="o">.</span><span class="py">capture</span><span class="k">:</span> <span class="kt">k</span> <span class="o">=&gt;</span>
+        <span class="nf">k</span><span class="o">(</span><span class="kc">true</span><span class="o">).</span><span class="py">flatMap</span><span class="k">:</span>
+          <span class="kt">case</span> <span class="kt">None</span> <span class="o">=&gt;</span> <span class="nf">k</span><span class="o">(</span><span class="kc">false</span><span class="o">)</span>
           <span class="k">case</span> <span class="n">some</span> <span class="k">=&gt;</span> <span class="o">!!.</span><span class="py">pure</span><span class="o">(</span><span class="n">some</span><span class="o">)</span>
-        <span class="o">}</span>
 
     <span class="o">.</span><span class="py">toHandler</span>
 </code></pre></div></div>
@@ -97,7 +97,7 @@ They are defined entirely in terms of <code class="language-plaintext highlighte
     <span class="k">_</span> <span class="k">&lt;-</span> <span class="o">!!.</span><span class="py">when</span><span class="o">(</span><span class="nf">isOdd</span><span class="o">(</span><span class="n">x</span><span class="o">))(</span><span class="nv">MyFlip</span><span class="o">.</span><span class="py">fail</span><span class="o">)</span>
     <span class="n">y</span> <span class="k">&lt;-</span> <span class="nv">MyFlip</span><span class="o">.</span><span class="py">select</span><span class="o">(</span><span class="sc">'a'</span> <span class="n">to</span> <span class="sc">'b'</span><span class="o">)</span>
   <span class="k">yield</span> <span class="n">s</span><span class="s">"$x$y"</span>
-<span class="c1">// program: Computation[String, MyFlip] = turbolift.Computation@fa3d950</span>
+<span class="c1">// program: Computation[String, MyFlip] = turbolift.Computation@31197437</span>
 
 <span class="k">val</span> <span class="nv">result1</span> <span class="k">=</span> <span class="nv">program</span><span class="o">.</span><span class="py">handleWith</span><span class="o">(</span><span class="nv">MyFlip</span><span class="o">.</span><span class="py">findAll</span><span class="o">).</span><span class="py">run</span>
 <span class="c1">// result1: Vector[String] = Vector("2a", "2b", "4a", "4b")</span>

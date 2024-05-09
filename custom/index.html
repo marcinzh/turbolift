@@ -2,28 +2,37 @@
 
 <h3 id="1-define-a-signature-for-your-effect">1. Define a signature for your effect</h3>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">turbolift.Signature</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">turbolift.</span><span class="o">{!!,</span> <span class="nc">Signature</span><span class="o">}</span>
 
 <span class="k">trait</span> <span class="nc">GoogleSignature</span> <span class="k">extends</span> <span class="nc">Signature</span><span class="k">:</span>
-  <span class="kt">def</span> <span class="kt">countPicturesOf</span><span class="o">(</span><span class="kt">topic:</span> <span class="kt">String</span><span class="o">)</span><span class="kt">:</span> <span class="kt">Int</span> <span class="kt">!@!</span> <span class="kt">ThisEffect</span>
+  <span class="kt">def</span> <span class="kt">countPicturesOf</span><span class="o">(</span><span class="kt">topic:</span> <span class="kt">String</span><span class="o">)</span><span class="kt">:</span> <span class="kt">Int</span> <span class="kt">!!</span> <span class="kt">ThisEffect</span>
 </code></pre></div></div>
 
-<h3 id="-">😱 <code class="language-plaintext highlighter-rouge">!@!</code></h3>
+<h3 id="whats-thiseffect">What’s <code class="language-plaintext highlighter-rouge">ThisEffect</code>?</h3>
 
-<p><code class="language-plaintext highlighter-rouge">!@![_, ThisEffect]</code> is somewhat similar to <code class="language-plaintext highlighter-rouge">F[_]</code> from Tagless Final.</p>
+<p>It’s an abstract member type declared in <code class="language-plaintext highlighter-rouge">Signature</code>. 
+<code class="language-plaintext highlighter-rouge">ThisEffect</code> provides polymorphism essential for type-level separation between effect’s interface (<code class="language-plaintext highlighter-rouge">Effect</code>) and effect’s implementation (<code class="language-plaintext highlighter-rouge">Interpreter</code>).
+Both <code class="language-plaintext highlighter-rouge">Effect</code> and <code class="language-plaintext highlighter-rouge">Interpreter</code> inherit from <code class="language-plaintext highlighter-rouge">Signature</code>.</p>
 
-<p>The main difference, is that in Turbolift this abstraction is <strong>short lived</strong>.
-It’s introduced in <code class="language-plaintext highlighter-rouge">Signature</code>, and it vanishes in its direct subtrait, <code class="language-plaintext highlighter-rouge">Effect</code>.</p>
-
-<p>Both <code class="language-plaintext highlighter-rouge">!@!</code> and <code class="language-plaintext highlighter-rouge">ThisEffect</code> are defined as abstract type members of <code class="language-plaintext highlighter-rouge">Signature</code>.
-In the next step, once we inherit our signature from an <code class="language-plaintext highlighter-rouge">Effect</code>, they become (automatically) concretized:</p>
 <ul>
-  <li><code class="language-plaintext highlighter-rouge">!@![_, _]</code> becomes an alias of <code class="language-plaintext highlighter-rouge">Computation[_, _]</code> (just like <code class="language-plaintext highlighter-rouge">!!</code>)</li>
-  <li><code class="language-plaintext highlighter-rouge">ThisEffect</code> becomes an alias of <code class="language-plaintext highlighter-rouge">this.type</code></li>
+  <li>
+    <p>On the interface side, <code class="language-plaintext highlighter-rouge">ThisEffect</code> means a <strong>self-reference</strong> to the effect being defined. It’s defined as alias of <code class="language-plaintext highlighter-rouge">this.type</code>.</p>
+  </li>
+  <li>
+    <p>On the implementation side, <code class="language-plaintext highlighter-rouge">ThisEffect</code> defined as type-level set of <strong>dependencies</strong> of the effect being implemented.</p>
+  </li>
 </ul>
 
-<p>Effectively, when writing custom signature,
-<code class="language-plaintext highlighter-rouge">A !@! ThisEffect</code> should be regarded as <code class="language-plaintext highlighter-rouge">A !! this.type</code>, in temporary disguise.</p>
+<p>We can compare this to Tagless Final style:</p>
+
+<ul>
+  <li>
+    <p>In Tagless Final style we abstract over the entire monad type: <code class="language-plaintext highlighter-rouge">F[_]</code></p>
+  </li>
+  <li>
+    <p>In Turbolift our monad type is concrete: <code class="language-plaintext highlighter-rouge">!![_, _]</code>. Instead, we abstact only over the second parameter of the monad.</p>
+  </li>
+</ul>
 
 <h3 id="2-define-your-effect-type">2. Define your effect type</h3>
 
@@ -57,18 +66,12 @@ by using annotation macro:</p>
 
 <h3 id="3-define-a-handler-for-your-effect">3. Define a handler for your effect</h3>
 
-<p>Now it’s time to make an important choice. There are 2 ways to assign semantics to our effect’s operations:</p>
-
 <ul>
   <li>
-    <p>With <code class="language-plaintext highlighter-rouge">Flow</code> interpreter: by using <strong>delimited continuations</strong>.</p>
-
-    <p>See <a href="flip.html#4-define-a-handler">Flip effect</a> example for details.</p>
+    <p>See <a href="flip.html#4-define-a-handler">Flip effect</a> as an example of using <strong>delimited continuations</strong>.</p>
   </li>
   <li>
-    <p>With <code class="language-plaintext highlighter-rouge">Proxy</code> interpreter: by <strong>delegating to other effects</strong> (a.k.a “reinterpretation”).</p>
-
-    <p>See <a href="file_sys.html#4-define-a-handler">File System</a> example for details.</p>
+    <p>See <a href="file_sys.html#4-define-a-handler">File System</a> as an example of <strong>reinterpretation</strong> (implementing an  effect interms of other effects)</p>
   </li>
 </ul>
 
@@ -76,8 +79,9 @@ by using annotation macro:</p>
 
 <h3 id="more-information">More Information</h3>
 
-<p>See <a href="https://github.com/marcinzh/turbolift/tree/master/modules/core/src/main/scala/turbolift/effects">the source</a>
-of predefined effects and their handlers.</p>
+<p>See the source
+of predefined <a href="https://github.com/marcinzh/turbolift/tree/master/modules/core/src/main/scala/turbolift/effects">effects</a>
+and their predefined <a href="https://github.com/marcinzh/turbolift/tree/master/modules/core/src/main/scala/turbolift/handlers">handlers</a>.</p>
 </section></div></div></div></div><script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/js/bootstrap.min.js"></script><script src="/turbolift/highlight/highlight.pack.js"></script><script src="/turbolift/lunr/lunr.js"></script><script>
 // For all code blocks, copy the language from the containing div
 // to the inner code tag (where hljs expects it to be)

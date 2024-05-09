@@ -3,11 +3,11 @@
 <p>Typically, effect’s operations are defined so that they request exactly 1 effect:
 the very effect they belong to. This <strong>self-reference</strong> in Turbolift is named <code class="language-plaintext highlighter-rouge">ThisEffect</code>:</p>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">turbolift.</span><span class="o">{</span><span class="nc">Signature</span><span class="o">,</span> <span class="nc">Effect</span><span class="o">}</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">turbolift.</span><span class="o">{!!,</span> <span class="nc">Signature</span><span class="o">,</span> <span class="nc">Effect</span><span class="o">}</span>
 
 <span class="k">trait</span> <span class="nc">FileSystemSignature</span> <span class="k">extends</span> <span class="nc">Signature</span><span class="k">:</span>
-  <span class="kt">def</span> <span class="kt">readFile</span><span class="o">(</span><span class="kt">path:</span> <span class="kt">String</span><span class="o">)</span><span class="kt">:</span> <span class="kt">String</span> <span class="kt">!@!</span> <span class="kt">ThisEffect</span>
-  <span class="k">def</span> <span class="nf">writeFile</span><span class="o">(</span><span class="n">path</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">contents</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span><span class="k">:</span> <span class="kt">Unit</span> <span class="kt">!@!</span> <span class="kt">ThisEffect</span>
+  <span class="kt">def</span> <span class="kt">readFile</span><span class="o">(</span><span class="kt">path:</span> <span class="kt">String</span><span class="o">)</span><span class="kt">:</span> <span class="kt">String</span> <span class="kt">!!</span> <span class="kt">ThisEffect</span>
+  <span class="k">def</span> <span class="nf">writeFile</span><span class="o">(</span><span class="n">path</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">contents</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span><span class="k">:</span> <span class="kt">Unit</span> <span class="kt">!!</span> <span class="kt">ThisEffect</span>
 
 <span class="c1">// Boilerplate:</span>
 <span class="k">case</span> <span class="k">object</span> <span class="nc">FileSystem</span> <span class="k">extends</span> <span class="nc">Effect</span><span class="o">[</span><span class="kt">FileSystemSignature</span><span class="o">]</span> <span class="k">with</span> <span class="nc">FileSystemSignature</span><span class="k">:</span>
@@ -26,11 +26,11 @@ in addition to the self-referenced one.</p>
 </code></pre></div></div>
 
 <p>Now we can modify <code class="language-plaintext highlighter-rouge">readFile</code> definition, so that it requests <code class="language-plaintext highlighter-rouge">FileNotFound</code> effect:</p>
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">turbolift.</span><span class="o">{</span><span class="nc">Signature</span><span class="o">,</span> <span class="nc">Effect</span><span class="o">}</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">turbolift.</span><span class="o">{!!,</span> <span class="nc">Signature</span><span class="o">,</span> <span class="nc">Effect</span><span class="o">}</span>
 
 <span class="k">trait</span> <span class="nc">FileSystemSignature</span> <span class="k">extends</span> <span class="nc">Signature</span><span class="k">:</span>
-  <span class="kt">def</span> <span class="kt">readFile</span><span class="o">(</span><span class="kt">path:</span> <span class="kt">String</span><span class="o">)</span><span class="kt">:</span> <span class="kt">String</span> <span class="kt">!@!</span> <span class="o">(</span><span class="kt">ThisEffect</span> <span class="kt">&amp;</span> <span class="kt">FileNotFound</span><span class="o">)</span>
-  <span class="kt">def</span> <span class="kt">writeFile</span><span class="o">(</span><span class="kt">path:</span> <span class="kt">String</span><span class="o">,</span> <span class="kt">contents:</span> <span class="kt">String</span><span class="o">)</span><span class="k">:</span> <span class="kt">Unit</span> <span class="kt">!@!</span> <span class="kt">ThisEffect</span>
+  <span class="kt">def</span> <span class="kt">readFile</span><span class="o">(</span><span class="kt">path:</span> <span class="kt">String</span><span class="o">)</span><span class="kt">:</span> <span class="kt">String</span> <span class="kt">!!</span> <span class="o">(</span><span class="kt">ThisEffect</span> <span class="kt">&amp;</span> <span class="kt">FileNotFound</span><span class="o">)</span>
+  <span class="kt">def</span> <span class="kt">writeFile</span><span class="o">(</span><span class="kt">path:</span> <span class="kt">String</span><span class="o">,</span> <span class="kt">contents:</span> <span class="kt">String</span><span class="o">)</span><span class="k">:</span> <span class="kt">Unit</span> <span class="kt">!!</span> <span class="kt">ThisEffect</span>
 
 <span class="c1">// Boilerplate:</span>
 <span class="c1">// (unchanged, except omitted types)</span>

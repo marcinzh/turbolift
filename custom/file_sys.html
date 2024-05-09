@@ -16,8 +16,8 @@ The File System effect example is often used as their demonstrator of reinterpre
 <h3 id="2-define-the-signature">2. Define the signature</h3>
 
 <div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">trait</span> <span class="nc">FileSystemSignature</span> <span class="k">extends</span> <span class="nc">Signature</span><span class="k">:</span>
-  <span class="kt">def</span> <span class="kt">readFile</span><span class="o">(</span><span class="kt">path:</span> <span class="kt">String</span><span class="o">)</span><span class="kt">:</span> <span class="kt">String</span> <span class="kt">!@!</span> <span class="kt">ThisEffect</span>
-  <span class="k">def</span> <span class="nf">writeFile</span><span class="o">(</span><span class="n">path</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">contents</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span><span class="k">:</span> <span class="kt">Unit</span> <span class="kt">!@!</span> <span class="kt">ThisEffect</span>
+  <span class="kt">def</span> <span class="kt">readFile</span><span class="o">(</span><span class="kt">path:</span> <span class="kt">String</span><span class="o">)</span><span class="kt">:</span> <span class="kt">String</span> <span class="kt">!!</span> <span class="kt">ThisEffect</span>
+  <span class="k">def</span> <span class="nf">writeFile</span><span class="o">(</span><span class="n">path</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">contents</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span><span class="k">:</span> <span class="kt">Unit</span> <span class="kt">!!</span> <span class="kt">ThisEffect</span>
 </code></pre></div></div>
 
 <h3 id="3-define-the-effect-type">3. Define the effect type</h3>
@@ -90,7 +90,7 @@ Responsibility to handle the error effect though, is passed on the user.</p>
     <span class="k">_</span> <span class="k">&lt;-</span> <span class="nv">MyFS</span><span class="o">.</span><span class="py">writeFile</span><span class="o">(</span><span class="s">"hello.txt"</span><span class="o">,</span> <span class="s">"Hello world!"</span><span class="o">)</span>
     <span class="n">contents</span> <span class="k">&lt;-</span> <span class="nv">MyFS</span><span class="o">.</span><span class="py">readFile</span><span class="o">(</span><span class="s">"hello.txt"</span><span class="o">)</span>
   <span class="k">yield</span> <span class="n">contents</span>
-<span class="c1">// program: Computation[String, ThisEffect] = turbolift.Computation@207fedc5</span>
+<span class="c1">// program: Computation[String, ThisEffect] = turbolift.Computation@3b13e7d2</span>
 
 <span class="k">val</span> <span class="nv">result</span> <span class="k">=</span> <span class="n">program</span>
   <span class="o">.</span><span class="py">handleWith</span><span class="o">(</span><span class="nv">MyFS</span><span class="o">.</span><span class="py">inMemoryHandler</span><span class="o">)</span>
