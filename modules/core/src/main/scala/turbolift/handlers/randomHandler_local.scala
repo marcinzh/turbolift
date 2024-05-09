@@ -2,16 +2,15 @@ package turbolift.handlers
 import scala.util.{Random => ScalaRandom}
 import turbolift.!!
 import turbolift.effects.{RandomEffect, RandomSignature, IO}
+import turbolift.Extensions._
 
 
 extension (fx: RandomEffect)
-  def randomHandler_local(seed: Long): fx.ThisHandler.FromId.ToId.Free =
-    new fx.impl.Stateful.FromId.Free[(_, Splitmix64)] with fx.impl.Parallel.ForkJoin with RandomSignature:
-      override type Stan = Splitmix64
+  def randomHandler_local(seed: Long): fx.ThisHandler[Identity, Identity, Any] =
+    new fx.impl.Stateful[Identity, (_, Splitmix64), Any] with fx.impl.Parallel.ForkJoin with RandomSignature:
+      override type Local = Splitmix64
 
-      override def tailResumptiveHint: Boolean = true
-
-      override def onInitial: Stan !! Any = !!.pure(Splitmix64(seed))
+      override def onInitial: Local !! Any = !!.pure(Splitmix64(seed))
 
       override def onReturn(a: Unknown, s: Splitmix64): (Unknown, Splitmix64) !! Any = !!.pure((a, s))
 
@@ -19,7 +18,7 @@ extension (fx: RandomEffect)
         val (a, s) = aa
         fx.setSeed(s.value) &&! !!.pure(a)
 
-      override def onFork(s: Stan): (Stan, Stan) =
+      override def onFork(s: Local): (Local, Local) =
         val s2 = s.next
         val s3 = s.jump
         (s2, s3)
@@ -29,41 +28,41 @@ extension (fx: RandomEffect)
         val (b, s) = bb
         (k(a, b), s)
 
-      inline def simple[A](inline f: Splitmix64 => A): A !@! ThisEffect =
-        (k, s) =>
+      inline def simple[A](inline f: Splitmix64 => A): A !! ThisEffect =
+        Local.update: s =>
           val s2 = s.next
-          k(f(s2), s2)
+          (f(s2), s2)
 
-      override def nextBoolean: Boolean !@! ThisEffect = simple(x => (x.value & 1) != 0)
-      override def nextInt: Int !@! ThisEffect = simple(_.value.toInt)
-      override def nextInt(n: Int): Int !@! ThisEffect = between(0, n)
-      override def nextLong: Long !@! ThisEffect = simple(_.value)
-      override def nextLong(n: Long): Long !@! ThisEffect = between(0, n)
-      override def nextFloat: Float !@! ThisEffect = simple(_.toDoubleInclusive.toFloat)
-      override def nextDouble: Double !@! ThisEffect = simple(_.toDoubleInclusive)
+      override def nextBoolean: Boolean !! ThisEffect = simple(x => (x.value & 1) != 0)
+      override def nextInt: Int !! ThisEffect = simple(_.value.toInt)
+      override def nextInt(n: Int): Int !! ThisEffect = between(0, n)
+      override def nextLong: Long !! ThisEffect = simple(_.value)
+      override def nextLong(n: Long): Long !! ThisEffect = between(0, n)
+      override def nextFloat: Float !! ThisEffect = simple(_.toDoubleInclusive.toFloat)
+      override def nextDouble: Double !! ThisEffect = simple(_.toDoubleInclusive)
 
-      inline def between[A](range: Double, inline f: Double => A): A !@! ThisEffect =
+      inline def between[A](range: Double, inline f: Double => A): A !! ThisEffect =
         simple(x => f((x.toDoubleExclusive * range).floor))
 
-      override def between(minInclusive: Long, maxExclusive: Long): Long !@! ThisEffect =
+      override def between(minInclusive: Long, maxExclusive: Long): Long !! ThisEffect =
         between((maxExclusive - minInclusive).toDouble, _.floor.toLong + minInclusive)
 
-      override def between(minInclusive: Int, maxExclusive: Int): Int !@! ThisEffect =
+      override def between(minInclusive: Int, maxExclusive: Int): Int !! ThisEffect =
         between(maxExclusive - minInclusive, _.floor.toInt + minInclusive)
 
-      override def between(minInclusive: Double, maxExclusive: Double): Double !@! ThisEffect =
+      override def between(minInclusive: Double, maxExclusive: Double): Double !! ThisEffect =
         between(maxExclusive - minInclusive, _.floor + minInclusive)
 
-      override def between(minInclusive: Float, maxExclusive: Float): Float !@! ThisEffect =
+      override def between(minInclusive: Float, maxExclusive: Float): Float !! ThisEffect =
         between(maxExclusive - minInclusive, _.floor.toFloat + minInclusive)
 
-      override def nextGaussian: Double !@! ThisEffect = (k, s) => k.tupled(s.gaussian)
-      override def nextBytes(n: Int): Array[Byte] !@! ThisEffect = (k, s) => k.tupled(s.bytes(n))
-      override def setSeed(seed: Long): Unit !@! ThisEffect = (k, s) => k((), s.seed(seed))
+      override def nextGaussian: Double !! ThisEffect = Local.update(_.gaussian)
+      override def nextBytes(n: Int): Array[Byte] !! ThisEffect = Local.update(_.bytes(n))
+      override def setSeed(seed: Long): Unit !! ThisEffect = Local.modify(_.seed(seed))
 
     .toHandler
     .dropState
 
 
-  def randomHandler_local: fx.ThisHandler.FromId.ToId[IO] =
+  def randomHandler_local: fx.ThisHandler[Identity, Identity, IO] =
     IO(ScalaRandom.nextLong) >>=! (randomHandler_local(_))

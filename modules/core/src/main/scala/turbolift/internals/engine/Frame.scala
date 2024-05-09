@@ -6,29 +6,29 @@ private[engine] final class Frame private (
   val next: Frame | Null,
   private val packed: FramePacked,
   val step: Step,
-  val stan: Stan,
+  val local: Local,
 ):
-  assert(isGuard <= isLocal)
+  assert(isGuard <= isNested)
 
   private def copy(
     next: Frame | Null = next,
     packed: FramePacked = packed,
     step: Step = step,
-    stan: Stan = stan,
+    local: Local = local,
   ): Frame =
     new Frame(
       next = next,
       packed = packed,
       step = step,
-      stan = stan,
+      local = local,
     )
 
 
   def delta: Int = packed.delta
   def kind: FrameKind = packed.kind
-  def isLocal: Boolean = packed.isLocal
+  def isNested: Boolean = packed.isNested
   def isGuard: Boolean = packed.isGuard
-  def isBase: Boolean = !isLocal
+  def isBase: Boolean = !isNested
   def hasNext: Boolean = next != null
 
 
@@ -37,12 +37,12 @@ private[engine] final class Frame private (
     if next == null then initial else next.nn.computeBottomHeight(initial - delta)
 
 
-  def pushNext(step: Step, stan: Stan, delta: Int, isLocal: Boolean, kind: FrameKind): Frame =
+  def pushNext(step: Step, local: Local, delta: Int, isNested: Boolean, kind: FrameKind): Frame =
     new Frame(
       next = this,
-      packed = FramePacked(delta, isLocal, kind),
+      packed = FramePacked(delta, isNested, kind),
       step = step,
-      stan = stan,
+      local = local,
     )
 
 
@@ -51,24 +51,24 @@ private[engine] final class Frame private (
       next = null,
       packed = packed.clearDelta,
       step = StepCases.Bridge,
-      stan = Stan.nul,
+      local = Local.nul,
     )
 
 
-  def splitLo(initialHeight: Int, divHeight: Int, oldStan: Stan): (Frame, Int, Stan) =
-    @tailrec def loop(frame: Frame, height: Int, prevStan: Stan): (Frame, Int, Stan) =
+  def splitLo(initialHeight: Int, divHeight: Int, oldLocal: Local): (Frame, Int, Local) =
+    @tailrec def loop(frame: Frame, height: Int, prevLocal: Local): (Frame, Int, Local) =
       if height < divHeight then
-        (frame, height, prevStan)
+        (frame, height, prevLocal)
       else
         loop(
           frame = frame.next.nn,
           height = height - frame.delta,
-          prevStan = frame.stan,
+          prevLocal = frame.local,
         )
     loop(
       frame = this,
       height = initialHeight,
-      prevStan = oldStan,
+      prevLocal = oldLocal,
     )
 
 
@@ -97,12 +97,12 @@ private[engine] final class Frame private (
 
 
 private[engine] object Frame:
-  val base: Frame = pushFirst(StepCases.Pop, isLocal = false, FrameKind.plain)
+  val base: Frame = pushFirst(StepCases.Pop, isNested = false, FrameKind.plain)
 
-  def pushFirst(step: Step, isLocal: Boolean, kind: FrameKind): Frame =
+  def pushFirst(step: Step, isNested: Boolean, kind: FrameKind): Frame =
     new Frame(
       next = null,
-      packed = FramePacked(0, isLocal, kind),
+      packed = FramePacked(0, isNested, kind),
       step = step,
-      stan = Stan.nul,
+      local = Local.nul,
     )

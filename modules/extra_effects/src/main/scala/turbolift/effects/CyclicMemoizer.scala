@@ -4,9 +4,9 @@ import turbolift.handlers.cyclicMemoizerHandler
 
 
 trait CyclicMemoizerSignature[K, V] extends Signature:
-  def memo[U <: ThisEffect](f: K => V !! U)(k: K): (() => V) !@! U
-  def domain: Set[K] !@! ThisEffect
-  def toMap: Map[K, V] !@! ThisEffect
+  def memo[U <: ThisEffect](f: K => V !! U)(k: K): (() => V) !! U
+  def domain: Set[K] !! ThisEffect
+  def toMap: Map[K, V] !! ThisEffect
   @deprecated final def get = toMap
 
 
@@ -22,4 +22,4 @@ trait CyclicMemoizer[K, V] extends Effect[CyclicMemoizerSignature[K, V]] with Cy
       recur
 
   /** Default handler for this effect. */
-  def handler: ThisHandler.FromId.ToId.Free = this.cyclicMemoizerHandler
+  def handler: ThisHandler[Identity, Identity, Any] = this.cyclicMemoizerHandler

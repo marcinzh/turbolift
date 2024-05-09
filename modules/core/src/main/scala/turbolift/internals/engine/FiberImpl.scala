@@ -3,7 +3,6 @@ import scala.annotation.{tailrec, switch}
 import scala.util.{Try, Success => TrySuccess, Failure => TryFailure}
 import turbolift.{Computation, Signature}
 import turbolift.io.{Fiber, Snap, Outcome, Cause, Exceptions}
-import turbolift.interpreter.Control
 import turbolift.internals.primitives.{Tags, ComputationCases => CC}
 import turbolift.internals.executor.Executor
 import turbolift.internals.engine.{StepCases => SC}
@@ -22,16 +21,15 @@ import Cause.{Cancelled => CancelPayload}
   private var suspendedStack: Stack | Null = null
   private var suspendedStore: Store | Null = null
   private var suspendedEnv: Env | Null = null
-  private var suspendedMark: Mark = Mark.none
 
 
   def run(): Halt =
     assert(isPending)
     assert(isSuspended)
-    outerLoop(suspendedEnv.nn.tickHigh)
+    outerLoop(suspendedEnv.nn.tickHigh, 0, new Cache)
 
 
-  @tailrec private def outerLoop(tickHigh: Short, lastTickLow: Short = 0, fresh: ControlImpl | Null = null): Halt =
+  @tailrec private def outerLoop(tickHigh: Short, lastTickLow: Short, cache: Cache): Halt =
     if tickHigh >= 0 then
       assert(isSuspended)
 
@@ -50,7 +48,6 @@ import Cause.{Cancelled => CancelPayload}
         val currentStack   = suspendedStack.nn
         val currentStore   = suspendedStore.nn
         val currentEnv     = suspendedEnv.nn
-        val currentMark    = suspendedMark
         clearSuspension()
         try
           innerLoop(
@@ -60,18 +57,18 @@ import Cause.{Cancelled => CancelPayload}
             step     = currentStep,
             stack    = currentStack,
             store    = currentStore,
-            mark     = currentMark,
             env      = currentEnv,
-            fresh    = if fresh != null then fresh else new ControlImpl,
+            cache    = cache,
           )
         catch e =>
+          // e.printStackTrace()
           val e2 = if e.isInstanceOf[Exceptions.Panic] then e else new Exceptions.Unhandled(e)
           val c = Cause(e2)
-          endOfFiber(0, Bits.Completion_Failure, c, null)
+          endOfFiber(0, Bits.Completion_Failure, c)
 
       result match
-        case Halt.Reset => outerLoop((tickHigh - 1).toShort)
-        case Halt.Become(that, tickLow2, fresh) => that.outerLoop(tickHigh, tickLow2, fresh)
+        case Halt.Reset => outerLoop((tickHigh - 1).toShort, 0, cache)
+        case Halt.Become(that, tickLow2) => that.outerLoop(tickHigh, tickLow2, cache)
         case halt: Halt => halt
     else
       Halt.Yield(this)
@@ -90,137 +87,135 @@ import Cause.{Cancelled => CancelPayload}
     stack: Stack,
     store: Store,
     env: Env,
-    mark: Mark,
-    fresh: ControlImpl,
+    cache: Cache,
   ): Halt.Loop =
     if tick > 0 then
       val tick2 = (tick - 1).toShort
 
       inline def loopStep(
         payload: Any, step: Step, stack: Stack, store: Store,
-        env: Env, mark: Mark, fresh: ControlImpl
+        env: Env, cache: Cache
       ): Halt.Loop =
-        innerLoop(tick2, step.tag, payload, step, stack, store, env, mark, fresh)
+        innerLoop(tick2, step.tag, payload, step, stack, store, env, cache)
 
       inline def loopComp(
         comp: Computation[?, ?], step: Step, stack: Stack, store: Store,
-        env: Env, mark: Mark, fresh: ControlImpl
+        env: Env, cache: Cache
       ): Halt.Loop =
-        innerLoop(tick2, comp.tag, comp, step, stack, store, env, mark, fresh)
+        innerLoop(tick2, comp.tag, comp, step, stack, store, env, cache)
 
-      inline def loopCancel(stack: Stack, store: Store, env: Env, fresh: ControlImpl): Halt.Loop =
-        innerLoop(tick2, Tags.Step_Unwind, CancelPayload, Step.Cancel, stack, store, env, Mark.none, fresh)
+      inline def loopCancel(stack: Stack, store: Store, env: Env, cache: Cache): Halt.Loop =
+        innerLoop(tick2, Tags.Step_Unwind, CancelPayload, Step.Cancel, stack, store, env, cache)
 
       (tag: @switch) match
         case Tags.MapFlat =>
           val theMap = payload.asInstanceOf[CC.Map[Any, Any]]
           val comp2 = theMap.comp
           val step2 = SC.More(Tags.Step_MoreFlat, theMap.fun, step)
-          loopComp(comp2, step2, stack, store, env, mark, fresh)
+          loopComp(comp2, step2, stack, store, env, cache)
 
         case Tags.MapPure =>
           val theMap = payload.asInstanceOf[CC.Map[Any, Any]]
           val comp2 = theMap.comp
           val step2 = SC.More(Tags.Step_MorePure, theMap.fun, step)
-          loopComp(comp2, step2, stack, store, env, mark, fresh)
+          loopComp(comp2, step2, stack, store, env, cache)
 
         case Tags.Step_MoreFlat =>
           val theMore = step.asInstanceOf[SC.More]
           val step2 = theMore.next
           val comp2 = theMore.fun(payload).asInstanceOf[AnyComp]
-          loopComp(comp2, theMore.next, stack, store, env, mark, fresh)
+          loopComp(comp2, theMore.next, stack, store, env, cache)
 
         case Tags.Step_MorePure =>
           val theMore = step.asInstanceOf[SC.More]
           val step2 = theMore.next
           val payload2 = theMore.fun(payload)
-          loopStep(payload2, step2, stack, store, env, mark, fresh)
+          loopStep(payload2, step2, stack, store, env, cache)
 
         case Tags.Perform =>
           val thePerform = payload.asInstanceOf[CC.Perform[Any, Any, Signature]]
-          val (location, prompt) = stack.locateSignature(thePerform.sig)
-          (thePerform.op(prompt.interpreter): @unchecked) match
-            case comp: AnyComp => loopComp(comp, step, stack, store, env, mark, fresh)
-            case fun =>
-              mark.mustBeEmpty()
-              val comp: AnyComp = (fun: @unchecked) match
-                case fun: Function1[Control.Untyped, AnyComp] => fun(fresh)
-                case fun: Function2[Control.Untyped, Any, AnyComp] => fun(fresh, store.getOrElseVoid(location))
-              if comp.tag == Tags.Resume && prompt.features.isTailResump then
-                val theResume = comp.asInstanceOf[CC.Resume[Any, Stan, Any]]
-                val payload2 = theResume.value
-                val store2 = store.setIfNotVoid(location, theResume.stan)
-                loopStep(payload2, step, stack, store2, env, mark, fresh)
-              else
-                val step2 = stack.getStepAt(location)
-                val mark2 = prompt.asMark
-                fresh.init(stack, store, step, step2, prompt, location)
-                loopComp(comp, step2, stack, store, env, mark2, new ControlImpl)
+          stack.locateSignature(thePerform.sig, cache)
+          val comp2 = thePerform.op(cache.interpreter).asInstanceOf[AnyComp]
+          loopComp(comp2, step, stack, store, env, cache)
 
         case Tags.Pure =>
           val thePure = payload.asInstanceOf[CC.Pure[Any]]
           val payload2 = thePure.value
-          loopStep(payload2, step, stack, store, env, mark, fresh)
+          loopStep(payload2, step, stack, store, env, cache)
 
         case Tags.Impure =>
           val theImpure = payload.asInstanceOf[CC.Impure[Any, Any]]
           val payload2 = theImpure.thunk()
-          loopStep(payload2, step, stack, store, env, mark, fresh)
+          loopStep(payload2, step, stack, store, env, cache)
 
-        case Tags.Resume =>
-          val theResume = payload.asInstanceOf[CC.Resume[Any, Stan, Any]]
-          val control = theResume.control.toImpl
-          val step2 = control.step
-          val payload2 = theResume.value
-          val (stack2, store2) = OpSplice.spliceForResume(stack, store, step, control, mark, theResume.stan)
-          loopStep(payload2, step2, stack2, store2, env, Mark.none, fresh)
+        case Tags.LocalGet =>
+          val theLocalGet = payload.asInstanceOf[CC.LocalGet]
+          stack.locatePrompt(theLocalGet.interp, cache)
+          val local = store.get(cache.location)
+          loopStep(local, step, stack, store, env, cache)
 
-        case Tags.Escape =>
-          val theEscape = payload.asInstanceOf[CC.Escape[Any, Stan, Any]]
-          val control = theEscape.control.toImpl
-          val step2 = SC.Capture(control.prompt, aside = step, next = control.step)
-          val comp2 = theEscape.body
-          val (stack2, store2) = OpSplice.spliceForEscape(stack, store, step, control, mark, theEscape.stan)
-          loopComp(comp2, step2, stack2, store2, env, Mark.none, fresh)
+        case Tags.LocalPut =>
+          val theLocalPut = payload.asInstanceOf[CC.LocalPut[Any]]
+          stack.locatePrompt(theLocalPut.interp, cache)
+          val store2 = store.set(cache.location, theLocalPut.local.asLocal)
+          loopStep((), step, stack, store2, env, cache)
 
-        case Tags.Local =>
-          val theLocal = payload.asInstanceOf[CC.Local[Any, Stan, Any]]
-          val control = theLocal.control.toImpl
-          val comp2 = theLocal.body
-          val (stack3, store3) =
-            val step2 = SC.Capture(control.prompt, aside = step, next = control.step)
-            val (stack2, store2) = OpSplice.spliceForLocal(stack, store, step, control, mark)
-            val location = stack2.locatePrompt(control.prompt) //@#@OPTY already found
-            OpPush.pushLocal(stack2, store2, step2, control.prompt, location, theLocal.stan, FrameKind.plain)
-          loopComp(comp2, SC.Pop, stack3, store3, env, Mark.none, fresh)
+        case Tags.LocalUpdate =>
+          val theLocalUpdate = payload.asInstanceOf[CC.LocalUpdate[Any, Any]]
+          stack.locatePrompt(theLocalUpdate.interp, cache)
+          //@#@OPTY Store.update
+          val local = store.get(cache.location)
+          val (value, local2) = theLocalUpdate.fun(local)
+          val store2 = store.set(cache.location, local2.asLocal)
+          loopStep(value, step, stack, store2, env, cache)
+
+        case Tags.Delimit =>
+          val theDelimit = payload.asInstanceOf[CC.Delimit[Any, Local, Any]]
+          stack.locatePrompt(theDelimit.interp, cache)
+          val local =
+            if theDelimit.fun == null
+            then theDelimit.local
+            else theDelimit.fun(store.get(cache.location))
+          val (stack2, store2) = OpPush.pushNested(stack, store, step, cache.prompt, cache.location, local, FrameKind.plain)
+          loopComp(theDelimit.body, SC.Pop, stack2, store2, env, cache)
 
         case Tags.Abort =>
           val theAbort = payload.asInstanceOf[CC.Abort[Any, Any]]
-          val control = theAbort.control.toImpl
-          val step2 = control.prompt.unwind
+          stack.locatePrompt(theAbort.interp, cache)
+          val step2 = cache.prompt.unwind
           val payload2 = theAbort.value
-          val (stack2, store2) = OpSplice.spliceForAbort(stack, store, step, control, mark)
-          loopStep(payload2, step2, stack2, store2, env, Mark.none, fresh)
+          loopStep(payload2, step2, stack, store, env, cache)
 
-        case Tags.Step_Capture =>
-          OpSplit.forceSplitAndThen(stack, store, mark): (stack, store) =>
-            val theCapture = step.asInstanceOf[SC.Capture]
-            val prompt = theCapture.prompt
-            val step2 = theCapture.aside
-            val mark2 = prompt.asMark
-            val payload2 =
-              //@#@OPTY fuse
-              val location = stack.locatePrompt(prompt)
-              val stepMid = stack.getStepAt(location)
-              val stan = store.getOrElseVoid(location)
-              fresh.init(stack, store, theCapture.next, stepMid, prompt, location)
-              (payload, fresh, stan)
-            loopStep(payload2, step2, stack, store, env, mark2, new ControlImpl)
+        case Tags.Resume =>
+          val theResume = payload.asInstanceOf[CC.Resume[Any, Any, Local, Any]]
+          val cont = theResume.cont.asImpl
+          val (stack2, store2) = OpSplit.merge(
+            stackHi = cont.stack,
+            storeHi = cont.store.setIfNotVoid(cont.location, theResume.local),
+            stepMid = step,
+            stackLo = stack,
+            storeLo = store,
+          )
+          val env2 = OpSplit.findTopmostEnv(stack2, store2)
+          loopStep(theResume.value, cont.step, stack2, store2, env2, cache)
+
+        case Tags.Capture =>
+          val theCapture = payload.asInstanceOf[CC.Capture[Any, Any, Any, Any]]
+          stack.locatePrompt(theCapture.interp, cache)
+          val (stackHi, storeHi, stepMid, stackLo, storeLo) = OpSplit.split(stack, store, cache.location)
+          val envLo = OpSplit.findTopmostEnv(stackLo, storeLo)
+          stackHi.locatePrompt(theCapture.interp, cache)
+          val cont = new ContImpl(stackHi, storeHi, step, cache.location)
+          val comp2 = (theCapture.fun: @unchecked) match
+            case f: Function1[Any, AnyComp] => f(cont)
+            case f: Function2[Any, Any, AnyComp] =>
+              val local = storeHi.get(cache.location)
+              f(cont, local)
+          loopComp(comp2, stepMid, stackLo, storeLo, envLo, cache)
 
         case Tags.Step_Bridge =>
-          OpSplit.forceSplitAndThen(stack, store, mark): (stack, store) =>
-            val (stack2, store2, step2) = OpPush.drop(stack, store)
-            loopStep(payload, step2, stack2, store2, env, Mark.none, fresh)
+          val (stack2, store2, step2) = OpPush.drop(stack, store)
+          loopStep(payload, step2, stack2, store2, env, cache)
 
         case Tags.ZipPar =>
           val theZipPar = payload.asInstanceOf[CC.ZipPar[Any, Any, Any, Any]]
@@ -231,24 +226,24 @@ import Cause.{Cancelled => CancelPayload}
             if tryStartRace(fiberLeft, fiberRight) then
               val (storeTmp, storeLeft) = OpCascaded.fork(stack, store)
               val (storeDown, storeRight) = OpCascaded.fork(stack, storeTmp)
-              suspendForRace(theZipPar.fun, step, stack, storeDown, env, mark)
+              suspendForRace(theZipPar.fun, step, stack, storeDown, env)
               val stack2 = stack.makeFork
-              fiberRight.suspend(theZipPar.rhs.tag, theZipPar.rhs, SC.Pop, stack2, storeRight, env, Mark.none)
+              fiberRight.suspend(theZipPar.rhs.tag, theZipPar.rhs, SC.Pop, stack2, storeRight, env)
               fiberRight.resume()
-              fiberLeft.innerLoop(tick2, theZipPar.lhs.tag, theZipPar.lhs, SC.Pop, stack2, storeLeft, env, Mark.none, fresh)
+              fiberLeft.innerLoop(tick2, theZipPar.lhs.tag, theZipPar.lhs, SC.Pop, stack2, storeLeft, env, cache)
             else
               //// Must have been cancelled meanwhile
-              loopCancel(stack, store, env, fresh)
+              loopCancel(stack, store, env, cache)
           else
             //// Fallback to sequential
             val comp2 = CC.ZipSeq(theZipPar.lhs, () => theZipPar.rhs, theZipPar.fun)
-            loopComp(comp2, step, stack, store, env, mark, fresh)
+            loopComp(comp2, step, stack, store, env, cache)
 
         case Tags.ZipSeq =>
           val theZipSeq = payload.asInstanceOf[CC.ZipSeq[Any, Any, Any, Any]]
           val step2 = SC.ZipSeqLeft(theZipSeq.rhsFun, theZipSeq.fun, step)
           val comp2 = theZipSeq.lhs
-          loopComp(comp2, step2, stack, store, env, mark, fresh)
+          loopComp(comp2, step2, stack, store, env, cache)
 
         case Tags.OrPar =>
           val theOrPar = payload.asInstanceOf[CC.OrPar[Any, Any]]
@@ -258,99 +253,93 @@ import Cause.{Cancelled => CancelPayload}
             if tryStartRace(fiberLeft, fiberRight) then
               val (storeTmp, storeLeft) = OpCascaded.fork(stack, store)
               val (storeDown, storeRight) = OpCascaded.fork(stack, storeTmp)
-              suspendForRace(null, step, stack, storeDown, env, mark)
+              suspendForRace(null, step, stack, storeDown, env)
               val stack2 = stack.makeFork
-              fiberRight.suspend(theOrPar.rhs.tag, theOrPar.rhs, SC.Pop, stack2, storeRight, env, Mark.none)
+              fiberRight.suspend(theOrPar.rhs.tag, theOrPar.rhs, SC.Pop, stack2, storeRight, env)
               fiberRight.resume()
-              fiberLeft.innerLoop(tick2, theOrPar.lhs.tag, theOrPar.lhs, SC.Pop, stack2, storeLeft, env, Mark.none, fresh)
+              fiberLeft.innerLoop(tick2, theOrPar.lhs.tag, theOrPar.lhs, SC.Pop, stack2, storeLeft, env, cache)
             else
               //// Must have been cancelled meanwhile
-              loopCancel(stack, store, env, fresh)
+              loopCancel(stack, store, env, cache)
           else
             //// Fallback to sequential
             val comp2 = CC.OrSeq(theOrPar.lhs, () => theOrPar.rhs)
-            loopComp(comp2, step, stack, store, env, mark, fresh)
+            loopComp(comp2, step, stack, store, env, cache)
 
         case Tags.OrSeq =>
           val theOrSeq = payload.asInstanceOf[CC.OrSeq[Any, Any]]
           val fiberLeft = new FiberImpl(Bits.OrSeq, this)
           if tryStartRaceOfOne(fiberLeft) then
             val (storeDown, storeLeft) = OpCascaded.fork(stack, store)
-            suspendForRace(theOrSeq.rhsFun, step, stack, storeDown, env, mark)
+            suspendForRace(theOrSeq.rhsFun, step, stack, storeDown, env)
             val stack2 = stack.makeFork
-            fiberLeft.innerLoop(tick2, theOrSeq.lhs.tag, theOrSeq.lhs, SC.Pop, stack2, storeLeft, env, Mark.none, fresh)
+            fiberLeft.innerLoop(tick2, theOrSeq.lhs.tag, theOrSeq.lhs, SC.Pop, stack2, storeLeft, env, cache)
           else
             //// Must have been cancelled meanwhile
-            loopCancel(stack, store, env, fresh)
+            loopCancel(stack, store, env, cache)
 
         case Tags.Step_ZipSeqLeft =>
           val theZipSeqLeft = step.asInstanceOf[SC.ZipSeqLeft]
           val comp2 = theZipSeqLeft.todoRight()
           val step2 = SC.ZipSeqRight(payload, theZipSeqLeft.fun, theZipSeqLeft.next)
-          loopComp(comp2, step2, stack, store, env, mark, fresh)
+          loopComp(comp2, step2, stack, store, env, cache)
 
         case Tags.Step_ZipSeqRight =>
           val theZipSeqRight = step.asInstanceOf[SC.ZipSeqRight]
           val step2 = theZipSeqRight.next
           val payload2 = theZipSeqRight.fun(theZipSeqRight.doneLeft, payload)
-          loopStep(payload2, step2, stack, store, env, mark, fresh)
+          loopStep(payload2, step2, stack, store, env, cache)
 
         case Tags.Handle =>
-          OpSplit.forceSplitAndThen(stack, store, mark): (stack, store) =>
-            val theHandle = payload.asInstanceOf[CC.Handle[Any, Any, [_] =>> Any, [_] =>> Any, Any, Any]]
-            val interpreter = theHandle.handler.interpreter.untyped
-            val prompt = new Prompt(interpreter)
-            // if mark.nonEmpty then
-            //   panic(s"Unsupported feature: handling local effect ${prompt} inside interpreter of ${mark.unwrap}.")
-            for sig <- prompt.interpreter.signatures do
-              if stack.containsSignature(sig) then
-                panic(s"Unsupported feature: shadowing effect ${sig}.")
-            val comp2 = interpreter.onInitial
-            val step2 = new SC.Push(theHandle.body, prompt, step)
-            loopComp(comp2, step2, stack, store, env, Mark.none, fresh)
+          val theHandle = payload.asInstanceOf[CC.Handle[Any, Any, [_] =>> Any, [_] =>> Any, Any, Any]]
+          val interpreter = theHandle.handler.interpreter.untyped
+          val prompt = new Prompt(interpreter)
+          for sig <- prompt.interpreter.signatures do
+            if stack.containsSignature(sig) then
+              panic(s"Unsupported feature: shadowing effect ${sig}.")
+          val comp2 = interpreter.onInitial
+          val step2 = new SC.Push(theHandle.body, prompt, step)
+          loopComp(comp2, step2, stack, store, env, cache)
 
         case Tags.Step_Push =>
-          mark.mustBeEmpty()
           val thePush = step.asInstanceOf[SC.Push]
           val step2 = thePush.next
-          val (stack2, store2) = OpPush.pushBase(stack, store, step2, thePush.prompt, payload.asStan)
+          val (stack2, store2) = OpPush.pushBase(stack, store, step2, thePush.prompt, payload.asLocal)
           val comp2 = thePush.body
-          loopComp(comp2, SC.Pop, stack2, store2, env, Mark.none, fresh)
+          loopComp(comp2, SC.Pop, stack2, store2, env, cache)
 
         case Tags.Step_Unwind =>
           val theUnwind = step.asInstanceOf[SC.Unwind]
-          if !theUnwind.kind.isPop then mark.mustBeEmpty()
-          OpSplit.forceSplitAndThen(stack, store, mark): (stack, store) =>
-            if stack.canPop then
-              val (stack2, store2, step2, prompt, frame, stan) = OpPush.pop(stack, store)
-              if prompt.isIo then
-                frame.kind.unwrap match
-                  case FrameKind.PLAIN =>
-                    val env2 = frame.stan.asEnv
-                    val step3 = if theUnwind.kind.isPop then step2 else step
-                    loopStep(payload, step3, stack2, store2, env2, Mark.none, fresh)
+          if stack.canPop then
+            val (stack2, store2, step2, prompt, frame, local) = OpPush.pop(stack, store)
+            if prompt.isIo then
+              frame.kind.unwrap match
+                case FrameKind.PLAIN =>
+                  val env2 = frame.local.asEnv
+                  val step3 = if theUnwind.kind.isPop then step2 else step
+                  loopStep(payload, step3, stack2, store2, env2, cache)
 
-                  case FrameKind.GUARD =>
-                    val payload2 = theUnwind.kind match
-                      case Step.UnwindKind.Pop    => Snap.Success(payload)
-                      case Step.UnwindKind.Abort  => Snap.Aborted(payload, theUnwind.prompt.nn)
-                      case Step.UnwindKind.Cancel => Snap.Cancelled
-                      case Step.UnwindKind.Throw  => Snap.Failure(payload.asInstanceOf[Cause])
-                    loopStep(payload2, step2, stack2, store2, env, Mark.none, fresh)
-              else
-                if theUnwind.kind.isPop then
-                  val comp2 = prompt.interpreter.onReturn(payload, stan)
-                  loopComp(comp2, step2, stack2, store2, env, Mark.none, fresh)
-                else
-                  val step3 = if prompt == theUnwind.prompt then step2 else step
-                  loopStep(payload, step3, stack2, store2, env, Mark.none, fresh)
+                case FrameKind.GUARD =>
+                  val payload2 = theUnwind.kind match
+                    case Step.UnwindKind.Pop    => Snap.Success(payload)
+                    case Step.UnwindKind.Abort  => Snap.Aborted(payload, theUnwind.prompt.nn)
+                    case Step.UnwindKind.Cancel => Snap.Cancelled
+                    case Step.UnwindKind.Throw  => Snap.Failure(payload.asInstanceOf[Cause])
+                  loopStep(payload2, step2, stack2, store2, env, cache)
             else
-              val completion = theUnwind.kind match
-                case Step.UnwindKind.Pop    => Bits.Completion_Success
-                case Step.UnwindKind.Abort  => impossible
-                case Step.UnwindKind.Cancel => Bits.Completion_Cancelled
-                case Step.UnwindKind.Throw  => Bits.Completion_Failure
-              endOfFiber(tick2, completion, payload, fresh)
+              if theUnwind.kind.isPop then
+                val comp2 = prompt.interpreter.onReturn(payload, local)
+                loopComp(comp2, step2, stack2, store2, env, cache)
+              else
+                val step3 = if prompt == theUnwind.prompt then step2 else step
+                loopStep(payload, step3, stack2, store2, env, cache)
+          else
+            val completion = theUnwind.kind match
+              case Step.UnwindKind.Pop    => Bits.Completion_Success
+              case Step.UnwindKind.Abort  => impossible
+              case Step.UnwindKind.Cancel => Bits.Completion_Cancelled
+              case Step.UnwindKind.Throw  => Bits.Completion_Failure
+            endOfFiber(tick2, completion, payload)
 
         case _ => (tag: @switch) match
           case Tags.DoIO =>
@@ -361,11 +350,11 @@ import Cause.{Cancelled => CancelPayload}
             catch case e: Throwable => throwable = e
             if throwable eq null then
               val payload2 = result
-              loopStep(payload2, step, stack, store, env, mark, fresh)
+              loopStep(payload2, step, stack, store, env, cache)
             else
               val step2 = Step.Throw
               val payload2 = Cause(throwable)
-              loopStep(payload2, step2, stack, store, env, Mark.none, fresh)
+              loopStep(payload2, step2, stack, store, env, cache)
 
           case Tags.DoTry =>
             val theDoTry = payload.asInstanceOf[CC.DoTry[Any, Any]]
@@ -374,55 +363,52 @@ import Cause.{Cancelled => CancelPayload}
             try result = theDoTry.thunk()
             catch case e: Throwable => throwable = e
             val payload2 = if throwable eq null then TrySuccess(result) else TryFailure(throwable)
-            loopStep(payload2, step, stack, store, env, mark, fresh)
+            loopStep(payload2, step, stack, store, env, cache)
 
           case Tags.DoSnap =>
-            OpSplit.forceSplitAndThen(stack, store, mark): (stack, store) =>
-              val theDoSnap = payload.asInstanceOf[CC.DoSnap[Any, Any]]
-              val location = stack.locatePrompt(Prompt.io)
-              val (stack2, store2) = OpPush.pushLocal(stack, store, step, Prompt.io, location, env.asStan, FrameKind.guard)
-              loopComp(theDoSnap.body, SC.Pop, stack2, store2, env, Mark.none, fresh)
+            val theDoSnap = payload.asInstanceOf[CC.DoSnap[Any, Any]]
+            val location = stack.locateIO
+            val (stack2, store2) = OpPush.pushNested(stack, store, step, Prompt.io, location, env.asLocal, FrameKind.guard)
+            loopComp(theDoSnap.body, SC.Pop, stack2, store2, env, cache)
 
           case Tags.Unsnap =>
             val theUnsnap = payload.asInstanceOf[CC.Unsnap[Any, Any]]
             //@#@TODO forbid uncancelling, it wouldnt work correctly anyway
             theUnsnap.snap match
               case Snap.Success(payload2) =>
-                loopStep(payload2, step, stack, store, env, mark, fresh)
+                loopStep(payload2, step, stack, store, env, cache)
               case Snap.Failure(payload2) =>
                 val step2 = Step.Throw
-                loopStep(payload2, step2, stack, store, env, Mark.none, fresh)
+                loopStep(payload2, step2, stack, store, env, cache)
               case theAborted: Snap.Aborted =>
                 val payload2 = theAborted.value
                 val step2 = theAborted.prompt.unwind
-                loopStep(payload2, step2, stack, store, env, Mark.none, fresh)
+                loopStep(payload2, step2, stack, store, env, cache)
               case Snap.Cancelled =>
                 selfCancel()
-                loopCancel(stack, store, env, fresh)
+                loopCancel(stack, store, env, cache)
 
           case Tags.EnvAsk =>
             val theEnvAsk = payload.asInstanceOf[CC.EnvAsk[Any]]
             val value = theEnvAsk.fun(env)
-            loopStep(value, step, stack, store, env, mark, fresh)
+            loopStep(value, step, stack, store, env, cache)
 
           case Tags.EnvMod =>
             val theEnvMod = payload.asInstanceOf[CC.EnvMod[Any, Any]]
             val env2 = theEnvMod.fun(env)
             if env2 eq env then
-              loopComp(theEnvMod.body, step, stack, store, env, mark, fresh)
+              loopComp(theEnvMod.body, step, stack, store, env, cache)
             else
-              //@#@TODO avoid stack split, like in any other HOE
-              OpSplit.forceSplitAndThen(stack, store, mark): (stack, store) =>
-                val location = stack.locatePrompt(Prompt.io)
-                val (stack2, store2) = OpPush.pushLocal(stack, store, step, Prompt.io, location, env2.asStan, FrameKind.plain)
-                loopComp(theEnvMod.body, SC.Pop, stack2, store2, env2, Mark.none, fresh)
+              val location = stack.locateIO
+              val (stack2, store2) = OpPush.pushNested(stack, store, step, Prompt.io, location, env2.asLocal, FrameKind.plain)
+              loopComp(theEnvMod.body, SC.Pop, stack2, store2, env2, cache)
 
           case Tags.Yield =>
-            suspend(step.tag, (), step, stack, store, env, mark)
+            suspend(step.tag, (), step, stack, store, env)
             Halt.Yield(this)
 
     else
-      suspend(tag, payload, step, stack, store, env, mark)
+      suspend(tag, payload, step, stack, store, env)
       Halt.Reset
 
 
@@ -431,7 +417,7 @@ import Cause.{Cancelled => CancelPayload}
   //-------------------------------------------------------------------
 
 
-  private def endOfFiber(tick: Short, initialCompletion: Int, initialPayload: Any, fresh: ControlImpl | Null): Halt.Loop =
+  private def endOfFiber(tick: Short, initialCompletion: Int, initialPayload: Any): Halt.Loop =
     //// Set completion & payload
     synchronized {
       if Bits.isCancellationUnreceived(varyingBits) then
@@ -454,7 +440,7 @@ import Cause.{Cancelled => CancelPayload}
     owner match
       case arbiter: FiberImpl =>
         if isLastRacer then
-          Halt.Become(arbiter, tick, fresh)
+          Halt.Become(arbiter, tick)
         else
           retire
 
@@ -715,7 +701,6 @@ import Cause.{Cancelled => CancelPayload}
     suspendedStack   = Stack.initial
     suspendedStore   = Store.initial(env)
     suspendedEnv     = env
-    suspendedMark    = Mark.none
 
 
   private def suspend(
@@ -725,7 +710,6 @@ import Cause.{Cancelled => CancelPayload}
     stack: Stack,
     store: Store,
     env: Env,
-    mark: Mark,
   ): Unit =
     assert(!isSuspended)
     suspendedTag     = tag
@@ -734,7 +718,6 @@ import Cause.{Cancelled => CancelPayload}
     suspendedStack   = stack
     suspendedStore   = store
     suspendedEnv     = env
-    suspendedMark    = mark
 
 
   private def clearSuspension(): Unit =
@@ -744,7 +727,6 @@ import Cause.{Cancelled => CancelPayload}
     suspendedStack   = null
     suspendedStore   = null
     suspendedEnv     = null
-    suspendedMark    = Mark.none
 
 
   private def suspendForRace(
@@ -753,14 +735,12 @@ import Cause.{Cancelled => CancelPayload}
     stack: Stack,
     store: Store,
     env: Env,
-    mark: Mark,
   ): Unit =
     suspendedPayload = payload
     suspendedStep    = step
     suspendedStack   = stack
     suspendedStore   = store
     suspendedEnv     = env
-    suspendedMark    = mark
 
 
   private def suspendAsSuccessPure(value: Any): Unit =
@@ -777,14 +757,12 @@ import Cause.{Cancelled => CancelPayload}
     suspendedTag = Step.Cancel.tag
     suspendedStep = Step.Cancel
     suspendedPayload = CancelPayload
-    suspendedMark = Mark.none
 
 
   private def suspendAsFailure(cause: Cause): Unit =
     suspendedTag = Step.Throw.tag
     suspendedStep = Step.Throw
     suspendedPayload = cause
-    suspendedMark = Mark.none
 
 
   //-------------------------------------------------------------------

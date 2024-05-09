@@ -1,14 +1,12 @@
 package turbolift.handlers
 import turbolift.!!
 import turbolift.Extensions._
-import turbolift.effects.{Choice, ChoiceSignature}
+import turbolift.effects.{ChoiceEffect, ChoiceSignature}
 
 
-extension (fx: Choice)
-  def choiceHandler_all: fx.ThisHandler.FromId.Free[Vector] =
-    new fx.impl.Stateless.FromId.Free[Vector] with fx.impl.Parallel with ChoiceSignature:
-      override def multishotHint: Boolean = true
-
+extension [Fx <: ChoiceEffect](fx: Fx)
+  def choiceHandler_all: fx.ThisHandler[Identity, Vector, Any] =
+    new fx.impl.Stateless[Identity, Vector, Any] with fx.impl.Parallel with ChoiceSignature:
       override def onReturn(a: Unknown): Vector[Unknown] !! Any = !!.pure(Vector(a))
 
       override def onRestart(as: Vector[Unknown]): Unknown !! ThisEffect = fx.choose(as)
@@ -16,13 +14,13 @@ extension (fx: Choice)
       override def onZip[A, B, C](as: Vector[A], bs: Vector[B], k: (A, B) => C): Vector[C] =
         as.flatMap(a => bs.map(b => k(a, b)))
 
-      override def empty: Nothing !@! ThisEffect = _ => !!.vector
+      override def empty: Nothing !! ThisEffect = Control.abort(Vector())
 
-      override def choose[A](as: Iterable[A]): A !@! ThisEffect =
-        k => as.iterator.flatMapEff(k(_))
+      override def choose[A](as: Iterable[A]): A !! ThisEffect =
+        Control.capture(k => as.iterator.flatMapEff(k(_)))
 
       //@#@TODO choosePar
-      // override def choosePar[A](as: Iterable[A]): A !@! ThisEffect =
+      // override def choosePar[A](as: Iterable[A]): A !! ThisEffect =
       //   k => as.iterator.flatMapParEff(k(_))
 
     .toHandler

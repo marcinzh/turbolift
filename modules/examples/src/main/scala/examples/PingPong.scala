@@ -13,10 +13,10 @@ case object PingPong extends Example:
   //----- Effects -----
 
   trait PingSignature extends Signature:
-    def ping: Unit !@! (ThisEffect & Pong)
+    def ping: Unit !! (ThisEffect & Pong)
 
   trait PongSignature extends Signature:
-    def pong: Unit !@! (ThisEffect & Ping)
+    def pong: Unit !! (ThisEffect & Ping)
 
   case object Ping extends Effect[PingSignature] with PingSignature:
     override def ping = perform(_.ping)
@@ -33,7 +33,7 @@ case object PingPong extends Example:
   extension (fx: Ping)
     def ponger =
       new fx.impl.Proxy[Console] with PingSignature:
-        override def ping: Unit !@! (ThisEffect & Pong) =
+        override def ping: Unit !! (ThisEffect & Pong) =
           Console.println(s"${Console.CYAN}ping${Console.RESET}") &&!
           Pong.pong
       .toHandler
@@ -42,7 +42,7 @@ case object PingPong extends Example:
     def pinger(limit: Int) =
       case object S extends State[Int]
       new fx.impl.Proxy[Console & S.type] with PongSignature:
-        override def pong: Unit !@! (ThisEffect & Ping) =
+        override def pong: Unit !! (ThisEffect & Ping) =
           for
             i <- S.modifyGet(_ + 1)
             _ <- Console.println(s"${Console.MAGENTA}pong $i${Console.RESET}")

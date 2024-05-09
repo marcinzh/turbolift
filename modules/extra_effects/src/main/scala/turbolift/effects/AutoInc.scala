@@ -4,14 +4,14 @@ import turbolift.handlers.autoIncHandler
 
 
 trait AutoIncSignature extends Signature:
-  def next: Int !@! ThisEffect
+  def next: Int !! ThisEffect
 
 
 trait AutoInc extends Effect[AutoIncSignature] with AutoIncSignature:
   def next: Int !! this.type = perform(_.next)
 
   /** Default handler for this effect. */
-  def handler: ThisHandler.FromId.Free[(_, Int)] = handler(0)
+  def handler: ThisHandler[Identity, (_, Int), Any] = handler(0)
   
   /** Predefined handler for this effect. */
-  def handler(initial: Int): ThisHandler.FromId.Free[(_, Int)] = this.autoIncHandler(initial)
+  def handler(initial: Int): ThisHandler[Identity, (_, Int), Any] = this.autoIncHandler(initial)

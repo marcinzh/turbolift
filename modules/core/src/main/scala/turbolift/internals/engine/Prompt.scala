@@ -5,7 +5,7 @@ import turbolift.interpreter.Interpreter
 
 private[turbolift] final class Prompt(val interpreter: Interpreter.Untyped):
   val features = interpreter.features
-  val stanCount: Byte = if features.isStateful then 1 else 0
+  val localCount: Byte = if features.isStateful then 1 else 0
   val unwind: Step = StepCases.Unwind(Step.UnwindKind.Abort, this)
   
   //@#@TODO
@@ -20,8 +20,6 @@ private[turbolift] final class Prompt(val interpreter: Interpreter.Untyped):
   def hasRestart = features.hasRestart
   def hasZip = features.hasZip
   def hasForkJoin = features.hasForkJoin
-
-  def asMark: Mark = Mark.wrap(this)
 
   override def toString = signatures.mkString("&")
 

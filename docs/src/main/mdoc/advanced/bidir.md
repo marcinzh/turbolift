@@ -9,11 +9,11 @@ Typically, effect's operations are defined so that they request exactly 1 effect
 the very effect they belong to. This **self-reference** in Turbolift is named `ThisEffect`:
 
 ```scala mdoc
-import turbolift.{Signature, Effect}
+import turbolift.{!!, Signature, Effect}
 
 trait FileSystemSignature extends Signature:
-  def readFile(path: String): String !@! ThisEffect
-  def writeFile(path: String, contents: String): Unit !@! ThisEffect
+  def readFile(path: String): String !! ThisEffect
+  def writeFile(path: String, contents: String): Unit !! ThisEffect
 
 // Boilerplate:
 case object FileSystem extends Effect[FileSystemSignature] with FileSystemSignature:
@@ -35,11 +35,11 @@ type FileNotFound = FileNotFound.type
 
 Now we can modify `readFile` definition, so that it requests `FileNotFound` effect:
 ```scala mdoc
-import turbolift.{Signature, Effect}
+import turbolift.{!!, Signature, Effect}
 
 trait FileSystemSignature extends Signature:
-  def readFile(path: String): String !@! (ThisEffect & FileNotFound)
-  def writeFile(path: String, contents: String): Unit !@! ThisEffect
+  def readFile(path: String): String !! (ThisEffect & FileNotFound)
+  def writeFile(path: String, contents: String): Unit !! ThisEffect
 
 // Boilerplate:
 // (unchanged, except omitted types)

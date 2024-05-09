@@ -23,8 +23,8 @@ import turbolift.effects.{State, Error}
 
 ```scala mdoc
 trait FileSystemSignature extends Signature:
-  def readFile(path: String): String !@! ThisEffect
-  def writeFile(path: String, contents: String): Unit !@! ThisEffect
+  def readFile(path: String): String !! ThisEffect
+  def writeFile(path: String, contents: String): Unit !! ThisEffect
 ```
 
 ### 3. Define the effect type

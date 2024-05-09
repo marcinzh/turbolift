@@ -6,11 +6,11 @@ import turbolift.handlers.{choiceHandler_allBreadthFirst, choiceHandler_firstBre
 
 
 trait ChoiceSignature extends Signature:
-  def empty: Nothing !@! ThisEffect
-  def choose[A](as: Iterable[A]): A !@! ThisEffect
+  def empty: Nothing !! ThisEffect
+  def choose[A](as: Iterable[A]): A !! ThisEffect
 
 
-trait Choice extends Effect[ChoiceSignature] with ChoiceSignature:
+trait ChoiceEffect extends Effect[ChoiceSignature] with ChoiceSignature:
   final override val empty: Nothing !! this.type = perform(_.empty)
   final override def choose[A](as: Iterable[A]): A !! this.type = perform(_.choose(as))
 
@@ -24,20 +24,18 @@ trait Choice extends Effect[ChoiceSignature] with ChoiceSignature:
 
   /** Predefined handlers for this effect. */
   object handlers:
-    def first: ThisHandler.FromId.Free[Option] = Choice.this.choiceHandler_first
-    def all: ThisHandler.FromId.Free[Vector] = Choice.this.choiceHandler_all
-    def firstBreadthFirst: ThisHandler.FromId.Free[Option] = Choice.this.choiceHandler_firstBreadthFirst
-    def allBreadthFirst: ThisHandler.FromId.Free[Vector] = Choice.this.choiceHandler_allBreadthFirst
+    def first: ThisHandler[Identity, Option, Any] = ChoiceEffect.this.choiceHandler_first
+    def all: ThisHandler[Identity, Vector, Any] = ChoiceEffect.this.choiceHandler_all
+    def firstBreadthFirst: ThisHandler[Identity, Option, Any] = ChoiceEffect.this.choiceHandler_firstBreadthFirst
+    def allBreadthFirst: ThisHandler[Identity, Vector, Any] = ChoiceEffect.this.choiceHandler_allBreadthFirst
 
 
-object Choice:
-  extension (fx: Choice)
-    /** Default handler for this effect. */
-    def handler: fx.ThisHandler.FromId.Free[Vector] = fx.choiceHandler_all
+trait Choice extends ChoiceEffect:
+  export handlers.{all => handler}
 
 
 /** Predefined instance of [[Choice]] effect. */
 case object Each extends Choice:
-  def void: ThisHandler.FromId.ToConst.Free[Unit] = handlers.all.void
+  def void: ThisHandler[Identity, Const[Unit], Any] = handlers.all.void
 
 type Each = Each.type

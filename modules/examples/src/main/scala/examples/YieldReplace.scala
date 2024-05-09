@@ -17,10 +17,10 @@ case object YieldReplace extends Example:
   // """
 
   trait YieldSignature[A] extends Signature:
-    def yeld[R <: Replace[A]](R: R)(value: A): Unit !@! (ThisEffect & R.type)
+    def yeld[R <: Replace[A]](R: R)(value: A): Unit !! (ThisEffect & R.type)
 
   trait ReplaceSignature[A] extends Signature:
-    def replace(value: A): Unit !@! ThisEffect
+    def replace(value: A): Unit !! ThisEffect
 
   trait Yield[A] extends Effect[YieldSignature[A]] with YieldSignature[A]:
     override def yeld[R <: Replace[A]](R: R)(value: A) = perform(_.yeld(R)(value))
@@ -36,7 +36,7 @@ case object YieldReplace extends Example:
           head <- Ref(a)
           handler =
             new R.impl.Proxy[IO] with ReplaceSignature[A]:
-              override def replace(x: A): Unit !@! R.type = head.put(x)
+              override def replace(x: A) = head.put(x)
             .toHandler
           as2 <- (Y.yeld(R)(a) &&! iterate(Y, R)(as)).handleWith(handler)
           a2 <- head.get 

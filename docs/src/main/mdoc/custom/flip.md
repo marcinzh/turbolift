@@ -15,14 +15,15 @@ This is how it looks in Turbolift:
 
 ```scala mdoc
 import turbolift.{!!, Signature, Effect, Handler}
+import turbolift.Extensions._
 ```
 
 ### 2. Define the signature
 
 ```scala mdoc
 trait FlipSignature extends Signature:
-  def flip: Boolean !@! ThisEffect
-  def fail: Nothing !@! ThisEffect
+  def flip: Boolean !! ThisEffect
+  def fail: Nothing !! ThisEffect
 ```
 
 ### 3. Define the effect type
@@ -55,12 +56,12 @@ Or better, **two** handlers:
 ```scala mdoc
 extension (fx: FlipEffect)
   def findAll =
-    new fx.impl.Stateless.FromId.Free[Vector] with fx.impl.Sequential with FlipSignature:
+    new fx.impl.Stateless[Identity, Vector, Any] with fx.impl.Sequential with FlipSignature:
       override def onReturn(a: Unknown) = !!.pure(Vector(a))
 
-      override def fail = _ => !!.pure(Vector())
+      override def fail = Control.abort(Vector())
 
-      override def flip = k =>
+      override def flip = Control.capture: k =>
         for
           as <- k(true)
           bs <- k(false)
@@ -72,16 +73,15 @@ extension (fx: FlipEffect)
 ```scala mdoc
 extension (fx: FlipEffect)
   def findFirst =
-    new fx.impl.Stateless.FromId.Free[Option] with fx.impl.Sequential with FlipSignature:
+    new fx.impl.Stateless[Identity, Option, Any] with fx.impl.Sequential with FlipSignature:
       override def onReturn(a: Unknown) = !!.pure(Some(a))
 
-      override def fail = _ => !!.pure(None)
+      override def fail = Control.abort(None)
 
-      override def flip = k =>
-        k(true).flatMap {
+      override def flip = Control.capture: k =>
+        k(true).flatMap:
           case None => k(false)
           case some => !!.pure(some)
-        }
 
     .toHandler
 ```

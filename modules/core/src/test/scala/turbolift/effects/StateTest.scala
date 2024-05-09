@@ -11,7 +11,7 @@ class StateTest extends Specification:
     def apply[T](a: => T, b: => T): T = if round then a else b
     def name = apply("local", "shared")
     def header = s"With handler = ${name}"
-    def handler[S, Fx <: State[S]](fx: Fx): S => fx.ThisHandler.FromId[(_, S), IO] =
+    def handler[S, Fx <: State[S]](fx: Fx): S => fx.ThisHandler[fx.Identity, (_, S), IO] =
       s => apply(
         fx.handlers.local(s).tapEffK([X] => (_: (X, S)) => !!.unit.upCast[IO]),
         fx.handlers.shared(s),

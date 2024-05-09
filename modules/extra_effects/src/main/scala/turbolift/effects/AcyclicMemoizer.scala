@@ -4,9 +4,9 @@ import turbolift.handlers.acyclicMemoizerHandler
 
 
 trait AcyclicMemoizerSignature[K, V] extends Signature:
-  def memo[U <: ThisEffect](f: K => V !! U)(k: K): V !@! U
-  def domain: Set[K] !@! ThisEffect
-  def toMap: Map[K, V] !@! ThisEffect
+  def memo[U <: ThisEffect](f: K => V !! U)(k: K): V !! U
+  def domain: Set[K] !! ThisEffect
+  def toMap: Map[K, V] !! ThisEffect
   @deprecated final def get = toMap
 
 
@@ -24,4 +24,4 @@ trait AcyclicMemoizer[K, V] extends Effect[AcyclicMemoizerSignature[K, V]] with 
       recur
 
   /** Default handler for this effect. */
-  def handler: ThisHandler.FromId.ToId.Free = this.acyclicMemoizerHandler
+  def handler: ThisHandler[Identity, Identity, Any] = this.acyclicMemoizerHandler

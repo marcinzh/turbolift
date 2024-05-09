@@ -4,12 +4,12 @@ import turbolift.handlers.polyGraphHandler
 
 
 trait PolyGraphSignature[K, V] extends Signature:
-  def empty(to: K): Unit !@! ThisEffect
-  def const(to: K, value: V): Unit !@! ThisEffect
-  def identity(to: K, from: K): Unit !@! ThisEffect
-  def unary(to: K, from: K)(f: V => V): Unit !@! ThisEffect
-  def binary(to: K, from1: K, from2: K)(f: (V, V) => V): Unit !@! ThisEffect
-  def variadic(to: K, froms: Vector[K])(f: Vector[V] => V): Unit !@! ThisEffect
+  def empty(to: K): Unit !! ThisEffect
+  def const(to: K, value: V): Unit !! ThisEffect
+  def identity(to: K, from: K): Unit !! ThisEffect
+  def unary(to: K, from: K)(f: V => V): Unit !! ThisEffect
+  def binary(to: K, from1: K, from2: K)(f: (V, V) => V): Unit !! ThisEffect
+  def variadic(to: K, froms: Vector[K])(f: Vector[V] => V): Unit !! ThisEffect
 
 
 trait PolyGraph[K, V] extends Effect[PolyGraphSignature[K, V]] with PolyGraphSignature[K, V]:
@@ -36,4 +36,4 @@ trait PolyGraph[K, V] extends Effect[PolyGraphSignature[K, V]] with PolyGraphSig
     def reduce(froms: Vector[K])(f: (V, V) => V) = enclosing.reduce(k, froms)(f)
 
   /** Default handler for this effect. */
-  def handler: V => ThisHandler.FromId.Free[(_, Map[K, V])] = this.polyGraphHandler
+  def handler: V => ThisHandler[Identity, (_, Map[K, V]), Any] = this.polyGraphHandler

@@ -43,44 +43,41 @@ object Generator:
 
 
 trait ProducerSignature[A] extends Signature:
-  def yeld(value: A): Unit !@! ThisEffect
+  def yeld(value: A): Unit !! ThisEffect
 
 
 trait ProducerEffect[A] extends Effect[ProducerSignature[A]] with ProducerSignature[A]:
   final override def yeld(value: A): Unit !! this.type = perform(_.yeld(value))
 
-  final def handler[U]: ThisHandler.FromConst.ToConst.Free[Unit, Step[A, U]] =
-    new impl.Stateless.FromConst.ToConst.Free[Unit, Step[A, U]] with impl.Sequential with ProducerSignature[A]:
-      override def topmostOnlyHint = true
-
+  final def handler[U]: ThisHandler[Const[Unit], Const[Step[A, U]], Any] =
+    new impl.Stateless[Const[Unit], Const[Step[A, U]], Any] with impl.Sequential with ProducerSignature[A]:
       override def onReturn(aa: Unit): Step[A, U] !! Any =
         Step.End.pure_!!
 
-      override def yeld(value: A): Unit !@! ThisEffect =
-        k => Step.Yield(value, k.resume(())).pure_!!
+      override def yeld(value: A): Unit !! ThisEffect =
+        Control.capture: k =>
+          Step.Yield(value, k.resume(())).pure_!!
 
     .toHandler
 
 
 trait ConsumerSignature[A] extends Signature:
-  def await: A !@! ThisEffect
+  def await: A !! ThisEffect
 
 
 trait ConsumerEffect[A] extends Effect[ConsumerSignature[A]] with ConsumerSignature[A]:
   final override def await: A !! this.type = perform(_.await)
 
-  final def handler[U](initial: Step[A, U] !! U): ThisHandler.FromConst.ToConst[Unit, Unit, U] =
-    new impl.Stateful.FromConst.ToConst[Unit, Unit, U] with impl.Sequential with ConsumerSignature[A]:
-      override def topmostOnlyHint = true
-
-      override type Stan = Step[A, U] !! U
+  final def handler[U](initial: Step[A, U] !! U): ThisHandler[Const[Unit], Const[Unit], U] =
+    new impl.Stateful[Const[Unit], Const[Unit], U] with impl.Sequential with ConsumerSignature[A]:
+      override type Local = Step[A, U] !! U
 
       override def onInitial = initial.pure_!!
 
-      override def onReturn(a: Unit, s: Stan) = !!.unit
+      override def onReturn(a: Unit, s: Local) = !!.unit
 
-      override def await: A !@! ThisEffect =
-        (k, s) =>
+      override def await: A !! ThisEffect =
+        Control.captureGet: (k, s) =>
           s.flatMap:
             case Step.End => !!.unit
             case Step.Yield(a, s2) => k(a, s2)

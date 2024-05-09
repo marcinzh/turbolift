@@ -16,8 +16,8 @@ object Mixins:
     final override def onRestart(aa: To[Unknown]): Unknown !! ThisEffect = unimplemented
 
   private[interpreter] sealed trait HasNotForkJoin extends Interpreter.Unsealed:
-    final override def onFork(s: Stan): (Stan, Stan) = unimplemented
-    final override def onJoin(s1: Stan, s2: Stan): Stan = unimplemented
+    final override def onFork(s: Local): (Local, Local) = unimplemented
+    final override def onJoin(s1: Local, s2: Local): Local = unimplemented
 
   private[interpreter] sealed trait HasNotZip extends Interpreter.Unsealed:
     final override def onZip[A, B, C](aa: To[A], bb: To[B], k: (A, B) => C): To[C] = unimplemented
@@ -42,4 +42,4 @@ object Mixins:
 
     trait ForkJoin extends Interpreter.Unsealed:
       //@#@TODO
-      final override def onJoin(s1: Stan, s2: Stan): Stan = unimplemented
+      final override def onJoin(s1: Local, s2: Local): Local = unimplemented

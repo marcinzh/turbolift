@@ -4,8 +4,8 @@ import turbolift.{!!, Signature}
 import turbolift.Computation.{Unsealed, Untyped}
 import turbolift.HandlerCases.Primitive
 import turbolift.io.Snap
-import turbolift.interpreter.Control
-import turbolift.internals.engine.{Env, Mark}
+import turbolift.interpreter.{Interpreter, Continuation}
+import turbolift.internals.engine.{Env}
 
 
 private[turbolift] object ComputationCases:
@@ -17,10 +17,13 @@ private[turbolift] object ComputationCases:
   final class OrPar[A, U](val lhs: A !! U, val rhs: A !! U) extends Unsealed[A, U](Tags.OrPar)
   final class OrSeq[A, U](val lhs: A !! U, val rhsFun: () => A !! U) extends Unsealed[A, U](Tags.OrSeq)
   final class Impure[A, U](val thunk: () => A) extends Unsealed[A, U](Tags.Impure)
-  final class Resume[A, S, U](val control: Control.Untyped, val value: Any, val stan: S) extends Unsealed[A, U](Tags.Resume)
-  final class Local[A, S, U](val control: Control.Untyped, val body: Untyped, val stan: S) extends Unsealed[A, U](Tags.Local)
-  final class Escape[A, S, U](val control: Control.Untyped, val body: Untyped, val stan: S) extends Unsealed[A, U](Tags.Escape)
-  final class Abort[A, U](val control: Control.Untyped, val value: Any) extends Unsealed[A, U](Tags.Abort)
+  final class LocalGet(val interp: Interpreter.Untyped) extends Unsealed[Any, Any](Tags.LocalGet) { def cast[S] = asInstanceOf[S !! Any] }
+  final class LocalPut[S](val interp: Interpreter.Untyped, val local: S) extends Unsealed[Unit, Any](Tags.LocalPut)
+  final class LocalUpdate[A, S](val interp: Interpreter.Untyped, val fun: S => (A, S)) extends Unsealed[A, Any](Tags.LocalUpdate)
+  final class Resume[A, B, S, U](val cont: Continuation[A, B, S, U], val value: A, val local: S) extends Unsealed[B, U](Tags.Resume)
+  final class Delimit[A, S, U](val interp: Interpreter.Untyped, val body: Untyped, val local: S, val fun: (S => S) | Null) extends Unsealed[A, U](Tags.Delimit)
+  final class Capture[A, B, S, U](val interp: Interpreter.Untyped, val fun: ContFun[A, B, S, U]) extends Unsealed[A, U](Tags.Capture)
+  final class Abort[A, U](val interp: Interpreter.Untyped, val value: Any) extends Unsealed[A, U](Tags.Abort)
   final class Handle[A, U, F[+_], G[+_], L, N](val body: F[A] !! (U & L), val handler: Primitive[F, G, L, N]) extends Unsealed[G[A], U & N](Tags.Handle)
   final class DoIO[A, U](val thunk: () => A) extends Unsealed[A, U](Tags.DoIO)
   final class DoTry[A, U](val thunk: () => A) extends Unsealed[Try[A], U](Tags.DoTry)
@@ -29,3 +32,8 @@ private[turbolift] object ComputationCases:
   final class EnvAsk[A](val fun: Env => A) extends Unsealed[A, Any](Tags.EnvAsk)
   final class EnvMod[A, U](val fun: Env => Env, val body: A !! U) extends Unsealed[A, U](Tags.EnvMod)
   object Yield extends Unsealed[Unit, Any](Tags.Yield)
+
+
+  type ContFun[A, B, S, U] = ContFun1[A, B, S, U] | ContFun2[A, B, S, U]
+  type ContFun1[A, B, S, U] = Continuation[A, B, S, U] => B !! U
+  type ContFun2[A, B, S, U] = (Continuation[A, B, S, U], S) => B !! U

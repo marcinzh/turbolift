@@ -1,7 +1,7 @@
 package turbolift.internals.engine
 import scala.annotation.tailrec
 import turbolift.Signature
-import turbolift.interpreter.Features
+import turbolift.interpreter.{Features, Interpreter}
 
 
 private[engine] abstract class Stack:
@@ -39,30 +39,16 @@ private[engine] abstract class Stack:
         true
 
 
-  final def locateSignature(sig: Signature): (Location.Deep, Prompt) =
-    @tailrec def loop(todo: Stack, depth: Int): (Location.Deep, Prompt) =
+  final def locateSignature(sig: Signature, cache: Cache): Unit =
+    @tailrec def loop(todo: Stack, depth: Int): Unit =
       todo.deconsAndThen: (head, tail, _) =>
         val i = head.signatures.lastIndexOf(sig)
         if i >= 0 then
           val location = head.locations(i)
           val prompt = head.prompts(location.promptIndex)
-          (location.withDepth(depth), prompt)
-        else
-          if tail != null then
-            loop(tail, depth + 1)
-          else
-            sigNotFound(sig)
-    loop(this, 0)
-
-  //@#@TODO seems like silent failure to inline causes SO, despite `tailrec` passing
-  inline final def locateSignatureAndThen[T](sig: Signature)(inline cb: (Location.Deep, Prompt) => T): T =
-    @tailrec def loop(todo: Stack, depth: Int): T =
-      todo.deconsAndThen: (head, tail, _) =>
-        val i = head.signatures.lastIndexOf(sig)
-        if i >= 0 then
-          val location = head.locations(i)
-          val prompt = head.prompts(location.promptIndex)
-          cb(location.withDepth(depth), prompt)
+          cache.interpreter = prompt.interpreter
+          cache.prompt = prompt //@#@TEMP
+          cache.location = location.withDepth(depth)
         else
           if tail != null then
             loop(tail, depth + 1)
@@ -71,9 +57,23 @@ private[engine] abstract class Stack:
     loop(this, 0)
 
 
-  final def locatePrompt(prompt: Prompt): Location.Deep =
-    locateSignatureAndThen(prompt.signatures.head): (loc, _) =>
-      loc
+  final def locatePrompt(interp: Interpreter.Untyped, cache: Cache): Unit =
+    locateSignature(interp.signatures.head, cache)
+
+
+  final def locateIO: Location.Deep =
+    val sig = Prompt.io.signatures.head
+    @tailrec def loop(todo: Stack, depth: Int): Location.Deep =
+      todo.deconsAndThen: (head, tail, _) =>
+        val i = head.signatures.lastIndexOf(sig)
+        if i >= 0 then
+          head.locations(i).withDepth(depth)
+        else
+          if tail != null then
+            loop(tail, depth + 1)
+          else
+            sigNotFound(sig)
+    loop(this, 0)
 
 
   final def getStepAt(loc: Location.Deep): Step =

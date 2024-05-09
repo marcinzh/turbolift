@@ -1,21 +1,19 @@
 package turbolift.handlers
 import turbolift.!!
 import turbolift.Extensions._
-import turbolift.effects.{Choice, ChoiceSignature}
+import turbolift.effects.{ChoiceEffect, ChoiceSignature}
 import scala.collection.immutable.Queue
 import QueV.Cont
 
 
-extension (fx: Choice)
-  def choiceHandler_allBreadthFirst: fx.ThisHandler.FromId.Free[Vector] =
-    new fx.impl.Stateful.FromId.Free[Vector] with fx.impl.Parallel with ChoiceSignature:
-      override type Stan = QueV[Unknown, Ambient]
-
-      override def multishotHint: Boolean = true
+extension [Fx <: ChoiceEffect](fx: Fx)
+  def choiceHandler_allBreadthFirst: fx.ThisHandler[Identity, Vector, Any] =
+    new fx.impl.Stateful[Identity, Vector, Any] with fx.impl.Parallel with ChoiceSignature:
+      override type Local = QueV[Unknown, Fx]
 
       override def onInitial = QueV.empty.pure_!!
 
-      override def onReturn(a: Unknown, q: Stan): Vector[Unknown] !! Ambient =
+      override def onReturn(a: Unknown, q: Local): Vector[Unknown] !! Fx =
         q.addDone(a).drain
 
       override def onRestart(as: Vector[Unknown]): Unknown !! ThisEffect =
@@ -24,11 +22,13 @@ extension (fx: Choice)
       override def onZip[A, B, C](as: Vector[A], bs: Vector[B], k: (A, B) => C): Vector[C] =
         as.flatMap(a => bs.map(b => k(a, b)))
 
-      override def empty: Nothing !@! ThisEffect =
-        (_, q) => q.drain
+      override def empty: Nothing !! ThisEffect =
+        Control.captureGet: (_, q) =>
+          q.drain
 
-      override def choose[A](as: Iterable[A]): A !@! ThisEffect =
-        (k, q) => q.addTodo(as.iterator.map(a => k(a, _))).drain
+      override def choose[A](as: Iterable[A]): A !! ThisEffect =
+        Control.captureGet: (k, q) =>
+          q.addTodo(as.iterator.map(a => k(a, _))).drain
 
     .toHandler
 

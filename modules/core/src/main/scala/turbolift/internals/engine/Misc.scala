@@ -1,6 +1,7 @@
 package turbolift.internals.engine
 import turbolift.!!
 import turbolift.io.{Outcome, Exceptions, Snap}
+import turbolift.interpreter.{Interpreter, Continuation}
 
 
 private[engine] type AnyComp = Any !! Any
@@ -9,8 +10,6 @@ private[internals] type AnyCallback = Outcome[Any] => Unit
 
 private[engine] def panic(msg: String): Nothing = throw new Exceptions.Panic(msg)
 private[engine] def impossible: Nothing = panic("impossible happened")
-private[engine] def despair: Nothing =
-  panic:
-    "Stack lazily splits. " +
-    "Assumptions crumble, betrayed. " +
-    "Sanity check laments." 
+
+extension (thiz: Continuation[?, ?, ?, ?])
+  private[engine] inline def asImpl: ContImpl = thiz.asInstanceOf[ContImpl]

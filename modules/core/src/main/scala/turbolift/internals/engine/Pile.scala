@@ -25,8 +25,8 @@ private[internals] final class Pile private (
   )
 
 
-  def pushLocal(step: Step, stan: Stan, height: Int, kind: FrameKind): Pile =
-    val newFrame = topFrame.pushNext(step, stan, height - maxHeight, isLocal = true, kind)
+  def pushNested(step: Step, local: Local, height: Int, kind: FrameKind): Pile =
+    val newFrame = topFrame.pushNext(step, local, height - maxHeight, isNested = true, kind)
     copy(
       topFrame = newFrame,
       maxHeight = height,
@@ -39,9 +39,9 @@ private[internals] final class Pile private (
       maxHeight = maxHeight - topFrame.delta,
     )
 
-  //// `splitHi` doesn't use `Stan` param. It's here only to make `splitHi` have the same type as `splitLo`
-  def splitHi(divHeight: Int, oldStan: Stan): (Pile | Null, Stan) =
-    (splitHiForReal(divHeight), oldStan)
+  //// `splitHi` doesn't use `Local` param. It's here only to make `splitHi` have the same type as `splitLo`
+  def splitHi(divHeight: Int, oldLocal: Local): (Pile | Null, Local) =
+    (splitHiForReal(divHeight), oldLocal)
 
 
   private def splitHiForReal(divHeight: Int): Pile | Null =
@@ -73,21 +73,21 @@ private[internals] final class Pile private (
       )
 
 
-  def splitLo(divHeight: Int, oldStan: Stan): (Pile | Null, Stan) =
+  def splitLo(divHeight: Int, oldLocal: Local): (Pile | Null, Local) =
     if divHeight <= minHeight then
       //// all frames are AT or ABOVE div ==> result := empty
-      (null, oldStan)
+      (null, oldLocal)
     else if maxHeight < divHeight then
       //// all frames are BELOW div ==> result := full
-      (this, oldStan)
+      (this, oldLocal)
     else
       //// div is in the middle ==> drop prefix
-      val (newFrame, newHeight, newStan) = topFrame.splitLo(initialHeight = maxHeight, divHeight = divHeight, oldStan)
+      val (newFrame, newHeight, newLocal) = topFrame.splitLo(initialHeight = maxHeight, divHeight = divHeight, oldLocal)
       val newPile = copy(
         topFrame = newFrame,
         maxHeight = newHeight,
       )
-      (newPile, newStan)
+      (newPile, newLocal)
 
 
   override def toString =
@@ -97,12 +97,12 @@ private[internals] final class Pile private (
 
 
 private[engine] object Pile:
-  def pushFirst(step: Step, height: Int, isLocal: Boolean, kind: FrameKind): Pile =
+  def pushFirst(step: Step, height: Int, isNested: Boolean, kind: FrameKind): Pile =
     new Pile(
-      topFrame = Frame.pushFirst(step, isLocal, kind),
+      topFrame = Frame.pushFirst(step, isNested, kind),
       minHeight = height,
       maxHeight = height,
-      hasBase = !isLocal,
+      hasBase = !isNested,
     )
 
 

@@ -1,6 +1,7 @@
 package turbolift.type_safety
 import turbolift.{!!, Handler}
 import turbolift.effects.{Reader, Writer, State}
+import turbolift.Extensions._
 
 
 object Dummies {
@@ -19,9 +20,9 @@ object Dummies {
   type H2 = h2.type
   type H3 = h3.type
 
-  type H12 = Handler.FromId.Free[[X] =>> (Double, (String, X)), Fx1 & Fx2]
-  type H21 = Handler.FromId.Free[[X] =>> (String, (Double, X)), Fx1 & Fx2]
-  type H321 = Handler.FromId.Free[[X] =>> (String, (Double, X)), Fx1 & Fx2 & Fx3]
+  type H12 = Handler[Identity, [X] =>> (Double, (String, X)), Fx1 & Fx2, Any]
+  type H21 = Handler[Identity, [X] =>> (String, (Double, X)), Fx1 & Fx2, Any]
+  type H321 = Handler[Identity, [X] =>> (String, (Double, X)), Fx1 & Fx2 & Fx3, Any]
 
   class Whatever
   def any[T] : T = ???

@@ -18,7 +18,6 @@ private[turbolift] object Features extends Features_opaque:
     def hasForkJoin: Boolean    = (thiz & FORKJOIN) != 0
     def hasRestart: Boolean     = (thiz & RESTART) != 0
     def isIo: Boolean           = (thiz & IO) != 0
-    def isTailResump: Boolean   = (thiz & TAILRESUMP) != 0
 
     def isParallel: Boolean = !isSequential
     def isStateless: Boolean = !isStateful
@@ -32,7 +31,6 @@ private[turbolift] object Features extends Features_opaque:
   //--------------------------------------
   private inline val MASK           = 0x3F
   private inline val IO             = 0x40
-  private inline val TAILRESUMP     = 0x80
   //@#@TODO hints
 
   def Empty: Features       = 0
@@ -43,5 +41,4 @@ private[turbolift] object Features extends Features_opaque:
   def ForkJoin: Features    = FORKJOIN
   def Restart: Features     = RESTART
   def Io: Features          = IO
-  def TailResump: Features  = TAILRESUMP
   def Mask: Features        = MASK

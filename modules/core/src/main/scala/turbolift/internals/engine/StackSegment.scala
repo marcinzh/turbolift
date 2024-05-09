@@ -65,9 +65,9 @@ private[engine] final class StackSegment private (
       val pile = piles(i)
       val prompt = prompts(i)
       if pile.maxHeight == n then
-        Location.Shallow(promptIndex = i, stanIndex = j, isStateful = prompt.isStateful)
+        Location.Shallow(promptIndex = i, localIndex = j, isStateful = prompt.isStateful)
       else
-        loop(i + 1, j + prompt.stanCount)
+        loop(i + 1, j + prompt.localCount)
     loop(0, 0)
 
 
@@ -80,7 +80,7 @@ private[engine] final class StackSegment private (
     val newFork =
       val pile1 = Pile.base(loc.promptIndex)
       fork.pushBaseWithFork(pile1, prompt, newSignatures, newLocations, newPrompts, forkOrNull = null)
-    val pile2 = Pile.pushFirst(step, height = frameCount, isLocal = false, FrameKind.plain)
+    val pile2 = Pile.pushFirst(step, height = frameCount, isNested = false, FrameKind.plain)
     pushBaseWithFork(pile2, prompt, newSignatures, newLocations, newPrompts, forkOrNull = newFork)
 
 
@@ -127,9 +127,9 @@ private[engine] final class StackSegment private (
     )
 
 
-  def pushNextLocal(loc: Location.Shallow, step: Step, savedStan: Stan, kind: FrameKind): StackSegment =
+  def pushNextNested(loc: Location.Shallow, step: Step, savedLocal: Local, kind: FrameKind): StackSegment =
     val oldPile = piles(loc.promptIndex)
-    val newPile = oldPile.pushLocal(step, savedStan, height = frameCount, kind)
+    val newPile = oldPile.pushNested(step, savedLocal, height = frameCount, kind)
     copy(
       piles = piles.updated(loc.promptIndex, newPile),
       frameCount = frameCount + 1,
@@ -137,7 +137,7 @@ private[engine] final class StackSegment private (
     )
 
 
-  def popNextLocal(loc: Location.Shallow): StackSegment =
+  def popNextNested(loc: Location.Shallow): StackSegment =
     val oldPile = piles(loc.promptIndex)
     val newPile = oldPile.pop
     copy(
@@ -161,12 +161,12 @@ private[engine] object StackSegment:
 
 
   val initial: StackSegment =
-    pushFirst(Prompt.io, isLocal = false, kind = FrameKind.plain)
+    pushFirst(Prompt.io, isNested = false, kind = FrameKind.plain)
 
 
-  def pushFirst(prompt: Prompt, isLocal: Boolean, kind: FrameKind): StackSegment =
+  def pushFirst(prompt: Prompt, isNested: Boolean, kind: FrameKind): StackSegment =
     val newSeg =
-      val newPile = Pile.pushFirst(StepCases.Pop, 0, isLocal, kind)
+      val newPile = Pile.pushFirst(StepCases.Pop, 0, isNested, kind)
       val newLoc = Location.Shallow(0, 0, prompt.isStateful)
       new StackSegment(
         signatures = prompt.signatures,
@@ -175,9 +175,9 @@ private[engine] object StackSegment:
         piles = Array(newPile),
         frameCount = 1,
         features = prompt.features.mask,
-        forkOrNull = if isLocal then emptyFork else null,
+        forkOrNull = if isNested then emptyFork else null,
       )
-    if isLocal then
+    if isNested then
       newSeg
     else
       newSeg.copy(forkOrNull = newSeg)

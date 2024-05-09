@@ -5,7 +5,7 @@ private[engine] opaque type StoreSegment = StoreSegment.Underlying
 
 
 private[engine] object StoreSegment extends StoreSegment_opaque:
-  type Underlying = Array[Stan]
+  type Underlying = Array[Local]
 
   inline def wrap(x: Underlying): StoreSegment = x
 

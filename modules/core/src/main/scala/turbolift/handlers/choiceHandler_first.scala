@@ -1,14 +1,12 @@
 package turbolift.handlers
 import turbolift.!!
 import turbolift.Extensions._
-import turbolift.effects.{Choice, ChoiceSignature}
+import turbolift.effects.{ChoiceEffect, ChoiceSignature}
 
 
-extension (fx: Choice)
-  def choiceHandler_first: fx.ThisHandler.FromId.Free[Option] =
-    new fx.impl.Stateless.FromId.Free[Option] with fx.impl.Parallel with ChoiceSignature:
-      override def multishotHint: Boolean = true
-
+extension [Fx <: ChoiceEffect](fx: Fx)
+  def choiceHandler_first: fx.ThisHandler[Identity, Option, Any] =
+    new fx.impl.Stateless[Identity, Option, Any] with fx.impl.Parallel with ChoiceSignature:
       override def onReturn(a: Unknown): Option[Unknown] !! Any = !!.pure(Some(a))
 
       override def onRestart(as: Option[Unknown]): Unknown !! ThisEffect =
@@ -19,12 +17,12 @@ extension (fx: Choice)
       override def onZip[A, B, C](as: Option[A], bs: Option[B], k: (A, B) => C): Option[C] =
         as.flatMap(a => bs.map(b => k(a, b)))
 
-      override def empty: Nothing !@! ThisEffect = _ => !!.none
+      override def empty: Nothing !! ThisEffect = Control.abort(None)
 
-      override def choose[A](as: Iterable[A]): A !@! ThisEffect =
-        k =>
+      override def choose[A](as: Iterable[A]): A !! ThisEffect =
+        Control.capture: k =>
           val it = as.iterator
-          def loop(): Option[Unknown] !! Ambient =
+          def loop(): Option[Unknown] !! Fx =
             if it.hasNext then
               k(it.next()).flatMap {
                 case None => loop()
