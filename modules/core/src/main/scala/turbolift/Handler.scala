@@ -41,8 +41,8 @@ sealed trait Handler[From[+_], To[+_], Elim, Intro]:
     *
     * Equivalent of [[Computation]]'s `handleWith(this)`
     */
-  final def handle[V] = new HandleApply[V]
-  final class HandleApply[V]:
+  final def handle[V] = new HandleSyntax[V]
+  final class HandleSyntax[V]:
     def apply[A, W](comp: From[A] !! W)(implicit ev: CanPartiallyHandle[V, W, Elim]): To[A] !! (V & Intro) =
       doHandle[A, V](ev(comp))
 
@@ -107,8 +107,8 @@ sealed trait Handler[From[+_], To[+_], Elim, Intro]:
     *
     * Assumes that **some of** effects introduced by this handler, are eliminated by `that` handler.
     */
-  final def partiallyProvideWith[Remains >: Intro] = new PartiallyProvideWithApply[Remains]
-  class PartiallyProvideWithApply[Remains >: Intro]:
+  final def partiallyProvideWith[Remains >: Intro] = new PartiallyProvideWithSyntax[Remains]
+  final class PartiallyProvideWithSyntax[Remains >: Intro]:
     def apply[From2[+_], To2[+_], Elim2 >: Intro, Intro2](that: Handler[From2, To2, Elim2, Intro2])(using ev: CanPipe[To, From2]) =
      HandlerCases.Piped[From, From2, To, To2, Elim, Any, Remains, Intro2, Elim2](upCastIntro[Remains & Elim2], that).self
 

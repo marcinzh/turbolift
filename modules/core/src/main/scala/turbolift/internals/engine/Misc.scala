@@ -1,7 +1,7 @@
 package turbolift.internals.engine
 import turbolift.!!
 import turbolift.io.{Outcome, Exceptions, Snap}
-import turbolift.interpreter.{Interpreter, Continuation}
+import turbolift.interpreter.Continuation
 
 
 private[engine] type AnyComp = Any !! Any

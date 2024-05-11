@@ -15,8 +15,8 @@ trait CyclicMemoizer[K, V] extends Effect[CyclicMemoizerSignature[K, V]] with Cy
   final override def domain: Set[K] !! this.type = perform(_.domain)
   final override def toMap: Map[K, V] !! this.type = perform(_.toMap)
 
-  final def fix[U] = new FixApply[U]
-  final class FixApply[U]:
+  final def fix[U] = new FixSyntax[U]
+  final class FixSyntax[U]:
     def apply[U2 <: U & CyclicMemoizer.this.type](f: (K => (() => V) !! U2) => (K => V !! U2)): K => (() => V) !! U2 =
       def recur(k: K): (() => V) !! U2 = memo(f(recur))(k)
       recur

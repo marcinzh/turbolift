@@ -46,10 +46,7 @@ case object PingPong extends Example:
           for
             i <- S.modifyGet(_ + 1)
             _ <- Console.println(s"${Console.MAGENTA}pong $i${Console.RESET}")
-            _ <- 
-              if i == limit
-              then !!.unit
-              else Ping.ping
+            _ <- !!.when(i < limit)(Ping.ping)
           yield ()
       .toHandler
       .partiallyProvideWith[Console](S.handler(0).dropState)

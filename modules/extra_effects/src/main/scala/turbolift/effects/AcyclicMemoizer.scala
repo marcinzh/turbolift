@@ -17,8 +17,8 @@ trait AcyclicMemoizer[K, V] extends Effect[AcyclicMemoizerSignature[K, V]] with 
 
   final def apply[U <: this.type](f: K => V !! U): K => V !! U = memo(f)(_)
 
-  final def fix[U] = new FixApply[U]
-  final class FixApply[U]:
+  final def fix[U] = new FixSyntax[U]
+  final class FixSyntax[U]:
     def apply[U2 <: U & AcyclicMemoizer.this.type](f: (K => V !! U2) => (K => V !! U2)): K => V !! U2 =
       def recur(k: K): V !! U2 = memo(f(recur))(k)
       recur

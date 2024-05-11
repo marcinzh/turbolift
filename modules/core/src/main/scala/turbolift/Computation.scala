@@ -288,7 +288,7 @@ object Computation:
      *
      *  Same as `myHandler.handle(this)`.
      */
-    def handleWith[V]: HandleWithApply[A, U, V] = new HandleWithApply[A, U, V](thiz)
+    def handleWith[V]: HandleWithSyntax[A, U, V] = new HandleWithSyntax[A, U, V](thiz)
 
 
   extension [F[+_], G[+_], L, N](thiz: Computation[Handler[F, G, L, N], N])
@@ -320,7 +320,7 @@ object Computation:
   //---------- Apply ----------
 
 
-  class HandleWithApply[A, U, V](thiz: A !! U):
+  final class HandleWithSyntax[A, U, V](thiz: A !! U):
     def id[F[+_], L, N, V2 <: V & N](h: Handler[Identity, F, L, N])(implicit ev: CanPartiallyHandle[V, U, L]): F[A] !! V2 =
       h.doHandle[A, V](ev(thiz))
 
