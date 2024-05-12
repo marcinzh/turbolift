@@ -145,7 +145,9 @@ object Handler:
    */
   def flatHandle[F[+_], G[+_], L, N1, N2](h: Handler[F, G, L, N1] !! N2): Handler[F, G, L, N1 & N2] = HandlerCases.FlatHandled(h)
 
-  def identity[F[+_]]: Handler[F, F, Any, Any] = HandlerCases.Identity[F]()
+  def identity[F[+_]]: Handler[F, F, Any, Any] = HandlerCases.Pass[F, Any]()
+
+  def phantom[Fx]: Handler[Identity, Identity, Fx, Any] = HandlerCases.Pass[Identity, Fx]()
 
 
   //---------- Extensions ----------
@@ -286,8 +288,8 @@ object Handler:
 
 
 private[turbolift] object HandlerCases:
-  final case class Identity[F[+_]]() extends Handler[F, F, Any, Any]:
-    override def doHandle[A, U](comp: F[A] !! U): F[A] !! U = comp
+  final case class Pass[F[+_], Elim]() extends Handler[F, F, Elim, Any]:
+    override def doHandle[A, U](comp: F[A] !! (U & Elim)): F[A] !! U = comp.downCast[U]
 
   final case class Primitive[From[+_], To[+_], Elim, Intro](
     interpreter: Interpreter.Apply[From, To, Elim, Intro]
