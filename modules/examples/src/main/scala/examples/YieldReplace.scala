@@ -2,7 +2,7 @@ package examples
 import turbolift.{!!, Signature, Effect}
 import turbolift.Extensions._
 import turbolift.effects.{Console, IO}
-import turbolift.io.Ref
+import turbolift.io.AtomicVar
 
 
 case object YieldReplace extends Example:
@@ -33,7 +33,7 @@ case object YieldReplace extends Example:
       case Nil => Nil.pure_!!
       case a :: as =>
         for
-          head <- Ref(a)
+          head <- AtomicVar.fresh(a)
           handler =
             new R.impl.Proxy[IO] with ReplaceSignature[A]:
               override def replace(x: A) = head.put(x)

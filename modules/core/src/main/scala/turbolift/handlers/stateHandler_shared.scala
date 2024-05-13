@@ -1,38 +1,38 @@
 package turbolift.handlers
 import turbolift.!!
 import turbolift.effects.{StateEffect, StateSignature, IO}
-import turbolift.io.Ref
+import turbolift.io.AtomicVar
 import turbolift.Extensions._
 
 
 extension [S](fx: StateEffect[S])
   def stateHandler_shared(initial: S): fx.ThisHandler[Identity, (_, S), IO] =
-    Ref(initial) >>=! { ref =>
+    AtomicVar.fresh(initial) >>=! { avar =>
       new fx.impl.Proxy[IO] with StateSignature[S]:
-        override def get: S !! ThisEffect = ref.get
+        override def get: S !! ThisEffect = avar.get
 
-        override def gets[A](f: S => A): A !! ThisEffect = ref.gets(f)
+        override def gets[A](f: S => A): A !! ThisEffect = avar.gets(f)
 
-        override def put(s: S): Unit !! ThisEffect = ref.put(s)
+        override def put(s: S): Unit !! ThisEffect = avar.put(s)
 
-        override def swap(s: S): S !! ThisEffect = ref.swap(s)
+        override def swap(s: S): S !! ThisEffect = avar.swap(s)
 
-        override def modify(f: S => S): Unit !! ThisEffect = ref.modify(f)
+        override def modify(f: S => S): Unit !! ThisEffect = avar.modify(f)
 
-        override def modifyGet(f: S => S): S !! ThisEffect = ref.modifyGet(f)
+        override def modifyGet(f: S => S): S !! ThisEffect = avar.modifyGet(f)
 
-        override def getModify(f: S => S): S !! ThisEffect = ref.getModify(f)
+        override def getModify(f: S => S): S !! ThisEffect = avar.getModify(f)
 
-        override def getModifyGet(f: S => S): (S, S) !! ThisEffect = ref.getModifyGet(f)
+        override def getModifyGet(f: S => S): (S, S) !! ThisEffect = avar.getModifyGet(f)
 
-        override def update[A](f: S => (A, S)): A !! ThisEffect = ref.update(f)
+        override def update[A](f: S => (A, S)): A !! ThisEffect = avar.update(f)
 
-        override def updateGet[A](f: S => (A, S)): (A, S) !! ThisEffect = ref.updateGet(f)
+        override def updateGet[A](f: S => (A, S)): (A, S) !! ThisEffect = avar.updateGet(f)
 
-        override def getUpdate[A](f: S => (A, S)): (A, S) !! ThisEffect = ref.getUpdate(f)
+        override def getUpdate[A](f: S => (A, S)): (A, S) !! ThisEffect = avar.getUpdate(f)
 
-        override def getUpdateGet[A](f: S => (A, S)): (A, S, S) !! ThisEffect = ref.getUpdateGet(f)
+        override def getUpdateGet[A](f: S => (A, S)): (A, S, S) !! ThisEffect = avar.getUpdateGet(f)
 
       .toHandler
-      .mapEffK([A] => (a: A) => ref.get.map((a, _)))
+      .mapEffK([A] => (a: A) => avar.get.map((a, _)))
     }
