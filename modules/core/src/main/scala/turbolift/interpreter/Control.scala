@@ -5,7 +5,15 @@ import turbolift.interpreter.Void
 
 /** Access to delimited continuation.
  *
- * Used from custom implementations of effect [[turbolift.interpreter.Interpreter Interpreter]].
+ * This is a **Primitive Effect**, provided for implementing custom effects:
+ *
+ * 1. It's accessible only from within custom implementations of [[Interpreter]]s.
+ *    Custom effects can invoke [[Control]]'s operations to implement their own operations.
+ *
+ * 2. It does not require a handler.
+ *    Invoking [[Control]]'s operations does not manifest as a dependency.
+ *
+ * See also another primitive effect: [[Local]].
  *
  * @tparam S local state
  * @tparam Q part of continuation's answer
@@ -13,7 +21,7 @@ import turbolift.interpreter.Void
  * @tparam V effect set
  */
 
-final class Control[S, Q, F[+_], V](private[turbolift] val interp: Interpreter.Untyped):
+final class Control[S, Q, F[+_], V] private[interpreter] (private val interp: Interpreter.Untyped):
   type Cont[A, U] = Continuation[A, F[Q], S, U]
 
   /** Captures the continuation.
@@ -32,7 +40,7 @@ final class Control[S, Q, F[+_], V](private[turbolift] val interp: Interpreter.U
 
   /** Unwind the stack until the end of the effect's scope.
    *
-   *  Can be thought of as "invoking the continuation **zero times**",
+   *  Can be thought of as invoking the continuation **zero times**,
    *  as in: `capture(_ => value)`.
    * 
    *  However, `abort(value)` also invokes finalization clauses during stack unwinding.
