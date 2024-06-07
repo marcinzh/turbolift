@@ -54,8 +54,9 @@ case object PingPong extends Example:
   //----- Run -----
 
   override def apply(): Unit =
-    Ping.ping
-    .handleWith(Pong.pinger(10))
-    .handleWith(Ping.ponger)
-    .handleWith(Console.handler)
-    .runIO
+    println:
+      Ping.ping
+      .handleWith(Pong.pinger(10))
+      .handleWith(Ping.ponger)
+      .handleWith(Console.handler)
+      .runIO
