@@ -2,7 +2,7 @@ package turbolift.internals.engine
 import scala.annotation.tailrec
 
 
-private[engine] object OpPush:
+private object OpPush:
   def pushBase(stack: Stack, store: Store, step: Step, prompt: Prompt, local: Local): (Stack, Store) =
     if stack.head.size < Location.MAX_SEGMENT_SIZE then
       stack.deconsAndThen: (oldStackSeg, moreStack, moreStep) =>

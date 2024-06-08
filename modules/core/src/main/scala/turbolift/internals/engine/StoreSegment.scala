@@ -1,10 +1,10 @@
 package turbolift.internals.engine
 
 
-private[engine] opaque type StoreSegment = StoreSegment.Underlying
+private opaque type StoreSegment = StoreSegment.Underlying
 
 
-private[engine] object StoreSegment extends StoreSegment_opaque:
+private object StoreSegment extends StoreSegment_opaque:
   type Underlying = Array[Local]
 
   inline def wrap(x: Underlying): StoreSegment = x

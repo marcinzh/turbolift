@@ -6,15 +6,15 @@ import turbolift.effects.State
 
 case object HandlerShadowing extends Example:
   override def description: String = s"""
+    -------------------------------------------------------------------------------
     The feature required for running this example is currently disabled,
     because it turned out to be conflicting with new ones, which were more important.
+    -------------------------------------------------------------------------------
+    Handler can eliminate an effect, and at the same time re-introduce it, so that
+    it can be handled again by a different handler.
+    This allows chaining handlers for given effect, in a pipeline-like fashion.
+    Hypothetical application: middleware?
   """
-  // override def description: String = s"""
-  //   Handler can eliminate an effect, and at the same time re-introduce it, so that
-  //   it can be handled again by a different handler.
-  //   This allows chaining handlers for given effect, in a pipeline-like fashion.
-  //   Hypothetical application: middleware?
-  // """
 
   val lorem = """
     Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
@@ -99,5 +99,5 @@ case object HandlerShadowing extends Example:
       println(line)
       println(title)
       println(line)
-      prog.handleWith(handler).unsafeRun
-      println
+      println:
+        prog.handleWith(handler).runIO

@@ -1,10 +1,10 @@
 package turbolift.internals.engine
 
 
-private[engine] opaque type Store = Store.Underlying
+private opaque type Store = Store.Underlying
 
 
-private[engine] object Store extends Store_opaque:
+private object Store extends Store_opaque:
   type Underlying = StoreNel | StoreSegment
 
   inline def wrap(x: Underlying): Store = x
@@ -14,4 +14,4 @@ private[engine] object Store extends Store_opaque:
 
 
 extension (thiz: (StoreSegment, StoreSegment))
-  private[engine] inline def asPairOfStores: (Store, Store) = thiz
+  private inline def asPairOfStores: (Store, Store) = thiz

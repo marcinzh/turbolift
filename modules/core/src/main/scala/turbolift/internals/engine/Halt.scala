@@ -14,6 +14,8 @@ private[internals] object Halt:
   private[engine] case object Reset extends Loop
   private[engine] final case class Become(fiber: FiberImpl, tickLow: Short) extends Loop
 
+  inline def ThreadDisowned = RetireFalse
+
   private[engine] def retire(reentry: Boolean): Halt = if reentry then RetireTrue else RetireFalse
   private val RetireTrue = Retire(true)
   private val RetireFalse = Retire(false)

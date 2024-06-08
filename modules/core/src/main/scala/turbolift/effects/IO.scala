@@ -1,5 +1,7 @@
 package turbolift.effects
+import java.time.Instant
 import scala.util.{Try, Success => TrySuccess, Failure => TryFailure}
+import scala.concurrent.duration._
 import turbolift.{!!, Signature}
 import turbolift.io.{Cause, Snap}
 import turbolift.internals.primitives.{ComputationCases => CC}
@@ -14,22 +16,21 @@ sealed trait IO extends Signature
   * Once introduced into computation, it stays there forever.
   * That is, until `unsafeRun`.
   */
+
 case object IO extends IO:
   final override type ThisEffect = IO
 
-  def apply[A](value: => A): A !! IO = CC.DoIO(() => value)
+  def apply[A](value: => A): A !! IO = CC.DoIO(() => value, isAttempt = false)
 
-  def doTry[A](value: => A): Try[A] !! IO = CC.DoTry(() => value)
+  def attempt[A](value: => A): Either[Throwable, A] !! IO = CC.DoIO(() => value, isAttempt = true)
 
-  def doEither[A](value: => A): Either[Throwable, A] !! IO = doTry(value).map(_.toEither)
+  def blocking[A](value: => A): A !! IO = CC.Blocking(() => value, isAttempt = false)
+  
+  def blockingAttempt[A](value: => A): Either[Throwable, A] !! IO = CC.Blocking(() => value, isAttempt = true)
 
-  def cancel: Nothing !! IO = unsnap(Snap.Cancelled)
+  val cancel: Nothing !! IO = unsnap(Snap.Cancelled)
 
-  def yeld: Unit !! IO = CC.Yield
-
-  def blocking[A](value: => A): A !! IO =
-    //@#@TODO
-    apply(value)
+  val yeld: Unit !! IO = CC.Yield
 
 
   //---------- Exceptions ----------
@@ -84,6 +85,32 @@ case object IO extends IO:
   def unsnap[A](aa: Snap[A]): A !! IO = CC.Unsnap(aa)
 
   def snap[A, U <: IO](body: A !! U): Snap[A] !! U = CC.DoSnap(body)
+
+
+  //---------- Time ----------
+
+
+  def sleep(millis: Long): Unit !! IO = CC.Sleep(millis)
+
+  def sleep(duration: FiniteDuration): Unit !! IO = CC.Sleep(duration.length, duration.unit)
+
+  val nowRaw: Long !! IO = !!.impure(System.currentTimeMillis())
+
+  val now: FiniteDuration !! IO = !!.impure(new FiniteDuration(System.currentTimeMillis(), MILLISECONDS))
+
+  val nanoTimeRaw: Long !! IO = !!.impure(System.nanoTime())
+
+  val nanoTime: FiniteDuration !! IO = !!.impure(new FiniteDuration(System.nanoTime(), NANOSECONDS))
+
+  def instant: Instant !! IO = !!.impure(Instant.now().nn)
+
+  def timed[A, U <: IO](comp: A !! U): (A, FiniteDuration) !! U =
+    for
+      t0 <- !!.impure(System.nanoTime())
+      a <- comp
+      t1 = System.nanoTime()
+      d = new FiniteDuration(t1 - t0, NANOSECONDS)
+    yield (a, d)
 
 
   //---------- Resource ----------

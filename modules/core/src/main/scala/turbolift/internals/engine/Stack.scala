@@ -4,7 +4,7 @@ import turbolift.Signature
 import turbolift.interpreter.{Features, Interpreter}
 
 
-private[engine] abstract class Stack:
+private abstract class Stack:
   val head: StackSegment
   val features: Features
 
@@ -27,6 +27,23 @@ private[engine] abstract class Stack:
       case nel: StackNel => StackNel(nel.head.fork, nel.tail.makeFork, StepCases.Pop)
 
 
+  final def hasSamePromptsAs(that: Stack): Boolean =
+    if this eq that then
+      true
+    else
+      deconsAndThen: (head1, tail1, _) =>
+        that.deconsAndThen: (head2, tail2, _) =>
+          head1.hasSamePromptsAsSeg(head2) && {
+            if (tail1 == null) && (tail2 == null) then
+              true
+            else
+              if (tail1 != null) && (tail2 != null) then
+                tail1.hasSamePromptsAs(tail2)
+              else
+                false
+          }
+
+
   @tailrec final def containsSignature(sig: Signature): Boolean =
     deconsAndThen: (head, tail, _) =>
       val i = head.signatures.indexOf(sig)
@@ -47,7 +64,7 @@ private[engine] abstract class Stack:
           val location = head.locations(i)
           val prompt = head.prompts(location.promptIndex)
           cache.interpreter = prompt.interpreter
-          cache.prompt = prompt //@#@TEMP
+          cache.prompt = prompt //@#@TODO obsolete
           cache.location = location.withDepth(depth)
         else
           if tail != null then
@@ -111,5 +128,5 @@ private[engine] abstract class Stack:
           s"$a |$b| $c"
 
 
-private[engine] object Stack:
+private object Stack:
   def initial: Stack = StackSegment.initial.asStack

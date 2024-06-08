@@ -1,7 +1,7 @@
 package turbolift.effects
 import scala.io.AnsiColor
 import turbolift.{!!, Signature, Effect}
-import turbolift.handlers.consoleHandler
+import turbolift.handlers.{consoleHandler_blocking, consoleHandler_nonBlocking}
 
 
 trait ConsoleSignature extends Signature:
@@ -27,11 +27,12 @@ trait ConsoleEffect extends Effect[ConsoleSignature] with ConsoleSignature with 
 
   /** Predefined handlers for this effect. */
   object handlers:
-    def default: ThisHandler[Identity, Identity, IO] = ConsoleEffect.this.consoleHandler
+    def blocking: ThisHandler[Identity, Identity, IO] = ConsoleEffect.this.consoleHandler_blocking
+    def nonBlocking: ThisHandler[Identity, Identity, IO] = ConsoleEffect.this.consoleHandler_nonBlocking
 
 
 /** Predefined instance of this effect. */
 case object Console extends ConsoleEffect:
-  export handlers.{default => handler}
+  export handlers.{blocking => handler}
 
 type Console = Console.type

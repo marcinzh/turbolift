@@ -1,5 +1,5 @@
 ThisBuild / organization := "io.github.marcinzh"
-ThisBuild / version := "0.83.0-SNAPSHOT"
+ThisBuild / version := "0.84.0"
 ThisBuild / scalaVersion := "3.3.3"
 ThisBuild / scalacOptions ++= Seq(
   "-deprecation",
@@ -8,12 +8,11 @@ ThisBuild / scalacOptions ++= Seq(
   "-Ykind-projector:underscores",
   "-Xfatal-warnings",
 )
-Compile / scalacOptions += "-Wnonunit-statement"
 
 val Deps = {
   val specs2_v = "5.4.0"
   object deps {
-    val cats_core = "org.typelevel" %% "cats-core" % "2.10.0"
+    val cats_core = "org.typelevel" %% "cats-core" % "2.12.0"
     val specs2_core = "org.specs2" %% "specs2-core" % specs2_v % "test"
     val specs2_extra = "org.specs2" %% "specs2-matcher-extra" % specs2_v % "test"
     val jol = "org.openjdk.jol" % "jol-core" % "0.17"

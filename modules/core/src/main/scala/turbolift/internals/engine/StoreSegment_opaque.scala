@@ -1,7 +1,7 @@
 package turbolift.internals.engine
 
 
-private[engine] trait StoreSegment_opaque:
+private trait StoreSegment_opaque:
   final def initial(env: Env): StoreSegment = StoreSegment.wrap(Array[Local](env.asLocal))
   final def blank(size: Int): StoreSegment = StoreSegment.wrap(new Array[Local](size))
 

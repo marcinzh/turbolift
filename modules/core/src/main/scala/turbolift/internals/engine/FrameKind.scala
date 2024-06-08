@@ -1,9 +1,9 @@
 package turbolift.internals.engine
 
 
-private[engine] opaque type FrameKind = Int
+private opaque type FrameKind = Int
 
-private[engine] object FrameKind:
+private object FrameKind:
   inline def wrap(n: Int): FrameKind = n
 
   def plain: FrameKind = PLAIN

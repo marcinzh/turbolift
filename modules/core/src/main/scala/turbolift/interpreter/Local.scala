@@ -3,9 +3,23 @@ import turbolift.!!
 import turbolift.internals.primitives.{ComputationCases => CC}
 import turbolift.interpreter.Void
 
-/** Access to effect's local state. */
+/** Local state of effect.
+ *
+ * This is a **Primitive Effect**, provided for implementing custom effects:
+ *
+ * 1. It's accessible only from within custom implementations of [[Interpreter]]s.
+ *    Custom effects can invoke [[Local]]'s operations to implement their own operations.
+ *
+ * 2. It does not require a handler.
+ *    Invoking [[Local]]'s operations does not manifest as a dependency.
+ *
+ * See also another primitive effect: [[Control]].
+ *
+ * @tparam S local state
+ * @tparam V effect set
+*/
 
-final class Local[S, V](private[turbolift] val interp: Interpreter.Untyped):
+final class Local[S, V] private[interpreter] (private val interp: Interpreter.Untyped):
   private final val getAny = CC.LocalGet(interp)
   def get: S !! V = getAny.asInstanceOf[S !! V]
   def gets[A](f: S => A): A !! V = get.map(f)

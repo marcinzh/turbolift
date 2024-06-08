@@ -3,7 +3,7 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.{Executors, ExecutorService, ThreadFactory}
 
 
-private[executor] object Pool:
+private[internals] object Pool:
   val instance: ExecutorService = Executors.newCachedThreadPool(makeThreadFactory).nn
 
   private def makeThreadFactory: ThreadFactory =

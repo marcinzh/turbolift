@@ -3,12 +3,7 @@ import scala.annotation.tailrec
 import turbolift.interpreter.Features
 
 
-private[engine] object OpSplit:
-  def findTopmostEnv(stack: Stack, store: Store): Env =
-    val loc = stack.locateIO
-    store.get(loc).asEnv
-
-
+private object OpSplit:
   def split(stack: Stack, store: Store, location: Location.Deep): (Stack, Store, Step, Stack, Store) =
     @tailrec def loop(
       todoStack: Stack,

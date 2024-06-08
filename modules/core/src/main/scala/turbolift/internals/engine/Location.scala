@@ -2,7 +2,7 @@ package turbolift.internals.engine
 import scala.reflect.ClassTag
 
 
-private[engine] object Location:
+private object Location:
   opaque type Shallow = Short
   opaque type Deep = Int
 

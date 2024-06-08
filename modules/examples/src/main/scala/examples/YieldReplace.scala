@@ -7,14 +7,14 @@ import turbolift.io.AtomicVar
 
 case object YieldReplace extends Example:
   override def description: String = s"""
+    -------------------------------------------------------------------------------
     The feature required for running this example is currently disabled,
     because it turned out to be conflicting with new ones, which were more important.
+    -------------------------------------------------------------------------------
+    Another example adapted from "Handling Bidirectional Control Flow" paper.
+    In addition to its original meaning,
+    our implementation demonstrates that in Turbolift we can abstract over effect instances.
   """
-  // override def description: String = """
-  //   Another example adapted from "Handling Bidirectional Control Flow" paper.
-  //   In addition to its original meaning,
-  //   our implementation demonstrates that in Turbolift we can abstract over effect instances.
-  // """
 
   trait YieldSignature[A] extends Signature:
     def yeld[R <: Replace[A]](R: R)(value: A): Unit !! (ThisEffect & R.type)
@@ -55,11 +55,12 @@ case object YieldReplace extends Example:
     )
 
   override def apply(): Unit =
-    val xs = (1 to 5).zip((1 to 5).map(_ * -10)).toList.flatMap((a, b) => List(a, b))
-    (for
-      ys <- replaceNegatives(xs)
-      _ <- Console.println(s"input: $xs")
-      _ <- Console.println(s"output: $ys")
-    yield ())
-    .handleWith(Console.handler)
-    .unsafeRun
+    println:
+      val xs = (1 to 5).zip((1 to 5).map(_ * -10)).toList.flatMap((a, b) => List(a, b))
+      (for
+        ys <- replaceNegatives(xs)
+        _ <- Console.println(s"input: $xs")
+        _ <- Console.println(s"output: $ys")
+      yield ())
+      .handleWith(Console.handler)
+      .runIO

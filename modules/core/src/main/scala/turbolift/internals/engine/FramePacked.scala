@@ -1,9 +1,9 @@
 package turbolift.internals.engine
 
 
-private[engine] opaque type FramePacked = Int
+private opaque type FramePacked = Int
 
-private[engine] object FramePacked:
+private object FramePacked:
   def apply(
     delta: Int,
     isNested: Boolean,

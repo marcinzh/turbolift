@@ -2,7 +2,7 @@ package turbolift.internals.engine
 import turbolift.interpreter.Features
 
 
-private[engine] final class StackNel(
+private final class StackNel(
   override val head: StackSegment,
   val tail: Stack,
   val aside: Step,

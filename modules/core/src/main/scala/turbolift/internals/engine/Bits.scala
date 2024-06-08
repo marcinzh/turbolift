@@ -1,7 +1,7 @@
 package turbolift.internals.engine
 
 
-private[engine] object Bits:
+private object Bits:
   
   //// Common: (UNSHIFTED)
 
@@ -11,21 +11,24 @@ private[engine] object Bits:
   inline val Racer_Both  = 3
   inline val Racer_Mask  = 0x3
 
-  //// Same for constantBits and varyingBits
-  def getRacer(bits: Int): Int = bits & Racer_Mask
+  //// constantBits:
+  ////     racer   = 2
+  ////     tree    = 3
+  ////     _       = 2
+  ////     reentry = 1
 
-  //// constantBits: [reentry ; tree ; racer]
-
-  inline val Tree_Root   =   0 << Tree_Shift
-  inline val Tree_ZipPar =   1 << Tree_Shift
-  inline val Tree_OrPar  =   2 << Tree_Shift
-  inline val Tree_OrSeq  =   3 << Tree_Shift
-  inline val Tree_Mask   = 0x7 << Tree_Shift
-  inline val Tree_Shift  = 2
+  inline val Tree_Root     =   0 << Tree_Shift
+  inline val Tree_Explicit =   1 << Tree_Shift
+  inline val Tree_ZipPar   =   2 << Tree_Shift
+  inline val Tree_OrPar    =   3 << Tree_Shift
+  inline val Tree_OrSeq    =   4 << Tree_Shift
+  inline val Tree_Mask     = 0x7 << Tree_Shift
+  inline val Tree_Shift    = 2
 
   inline val Const_Reentry = 0x80
 
   def isRoot(bits: Int): Boolean = (bits & Tree_Mask) == Tree_Root
+  def isExplicit(bits: Int): Boolean = (bits & Tree_Mask) == Tree_Explicit
   def isReentry(bits: Int): Boolean = (bits & Const_Reentry) != 0
 
   inline def ZipPar_Left  = (Tree_ZipPar | Racer_Left).toByte
@@ -34,25 +37,41 @@ private[engine] object Bits:
   inline def OrPar_Right  = (Tree_OrPar | Racer_Right).toByte
   inline def OrSeq        = (Tree_OrSeq | Racer_Left).toByte
 
-  //// varyingBits:  [cancellation ; completion ; racer]
+  //// theOwnership:
 
-  inline val Completion_Pending    = 0   << Completion_Shift
-  inline val Completion_Success    = 1   << Completion_Shift
-  inline val Completion_Cancelled  = 2   << Completion_Shift
-  inline val Completion_Failure    = 3   << Completion_Shift
+  inline val Ownership_Self    = 0
+  inline val Ownership_Waitee  = 1
+  inline val Ownership_Blocker = 2
+
+  //// varyingBits:
+  ////    arbiter      = 2 bits
+  ////    completion   = 2 bits
+  ////    cancellation = 2 bits
+
+  inline val Arbiter_None  = Racer_None
+  inline val Arbiter_Left  = Racer_Left
+  inline val Arbiter_Right = Racer_Right
+  inline val Arbiter_Both  = Racer_Both
+  inline val Arbiter_Mask  = Racer_Mask
+
+  inline val Completion_Pending    =   0 << Completion_Shift
+  inline val Completion_Success    =   1 << Completion_Shift
+  inline val Completion_Cancelled  =   2 << Completion_Shift
+  inline val Completion_Failure    =   3 << Completion_Shift
   inline val Completion_Mask       = 0x3 << Completion_Shift
   inline val Completion_Shift      = 2
 
-  inline val Cancellation_Sent       = 0x1 << Cancellation_Shift
-  inline val Cancellation_Received   = 0x2 << Cancellation_Shift
-  inline val Cancellation_Suppressed = 0x4 << Cancellation_Shift
-  inline val Cancellation_Mask       = 0x7 << Cancellation_Shift
-  inline val Cancellation_Shift      = 4
+  inline val Cancellation_Signal  = 0x1 << Cancellation_Shift
+  inline val Cancellation_Latch   = 0x2 << Cancellation_Shift
+  inline val Cancellation_Mask    = 0x3 << Cancellation_Shift
+  inline val Cancellation_Shift   = 4
 
-  def isPending(bits: Int): Boolean = (bits & Completion_Mask) == 0
-  def isCancellationSent(bits: Int): Boolean = (bits & Cancellation_Sent) != 0
-  def isCancellationReceived(bits: Int): Boolean = (bits & Cancellation_Received) != 0
-  def isCancellationUnreceived(bits: Int): Boolean = (bits & (Cancellation_Sent | Cancellation_Received)) == Cancellation_Sent
+  def getCompletion(bits: Int): Int = bits & Completion_Mask
+  def getArbiter(bits: Int): Int = bits & Arbiter_Mask
+  def isPending(bits: Int): Boolean = getCompletion(bits) == Completion_Pending
+  def isPendingAndNotCancelled(bits: Int): Boolean = (bits & (Completion_Mask | Cancellation_Signal)) == 0
+  def isCancellationSignalled(bits: Int): Boolean = (bits & Cancellation_Signal) != 0
+  def isCancellationUnlatched(bits: Int): Boolean = (bits & (Cancellation_Signal | Cancellation_Latch)) == Cancellation_Signal
 
   //// raced
 
@@ -74,3 +93,20 @@ private[engine] object Bits:
     val a = (completionLeft >>> Completion_Shift) - 1
     val b = (completionRight >>> Completion_Shift) - 1
     a + b * 3 
+
+
+  //// Waiter & Waitee
+
+  inline val WaiterSubscribed = 0
+  inline val WaiterAlreadyCancelled = 1
+  inline val WaiteeAlreadyCompleted = 2
+
+
+  //// Warp
+
+  inline val Warp_Pending   = Completion_Pending
+  inline val Warp_Completed = Completion_Success
+  inline val Warp_Cancelled = Cancellation_Signal
+  inline val Warp_Shutdown  = Cancellation_Latch
+
+  def isShutdown(bits: Int): Boolean = (bits & Warp_Shutdown) != 0

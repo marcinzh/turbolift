@@ -2,7 +2,7 @@ package turbolift.internals.engine
 import scala.annotation.tailrec
 
 
-private[engine] final class StoreNel(
+private final class StoreNel(
   val head: StoreSegment,
   _tail: Store.Underlying,
 ):

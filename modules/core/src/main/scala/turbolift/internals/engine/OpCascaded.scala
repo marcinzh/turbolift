@@ -3,7 +3,7 @@ import scala.annotation.tailrec
 import turbolift.!!
 
 
-private[engine] object OpCascaded:
+private object OpCascaded:
   def restart(stack: Stack, ftor: Any): AnyComp =
     def loop(todo: Stack): AnyComp =
       todo.deconsAndThen: (seg, more, _) =>
