@@ -6,7 +6,7 @@ private object Location:
   opaque type Shallow = Short
   opaque type Deep = Int
 
-  final val MAX_SEGMENT_SIZE = 13
+  final val MAX_SEGMENT_SIZE = 12
 
 
   object Shallow:

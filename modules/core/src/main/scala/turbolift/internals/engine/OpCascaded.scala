@@ -87,7 +87,7 @@ private object OpCascaded:
 
   private def forkSegment(stackSeg: StackSegment, storeSeg: StoreSegment): (StoreSegment, StoreSegment) =
     if storeSeg.isEmpty then
-      StoreSegment.emptyPair
+      (storeSeg, storeSeg)
     else
       val storeSegLeft = storeSeg.blankClone()
       val storeSegRight = storeSeg.blankClone()

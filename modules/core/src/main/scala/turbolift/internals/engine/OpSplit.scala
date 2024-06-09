@@ -137,7 +137,7 @@ private object OpSplit:
         forkOrNull = newFork,
       )
     //@#@OPTY reuse `oldStoreSeg` if number of elements stays the same
-    val newStoreSeg = StoreSegment.blank(newLocalCount)
+    val newStoreSeg = oldStoreSeg.blankClone(newLocalCount)
     (newStackSeg, newStoreSeg, bundles, newPromptCount)
 
 
@@ -159,6 +159,8 @@ private object OpSplit:
       addPromptInPlace(prompt, bundle.pile, newStackSeg, promptIndex, destLocalIndex, destSigIndex)
       if prompt.isStateful then
         newStoreSeg.setInPlace(destLocalIndex, bundle.local)
+        if prompt.isIo then
+          newStoreSeg.setEnvInPlace(bundle.local.asEnv)
       if bundle.pile.hasBase then
         val forkPile = Pile.base(destForkPromptIndex)
         addPromptInPlace(prompt, forkPile, newStackSeg.fork, destForkPromptIndex, destForkLocalIndex, destForkSigIndex)

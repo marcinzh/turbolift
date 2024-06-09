@@ -63,6 +63,23 @@ private[engine] trait Store_opaque:
         set(l, s)
 
 
+    final def getEnv: Env =
+      thiz.deconsAndThen: (seg, _) =>
+        seg.getEnv
+
+    final def getEnvAsLocal: Local =
+      thiz.deconsAndThen: (seg, _) =>
+        seg.getEnvAsLocal
+
+    final def setEnv(env: Env): Store =
+      thiz.deconsAndThen: (seg, more) =>
+        seg.setEnv(env) ::? more
+
+    final def setEnvAsLocal(local: Local): Store =
+      thiz.deconsAndThen: (seg, more) =>
+        seg.setEnvAsLocal(local) ::? more
+
+
     final def toStr: String = s"Store(${toStrAux})"
 
     final def toStrAux: String =

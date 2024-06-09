@@ -9,7 +9,7 @@ private object OpPush:
         store.deconsAndThen: (oldStoreSeg, moreStore) =>
           val newLocation = Location.Shallow(
             promptIndex = oldStackSeg.size,
-            localIndex = oldStoreSeg.size,
+            localIndex = oldStoreSeg.newLocalIndex,
             isStateful = prompt.isStateful,
           )
           val newStackSeg = oldStackSeg.pushBase(newLocation, step, prompt)
@@ -27,7 +27,7 @@ private object OpPush:
         store.deconsAndThen: (oldStoreSeg, moreStore) =>
           val loc = location.asShallow
           val oldLocal = oldStoreSeg.getOrElseVoidSh(loc)
-          val newStoreSeg = oldStoreSeg.setIfNotVoidSh(loc, local)
+          val newStoreSeg = oldStoreSeg.setIfNotVoidSh(loc, local, prompt.isIo)
           val newStackSeg = oldStackSeg.pushNextNested(loc, step, oldLocal, kind)
           val newStack = newStackSeg ::? (moreStack, moreStep)
           val newStore = newStoreSeg ::? moreStore
@@ -38,7 +38,7 @@ private object OpPush:
 
   private def newTopSegment(stack: Stack, store: Store, step: Step, prompt: Prompt, local: Local, isNested: Boolean, kind: FrameKind): (Stack, Store) =
     val newStackSeg = StackSegment.pushFirst(prompt, isNested, kind)
-    val newStoreSeg = StoreSegment.pushFirst(local)
+    val newStoreSeg = StoreSegment.pushFirst(store.getEnv, local)
     val newStack = newStackSeg ::? (stack, step)
     val newStore = newStoreSeg ::? store
     (newStack, newStore)
@@ -79,7 +79,7 @@ private object OpPush:
               val lastLocal = oldStoreSeg.getSh(location)
               val newStoreSeg =
                 if topFrame.hasNext then
-                  oldStoreSeg.setSh(location, topFrame.local)
+                  oldStoreSeg.setSh(location, topFrame.local, topPrompt.isIo)
                 else
                   oldStoreSeg.pop
               (newStoreSeg, lastLocal)
