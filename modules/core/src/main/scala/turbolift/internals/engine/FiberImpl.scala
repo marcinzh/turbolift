@@ -54,7 +54,7 @@ private[turbolift] final class FiberImpl private (
           cache    = cache,
         )
       catch e =>
-        // e.printStackTrace()
+        e.printStackTrace()
         val e2 = if e.isInstanceOf[Exceptions.Panic] then e else new Exceptions.Unhandled(e)
         val c = Cause(e2)
         endOfFiber(0, Bits.Completion_Failure, c)
@@ -140,22 +140,22 @@ private[turbolift] final class FiberImpl private (
         case Tags.LocalGet =>
           val theLocalGet = payload.asInstanceOf[CC.LocalGet]
           stack.locatePrompt(theLocalGet.interp, cache)
-          val local = store.get(cache.location)
+          val local = store.getDeep(cache.location)
           loopStep(local, step, stack, store, cache)
 
         case Tags.LocalPut =>
           val theLocalPut = payload.asInstanceOf[CC.LocalPut[Any]]
           stack.locatePrompt(theLocalPut.interp, cache)
-          val store2 = store.set(cache.location, theLocalPut.local.asLocal)
+          val store2 = store.setDeep(cache.location, theLocalPut.local.asLocal)
           loopStep((), step, stack, store2, cache)
 
         case Tags.LocalUpdate =>
           val theLocalUpdate = payload.asInstanceOf[CC.LocalUpdate[Any, Any]]
           stack.locatePrompt(theLocalUpdate.interp, cache)
           //@#@OPTY Store.update
-          val local = store.get(cache.location)
+          val local = store.getDeep(cache.location)
           val (value, local2) = theLocalUpdate.fun(local)
-          val store2 = store.set(cache.location, local2.asLocal)
+          val store2 = store.setDeep(cache.location, local2.asLocal)
           loopStep(value, step, stack, store2, cache)
 
         case Tags.Delimit =>
@@ -164,7 +164,7 @@ private[turbolift] final class FiberImpl private (
           val local =
             if theDelimit.fun == null
             then theDelimit.local
-            else theDelimit.fun(store.get(cache.location))
+            else theDelimit.fun(store.getDeep(cache.location))
           val (stack2, store2) = OpPush.pushNested(stack, store, step, cache.prompt, cache.location, local, FrameKind.plain)
           loopComp(theDelimit.body, SC.Pop, stack2, store2, cache)
 
@@ -180,7 +180,7 @@ private[turbolift] final class FiberImpl private (
           val cont = theResume.cont.asImpl
           val (stack2, store2) = OpSplit.merge(
             stackHi = cont.stack,
-            storeHi = cont.store.setIfNotVoid(cont.location, theResume.local),
+            storeHi = cont.store.setDeepIfNotVoid(cont.location, theResume.local),
             stepMid = step,
             stackLo = stack,
             storeLo = store,
@@ -196,7 +196,7 @@ private[turbolift] final class FiberImpl private (
           val comp2 = (theCapture.fun: @unchecked) match
             case f: Function1[Any, AnyComp] => f(cont)
             case f: Function2[Any, Any, AnyComp] =>
-              val local = storeHi.get(cache.location)
+              val local = storeHi.getDeep(cache.location)
               f(cont, local)
           loopComp(comp2, stepMid, stackLo, storeLo, cache)
 
@@ -207,7 +207,7 @@ private[turbolift] final class FiberImpl private (
         case Tags.ZipPar =>
           val theZipPar = payload.asInstanceOf[CC.ZipPar[Any, Any, Any, Any]]
           //@#@TODO Too conservative? Should check for `features.isParallel` at `mark`, instead of at stack top
-          if stack.head.features.isParallel && store.getEnv.isParallelismRequested then
+          if stack.accumFeatures.isParallel && store.getEnv.isParallelismRequested then
             val fiberLeft = new FiberImpl(Bits.ZipPar_Left, this, "")
             val fiberRight = new FiberImpl(Bits.ZipPar_Right, this, "")
             if tryStartRace(fiberLeft, fiberRight) then
@@ -234,7 +234,7 @@ private[turbolift] final class FiberImpl private (
 
         case Tags.OrPar =>
           val theOrPar = payload.asInstanceOf[CC.OrPar[Any, Any]]
-          if stack.head.features.isParallel && store.getEnv.isParallelismRequested then
+          if stack.accumFeatures.isParallel && store.getEnv.isParallelismRequested then
             val fiberLeft = new FiberImpl(Bits.OrPar_Left, this, "")
             val fiberRight = new FiberImpl(Bits.OrPar_Right, this, "")
             if tryStartRace(fiberLeft, fiberRight) then

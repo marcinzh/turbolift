@@ -10,6 +10,7 @@ object Jolo:
       turbolift.internals.engine.FiberImpl
       turbolift.internals.engine.WarpImpl
       turbolift.internals.engine.OnceVarImpl
+      turbolift.internals.engine.Stack
       turbolift.internals.executor.MultiThreadedExecutor
     """
     .split("\n").map(_.trim).filter(_.nonEmpty)

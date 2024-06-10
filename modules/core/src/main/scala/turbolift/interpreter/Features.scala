@@ -1,15 +1,15 @@
 package turbolift.interpreter
 
 
-private[turbolift] opaque type Features = Int
+private[turbolift] opaque type Features = Byte
 
 private[turbolift] object Features extends Features_opaque:
-  inline def wrap(that: Int): Features = that
+  inline def wrap(that: Byte): Features = that
 
   private[interpreter] def cond(x: Features, y: Boolean): Features = if y then x else Empty
 
   extension (thiz: Features)
-    inline def unwrap: Int = thiz
+    inline def unwrap: Byte = thiz
 
     def isStateful: Boolean     = (thiz & STATEFUL) != 0
     def isChoice: Boolean       = (thiz & CHOICE) != 0

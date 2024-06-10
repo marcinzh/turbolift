@@ -2,91 +2,150 @@ package turbolift.internals.engine
 import scala.annotation.tailrec
 
 
-private[engine] trait Store_opaque:
-  final def initial(env: Env): Store = StoreSegment.initial(env).asStore
+//// 0th array member is the tail
+//// 1st array member is a copy of the topmost Env
 
-  private final def notFound(l: Location.Deep): Nothing = panic(s"Location ${l.toStr} not found")
+private trait Store_opaque:
+  private final inline val TAIL_INDEX = 0
+  private final inline val ENV_INDEX = 1
+  private final inline val RESERVED = 2
+
+  final def initial(env: Env): Store = pushFirst(null, env, env.asLocal)
+
+  final def pushFirst(tailOrNull : Store | Null, env: Env, s: Local): Store =
+    if s.isVoid then
+      Store.wrap(Array(tailOrNull.asLocal, env.asLocal))
+    else
+      Store.wrap(Array(tailOrNull.asLocal, env.asLocal, s))
 
 
   extension (thiz: Store)
-    inline final def deconsAndThen[T](inline cb: (StoreSegment, Store | Null) => T): T =
-      if thiz.isInstanceOf[Array[?]] then
-        cb(thiz.asInstanceOf[StoreSegment], null)
-      else
-        val nel = thiz.asInstanceOf[StoreNel]
-        cb(nel.head, nel.tail)
+    final def isEmpty: Boolean = thiz.unwrap.size == RESERVED
+    final def localCount: Int = thiz.unwrap.size - RESERVED
+    final def nextLocalIndex: Int = localCount
 
 
-    final def get(l: Location.Deep): Local =
+    final def getDeep(l: Location.Deep): Local =
       @tailrec def loop(todo: Store, depth: Int): Local =
-        todo.deconsAndThen: (seg, more) =>
-          if depth == 0 then
-            seg.geti(l.localIndex)
+        if depth == 0 then
+          todo.geti(l.localIndex)
+        else
+          if !todo.isTailless then
+            loop(todo.tail, depth - 1)
           else
-            if more != null then
-              loop(more, depth - 1)
-            else
-              notFound(l)
+            notFound(l)
       loop(thiz, l.segmentDepth)
 
 
-    final def set(l: Location.Deep, s: Local): Store =
+    final def setDeep(l: Location.Deep, s: Local): Store =
       def loop(todo: Store, depth: Int): Store =
-        todo.deconsAndThen: (seg, more) =>
-          if depth == 0 then
-            val seg2 = seg.seti(l.localIndex, s)
-            seg2 ::? more
+        if depth == 0 then
+          todo.seti(l.localIndex, s)
+        else
+          if !todo.isTailless then
+            todo ::? loop(todo.tail, depth - 1)
           else
-            if more != null then
-              val more2 = loop(more, depth - 1)
-              seg ::? more2
-            else
-              notFound(l)
+            notFound(l)
       loop(thiz, l.segmentDepth)
 
 
-    final def modify(l: Location.Deep, f: Local => Local): Store =
-      ???
-
-
-    final def getOrElseVoid(l: Location.Deep): Local =
+    final def getDeepOrElseVoid(l: Location.Deep): Local =
       if l.isStateful then
-        get(l)
+        getDeep(l)
       else
         Local.void
 
-    
-    final def setIfNotVoid(l: Location.Deep, s: Local): Store =
+
+    final def setDeepIfNotVoid(l: Location.Deep, s: Local): Store =
       if s.isVoid then
         thiz
       else
-        set(l, s)
+        setDeep(l, s)
 
 
-    final def getEnv: Env =
-      thiz.deconsAndThen: (seg, _) =>
-        seg.getEnv
+    final def geti(i: Int): Local = thiz.unwrap(i + RESERVED)
+    final def seti(i: Int, s: Local): Store = Store.wrap(thiz.unwrap.updated(i + RESERVED, s))
+    final def setInPlace(i: Int, s: Local): Unit = thiz.unwrap(i + RESERVED) = s
 
-    final def getEnvAsLocal: Local =
-      thiz.deconsAndThen: (seg, _) =>
-        seg.getEnvAsLocal
+    final def getSh(l: Location.Shallow): Local = geti(l.localIndex)
+    final def setSh(l: Location.Shallow, s: Local, isIo: Boolean): Store =
+      val that = seti(l.localIndex, s)
+      if isIo then
+        that.setEnvAsLocalInPlace(s)
+      that
 
-    final def setEnv(env: Env): Store =
-      thiz.deconsAndThen: (seg, more) =>
-        seg.setEnv(env) ::? more
+    final def getOrElseVoidSh(l: Location.Shallow): Local =
+      if l.isStateless then Local.void else geti(l.localIndex)
 
-    final def setEnvAsLocal(local: Local): Store =
-      thiz.deconsAndThen: (seg, more) =>
-        seg.setEnvAsLocal(local) ::? more
+    final def setIfNotVoidSh(l: Location.Shallow, s: Local, isIo: Boolean): Store =
+      if s.isVoid then
+        thiz
+      else
+        val that = seti(l.localIndex, s)
+        if isIo then
+          that.setEnvAsLocalInPlace(s)
+        that
 
+    final def getEnv: Env = getEnvAsLocal.asInstanceOf[Env]
+    final def getEnvAsLocal: Local = thiz.unwrap(ENV_INDEX)
+    final def setEnv(env: Env): Store = Store.wrap(thiz.unwrap.updated(ENV_INDEX, env.asLocal))
+    final def setEnvAsLocal(local: Local): Store = Store.wrap(thiz.unwrap.updated(ENV_INDEX, local))
+    final def setEnvInPlace(env: Env): Unit = setEnvAsLocalInPlace(env.asLocal)
+    final def setEnvAsLocalInPlace(local: Local): Unit = thiz.unwrap(ENV_INDEX) = local
+
+    final def push(s: Local): Store = Store.wrap(thiz.unwrap :+ s)
+    final def pop: Store = Store.wrap(thiz.unwrap.init)
+    final def top: Local = thiz.unwrap.last
+    final def head: Local = thiz.unwrap(RESERVED)
+
+    final def isTailless: Boolean = thiz.unwrap(TAIL_INDEX).asInstanceOf[Any] == null
+    final def tail: Store = thiz.unwrap(TAIL_INDEX).asInstanceOf[Store]
+    final def tailOrNull: Store | Null = thiz.unwrap(TAIL_INDEX).asInstanceOf[Store | Null]
+
+    final def blankClone(): Store = blankClone(thiz.localCount)
+
+    final def blankClone(newLocalCount: Int): Store =
+      val arr1 = thiz.unwrap
+      val arr2 = new Array[Local](newLocalCount + RESERVED)
+      arr2(TAIL_INDEX) = arr1(TAIL_INDEX)
+      arr2(ENV_INDEX) = arr1(ENV_INDEX)
+      Store.wrap(arr2)
+
+    final def blankClone(newLocalCount: Int, tailOrNull: Store | Null): Store =
+      val arr1 = thiz.unwrap
+      val arr2 = new Array[Local](newLocalCount + RESERVED)
+      arr2(TAIL_INDEX) = tailOrNull.asLocal
+      arr2(ENV_INDEX) = arr1(ENV_INDEX)
+      Store.wrap(arr2)
+
+    final def ::?(that: Store | Null): Store =
+      Store.wrap(thiz.unwrap.updated(TAIL_INDEX, that.asLocal))
+
+    //@#@TODO use
+    final def setTailInPlace(tailOrNull: Store | Null): Unit =
+      thiz.unwrap.updated(TAIL_INDEX, tailOrNull.asLocal)
+
+    //@#@TODO use
+    final def copyTailless: Store =
+      val arr1 = thiz.unwrap
+      val arr2 = new Array[Local](localCount + RESERVED)
+      arr2(ENV_INDEX) = arr1(ENV_INDEX)
+      val n = localCount
+      var i = 0
+      while i < n do
+        arr2(i) = arr1(i)
+        i += 1
+      Store.wrap(arr2)
 
     final def toStr: String = s"Store(${toStrAux})"
 
     final def toStrAux: String =
-      thiz.deconsAndThen: (head, tail) =>
-        val a = head.toStr
-        if tail == null then
-          a
-        else
-          val b = tail.nn.toStrAux
-          s"$a | $b"
+      val a = thiz.unwrap.iterator.drop(RESERVED).mkString("[", ", ", "]")
+      if isTailless then
+        a
+      else
+        val b = tail.toStrAux
+        s"$a | $b"
+
+
+  private final def notFound(l: Location.Deep): Nothing = panic(s"Location ${l.toStr} not found")

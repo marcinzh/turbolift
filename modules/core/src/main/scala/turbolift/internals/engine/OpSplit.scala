@@ -13,54 +13,61 @@ private object OpSplit:
       accumStep: Step | Null,
       depth: Int,
     ): (Stack, Store, Step, Stack, Store) =
-      todoStack.deconsAndThen: (oldStackSeg, moreStack, moreStep) =>
-        todoStore.deconsAndThen: (oldStoreSeg, moreStore) =>
-          if depth == 0 then
-            val divPile = oldStackSeg.piles(location.promptIndex)
-            val divHeight = divPile.maxHeight
-            if divHeight == 0 then
-              //// Fast path: stack has already been split at this location
-              val newStackHi = oldStackSeg ::? (accumStack, accumStep)
-              val newStoreHi = oldStoreSeg ::? accumStore
-              (newStackHi, newStoreHi, moreStep.nn, moreStack.nn, moreStore.nn)
-            else
-              //// Slow path: split this segment
-              val frameCountHi = oldStackSeg.frameCount - divHeight
-              val frameCountLo = divHeight
-              //@#@OPTY do hi & lo in one go
-              val (newStackSegHi, newStoreSegHi) = migrate(oldStackSeg, oldStoreSeg, frameCountHi, _.splitHi(divHeight, _))
-              val (newStackSegLo, newStoreSegLo) = migrate(oldStackSeg, oldStoreSeg, frameCountLo, _.splitLo(divHeight, _))
-              val newStackHi = newStackSegHi ::? (accumStack, accumStep)
-              val newStoreHi = newStoreSegHi ::? accumStore
-              val newStackLo = newStackSegLo ::? (moreStack, moreStep)
-              val newStoreLo = newStoreSegLo ::? moreStore
-              val stepMid = divPile.topFrame.step
-              (newStackHi, newStoreHi, stepMid, newStackLo, newStoreLo)
-          else
-            loop(
-              todoStack = moreStack.nn,
-              todoStore = moreStore.nn,
-              accumStack = oldStackSeg ::? (accumStack, accumStep),
-              accumStore = oldStoreSeg ::? accumStore,
-              accumStep = moreStep.nn,
-              depth = depth - 1,
-            )
-    loop(stack, store, null, null, null,  location.segmentDepth)
+      if depth == 0 then
+        val divPile = todoStack.piles(location.promptIndex)
+        val divHeight = divPile.maxHeight
+        if divHeight == 0 then
+          //// Fast path: stack has already been split at this location
+          val stackHi = todoStack ::? (accumStack, accumStep)
+          val storeHi = todoStore ::? accumStore
+          val stepMid = todoStack.aside.nn
+          val stackLo = todoStack.tail
+          val storeLo = todoStore.tail
+          (stackHi, storeHi, stepMid, stackLo, storeLo)
+        else
+          //// Slow path: split this segment
+          val frameCountHi = todoStack.frameCount - divHeight
+          val frameCountLo = divHeight
+          //@#@OPTY {{ do hi & lo in one go
+          val (stackHi, storeHi) = migrate(todoStack, todoStore, accumStack, accumStore, accumStep, frameCountHi, _.splitHi(divHeight, _))
+          val (stackLo, storeLo) = migrate(todoStack, todoStore, todoStack.tailOrNull, todoStore.tailOrNull, todoStack.aside, frameCountLo, _.splitLo(divHeight, _))
+          //@#@ }}
+          // //@#@OPTY {{ integrate with `migrate`
+          // val stackHi2 = stackHi ::? (accumStack, accumStep)
+          // val storeHi2 = storeHi ::? accumStore
+          // //@#@ }}
+          val stepMid = divPile.topFrame.step
+          (stackHi, storeHi, stepMid, stackLo, storeLo)
+      else
+        loop(
+          todoStack = todoStack.tail,
+          todoStore = todoStore.tail,
+          accumStack = todoStack ::? (accumStack, accumStep),
+          accumStore = todoStore ::? accumStore,
+          accumStep = todoStack.aside,
+          depth = depth - 1,
+        )
+    loop(stack, store, null, null, null, location.segmentDepth)
 
 
   private def migrate(
-    oldStackSeg: StackSegment,
-    oldStoreSeg: StoreSegment,
+    oldStack: Stack,
+    oldStore: Store,
+    newStackTail: Stack | Null,
+    newStoreTail: Store | Null,
+    newAside: Step | Null,
     newFrameCount: Int,
     pileSplitter: PileSplitter,
-  ): (StackSegment, StoreSegment) =
-    val (newStackSeg, newStoreSeg, bundles, newPromptCount) = migrateOut(oldStackSeg, oldStoreSeg, newFrameCount, pileSplitter)
+  ): (Stack, Store) =
+    val (newStack, newStore, bundles, newPromptCount) =
+      migrateOut(oldStack, oldStore, newStackTail, newStoreTail, newAside, newFrameCount, pileSplitter)
     sort(bundles, newPromptCount)
-    migrateIn(newStackSeg, newStoreSeg, bundles, newPromptCount)
-    (newStackSeg, newStoreSeg)
+    migrateIn(newStack, newStore, bundles, newPromptCount)
+    (newStack, newStore)
 
 
   private type PileSplitter = (Pile, Local) => (Pile | Null, Local)
+
 
   private case class Bundle(prompt: Prompt, pile: Pile, local: Local):
     def ord = pile.minHeight
@@ -85,12 +92,15 @@ private object OpSplit:
 
 
   private def migrateOut(
-    oldStackSeg: StackSegment,
-    oldStoreSeg: StoreSegment,
+    oldStack: Stack,
+    oldStore: Store,
+    newStackTail: Stack | Null,
+    newStoreTail: Store | Null,
+    newAside: Step | Null,
     newFrameCount: Int,
     pileSplitter: PileSplitter,
-  ): (StackSegment, StoreSegment, Array[Bundle], Int) =
-    val oldPromptCount = oldStackSeg.piles.size
+  ): (Stack, Store, Array[Bundle], Int) =
+    val oldPromptCount = oldStack.piles.size
     val bundles = new Array[Bundle](oldPromptCount)
 
     var srcPromptIndex: Int = 0
@@ -104,9 +114,9 @@ private object OpSplit:
     var newForkFeatures = Features.Empty
 
     while srcPromptIndex < oldPromptCount do
-      val prompt = oldStackSeg.prompts(srcPromptIndex)
-      val oldPile = oldStackSeg.piles(srcPromptIndex)
-      val oldLocal = if prompt.isStateless then Local.void else oldStoreSeg.geti(srcLocalIndex)
+      val prompt = oldStack.prompts(srcPromptIndex)
+      val oldPile = oldStack.piles(srcPromptIndex)
+      val oldLocal = if prompt.isStateless then Local.void else oldStore.geti(srcLocalIndex)
       val (newPile, newLocal) = pileSplitter(oldPile, oldLocal)
       if newPile != null then
         bundles(newPromptCount) = Bundle(prompt, newPile, newLocal)
@@ -121,29 +131,33 @@ private object OpSplit:
       srcPromptIndex += 1
       srcLocalIndex += prompt.localCount
     
-    val newStackSeg =
-      val newFork = StackSegment.blank(
+    val newStack =
+      val newFork = Stack.blank(
+        tailOrNull = null,
+        aside = StepCases.Pop,
         sigCount = newForkSigCount,
         promptCount = newForkPromptCount,
         frameCount = newForkPromptCount, //// 1 frame in each pile
-        features = newForkFeatures,
+        headFeatures = newForkFeatures,
         forkOrNull = null,
       )
-      StackSegment.blank(
+      Stack.blank(
+        tailOrNull = newStackTail,
+        aside = newAside,
         sigCount = newSigCount,
         promptCount = newPromptCount,
         frameCount = newFrameCount,
-        features = newFeatures,
+        headFeatures = newFeatures,
         forkOrNull = newFork,
       )
-    //@#@OPTY reuse `oldStoreSeg` if number of elements stays the same
-    val newStoreSeg = oldStoreSeg.blankClone(newLocalCount)
-    (newStackSeg, newStoreSeg, bundles, newPromptCount)
+    //@#@OPTY reuse `oldStore` if number of elements stays the same
+    val newStore = oldStore.blankClone(newLocalCount, newStoreTail)
+    (newStack, newStore, bundles, newPromptCount)
 
 
   private def migrateIn(
-    newStackSeg: StackSegment,
-    newStoreSeg: StoreSegment,
+    newStack: Stack,
+    newStore: Store,
     bundles: Array[Bundle],
     newPromptCount: Int,
   ): Unit =
@@ -156,14 +170,14 @@ private object OpSplit:
     while promptIndex < newPromptCount do
       val bundle = bundles(promptIndex)
       val prompt = bundle.prompt
-      addPromptInPlace(prompt, bundle.pile, newStackSeg, promptIndex, destLocalIndex, destSigIndex)
+      addPromptInPlace(prompt, bundle.pile, newStack, promptIndex, destLocalIndex, destSigIndex)
       if prompt.isStateful then
-        newStoreSeg.setInPlace(destLocalIndex, bundle.local)
+        newStore.setInPlace(destLocalIndex, bundle.local)
         if prompt.isIo then
-          newStoreSeg.setEnvInPlace(bundle.local.asEnv)
+          newStore.setEnvInPlace(bundle.local.asEnv)
       if bundle.pile.hasBase then
         val forkPile = Pile.base(destForkPromptIndex)
-        addPromptInPlace(prompt, forkPile, newStackSeg.fork, destForkPromptIndex, destForkLocalIndex, destForkSigIndex)
+        addPromptInPlace(prompt, forkPile, newStack.fork, destForkPromptIndex, destForkLocalIndex, destForkSigIndex)
         destForkPromptIndex += 1
         destForkSigIndex += prompt.signatures.size
         destForkLocalIndex += prompt.localCount
@@ -175,13 +189,13 @@ private object OpSplit:
   private def addPromptInPlace(
     prompt: Prompt,
     pile: Pile,
-    destStackSeg: StackSegment,
+    destStack: Stack,
     destPromptIndex: Int,
     destLocalIndex: Int,
     destSigIndex: Int,
   ): Unit =
-    destStackSeg.prompts(destPromptIndex) = prompt
-    destStackSeg.piles(destPromptIndex) = pile
+    destStack.prompts(destPromptIndex) = prompt
+    destStack.piles(destPromptIndex) = pile
     val loc = Location.Shallow(
       promptIndex = destPromptIndex,
       localIndex = destLocalIndex,
@@ -190,8 +204,8 @@ private object OpSplit:
     val sigs = prompt.signatures
     var i = 0
     while i < sigs.size do
-      destStackSeg.signatures(destSigIndex + i) = sigs(i)
-      destStackSeg.locations(destSigIndex + i) = loc
+      destStack.signatures(destSigIndex + i) = sigs(i)
+      destStack.locations(destSigIndex + i) = loc
       i += 1
 
 
@@ -208,28 +222,26 @@ private object OpSplit:
     @tailrec def loop(
       todoStack: Stack,
       todoStore: Store,
-      lastStep: Step,
+      accumStep: Step,
       accumStack: Stack,
       accumStore: Store,
     ): (Stack, Store) =
-      todoStack.deconsAndThen: (stackSeg, moreStack, moreStep) =>
-        todoStore.deconsAndThen: (storeSeg, moreStore) =>
-          val newStack = stackSeg ::? (accumStack, lastStep)
-          val newStore = storeSeg ::? accumStore
-          if moreStack == null then
-            (newStack, newStore)
-          else
-            loop(
-              todoStack = moreStack.nn,
-              todoStore = moreStore.nn,
-              lastStep = moreStep.nn,
-              accumStack = newStack,
-              accumStore = newStore,
-            )
+      val newStack = todoStack ::? (accumStack, accumStep)
+      val newStore = todoStore ::? accumStore
+      if todoStack.isTailless then
+        (newStack, newStore)
+      else
+        loop(
+          todoStack = todoStack.tail,
+          todoStore = todoStore.tail,
+          accumStep = todoStack.aside.nn,
+          accumStack = newStack,
+          accumStore = newStore,
+        )
     loop(
       todoStack = stackHi,
       todoStore = storeHi,
-      lastStep = stepMid,
+      accumStep = stepMid,
       accumStack = stackLo,
       accumStore = storeLo,
     )

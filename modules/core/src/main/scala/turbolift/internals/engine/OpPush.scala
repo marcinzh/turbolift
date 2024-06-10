@@ -4,85 +4,68 @@ import scala.annotation.tailrec
 
 private object OpPush:
   def pushBase(stack: Stack, store: Store, step: Step, prompt: Prompt, local: Local): (Stack, Store) =
-    if stack.head.size < Location.MAX_SEGMENT_SIZE then
-      stack.deconsAndThen: (oldStackSeg, moreStack, moreStep) =>
-        store.deconsAndThen: (oldStoreSeg, moreStore) =>
-          val newLocation = Location.Shallow(
-            promptIndex = oldStackSeg.size,
-            localIndex = oldStoreSeg.newLocalIndex,
-            isStateful = prompt.isStateful,
-          )
-          val newStackSeg = oldStackSeg.pushBase(newLocation, step, prompt)
-          val newStoreSeg = if prompt.isStateful then oldStoreSeg.push(local) else oldStoreSeg
-          val newStack = newStackSeg ::? (moreStack, moreStep)
-          val newStore = newStoreSeg ::? moreStore
-          (newStack, newStore)
+    val n = stack.nextPromptIndex
+    if n <= Location.MAX_SEGMENT_SIZE then
+      val newLocation = Location.Shallow(
+        promptIndex = n,
+        localIndex = store.nextLocalIndex,
+        isStateful = prompt.isStateful,
+      )
+      val newStack = stack.pushBase(newLocation, step, prompt)
+      val newStore = if prompt.isStateful then store.push(local) else store
+      (newStack, newStore)
     else
       newTopSegment(stack, store, step, prompt, local, isNested = false, FrameKind.plain)
 
 
   def pushNested(stack: Stack, store: Store, step: Step, prompt: Prompt, location: Location.Deep, local: Local, kind: FrameKind): (Stack, Store) =
     if location.segmentDepth == 0 then
-      stack.deconsAndThen: (oldStackSeg, moreStack, moreStep) =>
-        store.deconsAndThen: (oldStoreSeg, moreStore) =>
-          val loc = location.asShallow
-          val oldLocal = oldStoreSeg.getOrElseVoidSh(loc)
-          val newStoreSeg = oldStoreSeg.setIfNotVoidSh(loc, local, prompt.isIo)
-          val newStackSeg = oldStackSeg.pushNextNested(loc, step, oldLocal, kind)
-          val newStack = newStackSeg ::? (moreStack, moreStep)
-          val newStore = newStoreSeg ::? moreStore
-          (newStack, newStore)
+      val loc = location.asShallow
+      val oldLocal = store.getOrElseVoidSh(loc)
+      val newStore = store.setIfNotVoidSh(loc, local, prompt.isIo)
+      val newStack = stack.pushNextNested(loc, step, oldLocal, kind)
+      (newStack, newStore)
     else
       newTopSegment(stack, store, step, prompt, local, isNested = true, kind)
 
 
   private def newTopSegment(stack: Stack, store: Store, step: Step, prompt: Prompt, local: Local, isNested: Boolean, kind: FrameKind): (Stack, Store) =
-    val newStackSeg = StackSegment.pushFirst(prompt, isNested, kind)
-    val newStoreSeg = StoreSegment.pushFirst(store.getEnv, local)
-    val newStack = newStackSeg ::? (stack, step)
-    val newStore = newStoreSeg ::? store
+    val newStack = Stack.pushFirst(stack, step, prompt, isNested, kind)
+    val newStore = Store.pushFirst(store, store.getEnv, local)
     (newStack, newStore)
 
 
   def drop(stack: Stack, store: Store): (Stack, Store, Step) =
-    stack.deconsAndThen: (oldStackSeg, moreStack, moreStep) =>
-      store.deconsAndThen: (oldStoreSeg, moreStore) =>
-        assert(oldStackSeg.isEmpty)
-        assert(oldStoreSeg.isEmpty)
-        (moreStack.nn, moreStore.nn, moreStep.nn)
+    (stack.tail, store.tail, stack.aside.nn)
 
 
   def pop(stack: Stack, store: Store): (Stack, Store, Step, Prompt, Frame, Local) =
-    stack.deconsAndThen: (oldStackSeg, moreStack, moreStep) =>
-      store.deconsAndThen: (oldStoreSeg, moreStore) =>
-        if oldStackSeg.frameCount == 1 then
-          //// Fast path: this is the last frame in top segment, so pop entire segment
-          val topFrame = oldStackSeg.piles.head.topFrame
-          val topPrompt = oldStackSeg.prompts.head
-          val lastLocal = if topPrompt.isStateless then Local.void else oldStoreSeg.head
-          (moreStack.nn, moreStore.nn, moreStep.nn, topPrompt, topFrame, lastLocal)
+    if stack.frameCount == 1 then
+      //// Fast path: this is the last frame in top segment, so pop entire segment
+      val topFrame = stack.piles.head.topFrame
+      val topPrompt = stack.prompts.head
+      val lastLocal = if topPrompt.isStateless then Local.void else store.head
+      (stack.tail, store.tail, stack.aside.nn, topPrompt, topFrame, lastLocal)
+    else
+      //// Slow path: shrink top segment by 1 pile
+      val location = stack.locateHighestPile
+      val topFrame = stack.piles(location.promptIndex).topFrame
+      val topPrompt = stack.prompts(location.promptIndex)
+      val newStack =
+        if topFrame.hasNext then
+          stack.popNextNested(location)
         else
-          //// Slow path: shrink top segment by 1 pile
-          val location = oldStackSeg.locateHighestPile
-          val topFrame = oldStackSeg.piles(location.promptIndex).topFrame
-          val topPrompt = oldStackSeg.prompts(location.promptIndex)
-          val newStackSeg =
+          stack.popLast(topPrompt)
+      //// restore saved state, but return the current one
+      val (newStore, lastLocal) = 
+        if topPrompt.isStateless then
+          (store, Local.void)
+        else
+          val lastLocal = store.getSh(location)
+          val newStore =
             if topFrame.hasNext then
-              oldStackSeg.popNextNested(location)
+              store.setSh(location, topFrame.local, topPrompt.isIo)
             else
-              oldStackSeg.popLast(topPrompt)
-          //// restore saved state, but return the current one
-          val (newStoreSeg, lastLocal) = 
-            if topPrompt.isStateless then
-              (oldStoreSeg, Local.void)
-            else
-              val lastLocal = oldStoreSeg.getSh(location)
-              val newStoreSeg =
-                if topFrame.hasNext then
-                  oldStoreSeg.setSh(location, topFrame.local, topPrompt.isIo)
-                else
-                  oldStoreSeg.pop
-              (newStoreSeg, lastLocal)
-          val newStack = newStackSeg ::? (moreStack, moreStep)
-          val newStore = newStoreSeg ::? moreStore
-          (newStack, newStore, topFrame.step, topPrompt, topFrame, lastLocal)
+              store.pop
+          (newStore, lastLocal)
+      (newStack, newStore, topFrame.step, topPrompt, topFrame, lastLocal)
