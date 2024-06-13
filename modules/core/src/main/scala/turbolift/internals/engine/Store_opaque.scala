@@ -10,14 +10,7 @@ private trait Store_opaque:
   private final inline val ENV_INDEX = 1
   private final inline val RESERVED = 2
 
-  final def initial(env: Env): Store = pushFirst(null, env, env.asLocal)
-
-  final def pushFirst(tailOrNull : Store | Null, env: Env, s: Local): Store =
-    if s.isVoid then
-      Store.wrap(Array(tailOrNull.asLocal, env.asLocal))
-    else
-      Store.wrap(Array(tailOrNull.asLocal, env.asLocal, s))
-
+  final def initial(env: Env): Store = Store.wrap(Array(null.asLocal, env.asLocal, env.asLocal))
 
   extension (thiz: Store)
     final def isEmpty: Boolean = thiz.unwrap.size == RESERVED
@@ -67,17 +60,17 @@ private trait Store_opaque:
     final def seti(i: Int, s: Local): Store = Store.wrap(thiz.unwrap.updated(i + RESERVED, s))
     final def setInPlace(i: Int, s: Local): Unit = thiz.unwrap(i + RESERVED) = s
 
-    final def getSh(l: Location.Shallow): Local = geti(l.localIndex)
-    final def setSh(l: Location.Shallow, s: Local, isIo: Boolean): Store =
+    final def getShallow(l: Location.Shallow): Local = geti(l.localIndex)
+    final def setShallow(l: Location.Shallow, s: Local, isIo: Boolean): Store =
       val that = seti(l.localIndex, s)
       if isIo then
         that.setEnvAsLocalInPlace(s)
       that
 
-    final def getOrElseVoidSh(l: Location.Shallow): Local =
+    final def getOrElseVoidShallow(l: Location.Shallow): Local =
       if l.isStateless then Local.void else geti(l.localIndex)
 
-    final def setIfNotVoidSh(l: Location.Shallow, s: Local, isIo: Boolean): Store =
+    final def setIfNotVoidShallow(l: Location.Shallow, s: Local, isIo: Boolean): Store =
       if s.isVoid then
         thiz
       else
@@ -102,6 +95,12 @@ private trait Store_opaque:
     final def tail: Store = thiz.unwrap(TAIL_INDEX).asInstanceOf[Store]
     final def tailOrNull: Store | Null = thiz.unwrap(TAIL_INDEX).asInstanceOf[Store | Null]
 
+    final def pushNewSegment(s: Local): Store =
+      if s.isVoid then
+        Store.wrap(Array(thiz.asLocal, thiz.getEnvAsLocal))
+      else
+        Store.wrap(Array(thiz.asLocal, thiz.getEnvAsLocal, s))
+
     final def blankClone(): Store = blankClone(thiz.localCount)
 
     final def blankClone(newLocalCount: Int): Store =
@@ -121,7 +120,6 @@ private trait Store_opaque:
     final def ::?(that: Store | Null): Store =
       Store.wrap(thiz.unwrap.updated(TAIL_INDEX, that.asLocal))
 
-    //@#@TODO use
     final def setTailInPlace(tailOrNull: Store | Null): Unit =
       thiz.unwrap.updated(TAIL_INDEX, tailOrNull.asLocal)
 

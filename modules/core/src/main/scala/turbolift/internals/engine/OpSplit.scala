@@ -4,6 +4,24 @@ import turbolift.interpreter.Features
 
 
 private object OpSplit:
+  // def split2(stack: Stack, store: Store, location: Location.Deep): (Stack, Store, Step, Stack, Store) =
+  //   @tailrec def loop(
+  //     todoStack: Stack,
+  //     todoStore: Store,
+  //     prevStack: Stack | Null,
+  //     prevStore: Store | Null,
+  //     depth: Int,
+  //   ): (Stack, Store, Step, Stack, Store) =
+  //     if depth == 0 then
+  //       val divPile = todoStack.piles(location.promptIndex)
+  //       val divHeight = divPile.maxHeight
+  //       if divHeight == 0 then
+  //         //// Fast path: stack has already been split at this location
+  //         val stepMid = todoStack.aside.nn
+
+
+
+
   def split(stack: Stack, store: Store, location: Location.Deep): (Stack, Store, Step, Stack, Store) =
     @tailrec def loop(
       todoStack: Stack,
@@ -29,13 +47,13 @@ private object OpSplit:
           val frameCountHi = todoStack.frameCount - divHeight
           val frameCountLo = divHeight
           //@#@OPTY {{ do hi & lo in one go
-          val (stackHi, storeHi) = migrate(todoStack, todoStore, accumStack, accumStore, accumStep, frameCountHi, _.splitHi(divHeight, _))
-          val (stackLo, storeLo) = migrate(todoStack, todoStore, todoStack.tailOrNull, todoStore.tailOrNull, todoStack.aside, frameCountLo, _.splitLo(divHeight, _))
+          val (stackHi, storeHi) = migrate(todoStack, todoStore, frameCountHi, _.splitHi(divHeight, _))
+          val (stackLo, storeLo) = migrate(todoStack, todoStore, frameCountLo, _.splitLo(divHeight, _))
           //@#@ }}
-          // //@#@OPTY {{ integrate with `migrate`
-          // val stackHi2 = stackHi ::? (accumStack, accumStep)
-          // val storeHi2 = storeHi ::? accumStore
-          // //@#@ }}
+          stackHi.setTailInPlace(accumStack, accumStep)
+          storeHi.setTailInPlace(accumStore)
+          stackLo.setTailInPlace(todoStack.tailOrJoin, todoStack.aside)
+          storeLo.setTailInPlace(todoStore.tailOrNull)
           val stepMid = divPile.topFrame.step
           (stackHi, storeHi, stepMid, stackLo, storeLo)
       else
@@ -53,14 +71,11 @@ private object OpSplit:
   private def migrate(
     oldStack: Stack,
     oldStore: Store,
-    newStackTail: Stack | Null,
-    newStoreTail: Store | Null,
-    newAside: Step | Null,
     newFrameCount: Int,
     pileSplitter: PileSplitter,
   ): (Stack, Store) =
     val (newStack, newStore, bundles, newPromptCount) =
-      migrateOut(oldStack, oldStore, newStackTail, newStoreTail, newAside, newFrameCount, pileSplitter)
+      migrateOut(oldStack, oldStore, newFrameCount, pileSplitter)
     sort(bundles, newPromptCount)
     migrateIn(newStack, newStore, bundles, newPromptCount)
     (newStack, newStore)
@@ -94,9 +109,6 @@ private object OpSplit:
   private def migrateOut(
     oldStack: Stack,
     oldStore: Store,
-    newStackTail: Stack | Null,
-    newStoreTail: Store | Null,
-    newAside: Step | Null,
     newFrameCount: Int,
     pileSplitter: PileSplitter,
   ): (Stack, Store, Array[Bundle], Int) =
@@ -131,27 +143,18 @@ private object OpSplit:
       srcPromptIndex += 1
       srcLocalIndex += prompt.localCount
     
-    val newStack =
-      val newFork = Stack.blank(
-        tailOrNull = null,
-        aside = StepCases.Pop,
-        sigCount = newForkSigCount,
-        promptCount = newForkPromptCount,
-        frameCount = newForkPromptCount, //// 1 frame in each pile
-        headFeatures = newForkFeatures,
-        forkOrNull = null,
-      )
-      Stack.blank(
-        tailOrNull = newStackTail,
-        aside = newAside,
-        sigCount = newSigCount,
-        promptCount = newPromptCount,
-        frameCount = newFrameCount,
-        headFeatures = newFeatures,
-        forkOrNull = newFork,
-      )
+    val newStack = Stack.blank(
+      sigCount = newSigCount,
+      promptCount = newPromptCount,
+      frameCount = newFrameCount,
+      headFeatures = newFeatures,
+    )(
+      forkSigCount = newForkSigCount,
+      forkPromptCount = newForkPromptCount,
+      forkHeadFeatures = newForkFeatures,
+    )
     //@#@OPTY reuse `oldStore` if number of elements stays the same
-    val newStore = oldStore.blankClone(newLocalCount, newStoreTail)
+    val newStore = oldStore.blankClone(newLocalCount)
     (newStack, newStore, bundles, newPromptCount)
 
 

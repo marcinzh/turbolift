@@ -20,7 +20,7 @@ sealed trait OnceVarGet[A]:
 sealed trait OnceVar[A] extends OnceVarGet[A] with OnceVarPut[A]:
   final def asGet: OnceVarGet[A] = this
   final def asPut: OnceVarPut[A] = this
-  final def untyped: Fiber.Untyped = asInstanceOf
+  final def untyped: Fiber.Untyped = asInstanceOf[Fiber.Untyped]
 
 
 object OnceVar:

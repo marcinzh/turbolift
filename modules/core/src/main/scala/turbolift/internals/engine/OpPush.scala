@@ -21,17 +21,17 @@ private object OpPush:
   def pushNested(stack: Stack, store: Store, step: Step, prompt: Prompt, location: Location.Deep, local: Local, kind: FrameKind): (Stack, Store) =
     if location.segmentDepth == 0 then
       val loc = location.asShallow
-      val oldLocal = store.getOrElseVoidSh(loc)
-      val newStore = store.setIfNotVoidSh(loc, local, prompt.isIo)
-      val newStack = stack.pushNextNested(loc, step, oldLocal, kind)
+      val oldLocal = store.getOrElseVoidShallow(loc)
+      val newStore = store.setIfNotVoidShallow(loc, local, prompt.isIo)
+      val newStack = stack.pushNested(loc, step, oldLocal, kind)
       (newStack, newStore)
     else
       newTopSegment(stack, store, step, prompt, local, isNested = true, kind)
 
 
   private def newTopSegment(stack: Stack, store: Store, step: Step, prompt: Prompt, local: Local, isNested: Boolean, kind: FrameKind): (Stack, Store) =
-    val newStack = Stack.pushFirst(stack, step, prompt, isNested, kind)
-    val newStore = Store.pushFirst(store, store.getEnv, local)
+    val newStack = stack.pushNewSegment(step, prompt, isNested, kind)
+    val newStore = store.pushNewSegment(local)
     (newStack, newStore)
 
 
@@ -53,7 +53,7 @@ private object OpPush:
       val topPrompt = stack.prompts(location.promptIndex)
       val newStack =
         if topFrame.hasNext then
-          stack.popNextNested(location)
+          stack.popNested(location)
         else
           stack.popLast(topPrompt)
       //// restore saved state, but return the current one
@@ -61,10 +61,10 @@ private object OpPush:
         if topPrompt.isStateless then
           (store, Local.void)
         else
-          val lastLocal = store.getSh(location)
+          val lastLocal = store.getShallow(location)
           val newStore =
             if topFrame.hasNext then
-              store.setSh(location, topFrame.local, topPrompt.isIo)
+              store.setShallow(location, topFrame.local, topPrompt.isIo)
             else
               store.pop
           (newStore, lastLocal)

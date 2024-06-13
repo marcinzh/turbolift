@@ -12,7 +12,6 @@ private[turbolift] final class FiberImpl private (
   private val constantBits: Byte,
   private var theParent: WarpImpl | FiberImpl,
   private var theName: String,
-  private val joinStack: Stack | Null = null,
 ) extends ChildLink with Fiber.Unsealed:
   private var suspendedTag: Byte = 0
   private var suspendedPayload: Any = null
@@ -57,7 +56,7 @@ private[turbolift] final class FiberImpl private (
         e.printStackTrace()
         val e2 = if e.isInstanceOf[Exceptions.Panic] then e else new Exceptions.Unhandled(e)
         val c = Cause(e2)
-        endOfFiber(0, Bits.Completion_Failure, c)
+        endOfFiber(0, Bits.Completion_Failure, c, null)
 
     result match
       case Halt.Reset =>
@@ -335,7 +334,7 @@ private[turbolift] final class FiberImpl private (
               case Step.UnwindKind.Abort  => impossible
               case Step.UnwindKind.Cancel => Bits.Completion_Cancelled
               case Step.UnwindKind.Throw  => Bits.Completion_Failure
-            endOfFiber(tick2, completion, payload)
+            endOfFiber(tick2, completion, payload, stack)
 
         case _ => (tag: @switch) match
           case Tags.DoIO =>
@@ -425,7 +424,7 @@ private[turbolift] final class FiberImpl private (
             val warp = if theForkFiber.warp != null then theForkFiber.warp.nn.asImpl else store.getEnv.currentWarp
             val (storeDown, storeFork) = OpCascaded.fork(stack, store)
             val stackFork = stack.makeFork
-            val child = new FiberImpl(Bits.Tree_Explicit.toByte, warp, theForkFiber.name, stackFork)
+            val child = new FiberImpl(Bits.Tree_Explicit.toByte, warp, theForkFiber.name)
             child.suspend(theForkFiber.comp.tag, theForkFiber.comp, SC.Pop, stackFork, storeFork)
             if warp.tryAddFiber(child) then
               child.resume()
@@ -559,10 +558,10 @@ private[turbolift] final class FiberImpl private (
   //-------------------------------------------------------------------
 
 
-  private def endOfFiber(tick: Short, completion: Int, initialPayload: Any): Halt.Loop =
+  private def endOfFiber(tick: Short, completion: Int, initialPayload: Any, stack: Stack | Null): Halt.Loop =
     val payload =
       if isExplicit then
-        ZipperImpl.make(joinStack.nn, initialPayload, completion)
+        ZipperImpl.make(stack, initialPayload, completion)
       else
         initialPayload
 
