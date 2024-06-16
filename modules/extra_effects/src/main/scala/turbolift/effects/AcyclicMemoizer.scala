@@ -1,27 +1,34 @@
 package turbolift.effects
 import turbolift.{!!, Effect, Signature}
-import turbolift.handlers.acyclicMemoizerHandler
+import turbolift.handlers.acyclicMemoizerHandler2
 
 
 trait AcyclicMemoizerSignature[K, V] extends Signature:
-  def memo[U <: ThisEffect](f: K => V !! U)(k: K): V !! U
+  def memo(k: K): V !! ThisEffect
   def domain: Set[K] !! ThisEffect
   def toMap: Map[K, V] !! ThisEffect
-  @deprecated final def get = toMap
 
 
-trait AcyclicMemoizer[K, V] extends Effect[AcyclicMemoizerSignature[K, V]] with AcyclicMemoizerSignature[K, V]:
-  final override def memo[U <: this.type](f: K => V !! U)(k: K): V !! U = perform(_.memo(f)(k))
+trait AcyclicMemoizerEffect[K, V] extends Effect[AcyclicMemoizerSignature[K, V]] with AcyclicMemoizerSignature[K, V]:
+  enclosing =>
+  final override def memo(k: K): V !! this.type = perform(_.memo(k))
   final override def domain: Set[K] !! this.type = perform(_.domain)
   final override def toMap: Map[K, V] !! this.type = perform(_.toMap)
 
-  final def apply[U <: this.type](f: K => V !! U): K => V !! U = memo(f)(_)
+  final def apply(k: K): V !! this.type = memo(k)
 
-  final def fix[U] = new FixSyntax[U]
-  final class FixSyntax[U]:
-    def apply[U2 <: U & AcyclicMemoizer.this.type](f: (K => V !! U2) => (K => V !! U2)): K => V !! U2 =
-      def recur(k: K): V !! U2 = memo(f(recur))(k)
-      recur
+  /** Predefined handlers for this effect. */
+  object handlers:
+    def default[U](f: K => V !! (U & enclosing.type)): ThisHandler[Identity, Identity, U] = enclosing.acyclicMemoizerHandler2[U](f)
 
-  /** Default handler for this effect. */
-  def handler: ThisHandler[Identity, Identity, Any] = this.acyclicMemoizerHandler
+
+trait AcyclicMemoizer[K, V] extends AcyclicMemoizerEffect[K, V]:
+  export handlers.{default => handler}
+
+
+object AcyclicMemoizer:
+  trait Fix[K, V, U] extends AcyclicMemoizerEffect[K, V]:
+    val handler: ThisHandler[Identity, Identity, U]
+
+  def fix[K, V, U](f: (fx: Fix[K, V, U]) => K => V !! (U & fx.type)): Fix[K, V, U] = new:
+    override val handler: ThisHandler[Identity, Identity, U] = handlers.default[U](f(this))

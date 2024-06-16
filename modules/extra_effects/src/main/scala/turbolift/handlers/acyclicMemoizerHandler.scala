@@ -1,20 +1,19 @@
 package turbolift.handlers
 import turbolift.!!
-import turbolift.effects.{AcyclicMemoizer, AcyclicMemoizerSignature}
-import turbolift.effects.State
+import turbolift.effects.{AcyclicMemoizerEffect, AcyclicMemoizerSignature, State}
 import turbolift.Extensions._
 
 
-extension [K, V](fx: AcyclicMemoizer[K, V])
-  def acyclicMemoizerHandler: fx.ThisHandler[Identity, Identity, Any] =
+extension [K, V](fx: AcyclicMemoizerEffect[K, V])
+  def acyclicMemoizerHandler2[U](f: K => V !! (U & fx.type)): fx.ThisHandler[Identity, Identity, U] =
     case object Storage extends State[Map[K, V]]
 
-    new fx.impl.Proxy[Storage.type] with AcyclicMemoizerSignature[K, V]:
+    new fx.impl.Proxy[Storage.type & U] with AcyclicMemoizerSignature[K, V]:
       override def domain: Set[K] !! ThisEffect = Storage.gets(_.keySet)
 
       override def toMap: Map[K, V] !! ThisEffect = Storage.get
 
-      override def memo[U <: ThisEffect](f: K => V !! U)(k: K): V !! U =
+      override def memo(k: K): V !! ThisEffect =
         Storage.get.flatMap: m =>
           m.get(k) match
             case Some(v) => !!.pure(v)
@@ -25,5 +24,5 @@ extension [K, V](fx: AcyclicMemoizer[K, V])
               yield v
 
     .toHandler
-    .provideWith(Storage.handler(Map()))
+    .partiallyProvideWith[U](Storage.handler(Map()))
     .dropState

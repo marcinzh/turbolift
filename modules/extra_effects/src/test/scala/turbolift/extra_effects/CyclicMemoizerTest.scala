@@ -8,10 +8,10 @@ import turbolift.effects.CyclicMemoizer
 import turbolift.mode.ST
 
 
-class CyclicMemoizerTest extends Specification with CanLaunchTheMissiles:
+class CyclicMemoizerTest2 extends Specification with CanLaunchTheMissiles:
   "Memoizing cyclic graph" >> {
-    case object M extends CyclicMemoizer[Int, Vertex]
     case object W extends WriterK[Vector, Int]
+    type W = W.type
 
     case class Vertex(serno: Int, outgoing: List[Edge])
     case class Edge(from: () => Vertex, to: () => Vertex)
@@ -28,27 +28,30 @@ class CyclicMemoizerTest extends Specification with CanLaunchTheMissiles:
     )
 
     val prog =
-      for
-        missiles <- !!.impure(Missile.make(outgoings.size))
+      val missiles = Missile.make(outgoings.size)
 
-        visit = M.fix[W.type] { recur => n =>
-          for
-            _ <- missiles(n).launch_!
-            _ <- W.tell(n)
-            from <- recur(n)
-            edges <- (
-              for i <- outgoings(n) yield
-                for to <- recur(i) yield
-                  Edge(from, to)
-            ).traverse
-          yield Vertex(n, edges)
-        }
+      val visit = CyclicMemoizer.fix[Int, Vertex, W] { recur => n =>
+        for
+          _ <- missiles(n).launch_!
+          _ <- W.tell(n)
+          from <- recur(n)
+          edges <- (
+            for i <- outgoings(n) yield
+              for to <- recur(i) yield
+                Edge(from, to)
+          ).traverse
+        yield Vertex(n, edges)
+      }
 
-        _ <- visit(0)
-      yield missiles
+      (for
+        v0 <- visit(0)
+        v1 <- visit(5)
+      yield (v0().serno, v1().serno))
+      .handleWith(visit.handler)
+      .handleWith(W.handler.mapState(_.sorted))
+      .map((_, missiles))
 
-    val (missiles, log) = prog.handleWith(M.handler).handleWith(W.handler).run
-    log.sorted === (0 until outgoings.size)
-    
+    val (results, missiles) = prog.run
+    results.===((0, 5), (0 until outgoings.size))
     Result.foreach(missiles)(_.mustHaveLaunchedOnce)
   }

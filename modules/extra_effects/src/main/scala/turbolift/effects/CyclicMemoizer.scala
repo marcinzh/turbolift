@@ -1,25 +1,34 @@
 package turbolift.effects
 import turbolift.{!!, Effect, Signature}
-import turbolift.handlers.cyclicMemoizerHandler
+import turbolift.handlers.cyclicMemoizerHandler2
 
 
 trait CyclicMemoizerSignature[K, V] extends Signature:
-  def memo[U <: ThisEffect](f: K => V !! U)(k: K): (() => V) !! U
+  def memo(k: K): (() => V) !! ThisEffect
   def domain: Set[K] !! ThisEffect
   def toMap: Map[K, V] !! ThisEffect
-  @deprecated final def get = toMap
 
 
-trait CyclicMemoizer[K, V] extends Effect[CyclicMemoizerSignature[K, V]] with CyclicMemoizerSignature[K, V]:
-  final override def memo[U <: this.type](f: K => V !! U)(k: K): (() => V) !! U = perform(_.memo(f)(k))
+trait CyclicMemoizerEffect[K, V] extends Effect[CyclicMemoizerSignature[K, V]] with CyclicMemoizerSignature[K, V]:
+  enclosing =>
+  final override def memo(k: K): (() => V) !! this.type = perform(_.memo(k))
   final override def domain: Set[K] !! this.type = perform(_.domain)
   final override def toMap: Map[K, V] !! this.type = perform(_.toMap)
 
-  final def fix[U] = new FixSyntax[U]
-  final class FixSyntax[U]:
-    def apply[U2 <: U & CyclicMemoizer.this.type](f: (K => (() => V) !! U2) => (K => V !! U2)): K => (() => V) !! U2 =
-      def recur(k: K): (() => V) !! U2 = memo(f(recur))(k)
-      recur
+  final def apply(k: K): (() => V) !! this.type = memo(k)
 
-  /** Default handler for this effect. */
-  def handler: ThisHandler[Identity, Identity, Any] = this.cyclicMemoizerHandler
+  /** Predefined handlers for this effect. */
+  object handlers:
+    def default[U](f: K => V !! (U & enclosing.type)): ThisHandler[Identity, Identity, U] = enclosing.cyclicMemoizerHandler2[U](f)
+
+
+trait CyclicMemoizer[K, V] extends CyclicMemoizerEffect[K, V]:
+  export handlers.{default => handler}
+
+
+object CyclicMemoizer:
+  trait Fix[K, V, U] extends CyclicMemoizerEffect[K, V]:
+    val handler: ThisHandler[Identity, Identity, U]
+
+  def fix[K, V, U](f: (fx: Fix[K, V, U]) => K => V !! (U & fx.type)): Fix[K, V, U] = new:
+    override val handler: ThisHandler[Identity, Identity, U] = handlers.default[U](f(this))

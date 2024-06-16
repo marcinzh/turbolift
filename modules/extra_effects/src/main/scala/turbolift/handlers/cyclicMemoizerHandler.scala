@@ -1,19 +1,19 @@
 package turbolift.handlers
 import turbolift.!!
-import turbolift.effects.{CyclicMemoizer, CyclicMemoizerSignature, State}
+import turbolift.effects.{CyclicMemoizerEffect, CyclicMemoizerSignature, State}
 import turbolift.Extensions._
 
 
-extension [K, V](fx: CyclicMemoizer[K, V])
-  def cyclicMemoizerHandler: fx.ThisHandler[Identity, Identity, Any] =
+extension [K, V](fx: CyclicMemoizerEffect[K, V])
+  def cyclicMemoizerHandler2[U](f: K => V !! (U & fx.type)): fx.ThisHandler[Identity, Identity, U] =
     case object Storage extends State[Map[K, Thunk[V]]]
 
-    new fx.impl.Proxy[Storage.type] with CyclicMemoizerSignature[K, V]:
+    new fx.impl.Proxy[Storage.type & U] with CyclicMemoizerSignature[K, V]:
       override def domain: Set[K] !! ThisEffect = Storage.gets(_.keySet)
 
       override def toMap: Map[K, V] !! ThisEffect = Storage.gets(_.view.mapValues(_.apply()).toMap) //@#@TODO mapValues not strict yet
 
-      override def memo[U <: ThisEffect](f: K => V !! U)(k: K): (() => V) !! U =
+      override def memo(k: K): (() => V) !! ThisEffect =
         Storage.get.flatMap: m =>
           m.get(k) match
             case Some(thunk) => !!.pure(thunk)
@@ -26,7 +26,7 @@ extension [K, V](fx: CyclicMemoizer[K, V])
               yield thunk
 
     .toHandler
-    .provideWith(Storage.handler(Map()))
+    .partiallyProvideWith[U](Storage.handler(Map()))
     .dropState
 
 
