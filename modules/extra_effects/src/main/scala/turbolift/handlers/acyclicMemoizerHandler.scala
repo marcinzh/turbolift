@@ -5,7 +5,7 @@ import turbolift.Extensions._
 
 
 extension [K, V](fx: AcyclicMemoizerEffect[K, V])
-  def acyclicMemoizerHandler2[U](f: K => V !! (U & fx.type)): fx.ThisHandler[Identity, Identity, U] =
+  def acyclicMemoizerHandler[U](f: K => V !! (U & fx.type)): fx.ThisHandler[Identity, Identity, U] =
     case object Storage extends State[Map[K, V]]
 
     new fx.impl.Proxy[Storage.type & U] with AcyclicMemoizerSignature[K, V]:

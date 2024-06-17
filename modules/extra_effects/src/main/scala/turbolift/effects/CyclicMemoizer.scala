@@ -1,6 +1,6 @@
 package turbolift.effects
 import turbolift.{!!, Effect, Signature}
-import turbolift.handlers.cyclicMemoizerHandler2
+import turbolift.handlers.cyclicMemoizerHandler
 
 
 trait CyclicMemoizerSignature[K, V] extends Signature:
@@ -19,7 +19,7 @@ trait CyclicMemoizerEffect[K, V] extends Effect[CyclicMemoizerSignature[K, V]] w
 
   /** Predefined handlers for this effect. */
   object handlers:
-    def default[U](f: K => V !! (U & enclosing.type)): ThisHandler[Identity, Identity, U] = enclosing.cyclicMemoizerHandler2[U](f)
+    def default[U](f: K => V !! (U & enclosing.type)): ThisHandler[Identity, Identity, U] = enclosing.cyclicMemoizerHandler[U](f)
 
 
 trait CyclicMemoizer[K, V] extends CyclicMemoizerEffect[K, V]:
