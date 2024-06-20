@@ -123,7 +123,7 @@ private[turbolift] final class FiberImpl private (
         case Tags.Perform =>
           val thePerform = payload.asInstanceOf[CC.Perform[Any, Any, Signature]]
           stack.locateSignature(thePerform.sig, cache)
-          val comp2 = thePerform.op(cache.interpreter).asInstanceOf[AnyComp]
+          val comp2 = thePerform.op(cache.prompt).asInstanceOf[AnyComp]
           loopComp(comp2, step, stack, store, cache)
 
         case Tags.Pure =>
@@ -138,19 +138,19 @@ private[turbolift] final class FiberImpl private (
 
         case Tags.LocalGet =>
           val theLocalGet = payload.asInstanceOf[CC.LocalGet]
-          stack.locatePrompt(theLocalGet.interp, cache)
+          stack.locatePrompt(theLocalGet.prompt, cache)
           val local = store.getDeep(cache.location)
           loopStep(local, step, stack, store, cache)
 
         case Tags.LocalPut =>
           val theLocalPut = payload.asInstanceOf[CC.LocalPut[Any]]
-          stack.locatePrompt(theLocalPut.interp, cache)
+          stack.locatePrompt(theLocalPut.prompt, cache)
           val store2 = store.setDeep(cache.location, theLocalPut.local.asLocal)
           loopStep((), step, stack, store2, cache)
 
         case Tags.LocalUpdate =>
           val theLocalUpdate = payload.asInstanceOf[CC.LocalUpdate[Any, Any]]
-          stack.locatePrompt(theLocalUpdate.interp, cache)
+          stack.locatePrompt(theLocalUpdate.prompt, cache)
           //@#@OPTY Store.update
           val local = store.getDeep(cache.location)
           val (value, local2) = theLocalUpdate.fun(local)
@@ -159,7 +159,7 @@ private[turbolift] final class FiberImpl private (
 
         case Tags.Delimit =>
           val theDelimit = payload.asInstanceOf[CC.Delimit[Any, Local, Any]]
-          stack.locatePrompt(theDelimit.interp, cache)
+          stack.locatePrompt(theDelimit.prompt, cache)
           val local =
             if theDelimit.fun == null
             then theDelimit.local
@@ -169,7 +169,7 @@ private[turbolift] final class FiberImpl private (
 
         case Tags.Abort =>
           val theAbort = payload.asInstanceOf[CC.Abort[Any, Any]]
-          stack.locatePrompt(theAbort.interp, cache)
+          stack.locatePrompt(theAbort.prompt, cache)
           val step2 = cache.prompt.unwind
           val payload2 = theAbort.value
           loopStep(payload2, step2, stack, store, cache)
@@ -188,9 +188,9 @@ private[turbolift] final class FiberImpl private (
 
         case Tags.Capture =>
           val theCapture = payload.asInstanceOf[CC.Capture[Any, Any, Any, Any]]
-          stack.locatePrompt(theCapture.interp, cache)
+          stack.locatePrompt(theCapture.prompt, cache)
           val (stackHi, storeHi, stepMid, stackLo, storeLo) = OpSplit.split(stack, store, cache.location)
-          stackHi.locatePrompt(theCapture.interp, cache)
+          stackHi.locatePrompt(theCapture.prompt, cache)
           val cont = new ContImpl(stackHi, storeHi, step, cache.location)
           val comp2 = (theCapture.fun: @unchecked) match
             case f: Function1[Any, AnyComp] => f(cont)
@@ -278,12 +278,11 @@ private[turbolift] final class FiberImpl private (
 
         case Tags.Handle =>
           val theHandle = payload.asInstanceOf[CC.Handle[Any, Any, [_] =>> Any, [_] =>> Any, Any, Any]]
-          val interpreter = theHandle.handler.interpreter.untyped
-          val prompt = new Prompt(interpreter)
-          for sig <- prompt.interpreter.signatures do
+          val prompt = theHandle.handler.interpreter.untyped
+          for sig <- prompt.signatures do
             if stack.containsSignature(sig) then
               panic(s"Unsupported feature: shadowing effect ${sig}.")
-          val comp2 = interpreter.onInitial
+          val comp2 = prompt.onInitial
           val step2 = new SC.Push(theHandle.body, prompt, step)
           loopComp(comp2, step2, stack, store, cache)
 
@@ -323,7 +322,7 @@ private[turbolift] final class FiberImpl private (
                       loopStep(payload, step3, stack2, store2, cache)
             else
               if theUnwind.kind.isPop then
-                val comp2 = prompt.interpreter.onReturn(payload, local)
+                val comp2 = prompt.onReturn(payload, local)
                 loopComp(comp2, step2, stack2, store2, cache)
               else
                 val step3 = if prompt == theUnwind.prompt then step2 else step
@@ -360,7 +359,7 @@ private[turbolift] final class FiberImpl private (
           case Tags.DoSnap =>
             val theDoSnap = payload.asInstanceOf[CC.DoSnap[Any, Any]]
             val location = stack.locateIO
-            val (stack2, store2) = OpPush.pushNested(stack, store, step, Prompt.io, location, store.getEnvAsLocal, FrameKind.guard)
+            val (stack2, store2) = OpPush.pushNested(stack, store, step, PromptIO, location, store.getEnvAsLocal, FrameKind.guard)
             loopComp(theDoSnap.body, SC.Pop, stack2, store2, cache)
 
           case Tags.Unsnap =>
@@ -393,7 +392,7 @@ private[turbolift] final class FiberImpl private (
               loopComp(theEnvMod.body, step, stack, store, cache)
             else
               val location = stack.locateIO
-              val (stack2, store2) = OpPush.pushNested(stack, store, step, Prompt.io, location, env2.asLocal, FrameKind.plain)
+              val (stack2, store2) = OpPush.pushNested(stack, store, step, PromptIO, location, env2.asLocal, FrameKind.plain)
               loopComp(theEnvMod.body, SC.Pop, stack2, store2, cache)
 
           case Tags.AwaitOnceVar =>
@@ -484,7 +483,7 @@ private[turbolift] final class FiberImpl private (
             if oldWarp.tryAddWarp(newWarp) then
               val location = stack.locateIO
               val newEnv = oldEnv.copy(currentWarp = newWarp)
-              val (stack2, store2) = OpPush.pushNested(stack, store, step, Prompt.io, location, newEnv.asLocal, FrameKind.warp)
+              val (stack2, store2) = OpPush.pushNested(stack, store, step, PromptIO, location, newEnv.asLocal, FrameKind.warp)
               loopComp(theSpawnWarp.body, SC.Pop, stack2, store2, cache)
             else
               impossible

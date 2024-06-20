@@ -80,8 +80,7 @@ private final class Stack private (
     if i >= 0 then
       val location = locations(i)
       val prompt = prompts(location.promptIndex)
-      cache.interpreter = prompt.interpreter
-      cache.prompt = prompt //@#@TODO obsolete
+      cache.prompt = prompt
       cache.location = location.withDepth(depth)
     else
       if isTailless then
@@ -95,7 +94,7 @@ private final class Stack private (
 
 
   def locateIO: Location.Deep =
-    val sig = Prompt.io.signatures.head
+    val sig = PromptIO.signatures.head
     @tailrec def loop(todo: Stack, depth: Int): Location.Deep =
       val i = signatures.lastIndexOf(sig)
       if i >= 0 then
@@ -324,7 +323,7 @@ private final class Stack private (
 private object Stack:
   val initial: Stack =
     newSegment(
-      prompt = Prompt.io,
+      prompt = PromptIO,
       isNested = false,
       kind = FrameKind.plain,
       tail = null.asInstanceOf[Stack],

@@ -4,6 +4,10 @@ import turbolift.io.{Outcome, Exceptions, Snap, Fiber, Zipper, Warp, OnceVarGet}
 import turbolift.interpreter.Continuation
 
 
+export turbolift.interpreter.Interpreter.{Untyped => Prompt}
+export turbolift.interpreter.Interpreter.Io.{untyped => PromptIO}
+
+
 private[engine] type AnyComp = Any !! Any
 private[engine] type Owner = FiberImpl | WarpImpl | AnyCallback
 private[internals] type AnyCallback = Outcome[Any] => Unit
@@ -28,3 +32,14 @@ extension (thiz: OnceVarGet[?])
 
 extension (thiz: Boolean)
   private[engine] def toInt: Int = if thiz then 1 else 0
+
+extension (thiz: Prompt)
+  private[engine] inline def localCount: Int = if thiz.features.isStateful then 1 else 0
+  private[engine] inline def isIo = thiz.features.isIo
+  private[engine] inline def isStateful = thiz.features.isStateful
+  private[engine] inline def isStateless = thiz.features.isStateless
+  private[engine] inline def isParallel = thiz.features.isParallel
+  private[engine] inline def hasRestart = thiz.features.hasRestart
+  private[engine] inline def hasZip = thiz.features.hasZip
+  private[engine] inline def hasForkJoin = thiz.features.hasForkJoin
+  private[engine] def unwind: Step = StepCases.Unwind(Step.UnwindKind.Abort, thiz)

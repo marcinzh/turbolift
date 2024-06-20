@@ -62,7 +62,7 @@ private object OpCascaded:
         val p = seg.prompts(i)
         val i2 = i + 1
         if p.hasRestart then
-          loop(i2, accum.flatMap(p.interpreter.onRestart))
+          loop(i2, accum.flatMap(p.onRestart))
         else
           loop(i2, accum)
       else
@@ -77,7 +77,7 @@ private object OpCascaded:
         val p = seg.prompts(i)
         val i2 = i + 1
         if p.hasZip then
-          p.interpreter.onZip(aa, bb, loop(i2, _, _, f))
+          p.onZip(aa, bb, loop(i2, _, _, f))
         else
           loop(i2, aa, bb, f)
       else
@@ -98,7 +98,7 @@ private object OpCascaded:
           if p.isStateful then
             val s0 = store.geti(j)
             if p.hasForkJoin then
-              val (s1, s2) = p.interpreter.onFork(s0)
+              val (s1, s2) = p.onFork(s0)
               storeLeft.setInPlace(j, s1.asLocal)
               storeRight.setInPlace(j, s2.asLocal)
             else
@@ -125,8 +125,8 @@ private object OpCascaded:
             if p.hasForkJoin then
               val s1 = storeLeft.geti(j)
               val s2 = storeRight.geti(j)
-              val s01 = p.interpreter.onJoin(s0, s1)
-              val s012 = p.interpreter.onJoin(s01, s2)
+              val s01 = p.onJoin(s0, s1)
+              val s012 = p.onJoin(s01, s2)
               storeOut.setInPlace(j, s012.asLocal)
             else
               storeOut.setInPlace(j, s0)
