@@ -3,7 +3,7 @@ import scala.annotation.{tailrec, switch}
 import turbolift.{Computation, Signature}
 import turbolift.io.{Fiber, Zipper, Warp, OnceVar, Snap, Outcome, Cause, Exceptions}
 import turbolift.internals.primitives.{Tags, ComputationCases => CC}
-import turbolift.internals.executor.Executor
+import turbolift.internals.executor.Resumer
 import turbolift.internals.engine.{StepCases => SC}
 import Cause.{Cancelled => CancelPayload}
 
@@ -964,7 +964,7 @@ private[turbolift] final class FiberImpl private (
 
   def resume(): Unit =
     assert(isSuspended)
-    suspendedStore.nn.getEnv.executor.resume(this)
+    suspendedStore.nn.getEnv.resumer.resume(this)
 
 
   private def isSuspended: Boolean = suspendedStack != null
@@ -1129,13 +1129,13 @@ private[turbolift] final class FiberImpl private (
 private[turbolift] object FiberImpl:
   type Callback = Outcome[Nothing] => Unit
 
-  def create(comp: Computation[?, ?], executor: Executor, name: String, isReentry: Boolean, callback: Callback): FiberImpl =
+  def create(comp: Computation[?, ?], resumer: Resumer, name: String, isReentry: Boolean, callback: Callback): FiberImpl =
     val reentryBit = if isReentry then Bits.Const_Reentry else 0
     val constantBits = (Bits.Tree_Root | reentryBit).toByte
     val warp = WarpImpl.initial()
     val fiber = new FiberImpl(constantBits, warp, name)
     warp.tryAddFiber(fiber)
     warp.initMain(fiber, callback.asInstanceOf[AnyCallback])
-    val env = Env.initial(warp, executor)
+    val env = Env.initial(warp, resumer)
     fiber.suspendInitial(comp.untyped, env)
     fiber
