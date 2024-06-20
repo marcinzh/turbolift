@@ -106,6 +106,9 @@ sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift]
    */
   final def ||![A2 >: A, U2 <: U & IO](that: => A2 !! U2): A2 !! U2 = new CC.OrSeq(this, () => that)
 
+  /** Parallel version of `++!`. */
+  final def +![A2 >: A, U2 <: U & ChoiceSignature](that: A2 !! U2): A2 !! U2 = AnyChoice.plusPar(this, that)
+
   /** Applies `plus` operation from the innermost `Choice` effect in the current scope.
    *
    * Similar to `<|>` operator of `Alternative`.

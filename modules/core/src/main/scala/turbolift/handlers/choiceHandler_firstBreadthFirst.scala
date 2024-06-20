@@ -30,6 +30,8 @@ extension [Fx <: ChoiceEffect](fx: Fx)
         Control.captureGet: (k, q) =>
           q.addTodo(as.iterator.map(a => k(a, _))).drain
 
+      override def choosePar[A](as: Iterable[A]): A !! ThisEffect = choose(as)
+
     .toHandler
 
 

@@ -46,6 +46,15 @@ class ChoiceTest extends Specification:
           )
         }
 
+        "choosePar 2" >>{
+          C.choosePar(List(1, 2))
+          .handleWith(handler)
+          .run === picker(
+            Vector(1),
+            Vector(1, 2)
+          )
+        }
+
         "empty" >> {
           val cases = List(
             ("empty &&!", C.empty &&! !!.pure(1)),
@@ -168,24 +177,28 @@ class ChoiceTest extends Specification:
           val hE = E.handlers.all
           val hC = picker.handler(C)
 
-          val prog = C.choose(List(1, 2)) >>= E.raise
+          val prog    = C.choose(List(1, 10)) >>= E.raise
+          val progPar = C.choosePar(List(1, 10)) >>= E.raise
 
           "Error &&&! Choice" >>{
             prog.handleWith(hE &&&! hC)
             .run === picker(
               Vector(Left(1).withRight[Int]),
-              (Vector(Left(1).withRight[Int], Left(2).withRight[Int]))
+              (Vector(Left(1).withRight[Int], Left(10).withRight[Int]))
             )
           }
 
           "Choice &&&! Error" >>{
             prog.handleWith(hC &&&! hE)
             .run === Left(1).withRight[Int]
-            //@#@TODO Choice.choosePar
-            // .run === picker(
-            //   Left(1).withRight[Int],
-            //   Left(3).withRight[Int],
-            // )
+          }
+
+          "Choice &&&! Error ; choosePar" >>{
+            progPar.handleWith(hC &&&! hE)
+            .run === picker(
+              Left(1).withRight[Int],
+              Left(11).withRight[Int],
+            )
           }
         }
 

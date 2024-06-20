@@ -8,13 +8,16 @@ import turbolift.handlers.{choiceHandler_allBreadthFirst, choiceHandler_firstBre
 trait ChoiceSignature extends Signature:
   def empty: Nothing !! ThisEffect
   def choose[A](as: Iterable[A]): A !! ThisEffect
+  def choosePar[A](as: Iterable[A]): A !! ThisEffect
 
 
 trait ChoiceEffect extends Effect[ChoiceSignature] with ChoiceSignature:
   final override val empty: Nothing !! this.type = perform(_.empty)
   final override def choose[A](as: Iterable[A]): A !! this.type = perform(_.choose(as))
+  final override def choosePar[A](as: Iterable[A]): A !! this.type = perform(_.choosePar(as))
 
   final def plus[A, U <: this.type](lhs: A !! U, rhs: => A !! U): A !! U = choose(Vector(lhs, !!.impureEff(rhs))).flatten
+  final def plusPar[A, U <: this.type](lhs: A !! U, rhs: A !! U): A !! U = choosePar(Vector(lhs, rhs)).flatten
 
   final def apply[A](as: A*): A !! this.type = choose(as.toVector)
 

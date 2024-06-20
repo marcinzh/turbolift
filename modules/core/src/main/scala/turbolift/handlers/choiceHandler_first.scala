@@ -32,4 +32,6 @@ extension [Fx <: ChoiceEffect](fx: Fx)
               !!.none
           loop()
 
+      override def choosePar[A](as: Iterable[A]): A !! ThisEffect = choose(as)
+
     .toHandler

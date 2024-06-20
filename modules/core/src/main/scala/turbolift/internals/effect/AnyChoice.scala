@@ -20,5 +20,7 @@ private[turbolift] case object AnyChoice extends CanPerform[ChoiceSignature] wit
 
   override val empty: Nothing !! ThisEffect = perform(_.empty)
   override def choose[A](as: Iterable[A]): A !! ThisEffect = perform(_.choose(as))
+  override def choosePar[A](as: Iterable[A]): A !! ThisEffect = perform(_.choosePar(as))
 
   def plus[A, U <: ThisEffect](lhs: A !! U, rhs: => A !! U): A !! U = choose(Vector(lhs, !!.impureEff(rhs))).flatten
+  def plusPar[A, U <: ThisEffect](lhs: A !! U, rhs: A !! U): A !! U = choosePar(Vector(lhs, rhs)).flatten
