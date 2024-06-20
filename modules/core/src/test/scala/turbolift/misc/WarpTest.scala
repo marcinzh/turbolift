@@ -194,10 +194,12 @@ class WarpTest extends Specification:
       (for
         v1 <- AtomicVar.fresh(42)
         v2 <- AtomicVar.fresh("a")
+        g <- Gate(1)
         e <- 
           Warp:
             (for
-              _ <- (IO.sleep(1000) &&! v1.put(1337)).guarantee(v2.put("b")).fork
+              _ <- (g.open &&! IO.sleep(1000) &&! v1.put(1337)).guarantee(v2.put("b")).fork
+              _ <- g.enter
               _ <- E.raise("OMG")
             yield ())
           .handleWith(E.handler)

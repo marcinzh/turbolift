@@ -32,6 +32,7 @@ lazy val core = project
   .settings(name := "turbolift-core")
   .settings(Compile / scalacOptions += "-Yexplicit-nulls")
   .settings(Test / parallelExecution := false)
+  .settings(Test / logBuffered := false)
   .settings(libraryDependencies ++= Seq(
     Deps.cats_core,
     Deps.specs2_core,

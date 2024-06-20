@@ -6,6 +6,8 @@ import turbolift.effects.IO
 
 
 class TimeTest extends Specification:
+  sequential
+
   "Basic ops" >> {
     "sleep" >>{
       IO.sleep(1).unsafeRun === Outcome.Success(())
