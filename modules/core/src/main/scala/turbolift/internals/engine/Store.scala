@@ -5,7 +5,7 @@ private opaque type Store = Store.Underlying
 
 
 private object Store extends Store_opaque:
-  type Underlying = Array[Local]
+  type Underlying = Array[Any]
 
   inline def wrap(x: Underlying): Store = x
 
