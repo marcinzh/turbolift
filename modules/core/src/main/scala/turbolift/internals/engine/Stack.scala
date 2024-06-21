@@ -75,22 +75,15 @@ private final class Stack private (
       true
 
 
-  @tailrec def locateSignature(sig: Signature, cache: Cache, depth: Int = 0): Unit =
+  @tailrec def locateSignature(sig: Signature, depth: Int = 0): Location.Deep =
     val i = signatures.lastIndexOf(sig)
     if i >= 0 then
-      val location = locations(i)
-      val prompt = prompts(location.promptIndex)
-      cache.prompt = prompt
-      cache.location = location.withDepth(depth)
+      locations(i).withDepth(depth)
     else
       if isTailless then
-        sigNotFound(sig)
+        Stack.sigNotFound(sig)
       else
-        tail.locateSignature(sig, cache, depth + 1)
-
-
-  def locatePrompt(interp: Interpreter.Untyped, cache: Cache): Unit =
-    locateSignature(interp.signatures.head, cache)
+        tail.locateSignature(sig, depth + 1)
 
 
   def locateIO: Location.Deep =
@@ -101,13 +94,10 @@ private final class Stack private (
         locations(i).withDepth(depth)
       else
         if isTailless then
-          sigNotFound(sig)
+          Stack.sigNotFound(sig)
         else
           loop(tail, depth + 1)
     loop(this, 0)
-
-
-  private def sigNotFound(s: Signature): Nothing = panic(s"Signature ${s} not found")
 
 
   def locateHighestPile: Location.Shallow =
@@ -321,6 +311,9 @@ private final class Stack private (
 
 
 private object Stack:
+  def sigNotFound(s: Signature): Nothing = panic(s"Signature ${s} not found")
+
+
   val initial: Stack =
     newSegment(
       prompt = PromptIO,

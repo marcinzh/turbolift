@@ -11,8 +11,7 @@ private[internals] object Halt:
 
   //// Result of `innerLoop`
   private[engine] sealed abstract class Loop
-  private[engine] case object Reset extends Loop
-  private[engine] final case class Become(fiber: FiberImpl, tickLow: Short) extends Loop
+  private[engine] case object Become extends Loop
 
   inline def ThreadDisowned = RetireFalse
 

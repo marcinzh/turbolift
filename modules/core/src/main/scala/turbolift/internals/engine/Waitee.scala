@@ -7,7 +7,7 @@ import scala.annotation.tailrec
 private abstract class Waitee:
   protected var firstWaiter: FiberImpl | Null = null
   protected var varyingBits: Byte = 0
-  protected var theOwnership: Byte = 0 //// meaningful only in FiberImpl, but moved here for convenience
+  /*protected*/ var theOwnership: Byte = 0 //// meaningful only in FiberImpl, but moved here for convenience
 
 
   final def isPending: Boolean = Bits.isPending(varyingBits)
