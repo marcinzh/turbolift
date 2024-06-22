@@ -4,13 +4,9 @@ import turbolift.Signature
 import turbolift.interpreter.{Features, Interpreter}
 
 
-
-
 private final class Stack private (
   //@#@OPTY use var for append-in-place for one-shot resump
-  val signatures: Array[Signature],
-  val locations: Array[Location.Shallow],
-  val prompts: Array[Prompt],
+  val lookup: Lookup,
   val piles: Array[Pile],
   val frameCount: Int,
   val headFeatures: Features,
@@ -19,16 +15,12 @@ private final class Stack private (
   var aside: Step | Null,
 ):
   private def this(
-    signatures: Array[Signature],
-    locations: Array[Location.Shallow],
-    prompts: Array[Prompt],
+    lookup: Lookup,
     piles: Array[Pile],
     frameCount: Int,
     headFeatures: Features,
   ) = this(
-    signatures = signatures,
-    locations = locations,
-    prompts = prompts,
+    lookup = lookup,
     piles = piles,
     frameCount = frameCount,
     headFeatures = headFeatures,
@@ -43,10 +35,8 @@ private final class Stack private (
     frameCount: Int,
     headFeatures: Features,
   ) = this(
-    signatures = new Array(sigCount),
-    locations = new Array(sigCount),
-    prompts = new Array(promptCount),
-    piles = new Array(promptCount),
+    lookup = Lookup.blank(sigCount),
+    piles = new Array[Pile](promptCount),
     frameCount = frameCount,
     headFeatures = headFeatures,
   )
@@ -56,7 +46,8 @@ private final class Stack private (
   def isTailless: Boolean = aside == null
   def tail: Stack = { assert(!isTailless); tailOrJoin.nn }
   def canPop: Boolean = if isTailless then frameCount > 1 else true
-  def nextPromptIndex: Int = piles.size
+  def promptCount: Int = piles.size
+  def promptIter: Iterator[Prompt] = piles.iterator.map(_.prompt)
 
 
   //-------------------------------------------------------------------
@@ -65,23 +56,22 @@ private final class Stack private (
 
 
   @tailrec def containsSignature(sig: Signature): Boolean =
-    val i = signatures.indexOf(sig)
-    if i < 0 then
+    if lookup.containsSignature(sig) then
+      true
+    else
       if isTailless then
         false
       else
         tail.containsSignature(sig)
-    else
-      true
 
 
-  @tailrec def locateSignature(sig: Signature, depth: Int = 0): Location.Deep =
-    val i = signatures.lastIndexOf(sig)
-    if i >= 0 then
-      locations(i).withDepth(depth)
+  def locateSignature(sig: Signature, depth: Int = 0): Location.Deep =
+    val entry = lookup.findBySignature(sig)
+    if entry != null then
+      entry.location.withDepth(depth)
     else
       if isTailless then
-        Stack.sigNotFound(sig)
+        Lookup.sigNotFound(sig)
       else
         tail.locateSignature(sig, depth + 1)
 
@@ -89,12 +79,12 @@ private final class Stack private (
   def locateIO: Location.Deep =
     val sig = PromptIO.signatures.head
     @tailrec def loop(todo: Stack, depth: Int): Location.Deep =
-      val i = signatures.lastIndexOf(sig)
-      if i >= 0 then
-        locations(i).withDepth(depth)
+      val entry = lookup.findBySignature(sig)
+      if entry != null then
+        entry.location.withDepth(depth)
       else
         if isTailless then
-          Stack.sigNotFound(sig)
+          Lookup.sigNotFound(sig)
         else
           loop(tail, depth + 1)
     loop(this, 0)
@@ -105,11 +95,10 @@ private final class Stack private (
     val n = frameCount - 1
     @tailrec def loop(i: Int, j: Int): Location.Shallow =
       val pile = piles(i)
-      val prompt = prompts(i)
       if pile.maxHeight == n then
         Location.Shallow(promptIndex = i, localIndex = j)
       else
-        loop(i + 1, j + prompt.localCount)
+        loop(i + 1, j + pile.prompt.localCount)
     loop(0, 0)
 
 
@@ -122,34 +111,22 @@ private final class Stack private (
     Stack.newSegment(prompt, isNested, kind, this, aside)
 
 
-  def pushBase(loc: Location.Shallow, step: Step, prompt: Prompt): Stack =
-    //// shared {{
-    val newSignatures = signatures ++ prompt.signatures
-    val newLocations = locations ++ Array.fill(prompt.signatures.size)(loc)
-    val newPrompts = prompts :+ prompt
-    val newFeatures = prompt.features.mask
-    //// }}
-    val newPileFork = Pile.base(prompt, loc.promptIndex)
+  def pushBase(prompt: Prompt, step: Step, localIndex: Int): Stack =
+    val features = prompt.features.mask
+    val newPileFork = Pile.base(prompt, promptCount)
     val newPileMain = Pile.pushFirst(prompt, step, height = frameCount, isNested = false, FrameKind.plain)
-    val newFork = fork.pushBase_Aux(newPileFork, newSignatures, newLocations, newPrompts, newFeatures)
-    val newMain = this.pushBase_Aux(newPileMain, newSignatures, newLocations, newPrompts, newFeatures)
+    val newFork = fork.pushBase_Aux(newPileFork, prompt, features, localIndex)
+    val newMain = this.pushBase_Aux(newPileMain, prompt, features, localIndex)
     newMain.fixForkSegment(newFork)
 
 
-  private def pushBase_Aux(
-    newPile: Pile,
-    newSignatures: Array[Signature],
-    newLocations: Array[Location.Shallow],
-    newPrompts: Array[Prompt],
-    newFeatures: Features,
-  ): Stack =
+  private def pushBase_Aux(pile: Pile, prompt: Prompt, features: Features, localIndex: Int): Stack =
+    val newEntry = Entry(prompt, Location.Shallow(promptIndex = promptCount, localIndex = localIndex))
     new Stack(
-      signatures = newSignatures,
-      locations = newLocations,
-      prompts = newPrompts,
-      piles = piles :+ newPile,
+      lookup = lookup.push(newEntry),
+      piles = piles :+ pile,
       frameCount = frameCount + 1,
-      headFeatures = headFeatures | newFeatures,
+      headFeatures = headFeatures | features,
       fork = null.asInstanceOf[Stack],
       tailOrJoin = tailOrJoin,
       aside = aside,
@@ -157,7 +134,6 @@ private final class Stack private (
 
 
   def popLast(prompt: Prompt): Stack =
-    assert(prompt == prompts.last)
     //@#@OPTY share components when possible
     if piles.last.hasBase then
       val newFork = fork.popLast_Aux(prompt)
@@ -168,38 +144,33 @@ private final class Stack private (
 
 
   private def popLast_Aux(prompt: Prompt): Stack =
-    val newPrompts = prompts.init
-    val newSigCount = signatures.size - prompt.signatures.size
+    val newPiles = piles.init
     new Stack(
-      signatures = signatures.take(newSigCount),
-      locations = locations.take(newSigCount),
-      prompts = newPrompts,
-      piles = piles.init,
+      lookup = lookup.pop,
+      piles = newPiles,
       frameCount = frameCount - 1,
-      headFeatures = newPrompts.iterator.map(_.features).reduce(_ | _), //@#@OPTY
+      headFeatures = newPiles.iterator.map(_.prompt.features).reduce(_ | _), //@#@OPTY
       fork = fork,
       tailOrJoin = tailOrJoin,
       aside = aside,
     )
 
 
-  def pushNested(loc: Location.Shallow, step: Step, savedLocal: Local, kind: FrameKind): Stack =
-    val oldPile = piles(loc.promptIndex)
+  def pushNested(promptIndex: Int, step: Step, savedLocal: Local, kind: FrameKind): Stack =
+    val oldPile = piles(promptIndex)
     val newPile = oldPile.pushNested(step, savedLocal, height = frameCount, kind)
-    pushPopNested_Aux(newPile, loc.promptIndex, +1)
+    pushPopNested_Aux(newPile, promptIndex, +1)
 
 
-  def popNested(loc: Location.Shallow): Stack =
-    val oldPile = piles(loc.promptIndex)
+  def popNested(promptIndex: Int): Stack =
+    val oldPile = piles(promptIndex)
     val newPile = oldPile.pop
-    pushPopNested_Aux(newPile, loc.promptIndex, -1)
+    pushPopNested_Aux(newPile, promptIndex, -1)
 
     
   private def pushPopNested_Aux(newPile: Pile, promptIndex: Int, frameCountDiff: Int): Stack =
     new Stack(
-      signatures = signatures,
-      locations = locations,
-      prompts = prompts,
+      lookup = lookup,
       piles = piles.updated(promptIndex, newPile),
       frameCount = frameCount + frameCountDiff,
       headFeatures = headFeatures,
@@ -251,7 +222,7 @@ private final class Stack private (
     if this eq that then
       true
     else
-      prompts.sameElements(that.prompts) && {
+      promptIter.sameElements(that.promptIter) && {
         if isTailless && that.isTailless then
           true
         else
@@ -274,9 +245,7 @@ private final class Stack private (
 
   def copyWithTail(tail: Stack | Null, aside: Step | Null): Stack =
     new Stack(
-      signatures = signatures,
-      locations = locations,
-      prompts = prompts,
+      lookup = lookup,
       piles = piles,
       frameCount = frameCount,
       headFeatures = headFeatures,
@@ -294,8 +263,8 @@ private final class Stack private (
   final def toStrAux: String =
     val a =
       val aa =
-        (for i <- 0.until(prompts.size) yield
-          s"${prompts(i)}:${piles(i)}"
+        (for i <- 0.until(promptCount) yield
+          s"${piles(i).prompt}:${piles(i)}"
         ).reverse.mkString(", ")
       s"[$aa]"
 
@@ -307,13 +276,7 @@ private final class Stack private (
       s"$a |$b| $c"
 
 
-//-------------------------------------------------------------------
-
-
 private object Stack:
-  def sigNotFound(s: Signature): Nothing = panic(s"Signature ${s} not found")
-
-
   val initial: Stack =
     newSegment(
       prompt = PromptIO,
@@ -326,9 +289,7 @@ private object Stack:
 
   private val emptyForkSegment: Stack =
     newForkSegment(
-      signatures = Array(),
-      locations = Array(),
-      prompts = Array(),
+      lookup = Lookup.empty,
       piles = Array(),
       frameCount = 0,
       headFeatures = Features.Empty,
@@ -342,30 +303,23 @@ private object Stack:
     tail: Stack,
     aside: Step | Null,
   ): Stack =
-    val signatures = prompt.signatures
-    val locations = Array.fill(signatures.size)(Location.Shallow(0, 0))
-    val prompts = Array(prompt)
+    val lookup = Lookup.empty.push(Entry(prompt, Location.Shallow(0, 0)))
     val piles = Array(Pile.pushFirst(prompt, StepCases.Pop, 0, isNested, kind))
-    val frameCount = 1
     val headFeatures = prompt.features.mask
     val fork =
       if isNested then
         emptyForkSegment
       else
         newForkSegment(
-          signatures = signatures,
-          locations = locations,
-          prompts = prompts,
+          lookup = lookup,
           piles = piles,
-          frameCount = frameCount,
+          frameCount = 1,
           headFeatures = headFeatures,
         )
     new Stack(
-      signatures = signatures,
-      locations = locations,
-      prompts = prompts,
+      lookup = lookup,
       piles = piles,
-      frameCount = frameCount,
+      frameCount = 1,
       headFeatures = headFeatures,
       tailOrJoin = tail,
       aside = aside,
@@ -374,17 +328,13 @@ private object Stack:
 
 
   private def newForkSegment(
-    signatures: Array[Signature],
-    locations: Array[Location.Shallow],
-    prompts: Array[Prompt],
+    lookup: Lookup,
     piles: Array[Pile],
     frameCount: Int,
     headFeatures: Features,
   ): Stack =
     new Stack(
-      signatures = signatures,
-      locations = locations,
-      prompts = prompts,
+      lookup = lookup,
       piles = piles,
       frameCount = frameCount,
       headFeatures = headFeatures,

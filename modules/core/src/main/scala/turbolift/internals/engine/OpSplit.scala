@@ -4,24 +4,6 @@ import turbolift.interpreter.Features
 
 
 private object OpSplit:
-  // def split2(stack: Stack, store: Store, location: Location.Deep): (Stack, Store, Step, Stack, Store) =
-  //   @tailrec def loop(
-  //     todoStack: Stack,
-  //     todoStore: Store,
-  //     prevStack: Stack | Null,
-  //     prevStore: Store | Null,
-  //     depth: Int,
-  //   ): (Stack, Store, Step, Stack, Store) =
-  //     if depth == 0 then
-  //       val divPile = todoStack.piles(location.promptIndex)
-  //       val divHeight = divPile.maxHeight
-  //       if divHeight == 0 then
-  //         //// Fast path: stack has already been split at this location
-  //         val stepMid = todoStack.aside.nn
-
-
-
-
   def split(stack: Stack, store: Store, location: Location.Deep): (Stack, Store, Step, Stack, Store) =
     @tailrec def loop(
       todoStack: Stack,
@@ -126,8 +108,8 @@ private object OpSplit:
     var newForkFeatures = Features.Empty
 
     while srcPromptIndex < oldPromptCount do
-      val prompt = oldStack.prompts(srcPromptIndex)
       val oldPile = oldStack.piles(srcPromptIndex)
+      val prompt = oldPile.prompt
       val oldLocal = if prompt.isStateless then Local.void else oldStore.geti(srcLocalIndex)
       val (newPile, newLocal) = pileSplitter(oldPile, oldLocal)
       if newPile != null then
@@ -197,14 +179,16 @@ private object OpSplit:
     destLocalIndex: Int,
     destSigIndex: Int,
   ): Unit =
-    destStack.prompts(destPromptIndex) = prompt
     destStack.piles(destPromptIndex) = pile
     val loc = Location.Shallow(promptIndex = destPromptIndex, localIndex = destLocalIndex)
+    val entry = Entry(prompt, loc)
     val sigs = prompt.signatures
+    val lookup = destStack.lookup
+    val n = sigs.size
+    val i0 = lookup.startIndexForSetInPlace(destSigIndex, n)
     var i = 0
-    while i < sigs.size do
-      destStack.signatures(destSigIndex + i) = sigs(i)
-      destStack.locations(destSigIndex + i) = loc
+    while i < n do
+      lookup.setInPlace(i0, i, sigs(i), entry)
       i += 1
 
 

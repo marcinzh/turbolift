@@ -4,10 +4,8 @@ import scala.annotation.tailrec
 
 private object OpPush:
   def pushBase(stack: Stack, store: Store, step: Step, prompt: Prompt, local: Local): (Stack, Store) =
-    val n = stack.nextPromptIndex
-    if n <= Location.MAX_SEGMENT_SIZE then
-      val newLocation = Location.Shallow(promptIndex = n, localIndex = store.nextLocalIndex)
-      val newStack = stack.pushBase(newLocation, step, prompt)
+    if stack.promptCount <= Location.MAX_SEGMENT_SIZE then
+      val newStack = stack.pushBase(prompt, step, localIndex = store.nextLocalIndex)
       val newStore = if prompt.isStateful then store.push(local) else store
       (newStack, newStore)
     else
@@ -20,10 +18,10 @@ private object OpPush:
       if prompt.isStateful then
         val oldLocal = store.getShallow(loc)
         val newStore = store.setShallow(loc, local, prompt.isIo)
-        val newStack = stack.pushNested(loc, step, oldLocal, kind)
+        val newStack = stack.pushNested(promptIndex = loc.promptIndex, step, oldLocal, kind)
         (newStack, newStore)
       else
-        val newStack = stack.pushNested(loc, step, Local.void, kind)
+        val newStack = stack.pushNested(promptIndex = loc.promptIndex, step, Local.void, kind)
         (newStack, store)
     else
       newTopSegment(stack, store, step, prompt, local, isNested = true, kind)
@@ -42,18 +40,19 @@ private object OpPush:
   def pop(stack: Stack, store: Store): (Stack, Store, Step, Prompt, Frame, Local) =
     if stack.frameCount == 1 then
       //// Fast path: this is the last frame in top segment, so pop entire segment
-      val topFrame = stack.piles.head.topFrame
-      val topPrompt = stack.prompts.head
+      val topPile = stack.piles.head
+      val topPrompt = topPile.prompt
       val lastLocal = if topPrompt.isStateless then Local.void else store.head
-      (stack.tail, store.tail, stack.aside.nn, topPrompt, topFrame, lastLocal)
+      (stack.tail, store.tail, stack.aside.nn, topPrompt, topPile.topFrame, lastLocal)
     else
       //// Slow path: shrink top segment by 1 pile
       val location = stack.locateHighestPile
-      val topFrame = stack.piles(location.promptIndex).topFrame
-      val topPrompt = stack.prompts(location.promptIndex)
+      val topPile = stack.piles(location.promptIndex)
+      val topFrame = topPile.topFrame
+      val topPrompt = topPile.prompt
       val newStack =
         if topFrame.hasNext then
-          stack.popNested(location)
+          stack.popNested(location.promptIndex)
         else
           stack.popLast(topPrompt)
       //// restore saved state, but return the current one

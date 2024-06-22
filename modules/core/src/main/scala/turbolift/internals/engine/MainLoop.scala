@@ -576,16 +576,14 @@ private final class MainLoop:
 
   private def findPromptBySignature(stack: Stack, sig: Signature): Prompt =
     @tailrec def loop(stack: Stack, depth: Int = 0): Prompt =
-      val i = stack.signatures.lastIndexOf(sig)
-      if i >= 0 then
-        val location = stack.locations(i)
-        val prompt = stack.prompts(location.promptIndex)
-        cachedPrompt = prompt
-        cachedLocation = location.withDepth(depth)
-        prompt
+      val entry = stack.lookup.findBySignature(sig)
+      if entry != null then
+        cachedPrompt = entry.prompt
+        cachedLocation = entry.location.withDepth(depth)
+        entry.prompt
       else
         if stack.isTailless then
-          Stack.sigNotFound(sig)
+          Lookup.sigNotFound(sig)
         else
           loop(stack.tail, depth + 1)
     loop(stack, 0)

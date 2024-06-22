@@ -56,10 +56,10 @@ private object OpCascaded:
 
 
   private def restartSegment(seg: Stack, comp: AnyComp): AnyComp =
-    val n = seg.prompts.size
+    val n = seg.promptCount
     @tailrec def loop(i: Int, accum: AnyComp): AnyComp =
       if i < n then
-        val p = seg.prompts(i)
+        val p = seg.piles(i).prompt
         val i2 = i + 1
         if p.hasRestart then
           loop(i2, accum.flatMap(p.onRestart))
@@ -71,10 +71,10 @@ private object OpCascaded:
 
 
   private def zipSegment(seg: Stack, ftorLeft: Any, ftorRight: Any, fun: (Any, Any) => Any): Any =
-    val n = seg.prompts.size
+    val n = seg.promptCount
     def loop(i: Int, aa: Any, bb: Any, f: (Any, Any) => Any): Any =
       if i < n then
-        val p = seg.prompts(i)
+        val p = seg.piles(i).prompt
         val i2 = i + 1
         if p.hasZip then
           p.onZip(aa, bb, loop(i2, _, _, f))
@@ -91,10 +91,10 @@ private object OpCascaded:
     else
       val storeLeft = store.blankClone()
       val storeRight = store.blankClone()
-      val n = stack.prompts.size
+      val n = stack.promptCount
       @tailrec def loop(i: Int, j: Int): Unit =
         if i < n then
-          val p = stack.prompts(i)
+          val p = stack.piles(i).prompt
           if p.isStateful then
             val s0 = store.geti(j)
             if p.hasForkJoin then
@@ -116,10 +116,10 @@ private object OpCascaded:
       store
     else
       val storeOut = store.blankClone()
-      val n = stack.prompts.size
+      val n = stack.promptCount
       @tailrec def loop(i: Int, j: Int): Unit =
         if i < n then
-          val p = stack.prompts(i)
+          val p = stack.piles(i).prompt
           if p.isStateful then
             val s0 = store.geti(j)
             if p.hasForkJoin then
