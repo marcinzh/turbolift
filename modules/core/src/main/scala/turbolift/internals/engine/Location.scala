@@ -10,25 +10,22 @@ private object Location:
 
 
   object Shallow:
-    def apply(promptIndex: Int, localIndex: Int, isStateful: Boolean): Shallow =
+    def apply(promptIndex: Int, localIndex: Int): Shallow =
       def isSmall(n: Int) = 0 <= n && n <= 0xF   
       assert(isSmall(promptIndex))
       assert(isSmall(localIndex))
-      val h = if isStateful then 1 else 0
-      (localIndex + (promptIndex << 4) + (h << 8)).toShort
+      (localIndex + (promptIndex << 4)).toShort
 
     given ClassTag[Shallow] = shallowCT
 
     extension (thiz: Shallow)
       def localIndex: Int = A(thiz)
       def promptIndex: Int = B(thiz)
-      def isStateful: Boolean = C(thiz)
-      def isStateless: Boolean = !isStateful
       def asDeep: Deep = thiz
-      def withDepth(n: Int): Deep = thiz + (n << 9)
+      def withDepth(n: Int): Deep = thiz + (n << 8)
 
       def toStr: String =
-        s"loc{pi=$promptIndex si=$localIndex s=${if isStateful then 1 else 0}}"
+        s"loc{pi=$promptIndex si=$localIndex}"
 
 
   object Deep:
@@ -39,22 +36,19 @@ private object Location:
     extension (thiz: Deep)
       def localIndex: Int = A(thiz)
       def promptIndex: Int = B(thiz)
-      def isStateful: Boolean = C(thiz)
-      def isStateless: Boolean = !isStateful
-      def segmentDepth: Int = thiz >>> 9
+      def segmentDepth: Int = thiz >>> 8
       def isEmpty: Boolean = thiz < 0
       def nonEmpty: Boolean = !thiz.isEmpty
-      def asShallow: Shallow = ABC(thiz).toShort
-      def head: Deep = ABC(thiz)
+      def asShallow: Shallow = AB(thiz).toShort
+      def head: Deep = AB(thiz)
 
       def toStr: String =
-        val s = if isEmpty then "empty" else s"pi=$promptIndex si=$localIndex s=${if isStateful then 1 else 0} d=${segmentDepth}"
+        val s = if isEmpty then "empty" else s"pi=$promptIndex si=$localIndex d=${segmentDepth}"
         s"loc{$s}"
 
-  private def A(n: Int): Int     = n & 0xF
-  private def B(n: Int): Int     = (n >>> 4) & 0xF
-  private def C(n: Int): Boolean = (n & 0x100) != 0
-  private def ABC(n: Int): Int   = n & 0x1FF
+  private def A(n: Int): Int  = n & 0xF
+  private def B(n: Int): Int  = (n >>> 4) & 0xF
+  private def AB(n: Int): Int = n & 0xFF
 
   private def shallowCT = summon[ClassTag[Short]]
   private def deepCT = summon[ClassTag[Int]]

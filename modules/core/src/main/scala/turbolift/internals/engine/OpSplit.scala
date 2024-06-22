@@ -199,11 +199,7 @@ private object OpSplit:
   ): Unit =
     destStack.prompts(destPromptIndex) = prompt
     destStack.piles(destPromptIndex) = pile
-    val loc = Location.Shallow(
-      promptIndex = destPromptIndex,
-      localIndex = destLocalIndex,
-      isStateful = prompt.isStateful,
-    )
+    val loc = Location.Shallow(promptIndex = destPromptIndex, localIndex = destLocalIndex)
     val sigs = prompt.signatures
     var i = 0
     while i < sigs.size do

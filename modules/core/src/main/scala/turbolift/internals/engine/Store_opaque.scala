@@ -42,13 +42,6 @@ private trait Store_opaque:
       loop(thiz, l.segmentDepth)
 
 
-    final def getDeepOrElseVoid(l: Location.Deep): Local =
-      if l.isStateful then
-        getDeep(l)
-      else
-        Local.void
-
-
     final def setDeepIfNotVoid(l: Location.Deep, s: Local): Store =
       if s.isVoid then
         thiz
@@ -68,22 +61,6 @@ private trait Store_opaque:
         that.setEnvInPlace(s)
       that
 
-
-    final def getOrElseVoidShallow(l: Location.Shallow): Local =
-      if l.isStateless then
-        Local.void
-      else
-        geti(l.localIndex)
-
-
-    final def setIfNotVoidShallow(l: Location.Shallow, s: Local, isIo: Boolean): Store =
-      if s.isVoid then
-        thiz
-      else
-        val that = seti(l.localIndex, s)
-        if isIo then
-          that.setEnvInPlace(s)
-        that
 
     final def getEnv: Env = thiz.unwrap(ENV_INDEX).asInstanceOf[Env]
     final def getEnvAsLocal: Local = thiz.unwrap(ENV_INDEX).asLocal

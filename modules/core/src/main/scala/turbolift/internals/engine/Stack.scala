@@ -107,7 +107,7 @@ private final class Stack private (
       val pile = piles(i)
       val prompt = prompts(i)
       if pile.maxHeight == n then
-        Location.Shallow(promptIndex = i, localIndex = j, isStateful = prompt.isStateful)
+        Location.Shallow(promptIndex = i, localIndex = j)
       else
         loop(i + 1, j + prompt.localCount)
     loop(0, 0)
@@ -343,7 +343,7 @@ private object Stack:
     aside: Step | Null,
   ): Stack =
     val signatures = prompt.signatures
-    val locations = Array.fill(signatures.size)(Location.Shallow(0, 0, prompt.isStateful))
+    val locations = Array.fill(signatures.size)(Location.Shallow(0, 0))
     val prompts = Array(prompt)
     val piles = Array(Pile.pushFirst(StepCases.Pop, 0, isNested, kind))
     val frameCount = 1
