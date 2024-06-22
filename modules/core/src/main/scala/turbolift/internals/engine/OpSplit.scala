@@ -179,7 +179,7 @@ private object OpSplit:
         if prompt.isIo then
           newStore.setEnvInPlace(bundle.local.asEnv)
       if bundle.pile.hasBase then
-        val forkPile = Pile.base(destForkPromptIndex)
+        val forkPile = Pile.base(prompt, destForkPromptIndex)
         addPromptInPlace(prompt, forkPile, newStack.fork, destForkPromptIndex, destForkLocalIndex, destForkSigIndex)
         destForkPromptIndex += 1
         destForkSigIndex += prompt.signatures.size

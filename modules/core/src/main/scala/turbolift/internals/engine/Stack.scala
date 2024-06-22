@@ -129,8 +129,8 @@ private final class Stack private (
     val newPrompts = prompts :+ prompt
     val newFeatures = prompt.features.mask
     //// }}
-    val newPileFork = Pile.base(loc.promptIndex)
-    val newPileMain = Pile.pushFirst(step, height = frameCount, isNested = false, FrameKind.plain)
+    val newPileFork = Pile.base(prompt, loc.promptIndex)
+    val newPileMain = Pile.pushFirst(prompt, step, height = frameCount, isNested = false, FrameKind.plain)
     val newFork = fork.pushBase_Aux(newPileFork, newSignatures, newLocations, newPrompts, newFeatures)
     val newMain = this.pushBase_Aux(newPileMain, newSignatures, newLocations, newPrompts, newFeatures)
     newMain.fixForkSegment(newFork)
@@ -345,7 +345,7 @@ private object Stack:
     val signatures = prompt.signatures
     val locations = Array.fill(signatures.size)(Location.Shallow(0, 0))
     val prompts = Array(prompt)
-    val piles = Array(Pile.pushFirst(StepCases.Pop, 0, isNested, kind))
+    val piles = Array(Pile.pushFirst(prompt, StepCases.Pop, 0, isNested, kind))
     val frameCount = 1
     val headFeatures = prompt.features.mask
     val fork =

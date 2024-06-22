@@ -1,7 +1,8 @@
 package turbolift.internals.engine
 
 
-private[internals] final class Pile private (
+private final class Pile private (
+  val prompt: Prompt,
   val topFrame: Frame,
   val minHeight: Int,
   val maxHeight: Int,
@@ -13,11 +14,13 @@ private[internals] final class Pile private (
 
 
   private def copy(
+    prompt: Prompt = prompt,
     topFrame: Frame = topFrame,
     minHeight: Int = minHeight,
     maxHeight: Int = maxHeight,
     hasBase: Boolean = hasBase,
   ): Pile = new Pile(
+    prompt = prompt,
     topFrame = topFrame,
     minHeight = minHeight,
     maxHeight = maxHeight,
@@ -60,7 +63,7 @@ private[internals] final class Pile private (
       null
     else if maxHeight == divHeight then
       //// exactly AT div ==> result := single frame
-      new Pile(
+      copy(
         topFrame = topFrame.bridge,
         minHeight = 0,
         maxHeight = 0,
@@ -69,7 +72,7 @@ private[internals] final class Pile private (
     else
       //// div is in the middle ==> drop suffix
       val (newFrame, newHeight, newHasBase) = topFrame.splitHi(initialHeight = maxHeight, divHeight = divHeight)
-      new Pile(
+      copy(
         topFrame = newFrame,
         minHeight = newHeight - divHeight,
         maxHeight = maxHeight - divHeight,
@@ -101,26 +104,20 @@ private[internals] final class Pile private (
 
 
 private object Pile:
-  def pushFirst(step: Step, height: Int, isNested: Boolean, kind: FrameKind): Pile =
+  def pushFirst(prompt: Prompt, step: Step, height: Int, isNested: Boolean, kind: FrameKind): Pile =
     new Pile(
+      prompt = prompt,
       topFrame = Frame.pushFirst(step, isNested, kind),
       minHeight = height,
       maxHeight = height,
       hasBase = !isNested,
     )
 
+  def initial(prompt: Prompt): Pile = base(prompt, 1)
 
-  def base(i: Int): Pile = 
-    if i < STOCK_SIZE then
-      stock(i)
-    else
-      makeBase(i)
-
-  inline private val STOCK_SIZE = 20
-  private val stock: Array[Pile] = Array.tabulate(STOCK_SIZE)(makeBase)
-
-  private def makeBase(i: Int): Pile = 
+  def base(prompt: Prompt, i: Int): Pile = 
     new Pile(
+      prompt = prompt,
       topFrame = Frame.base,
       minHeight = i,
       maxHeight = i,
