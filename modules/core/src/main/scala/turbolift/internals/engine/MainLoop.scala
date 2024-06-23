@@ -93,7 +93,7 @@ private final class MainLoop:
           val instr = step.asInstanceOf[SC.More]
           val step2 = instr.next
           val comp2 = instr.fun(payload).asInstanceOf[AnyComp]
-          loopComp(comp2, instr.next, stack, store)
+          loopComp(comp2, step2, stack, store)
 
         case Tags.Step_MorePure =>
           val instr = step.asInstanceOf[SC.More]
@@ -206,14 +206,9 @@ private final class MainLoop:
               loopCancel(stack, store)
           else
             //// Fallback to sequential
-            val comp2 = CC.ZipSeq(instr.lhs, () => instr.rhs, instr.fun)
+            val comp2 = instr.lhs.zipWith(instr.rhs)(instr.fun)
+              // CC.ZipSeq(instr.lhs, () => instr.rhs, instr.fun)
             loopComp(comp2, step, stack, store)
-
-        case Tags.ZipSeq =>
-          val instr = payload.asInstanceOf[CC.ZipSeq[Any, Any, Any, Any]]
-          val step2 = SC.ZipSeqLeft(instr.rhsFun, instr.fun, step)
-          val comp2 = instr.lhs
-          loopComp(comp2, step2, stack, store)
 
         case Tags.OrPar =>
           val instr = payload.asInstanceOf[CC.OrPar[Any, Any]]
@@ -249,18 +244,6 @@ private final class MainLoop:
           else
             //// Must have been cancelled meanwhile
             loopCancel(stack, store)
-
-        case Tags.Step_ZipSeqLeft =>
-          val instr = step.asInstanceOf[SC.ZipSeqLeft]
-          val comp2 = instr.todoRight()
-          val step2 = SC.ZipSeqRight(payload, instr.fun, instr.next)
-          loopComp(comp2, step2, stack, store)
-
-        case Tags.Step_ZipSeqRight =>
-          val instr = step.asInstanceOf[SC.ZipSeqRight]
-          val step2 = instr.next
-          val payload2 = instr.fun(instr.doneLeft, payload)
-          loopStep(payload2, step2, stack, store)
 
         case Tags.Handle =>
           clearCache()

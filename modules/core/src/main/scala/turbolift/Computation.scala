@@ -3,8 +3,9 @@ import turbolift.effects.{ChoiceSignature, IO, Each}
 import turbolift.internals.auxx.CanPartiallyHandle
 import turbolift.internals.auxx.IdConst._
 import turbolift.internals.effect.AnyChoice
-import turbolift.internals.primitives.Primitives
 import turbolift.internals.executor.Executor
+import turbolift.internals.engine.Env
+import turbolift.internals.primitives.{Tags, ComputationCases => CC}
 import turbolift.io.{Outcome, Fiber, Warp}
 import turbolift.mode.Mode
 
@@ -31,8 +32,8 @@ def !! = Computation
  */
 
 sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift] val tag: Byte):
-  final def map[B](f: A => B): B !! U = Primitives.map(this, f)
-  final def flatMap[B, U2 <: U](f: A => B !! U2): B !! U2 = Primitives.flatMap(this, f)
+  final def map[B](f: A => B): B !! U = new CC.Map(Tags.MapPure, this.untyped, f.asInstanceOf[Any => Any])
+  final def flatMap[B, U2 <: U](f: A => B !! U2): B !! U2 = new CC.Map(Tags.MapFlat, this.untyped, f.asInstanceOf[Any => Any])
   final def flatten[B, U2 <: U](implicit ev: A <:< (B !! U2)): B !! U2 = flatMap(ev)
   @deprecated final def flatTap[B, U2 <: U](f: A => B !! U2): A !! U2 = tapEff(f)
   final def tapEff[B, U2 <: U](f: A => B !! U2): A !! U2 = flatMap(a => f(a).as(a))
@@ -46,13 +47,13 @@ sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift]
    * being inherently sequential (e.g. `State.handlers.local` or `Error.handlers.first`).
    * In such case, `zipPar` behaves like `zip`.
    */
-  final def zipPar[B, U2 <: U](that: B !! U2): (A, B) !! U2 = Primitives.zipPar(this, that)
+  final def zipPar[B, U2 <: U](that: B !! U2): (A, B) !! U2 = zipWithPar(that)(Computation.pairCtorFun[A, B])
 
   /** Like [[zip]], but followed by untupled `map`. */
   final def zipWith[B, C, U2 <: U](that: => B !! U2)(f: (A, B) => C): C !! U2 = flatMap(a => that.map(f(a, _)))
 
   /** Like [[zipPar]], but followed by untupled `map`. */
-  final def zipWithPar[B, C, U2 <: U](that: B !! U2)(f: (A, B) => C): C !! U2 = Primitives.zipWithPar(this, that, f)
+  final def zipWithPar[B, C, U2 <: U](that: B !! U2)(f: (A, B) => C): C !! U2 = new CC.ZipPar(this, that, f)
   
   /** Discards the result, and replaces it by given pure value. */
   final def as[B](value: B): B !! U = map(_ => value)
@@ -96,14 +97,14 @@ sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift]
    * Runs both computations parallelly, each in fresh fiber.
    * Once one of them finishes, the other is cancelled.
    */
-  final def |![A2 >: A, U2 <: U & IO](that: A2 !! U2): A2 !! U2 = Primitives.orPar(this, that)
+  final def |![A2 >: A, U2 <: U & IO](that: A2 !! U2): A2 !! U2 = new CC.OrPar(this, that)
 
   /** Sequential "or-else" operator.
    *
    * Runs the first computations in fresh fiber.
    * If it ends up cancelled, the second computation is run.
    */
-  final def ||![A2 >: A, U2 <: U & IO](that: => A2 !! U2): A2 !! U2 = Primitives.orSeq(this, () => that)
+  final def ||![A2 >: A, U2 <: U & IO](that: => A2 !! U2): A2 !! U2 = new CC.OrSeq(this, () => that)
 
   /** Applies `plus` operation from the innermost `Choice` effect in the current scope.
    *
@@ -156,6 +157,9 @@ object Computation:
   private[turbolift] abstract class Unsealed[A, U](_tag: Byte) extends Computation[A, U](_tag)
   private[turbolift] type Untyped = Computation[Any, Any]
 
+  private def pairCtorFun[A, B]: (A, B) => (A, B) = pairCtorVal.asInstanceOf[(A, B) => (A, B)]
+  private val pairCtorVal: (Any, Any) => Any = (_, _) 
+
   /** Same as `!!.pure(())`. */
   val unit: Unit !! Any = pure(())
 
@@ -168,9 +172,9 @@ object Computation:
   /** Same as `!!.pure(Vector())`. */
   val vector: Vector[Nothing] !! Any = pure(Vector())
 
-  def pure[A](a: A): A !! Any = Primitives.pure(a)
+  def pure[A](a: A): A !! Any = new CC.Pure(a)
 
-  def impure[A](a: => A): A !! Any = Primitives.impure(() => a)
+  def impure[A](a: => A): A !! Any = new CC.Impure(() => a)
 
   def impureEff[A, U](comp: => A !! U): A !! U = unit.flatMap(_ => comp)
   @deprecated def defer[A, U](comp: => A !! U): A !! U = impureEff(comp)
@@ -255,9 +259,12 @@ object Computation:
   def iterateUntil[A, U](init: A, cond: A => Boolean)(body: A => A !! U): A !! U =
     iterateWhile(init, a => !cond(a))(body)
 
-  def isParallel: Boolean !! Any = Primitives.envAsk(_.isParallelismRequested)
+  def envAsk[A](f: Env => A): A !! Any = new CC.EnvAsk(f)
+  def envMod[A, U](f: Env => Env, body: A !! U): A !! U = new CC.EnvMod(f, body)
+
+  def isParallel: Boolean !! Any = envAsk(_.isParallelismRequested)
   def isSequential: Boolean !! Any = isParallel.map(!_)
-  def parallellyIf[A, U](cond: Boolean)(body: A !! U): A !! U = Primitives.envMod(_.par(cond), body)
+  def parallellyIf[A, U](cond: Boolean)(body: A !! U): A !! U = envMod(_.par(cond), body)
   def sequentiallyIf[A, U](cond: Boolean)(body: A !! U): A !! U = parallellyIf(!cond)(body)
   def parallelly[A, U](body: A !! U): A !! U = parallellyIf(true)(body)
   def sequentially[A, U](body: A !! U): A !! U = parallellyIf(false)(body)

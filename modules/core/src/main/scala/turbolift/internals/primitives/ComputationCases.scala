@@ -14,7 +14,6 @@ private[turbolift] object ComputationCases:
   final class Map[A, U](_tag: Byte, val comp: Untyped, val fun: Any => Any) extends Unsealed[A, U](_tag)
   final class Perform[A, U, Z <: Signature](val sig: Signature, val op: Z => Any) extends Unsealed[A, U](Tags.Perform)
   final class ZipPar[A, B, C, U](val lhs: A !! U, val rhs: B !! U, val fun: (A, B) => C) extends Unsealed[C, U](Tags.ZipPar)
-  final class ZipSeq[A, B, C, U](val lhs: A !! U, val rhsFun: () => B !! U, val fun: (A, B) => C) extends Unsealed[C, U](Tags.ZipSeq)
   final class OrPar[A, U](val lhs: A !! U, val rhs: A !! U) extends Unsealed[A, U](Tags.OrPar)
   final class OrSeq[A, U](val lhs: A !! U, val rhsFun: () => A !! U) extends Unsealed[A, U](Tags.OrSeq)
   final class Impure[A, U](val thunk: () => A) extends Unsealed[A, U](Tags.Impure)

@@ -4,7 +4,7 @@ import turbolift.interpreter.Interpreter
 import turbolift.internals.executor.Resumer
 
 
-private[internals] final class Env(
+private[turbolift] final class Env(
   val resumer: Resumer,
   val tickLow: Short,
   val tickHigh: Short,
