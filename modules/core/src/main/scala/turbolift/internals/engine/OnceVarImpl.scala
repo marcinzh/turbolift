@@ -8,24 +8,18 @@ private[turbolift] final class OnceVarImpl extends Waitee with OnceVar.Unsealed:
 
 
   def tryGetAwaitedBy(waiter: FiberImpl): Int =
-    waiter.synchronized {
-      if waiter.isCancellationUnlatched then
-        waiter.setCancellationLatch()
-        Bits.WaiterAlreadyCancelled
+    atomicallyIfNotCancelled(waiter) {
+      if isPending then
+        subscribeWaiterUnsync(waiter)
+        Bits.WaiterSubscribed
       else
-        synchronized {
-          if isPending then
-            subscribeWaiterUnsync(waiter)
-            Bits.WaiterSubscribed
-          else
-            Bits.WaiteeAlreadyCompleted
-        }
+        Bits.WaiteeAlreadyCompleted
     }
 
 
   override def unsafeTryPut(value: Any): Boolean =
     val willFinalize =
-      synchronized {
+      atomically {
         if isPending then
           varyingBits = (varyingBits | Bits.Completion_Success).toByte
           theContent = value

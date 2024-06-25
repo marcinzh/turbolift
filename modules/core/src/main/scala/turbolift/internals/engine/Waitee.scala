@@ -1,10 +1,11 @@
 package turbolift.internals.engine
+import java.util.concurrent.atomic.AtomicBoolean
 import scala.annotation.tailrec
 
 
 /** Either Fiber, Warp, Queque or OnceVar */
 
-private abstract class Waitee:
+private abstract class Waitee extends AtomicBoolean:
   protected var firstWaiter: FiberImpl | Null = null
   protected var varyingBits: Byte = 0
   /*protected*/ var theOwnership: Byte = 0 //// meaningful only in FiberImpl, but moved here for convenience
@@ -15,7 +16,57 @@ private abstract class Waitee:
   final def isPendingAndNotCancelled: Boolean = Bits.isPendingAndNotCancelled(varyingBits)
 
 
-  //// Called only from synchonized blocks 
+  //-------------------------------------------------------------------
+  // atomically
+  //-------------------------------------------------------------------
+
+
+  inline final protected def spinAcquire(): Boolean = compareAndSet(false, true)
+  inline final protected def spinRelease(): Unit = set(false)
+
+
+  inline final def atomically[A](inline body: => A): A =
+    while !spinAcquire() do ()
+    val a = body
+    spinRelease()
+    a
+
+
+  inline final def atomicallyIfNotCancelled(fiber: FiberImpl)(inline body: => Int): Int =
+    if spinAcquireBoth(fiber) then
+      val a = body
+      spinReleaseBoth(fiber)
+      a
+    else
+      Bits.WaiterAlreadyCancelled
+
+
+  final private def spinAcquireBoth(fiber: FiberImpl): Boolean =
+    def loop(): Boolean =
+      if fiber.spinAcquire() then
+        if spinAcquire() then
+          true
+        else
+          fiber.spinRelease()
+          loop()
+      else
+        fiber.setCancellationLatch()
+        fiber.spinRelease()
+        false
+    loop()
+
+
+  final private def spinReleaseBoth(fiber: FiberImpl): Unit =
+    fiber.spinRelease()
+    spinRelease()
+
+
+  //-------------------------------------------------------------------
+  // Waiter & Waitee
+  //-------------------------------------------------------------------
+
+
+  //// Called only from `atomically` blocks
   final def subscribeWaiterUnsync(waiter: FiberImpl): Unit =
     val x = firstWaiter
     if x == null then
@@ -28,7 +79,7 @@ private abstract class Waitee:
 
   final def unsubscribeWaiter(waiter: FiberImpl): Unit =
     val willResume =
-      synchronized {
+      atomically {
         if isPending then
           if waiter.isWaiterLinkedWithSelf then
             firstWaiter = null

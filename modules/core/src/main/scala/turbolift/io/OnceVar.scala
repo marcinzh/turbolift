@@ -12,6 +12,7 @@ sealed trait OnceVarPut[A]:
 
 
 sealed trait OnceVarGet[A]:
+  @annotation.targetName("get_public")
   final def get: A !! IO = CC.AwaitOnceVar(this)
   final def tryGet: Option[A] !! IO = !!.impure(unsafeTryGet)
   def unsafeTryGet: Option[A]

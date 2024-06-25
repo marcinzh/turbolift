@@ -45,7 +45,7 @@ private[turbolift] final class FiberImpl private (
       else
         CancelPayload
 
-    synchronized {
+    atomically {
       if isCancellationUnlatched then
         //// If cancellation was signalled before reaching completion, it overrides the completion.
         varyingBits = (varyingBits | Bits.Completion_Cancelled | Bits.Cancellation_Latch).toByte
@@ -106,7 +106,7 @@ private[turbolift] final class FiberImpl private (
 
 
   private[engine] def tryGetBlocked(): Boolean =
-    synchronized {
+    atomically {
       if isCancellationUnlatched then
         setCancellationLatch()
         false
@@ -117,18 +117,12 @@ private[turbolift] final class FiberImpl private (
 
 
   private[engine] def tryGetAwaitedBy(waiter: FiberImpl): Int =
-    waiter.synchronized {
-      if waiter.isCancellationUnlatched then
-        waiter.setCancellationLatch()
-        Bits.WaiterAlreadyCancelled
+    atomicallyIfNotCancelled(waiter) {
+      if isPending then
+        subscribeWaiterUnsync(waiter)
+        Bits.WaiterSubscribed
       else
-        synchronized {
-          if isPending then
-            subscribeWaiterUnsync(waiter)
-            Bits.WaiterSubscribed
-          else
-            Bits.WaiteeAlreadyCompleted
-         }
+        Bits.WaiteeAlreadyCompleted
     }
 
 
@@ -145,7 +139,7 @@ private[turbolift] final class FiberImpl private (
 
 
   private[engine] def cancellationCheck(): Boolean =
-    synchronized {
+    atomically {
       if isCancellationUnlatched then
         setCancellationLatch()
         true
@@ -155,7 +149,7 @@ private[turbolift] final class FiberImpl private (
 
 
   private[engine] def cancelBySelf(): Unit =
-    synchronized {
+    atomically {
       varyingBits = (varyingBits | Bits.Cancellation_Signal | Bits.Cancellation_Latch).toByte
     }
 
@@ -173,26 +167,20 @@ private[turbolift] final class FiberImpl private (
     var willDescend = false
 
     val result =
-      canceller.synchronized {
-        if canceller.isCancellationUnlatched then
-          canceller.setCancellationLatch()
-          Bits.WaiterAlreadyCancelled
+      atomicallyIfNotCancelled(canceller) {
+        if isPending then
+          if !isCancelled then
+            varyingBits = (varyingBits | Bits.Cancellation_Signal).toByte
+            willDescend = true
+            savedLeftRacer = prevWaiter
+            savedRightRacer = nextWaiter
+            savedOwnership = theOwnership
+            savedVaryingBits = varyingBits
+            savedPayload = suspendedPayload
+          subscribeWaiterUnsync(canceller)
+          Bits.WaiterSubscribed
         else
-          synchronized {
-            if isPending then
-              if !isCancelled then
-                varyingBits = (varyingBits | Bits.Cancellation_Signal).toByte
-                willDescend = true
-                savedLeftRacer = prevWaiter
-                savedRightRacer = nextWaiter
-                savedOwnership = theOwnership
-                savedVaryingBits = varyingBits
-                savedPayload = suspendedPayload
-              subscribeWaiterUnsync(canceller)
-              Bits.WaiterSubscribed
-            else
-              Bits.WaiteeAlreadyCompleted
-           }
+          Bits.WaiteeAlreadyCompleted
       }
 
     if willDescend then
@@ -215,7 +203,7 @@ private[turbolift] final class FiberImpl private (
     var savedPayload: Any = null
 
     val willDescend =
-      synchronized {
+      atomically {
         if isPendingAndNotCancelled then
           varyingBits = (varyingBits | Bits.Cancellation_Signal).toByte
           savedLeftRacer = prevWaiter
@@ -243,7 +231,7 @@ private[turbolift] final class FiberImpl private (
 
 
   private def tryGetRightRacer: FiberImpl | Null =
-    synchronized {
+    atomically {
       if isPending && (getArbiterBits == Bits.Arbiter_Right) then
         getRightRacer
       else
@@ -295,7 +283,7 @@ private[turbolift] final class FiberImpl private (
     tryStartRaceExt(leftRacer, null, Bits.Racer_Left)
 
   private def tryStartRaceExt(leftRacer: FiberImpl, rightRacer: FiberImpl | Null, awaitingBits: Int): Boolean =
-    synchronized {
+    atomically {
       if isCancellationUnlatched then
         setCancellationLatch()
         false
@@ -309,7 +297,7 @@ private[turbolift] final class FiberImpl private (
   //// Called by the RACER on its ARBITER
   private def tryWinRace(racerBit: Int): FiberImpl | Null =
     //// If win, return the loser
-    synchronized {
+    atomically {
       val newBits = varyingBits & ~racerBit
       varyingBits = newBits.toByte
       if (newBits & Bits.Racer_Mask) != 0 then
@@ -538,7 +526,7 @@ private[turbolift] final class FiberImpl private (
     var savedVaryingBits: Byte = 0
     var savedOwnership: Byte = 0
     var savedPayload: Any = null
-    synchronized {
+    atomically {
       savedVaryingBits = varyingBits
       savedOwnership = theOwnership
       savedPayload = suspendedPayload
@@ -569,7 +557,7 @@ private[turbolift] final class FiberImpl private (
   override def unsafePoll(): Option[Zipper.Untyped] =
     var savedBits: Int = 0
     var savedPayload: Any = null
-    synchronized {
+    atomically {
       savedBits = varyingBits
       savedPayload = suspendedPayload
     }

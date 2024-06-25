@@ -30,7 +30,7 @@ private[turbolift] final class MultiThreadedExecutor(maxBusyThreads: Int) extend
 
   override def resume(fiber: FiberImpl): Unit =
     val doAwaken =
-      synchronized {
+      atomically {
         if idleCounter > 0 then
           idleCounter = idleCounter - 1
           true
@@ -53,7 +53,7 @@ private[turbolift] final class MultiThreadedExecutor(maxBusyThreads: Int) extend
         val halt = todo.nn.run()
         todo = halt match
           case Halt.Yield(yielder) =>
-            enclosing.synchronized {
+            enclosing.atomically {
               if isEmpty then
                 yielder
               else
@@ -62,7 +62,7 @@ private[turbolift] final class MultiThreadedExecutor(maxBusyThreads: Int) extend
             }
 
           case Halt.Retire(reentry) =>
-            enclosing.synchronized {
+            enclosing.atomically {
               if isEmpty then
                 if !reentry then
                   idleCounter = idleCounter + 1

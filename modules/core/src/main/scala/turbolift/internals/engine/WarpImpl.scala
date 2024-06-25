@@ -36,7 +36,7 @@ private[turbolift] final class WarpImpl private[engine] (
 
 
   private def tryAddChild(child: ChildLink, oneCount: Long): Boolean =
-    synchronized {
+    atomically {
       //// If cancelled, do not modify child list, bcoz `deepCancelLoop` may be concurrently running.
       if isPendingAndNotCancelled then
         val x = firstChild
@@ -56,7 +56,7 @@ private[turbolift] final class WarpImpl private[engine] (
   //// Should be @tailrec, but inlining `doFinalize` causes problems
   private def removeChild(child: ChildLink, oneCount: Long): Unit =
     val willFinalize =
-      synchronized {
+      atomically {
         //// If cancelled, do not modify child list, bcoz `deepCancelLoop` may be concurrently running.
         if isPendingAndNotCancelled then
           if child.isChildLinkedWithSelf then
@@ -88,24 +88,18 @@ private[turbolift] final class WarpImpl private[engine] (
     var willFinalize = false
 
     val result =
-      waiter.synchronized {
-        if waiter.isCancellationUnlatched then
-          waiter.setCancellationLatch()
-          Bits.WaiterAlreadyCancelled
+      atomicallyIfNotCancelled(waiter) {
+        if isPending then
+          if isChildless then
+            varyingBits = (varyingBits | Bits.Warp_Completed).toByte
+            willFinalize = true
+            Bits.WaiteeAlreadyCompleted
+          else
+            varyingBits = (varyingBits | Bits.Warp_Shutdown).toByte
+            subscribeWaiterUnsync(waiter)
+            Bits.WaiterSubscribed
         else
-          synchronized {
-            if isPending then
-              if isChildless then
-                varyingBits = (varyingBits | Bits.Warp_Completed).toByte
-                willFinalize = true
-                Bits.WaiteeAlreadyCompleted
-              else
-                varyingBits = (varyingBits | Bits.Warp_Shutdown).toByte
-                subscribeWaiterUnsync(waiter)
-                Bits.WaiterSubscribed
-            else
-              Bits.WaiteeAlreadyCompleted
-          }
+          Bits.WaiteeAlreadyCompleted
       }
 
     if willFinalize then
@@ -119,7 +113,7 @@ private[turbolift] final class WarpImpl private[engine] (
   //// - returns Unit, instead of Int code
   def doShutdownAndForget(): Unit =
     val willFinalize =
-      synchronized {
+      atomically {
         if isPending then
           if isChildless then
             varyingBits = (varyingBits | Bits.Warp_Completed).toByte
@@ -145,26 +139,20 @@ private[turbolift] final class WarpImpl private[engine] (
     var willDescend = false
 
     val result =
-      canceller.synchronized {
-        if canceller.isCancellationUnlatched then
-          canceller.setCancellationLatch()
-          Bits.WaiterAlreadyCancelled
+      atomicallyIfNotCancelled(canceller) {
+        if isPending then
+          if isChildless then
+            varyingBits = (varyingBits | Bits.Warp_Completed).toByte
+            willFinalize = true
+            Bits.WaiteeAlreadyCompleted
+          else
+            if !isCancelled then
+              varyingBits = (varyingBits | Bits.Warp_Shutdown | Bits.Warp_Cancelled).toByte
+              willDescend = true
+            subscribeWaiterUnsync(canceller)
+            Bits.WaiterSubscribed
         else
-          synchronized {
-            if isPending then
-              if isChildless then
-                varyingBits = (varyingBits | Bits.Warp_Completed).toByte
-                willFinalize = true
-                Bits.WaiteeAlreadyCompleted
-              else
-                if !isCancelled then
-                  varyingBits = (varyingBits | Bits.Warp_Shutdown | Bits.Warp_Cancelled).toByte
-                  willDescend = true
-                subscribeWaiterUnsync(canceller)
-                Bits.WaiterSubscribed
-            else
-              Bits.WaiteeAlreadyCompleted
-          }
+          Bits.WaiteeAlreadyCompleted
       }
 
     if willFinalize then
@@ -185,7 +173,7 @@ private[turbolift] final class WarpImpl private[engine] (
     var willFinalize = false
     var willDescend = false
 
-    synchronized {
+    atomically {
       if isPending then
         if isChildless then
           varyingBits = (varyingBits | Bits.Warp_Completed).toByte
@@ -277,7 +265,7 @@ private[turbolift] final class WarpImpl private[engine] (
         loop(more, limit, index2)
 
     val count =
-      synchronized {
+      atomically {
         val x = firstChild
         if isPending && (x != null) then
           array = new Array[ChildLink](WarpImpl.unpackChildCount(packedChildCount))
@@ -303,7 +291,7 @@ private[turbolift] final class WarpImpl private[engine] (
   override def unsafeStatus(): Warp.Status =
     var savedVaryingBits: Byte = 0
     var savedPackedChildCount: Long = 0L
-    synchronized {
+    atomically {
       savedVaryingBits = varyingBits
       savedPackedChildCount = packedChildCount
     }

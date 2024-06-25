@@ -98,7 +98,7 @@ private object Bits:
   //// Waiter & Waitee
 
   inline val WaiterSubscribed = 0
-  inline val WaiterAlreadyCancelled = 1
+  final val WaiterAlreadyCancelled = 1 //@#@ no `inline val` bcoz compiler bug
   inline val WaiteeAlreadyCompleted = 2
 
 

@@ -41,8 +41,8 @@ private[internals] object Env:
   def initial(warp: WarpImpl, resumer: Resumer): Env =
     new Env(
       resumer = resumer,
-      tickHigh = 10,
-      tickLow = 500,
+      tickHigh = 20,
+      tickLow = 1000,
       currentWarp = warp,
       initialWarp = warp,
   )
