@@ -599,7 +599,7 @@ private[turbolift] object FiberImpl:
     val warp = WarpImpl.initial()
     val fiber = new FiberImpl(constantBits, warp, name)
     warp.tryAddFiber(fiber)
-    warp.initMain(fiber, callback.asInstanceOf[AnyCallback])
+    warp.initMain(() => callback(fiber.makeOutcome))
     val env = Env.initial(warp, resumer)
     fiber.suspendInitial(comp.untyped, env)
     fiber

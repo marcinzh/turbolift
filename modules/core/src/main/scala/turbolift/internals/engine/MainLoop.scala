@@ -14,7 +14,7 @@ private final class MainLoop:
   private var theTickHigh: Int = 0
   private var cachedLocation: Location.Deep = Location.Deep.empty
   private var cachedPrompt: Prompt = null.asInstanceOf[Prompt]
-  protected[this] val pad1, pad2, pad3 = 0L
+  protected[this] val pad1, pad2, pad3, pad4 = 0L
 
 
   def run(): Halt =

@@ -10,7 +10,7 @@ import turbolift.internals.engine.{FiberImpl, WaiterLink, Halt}
 private[turbolift] final class MultiThreadedExecutor(maxBusyThreads: Int) extends WaiterLink.Queue with Executor:
   enclosing =>
   private var idleCounter: Int = maxBusyThreads
-  protected[this] val pad1, pad2, pad3, pad4 = 0L
+  protected[this] val pad1, pad2, pad3 = 0L
 
 
   override def runSync[A](comp: Computation[A, ?], name: String): Outcome[A] =

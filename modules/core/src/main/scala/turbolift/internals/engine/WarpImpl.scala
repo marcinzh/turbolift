@@ -9,13 +9,11 @@ private[turbolift] final class WarpImpl private[engine] (
 ) extends ChildLink with Warp.Unsealed:
   private var packedChildCount: Long = 0
   private var firstChild: ChildLink | Null = null
-  private var mainFiber: FiberImpl | Null = null
-  private var callback: AnyCallback | Null = null
+  private var callback: (() => Unit) | Null = null
   // protected[this] val pad1 = 0
 
 
-  def initMain(fib: FiberImpl, cb: AnyCallback): Unit =
-    mainFiber = fib
+  def initMain(cb: () => Unit): Unit =
     callback = cb
     varyingBits = (varyingBits | Bits.Warp_Shutdown).toByte
 
@@ -211,7 +209,7 @@ private[turbolift] final class WarpImpl private[engine] (
       theParent.nn.removeWarp(this)
 
     if callback != null then
-      callback.nn.apply(mainFiber.nn.makeOutcome)
+      callback.nn()
 
 
   private def doDescend(deep: Boolean): ChildLink | Null =
