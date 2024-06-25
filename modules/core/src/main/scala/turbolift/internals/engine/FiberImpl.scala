@@ -118,8 +118,8 @@ private[turbolift] final class FiberImpl private (
 
   private[engine] def tryGetAwaitedBy(waiter: FiberImpl): Int =
     waiter.synchronized {
-      if isCancellationUnlatched then
-        setCancellationLatch()
+      if waiter.isCancellationUnlatched then
+        waiter.setCancellationLatch()
         Bits.WaiterAlreadyCancelled
       else
         synchronized {
