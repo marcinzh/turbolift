@@ -1,5 +1,5 @@
 package turbolift.internals.executor
-import java.util.concurrent.ArrayBlockingQueue
+import java.util.concurrent.{Executors, ExecutorService, ArrayBlockingQueue}
 import scala.concurrent.ExecutionContext
 import turbolift.Computation
 import turbolift.io.Outcome
@@ -7,6 +7,8 @@ import turbolift.internals.engine.{FiberImpl, Halt}
 
 
 final class ForeignExecutor(val underlying: ExecutionContext) extends Executor:
+  def this(e: ExecutorService) = this(ExecutionContext.fromExecutor(e))
+
   override def resume(fiber: FiberImpl): Unit =
     underlying.execute:
       new Runnable:
@@ -25,3 +27,7 @@ final class ForeignExecutor(val underlying: ExecutionContext) extends Executor:
   override def runAsync[A](comp: Computation[A, ?], name: String, callback: Outcome[A] => Unit): Unit =
     val fiber = FiberImpl.create(comp, this, name, isReentry = false, callback)
     resume(fiber)
+
+
+object ForeignExecutor:
+  lazy val default = new ForeignExecutor(Executors.newWorkStealingPool().nn)

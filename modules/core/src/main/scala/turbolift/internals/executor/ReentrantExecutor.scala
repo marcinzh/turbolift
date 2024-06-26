@@ -7,7 +7,7 @@ import turbolift.io.Outcome
 import turbolift.internals.engine.{FiberImpl, WaiterLink, Halt}
 
 
-private[turbolift] final class MultiThreadedExecutor(maxBusyThreads: Int) extends WaiterLink.Queue with Executor:
+private[turbolift] final class ReentrantExecutor(maxBusyThreads: Int) extends WaiterLink.Queue with Executor:
   enclosing =>
   private var idleCounter: Int = maxBusyThreads
   protected[this] val pad1, pad2, pad3 = 0L
@@ -20,7 +20,7 @@ private[turbolift] final class MultiThreadedExecutor(maxBusyThreads: Int) extend
 
 
   override def runAsync[A](comp: Computation[A, ?], name: String, callback: Outcome[A] => Unit): Unit =
-    val isReentry = MultiThreadedExecutor.currentVar.get != null
+    val isReentry = ReentrantExecutor.currentVar.get != null
     val fiber = FiberImpl.create(comp, this, name, isReentry, callback)
     if !isReentry then
       resume(fiber)
@@ -48,7 +48,7 @@ private[turbolift] final class MultiThreadedExecutor(maxBusyThreads: Int) extend
 
   private final class Run(private var todo: FiberImpl | Null) extends Runnable:
     override def run(): Unit =
-      MultiThreadedExecutor.currentVar.set(enclosing)
+      ReentrantExecutor.currentVar.set(enclosing)
       while todo != null do
         val halt = todo.nn.run()
         todo = halt match
@@ -72,11 +72,11 @@ private[turbolift] final class MultiThreadedExecutor(maxBusyThreads: Int) extend
             }
 
 
-private[turbolift] object MultiThreadedExecutor:
-  def apply(f: Int => Int): MultiThreadedExecutor =
+private[turbolift] object ReentrantExecutor:
+  def apply(f: Int => Int): ReentrantExecutor =
     val cpus = Runtime.getRuntime.nn.availableProcessors()
-    new MultiThreadedExecutor(f(cpus))
+    new ReentrantExecutor(f(cpus))
 
-  val default: MultiThreadedExecutor = apply(n => n)
+  lazy val default: ReentrantExecutor = apply(n => n)
 
-  private[this] val currentVar: ThreadLocal[MultiThreadedExecutor] = new ThreadLocal[MultiThreadedExecutor]
+  private[this] val currentVar: ThreadLocal[ReentrantExecutor] = new ThreadLocal[ReentrantExecutor]

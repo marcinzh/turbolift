@@ -12,7 +12,7 @@ private[internals] trait Resumer:
   def executor: Executor
 
 
-private[internals] trait Executor extends ExecutionContext with Resumer:
+trait Executor extends ExecutionContext with Resumer:
   final override def executor: Executor = this
   final override def execute(runnable: Runnable): Unit = runSync(IO(runnable.run()), "")
   final override def reportFailure(cause: Throwable): Unit = ()
@@ -21,8 +21,9 @@ private[internals] trait Executor extends ExecutionContext with Resumer:
   def runAsync[A](comp: Computation[A, ?], name: String, callback: Outcome[A] => Unit): Unit
 
 
-private[turbolift] object Executor:
-  def MT: Executor = MultiThreadedExecutor.default
+object Executor:
+  def RE: Executor = ReentrantExecutor.default
+  def MT: Executor = ForeignExecutor.default
   def ST: Executor = new ZeroThreadedExecutor
 
   def pick(mode: Mode): Executor = pick(mode.multiThreaded)
