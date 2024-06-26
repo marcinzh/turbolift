@@ -1,8 +1,10 @@
 package turbolift.misc
+import java.util.concurrent.{Executor => JExecutor}
 import org.specs2.mutable._
 import turbolift.!!
-import turbolift.effects.IO
+import turbolift.effects.{IO, Error}
 import turbolift.io.{Outcome, Cause}
+import turbolift.internals.executor.Executor
 import turbolift.mode.ST
 
 
@@ -34,5 +36,50 @@ class IOTest extends Specification:
 
       (prog1 &! prog2).unsafeRun
       accum === "132"
+    }
+  }
+
+
+  "executeOn" >> {
+    val otherExec = Executor.foreign(scala.concurrent.ExecutionContext.global)
+
+    "basic" >>{
+      IO.executeOn(otherExec)(!!.pure(42))
+      .runIO
+      .===(Outcome.Success(42))
+    }
+
+    "unwind" >> {
+      "success" >>{
+        (for
+          ex1 <- IO.executor
+          ex2 <- IO.executeOn(otherExec)(IO.executor)
+          ex3 <- IO.executor
+        yield (ex1 == ex3, ex2 == otherExec))
+        .runIO
+        .===(Outcome.Success((true, true)))
+      }
+
+      "error" >>{
+        case object E extends Error[String]
+        (for
+          ex1 <- IO.executor
+          err <- E.raise("OMG").executeOn(otherExec).handleWith(E.handler)
+          ex2 <- IO.executor
+        yield (ex1 == ex2, err))
+        .runIO
+        .===(Outcome.Success((true, Left("OMG"))))
+      }
+
+      "exception" >>{
+        case object E extends Exception
+        (for
+          ex1 <- IO.executor
+          err <- IO.toEither(IO.raise(E).executeOn(otherExec))
+          ex2 <- IO.executor
+        yield (ex1 == ex2, err))
+        .runIO
+        .===(Outcome.Success((true, Left(E))))
+      }
     }
   }

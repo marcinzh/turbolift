@@ -9,6 +9,7 @@ private object FrameKind:
   def plain: FrameKind = PLAIN
   def guard: FrameKind = GUARD
   def warp: FrameKind = WARP
+  def exec: FrameKind = EXEC
   def suppress: FrameKind = SUPPRESS
 
   extension (thiz: FrameKind)
@@ -17,7 +18,8 @@ private object FrameKind:
   inline val PLAIN    = 0
   inline val GUARD    = 1
   inline val WARP     = 2
-  inline val SUPPRESS = 3
+  inline val EXEC     = 3
+  inline val SUPPRESS = 4
   //---------------------
-  inline val BIT_COUNT = 2
+  inline val BIT_COUNT = 3
   inline val MASK = (1 << BIT_COUNT) - 1

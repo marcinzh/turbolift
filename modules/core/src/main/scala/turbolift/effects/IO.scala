@@ -4,6 +4,7 @@ import scala.util.{Try, Success => TrySuccess, Failure => TryFailure}
 import scala.concurrent.duration._
 import turbolift.{!!, Signature}
 import turbolift.io.{Cause, Snap}
+import turbolift.internals.executor.Executor
 import turbolift.internals.primitives.{ComputationCases => CC}
 
 
@@ -113,8 +114,11 @@ case object IO extends IO:
     yield (a, d)
 
 
-  //---------- Resource ----------
+  //---------- Others ----------
 
+  def executor: Executor !! IO = CC.EnvAsk(_.executor)
+
+  def executeOn[A, U <: IO](exec: Executor)(body: A !! U): A !! U = CC.ExecOn(exec, body)
 
   def guarantee[A, U <: IO](release: Unit !! U)(body: A !! U): A !! U =
     snap(body).flatMap: aa =>

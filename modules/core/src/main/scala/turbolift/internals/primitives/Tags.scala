@@ -41,7 +41,8 @@ private[turbolift] object Tags:
   inline val Sleep                 = 36
   inline val NotifyBlocker         = 37
   inline val NotifyBlockerAttempt  = 38
-  inline val Yield                 = 39
+  inline val ExecOn                = 39
+  inline val Yield                 = 40
 
 
   def toStr(tag: Int) =
@@ -85,5 +86,6 @@ private[turbolift] object Tags:
       case Sleep                 => "Sleep"
       case NotifyBlocker         => "NotifyBlocker"
       case NotifyBlockerAttempt  => "NotifyBlockerAttempt"
+      case ExecOn                => "ExecOn"
       case Yield                 => "Yield"
       case _                     => s"Tag($tag)"

@@ -267,11 +267,11 @@ private final class MainLoop:
           val instr = step.asInstanceOf[SC.Unwind]
           if stack.canPop then
             val (stack2, store2, step2, prompt, frame, local) = OpPush.pop(stack, store)
-            val step3 = if instr.kind.isPop then step2 else step
+            val fallthrough = if instr.kind.isPop then step2 else step
             if prompt.isIo then
               frame.kind.unwrap match
                 case FrameKind.PLAIN =>
-                  loopStep(payload, step3, stack2, store2)
+                  loopStep(payload, fallthrough, stack2, store2)
 
                 case FrameKind.GUARD =>
                   val payload2 = instr.kind match
@@ -282,13 +282,18 @@ private final class MainLoop:
                   loopStep(payload2, step2, stack2, store2)
 
                 case FrameKind.WARP =>
-                  theFiber.suspend(step3.tag, payload, step3, stack2, store2)
+                  theFiber.suspend(fallthrough.tag, payload, fallthrough, stack2, store2)
                   store.getEnv.currentWarp.tryGetCancelledBy(theFiber) match
                     case Bits.WaiterSubscribed => Halt.ThreadDisowned
                     case Bits.WaiterAlreadyCancelled => impossible //// Latch is set
                     case Bits.WaiteeAlreadyCompleted =>
                       theFiber.clearSuspension()
-                      loopStep(payload, step3, stack2, store2)
+                      loopStep(payload, fallthrough, stack2, store2)
+
+                case FrameKind.EXEC =>
+                  theFiber.suspend(fallthrough.tag, payload, fallthrough, stack2, store2)
+                  theFiber.resume()
+                  Halt.ThreadDisowned
             else
               if instr.kind.isPop then
                 val comp2 = prompt.onReturn(payload, local)
@@ -507,6 +512,18 @@ private final class MainLoop:
           val blocker = payload.asInstanceOf[Blocker]
           val payload2 = blocker.toEither
           loopStep(payload2, step, stack, store)
+
+        case Tags.ExecOn =>
+          val instr = payload.asInstanceOf[CC.ExecOn[Any, Any]]
+          val env = store.getEnv
+          if env.executor == instr.exec then
+            loopComp(instr.body, step, stack, store)
+          else
+            val env2 = env.copy(executor = instr.exec)
+            val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, env2.asLocal, FrameKind.exec)
+            theFiber.suspend(instr.body.tag, instr.body, SC.Pop, stack2, store2)
+            theFiber.resume()
+            Halt.ThreadDisowned
 
         case Tags.Yield =>
           theFiber.suspend(step.tag, (), step, stack, store)

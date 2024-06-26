@@ -2,6 +2,7 @@ package examples
 import java.util.concurrent.atomic.AtomicInteger
 import turbolift.!!
 import turbolift.Extensions._
+import turbolift.internals.executor.Executor
 
 
 case object ReentrantRun extends Example:
@@ -48,4 +49,5 @@ case object ReentrantRun extends Example:
   override def apply() =
     println(s"$CPUS CPUs found.")
     val hogs = (1 until CPUS).map(hog)
-    (dig +: hogs).traverseVoidPar.run
+    Executor.reentrant.runSync:
+      (dig +: hogs).traverseVoidPar

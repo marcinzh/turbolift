@@ -138,6 +138,8 @@ sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift]
 
   final def guarantee[U2 <: U & IO](release: Unit !! U2): A !! U2 = IO.guarantee(release)(this)
 
+  final def executeOn[U2 <: U & IO](exec: Executor): A !! U2 = IO.executeOn(exec)(this)
+
   /** Syntax for giving names to fibers. */
   final def named[A2 >: A, U2 <: U](name: String) = new Computation.NamedSyntax[A2, U2](this, name)
 

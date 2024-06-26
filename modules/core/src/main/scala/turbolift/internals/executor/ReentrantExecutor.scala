@@ -28,7 +28,7 @@ private[turbolift] final class ReentrantExecutor(maxBusyThreads: Int) extends Wa
       awaken(fiber)
 
 
-  override def resume(fiber: FiberImpl): Unit =
+  private[turbolift] override def resume(fiber: FiberImpl): Unit =
     val doAwaken =
       atomically {
         if idleCounter > 0 then

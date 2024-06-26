@@ -7,6 +7,7 @@ import turbolift.effects.IO
 import turbolift.io.{Snap, Fiber, Warp, OnceVarGet}
 import turbolift.interpreter.{Interpreter, Continuation}
 import turbolift.internals.engine.{Env}
+import turbolift.internals.executor.Executor
 
 
 private[turbolift] object ComputationCases:
@@ -38,6 +39,7 @@ private[turbolift] object ComputationCases:
   final class AwaitOnceVar[A](val ovar: OnceVarGet[A]) extends Unsealed[A, IO](Tags.AwaitOnceVar)
   final class Blocking[A, B](val thunk: () => A, isAttempt: Boolean) extends Unsealed[B, IO](Tags.Blocking)
   final class Sleep(val length: Long, val unit: TimeUnit = TimeUnit.MILLISECONDS) extends Unsealed[Unit, IO](Tags.Sleep)
+  final class ExecOn[A, U](val exec: Executor, val body: A !! U) extends Unsealed[A, U](Tags.ExecOn)
   object Yield extends Unsealed[Unit, Any](Tags.Yield)
 
 
