@@ -7,16 +7,11 @@ import turbolift.io.Outcome
 import turbolift.internals.engine.FiberImpl
 
 
-private[internals] trait Resumer:
-  def resume(fiber: FiberImpl): Unit
-  def executor: Executor
-
-
-trait Executor extends ExecutionContext with Resumer:
-  final override def executor: Executor = this
+trait Executor extends ExecutionContext:
   final override def execute(runnable: Runnable): Unit = runSync(IO(runnable.run()), "")
   final override def reportFailure(cause: Throwable): Unit = ()
 
+  def resume(fiber: FiberImpl): Unit
   def runSync[A](comp: Computation[A, ?], name: String): Outcome[A]
   def runAsync[A](comp: Computation[A, ?], name: String, callback: Outcome[A] => Unit): Unit
 

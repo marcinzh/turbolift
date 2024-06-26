@@ -1,11 +1,11 @@
 package turbolift.internals.engine
 import turbolift.Signature
 import turbolift.interpreter.Interpreter
-import turbolift.internals.executor.Resumer
+import turbolift.internals.executor.Executor
 
 
 private[turbolift] final class Env(
-  val resumer: Resumer,
+  val executor: Executor,
   val tickLow: Short,
   val tickHigh: Short,
   val isParallelismRequested: Boolean = true,
@@ -13,14 +13,14 @@ private[turbolift] final class Env(
   val initialWarp: WarpImpl,
 ):
   def copy(
-    resumer: Resumer = resumer,
+    executor: Executor = executor,
     tickLow: Short = tickLow,
     tickHigh: Short = tickHigh,
     isParallelismRequested: Boolean = isParallelismRequested,
     currentWarp: WarpImpl = currentWarp,
     initialWarp: WarpImpl = initialWarp,
   ) = new Env(
-    resumer = resumer,
+    executor = executor,
     tickLow = tickLow,
     tickHigh = tickHigh,
     isParallelismRequested = isParallelismRequested,
@@ -38,9 +38,9 @@ private[turbolift] final class Env(
 
 
 private[internals] object Env:
-  def initial(warp: WarpImpl, resumer: Resumer): Env =
+  def initial(warp: WarpImpl, executor: Executor): Env =
     new Env(
-      resumer = resumer,
+      executor = executor,
       tickHigh = 20,
       tickLow = 1000,
       currentWarp = warp,
