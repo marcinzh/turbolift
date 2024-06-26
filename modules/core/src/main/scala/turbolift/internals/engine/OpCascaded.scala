@@ -26,17 +26,20 @@ private object OpCascaded:
 
   def fork(stack: Stack, store: Store): (Store, Store) =
     def loop(todoStack: Stack, todoStore: Store): (Store, Store) =
-      val pairOfSegs = forkSegment(todoStack, todoStore)
-      if !todoStack.isTailless then
-        val (newStoreTail1, newStoreTail2) = loop(todoStack.tail, todoStore.tail)
-        val (newStoreHead1, newStoreHead2) = pairOfSegs
-        //@#@OPTY {{ eliminate 1 needless copy, consider `head.appendInPlace(tail)`
-        val newStore1 = newStoreHead1 ::? newStoreTail1
-        val newStore2 = newStoreHead2 ::? newStoreTail2
-        //@#@OPTY }}
-        (newStore1, newStore2)
+      if !todoStack.accumFeatures.hasForkJoin then
+        (todoStore, todoStore)
       else
-        pairOfSegs
+        val pairOfSegs = forkSegment(todoStack, todoStore)
+        if !todoStack.isTailless then
+          val (newStoreTail1, newStoreTail2) = loop(todoStack.tail, todoStore.tail)
+          val (newStoreHead1, newStoreHead2) = pairOfSegs
+          //@#@OPTY {{ eliminate 1 needless copy, consider `head.appendInPlace(tail)`
+          val newStore1 = newStoreHead1 ::? newStoreTail1
+          val newStore2 = newStoreHead2 ::? newStoreTail2
+          //@#@OPTY }}
+          (newStore1, newStore2)
+        else
+          pairOfSegs
     loop(stack, store)
 
 
