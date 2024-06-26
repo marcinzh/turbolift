@@ -207,7 +207,6 @@ private final class MainLoop:
           else
             //// Fallback to sequential
             val comp2 = instr.lhs.zipWith(instr.rhs)(instr.fun)
-              // CC.ZipSeq(instr.lhs, () => instr.rhs, instr.fun)
             loopComp(comp2, step, stack, store)
 
         case Tags.OrPar =>
@@ -268,10 +267,10 @@ private final class MainLoop:
           val instr = step.asInstanceOf[SC.Unwind]
           if stack.canPop then
             val (stack2, store2, step2, prompt, frame, local) = OpPush.pop(stack, store)
+            val step3 = if instr.kind.isPop then step2 else step
             if prompt.isIo then
               frame.kind.unwrap match
                 case FrameKind.PLAIN =>
-                  val step3 = if instr.kind.isPop then step2 else step
                   loopStep(payload, step3, stack2, store2)
 
                 case FrameKind.GUARD =>
@@ -283,7 +282,6 @@ private final class MainLoop:
                   loopStep(payload2, step2, stack2, store2)
 
                 case FrameKind.WARP =>
-                  val step3 = if instr.kind.isPop then step2 else step
                   theFiber.suspend(step3.tag, payload, step3, stack2, store2)
                   store.getEnv.currentWarp.tryGetCancelledBy(theFiber) match
                     case Bits.WaiterSubscribed => Halt.ThreadDisowned
@@ -328,8 +326,7 @@ private final class MainLoop:
 
         case Tags.DoSnap =>
           val instr = payload.asInstanceOf[CC.DoSnap[Any, Any]]
-          val location = stack.locateIO
-          val (stack2, store2) = OpPush.pushNested(stack, store, step, PromptIO, location, store.getEnvAsLocal, FrameKind.guard)
+          val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, Local.void, FrameKind.guard)
           loopComp(instr.body, SC.Pop, stack2, store2)
 
         case Tags.Unsnap =>
@@ -361,8 +358,7 @@ private final class MainLoop:
           if env1 == env2 then
             loopComp(instr.body, step, stack, store)
           else
-            val location = stack.locateIO
-            val (stack2, store2) = OpPush.pushNested(stack, store, step, PromptIO, location, env2.asLocal, FrameKind.plain)
+            val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, env2.asLocal, FrameKind.plain)
             loopComp(instr.body, SC.Pop, stack2, store2)
 
         case Tags.AwaitOnceVar =>
@@ -451,9 +447,8 @@ private final class MainLoop:
           val oldWarp = oldEnv.currentWarp
           val newWarp = new WarpImpl(oldWarp, instr.name)
           if oldWarp.tryAddWarp(newWarp) then
-            val location = stack.locateIO
             val newEnv = oldEnv.copy(currentWarp = newWarp)
-            val (stack2, store2) = OpPush.pushNested(stack, store, step, PromptIO, location, newEnv.asLocal, FrameKind.warp)
+            val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, newEnv.asLocal, FrameKind.warp)
             loopComp(instr.body, SC.Pop, stack2, store2)
           else
             impossible

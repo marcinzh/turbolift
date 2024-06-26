@@ -17,7 +17,7 @@ private object OpPush:
       val loc = location.asShallow
       if prompt.isStateful then
         val oldLocal = store.getShallow(loc)
-        val newStore = store.setShallow(loc, local, prompt.isIo)
+        val newStore = if local.isVoid then store else store.setShallow(loc, local, prompt.isIo)
         val newStack = stack.pushNested(promptIndex = loc.promptIndex, step, oldLocal, kind)
         (newStack, newStore)
       else
@@ -25,6 +25,11 @@ private object OpPush:
         (newStack, store)
     else
       newTopSegment(stack, store, step, prompt, local, isNested = true, kind)
+
+
+  def pushNestedIO(stack: Stack, store: Store, step: Step, local: Local, kind: FrameKind): (Stack, Store) =
+    val location = stack.locateIO
+    pushNested(stack, store, step, PromptIO, location, local, kind)
 
 
   private def newTopSegment(stack: Stack, store: Store, step: Step, prompt: Prompt, local: Local, isNested: Boolean, kind: FrameKind): (Stack, Store) =
