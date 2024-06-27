@@ -1,4 +1,4 @@
-package turbolift.extra_effects
+package turbolift.effects
 import org.specs2.mutable._
 import turbolift.!!
 import turbolift.Extensions._
