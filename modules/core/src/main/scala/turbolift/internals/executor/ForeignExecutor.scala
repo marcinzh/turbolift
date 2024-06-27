@@ -28,6 +28,6 @@ private[turbolift]final class ForeignExecutor(val underlying: ExecutionContext) 
 
 
 object ForeignExecutor:
-  lazy val default = ForeignExecutor(Executors.newWorkStealingPool().nn)
+  lazy val default = fromJava(Executors.newWorkStealingPool().nn)
 
-  def apply(e: JExecutor): ForeignExecutor = new ForeignExecutor(ExecutionContext.fromExecutor(e))
+  def fromJava(e: JExecutor): ForeignExecutor = new ForeignExecutor(ExecutionContext.fromExecutor(e))
