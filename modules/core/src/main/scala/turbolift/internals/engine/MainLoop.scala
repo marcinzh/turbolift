@@ -310,7 +310,12 @@ private final class MainLoop:
 
               case FrameKind.WARP =>
                 theFiber.suspend(fallthrough.tag, payload, fallthrough, stack2, store2)
-                store.getEnv.currentWarp.tryGetCancelledBy(theFiber) match
+                val warp = store.getEnv.currentWarp
+                val tried = warp.exitMode match
+                  case Warp.ExitMode.Cancel => warp.tryGetCancelledBy(theFiber)
+                  case Warp.ExitMode.Shutdown => warp.tryGetAwaitedBy(theFiber)
+                  case _ => impossible //// this is a scoped warp, so it must have ExitMode
+                tried match
                   case Bits.WaiterSubscribed => Halt.ThreadDisowned
                   case Bits.WaiterAlreadyCancelled => impossible //// Latch is set
                   case Bits.WaiteeAlreadyCompleted =>
@@ -477,7 +482,7 @@ private final class MainLoop:
         val instr = payload.asInstanceOf[CC.SpawnWarp[Any, Any]]
         val oldEnv = store.getEnv
         val oldWarp = oldEnv.currentWarp
-        val newWarp = new WarpImpl(oldWarp, instr.name)
+        val newWarp = new WarpImpl(oldWarp, instr.name, instr.exitMode)
         if oldWarp.tryAddWarp(newWarp) then
           val newEnv = oldEnv.copy(currentWarp = newWarp)
           val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, newEnv.asLocal, FrameKind.warp)

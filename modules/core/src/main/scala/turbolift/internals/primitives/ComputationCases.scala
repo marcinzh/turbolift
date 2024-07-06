@@ -34,7 +34,7 @@ private[turbolift] object ComputationCases:
   final class ForkFiber[A, U](val warp: Warp | Null, val comp: A !! U, val name: String, val callback: (Zipper.Untyped => Unit) | Null = null) extends Unsealed[Fiber[A, U], Any](Tags.ForkFiber)
   final class AwaitFiber[A, U](val fiber: Fiber.Untyped, val isCancel: Boolean, val isVoid: Boolean) extends Unsealed[A, U](Tags.AwaitFiber)
   object CurrentFiber extends Unsealed[Fiber.Untyped, Any](Tags.CurrentFiber)
-  final class SpawnWarp[A, U](val warp: Warp | Null, val body: A !! (U & Warp), val name: String) extends Unsealed[A, U](Tags.SpawnWarp)
+  final class SpawnWarp[A, U](val exitMode: Warp.ExitMode, val body: A !! (U & Warp), val name: String) extends Unsealed[A, U](Tags.SpawnWarp)
   final class AwaitWarp(val warp: Warp, val isCancel: Boolean) extends Unsealed[Unit, IO](Tags.AwaitWarp)
   final class AwaitOnceVar[A](val ovar: OnceVar.Get[A]) extends Unsealed[A, IO](Tags.AwaitOnceVar)
   final class Blocking[A, B](val thunk: () => A, isAttempt: Boolean) extends Unsealed[B, IO](Tags.Blocking)

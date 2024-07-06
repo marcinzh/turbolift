@@ -61,6 +61,10 @@ object Warp:
     case Pending(fiberCount: Int, warpCount: Int, isShutdown: Boolean, isCancelled: Boolean)
     case Completed
 
+  enum ExitMode:
+    case Cancel
+    case Shutdown
+
   /** The global warp.
     *
     * The parent of every initial warp.
@@ -76,7 +80,7 @@ object Warp:
   def current: Warp !! IO = CC.EnvAsk(_.currentWarp)
 
   /** Creates a new scoped warp, encompassing given computation. */
-  def apply[A, U <: IO](body: A !! (U & Warp)): A !! U = CC.SpawnWarp(null, body, "")
+  def apply[A, U <: IO](body: A !! (U & Warp)): A !! U = CC.SpawnWarp(ExitMode.Cancel, body, "")
 
   /** Like [[apply]], but also passes newly created warp to given computation. */
   def use[A, U <: IO](fun: Warp => A !! (U & Warp)): A !! U = apply(current.flatMap(fun))
@@ -88,7 +92,7 @@ object Warp:
   def named(name: String): NamedCompanionSyntax = new NamedCompanionSyntax(name)
 
   final class NamedCompanionSyntax(name: String):
-    def apply[A, U <: IO](body: A !! (U & Warp)): A !! U = CC.SpawnWarp(null, body, name)
+    def apply[A, U <: IO](body: A !! (U & Warp)): A !! U = CC.SpawnWarp(ExitMode.Cancel, body, name)
     def use[A, U <: IO](fun: Warp => A !! U): A !! U = apply(current.flatMap(fun))
     def spawn: Warp !! (IO & Warp) = current.map(_.unsafeSpawn(name))
 

@@ -6,6 +6,7 @@ import turbolift.io.{Fiber, Warp}
 private[turbolift] final class WarpImpl private[engine] (
   private val theParent: WarpImpl | Null,
   private var theName: String,
+  val exitMode: Warp.ExitMode | Null,
 ) extends ChildLink with Warp.Unsealed:
   private var packedChildCount: Long = 0
   private var firstChild: ChildLink | Null = null
@@ -280,7 +281,7 @@ private[turbolift] final class WarpImpl private[engine] (
 
 
   override def unsafeSpawn(name: String): Warp =
-    val child = new WarpImpl(this, name)
+    val child = new WarpImpl(this, name, null)
     if !tryAddWarp(child) then
       child.varyingBits = Bits.Warp_Completed
     child
@@ -305,10 +306,10 @@ private[turbolift] final class WarpImpl private[engine] (
 
 
 private[turbolift] object WarpImpl:
-  val root: WarpImpl = new WarpImpl(null, "RootWarp")
+  val root: WarpImpl = new WarpImpl(null, "RootWarp", null)
   
   private[engine] def initial(): WarpImpl =
-    val warp = new WarpImpl(root, "")
+    val warp = new WarpImpl(root, "", Warp.ExitMode.Cancel)
     warp.theName = "Init" + warp.name
     root.tryAddWarp(warp)
     warp
