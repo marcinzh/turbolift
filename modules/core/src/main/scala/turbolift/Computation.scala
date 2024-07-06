@@ -301,6 +301,13 @@ object Computation:
     /*@deprecated*/ def unsafeRunMT: Outcome[A] = Executor.MT.runSync(thiz, "")
 
 
+  extension [A, U <: IO](thiz: Computation[A, U & Warp])
+    def warp(exitMode: Warp.ExitMode, name: String = ""): A !! U = thiz.handleWith(Warp.handler(exitMode, name))
+    def warpCancelOnExit: A !! U = warp(Warp.ExitMode.Cancel, "")
+    def warpShutdownOnExit: A !! U = warp(Warp.ExitMode.Shutdown, "")
+    def warpCancelOnExit(name: String): A !! U = warp(Warp.ExitMode.Cancel, name)
+    def warpShutdownOnExit(name: String): A !! U = warp(Warp.ExitMode.Shutdown, name)
+
 
   extension [A, U](thiz: Computation[A, U])
     def downCast[U2 >: U] = thiz.asInstanceOf[Computation[A, U2]]

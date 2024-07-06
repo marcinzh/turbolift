@@ -149,6 +149,8 @@ object Handler:
 
   def phantom[Fx]: Handler[Identity, Identity, Fx, Any] = HandlerCases.Pass[Identity, Fx]()
 
+  def fromFunction[F[+_], G[+_], L, N](fun: [A, U] => (F[A] !! (U & L)) => (G[A] !! (U & N))): Handler[F, G, L, N] = HandlerCases.Function(fun)
+
 
   //---------- Extensions ----------
 
@@ -288,8 +290,14 @@ object Handler:
 
 
 private[turbolift] object HandlerCases:
+  //@#@TODO redundant, use Function
   final case class Pass[F[+_], Elim]() extends Handler[F, F, Elim, Any]:
     override def doHandle[A, U](comp: F[A] !! (U & Elim)): F[A] !! U = comp.downCast[U]
+
+  final case class Function[From[+_], To[+_], Elim, Intro](
+    fun: [A, U] => (From[A] !! (U & Elim)) => (To[A] !! (U & Intro))
+  ) extends Handler[From, To, Elim, Intro]:
+    override def doHandle[A, U](comp: From[A] !! (U & Elim)): To[A] !! (U & Intro) = fun(comp)
 
   final case class Primitive[From[+_], To[+_], Elim, Intro](
     interpreter: Interpreter.Apply[From, To, Elim, Intro]

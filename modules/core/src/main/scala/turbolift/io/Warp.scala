@@ -3,6 +3,7 @@ import turbolift.{!!, Handler}
 import turbolift.effects.IO
 import turbolift.internals.primitives.{ComputationCases => CC}
 import turbolift.internals.engine.WarpImpl
+import turbolift.Extensions.Identity
 
 
 /** Collection of fibers (and/or other warps). Ensures lifetime boundary of its children. */
@@ -65,6 +66,16 @@ object Warp:
     case Cancel
     case Shutdown
 
+  def handler(exitMode: ExitMode, name: String = ""): Handler[Identity, Identity, Warp, IO] =
+    Handler.fromFunction[Identity, Identity, Warp, IO]:
+      [A, U] => (comp: A !! (U & Warp)) => Warp.apply(exitMode, name)(comp)
+
+  object handlers:
+    def cancelOnExit: Handler[Identity, Identity, Warp, IO] = handler(ExitMode.Cancel)
+    def shutdownOnExit: Handler[Identity, Identity, Warp, IO] = handler(ExitMode.Shutdown)
+    def cancelOnExit(name: String): Handler[Identity, Identity, Warp, IO] = handler(ExitMode.Cancel, name)
+    def shutdownOnExit(name: String): Handler[Identity, Identity, Warp, IO] = handler(ExitMode.Shutdown, name)
+
   /** The global warp.
     *
     * The parent of every initial warp.
@@ -77,10 +88,13 @@ object Warp:
   def initial: Warp !! IO = CC.EnvAsk(_.initialWarp)
 
   /** The innermost scoped warp. */
-  def current: Warp !! IO = CC.EnvAsk(_.currentWarp)
+  def current: Warp !! (IO & Warp) = CC.EnvAsk(_.currentWarp)
 
   /** Creates a new scoped warp, encompassing given computation. */
   def apply[A, U <: IO](body: A !! (U & Warp)): A !! U = CC.SpawnWarp(ExitMode.Cancel, body, "")
+
+  /** Creates a new scoped warp, encompassing given computation. */
+  def apply[A, U <: IO](exitMode: ExitMode, name: String = "")(body: A !! (U & Warp)): A !! U = CC.SpawnWarp(exitMode, body, "")
 
   /** Like [[apply]], but also passes newly created warp to given computation. */
   def use[A, U <: IO](fun: Warp => A !! (U & Warp)): A !! U = apply(current.flatMap(fun))
