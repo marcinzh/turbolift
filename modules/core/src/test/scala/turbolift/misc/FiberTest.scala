@@ -24,6 +24,7 @@ class FiberTest extends Specification:
         fib1 <- !!.unit.named("fork 1").fork
         fib2 <- !!.unit.named("fork 2").fork
       yield (fib1.name, fib2.name))
+      .warp
       .runIO
       .===(Outcome.Success(("fork 1", "fork 2")))
     }
@@ -50,6 +51,7 @@ class FiberTest extends Specification:
         s <- fib.status 
         _ <- g2.open
       yield s)
+      .warp
       .runIO
       .===(Outcome.Success(Fiber.Status.Pending(Fiber.Role.Blocker, false, false)))
     }
@@ -66,6 +68,7 @@ class FiberTest extends Specification:
           case Fiber.Status.Pending(Fiber.Role.Waiter(fib1), false, false) => true
           case _ => false
       yield ok)
+      .warp
       .runIO
       .===(Outcome.Success(true))
     }
@@ -91,6 +94,7 @@ class FiberTest extends Specification:
           case _ => false
         _ <- g2.open
       yield ok)
+      .warp
       .runIO
       .===(Outcome.Success(true))
     }
@@ -105,6 +109,7 @@ class FiberTest extends Specification:
         s <- fib.status 
         _ <- g2.open
       yield s)
+      .warp
       .runIO
       .===(Outcome.Success(Fiber.Status.Pending(Fiber.Role.Runner, isRacer = false, isCancelled = true)))
     }
@@ -115,6 +120,7 @@ class FiberTest extends Specification:
         _ <- fib.cancel
         s <- fib.status 
       yield s)
+      .warp
       .runIO
       .===(Outcome.Success(Fiber.Status.Completed(Outcome.Cancelled)))
     }
@@ -131,6 +137,7 @@ class FiberTest extends Specification:
         b = a.map(_.getIO)
         _ <- g.open
       yield b)
+      .warp
       .runIO
       .===(Outcome.Success(None))
     }
@@ -142,6 +149,7 @@ class FiberTest extends Specification:
         a <- fib.poll
         b = a.map(_.get)
       yield b)
+      .warp
       .runIO
       .===(Outcome.Success(Some(42)))
     }
@@ -157,6 +165,7 @@ class FiberTest extends Specification:
         _ <- g.enter
         a <- fib.join
       yield a)
+      .warp
       .runIO
       .===(Outcome.Success(42))
     }
@@ -174,6 +183,7 @@ class FiberTest extends Specification:
         _ <- g2.open
         b <- fib2.join
       yield (a, b))
+      .warp
       .runIO
       .===(Outcome.Success((42, "a")))
     }
@@ -192,6 +202,7 @@ class FiberTest extends Specification:
         a <- v1.get
         b <- v2.get
       yield (a, b))
+      .warp
       .runIO
       .===(Outcome.Success((1337, "b")))
     }
@@ -202,6 +213,7 @@ class FiberTest extends Specification:
         _ <- IO.sleep(100)
         a <- fib.join
       yield a)
+      .warp
       .runIO
       .===(Outcome.Success(42))
     }
@@ -217,6 +229,7 @@ class FiberTest extends Specification:
         _ <- fib.cancel
         a <- v.get
       yield a)
+      .warp
       .runIO
       .===(Outcome.Success(42))
     }
@@ -229,6 +242,7 @@ class FiberTest extends Specification:
         _ <- fib.cancel
         a <- v.get
       yield a)
+      .warp
       .runIO
       .===(Outcome.Success(42))
     }
@@ -244,6 +258,7 @@ class FiberTest extends Specification:
         a <- v1.get
         b <- v2.get
       yield (a, b))
+      .warp
       .runIO
       .===(Outcome.Success((42, "a")))
     }
@@ -257,6 +272,7 @@ class FiberTest extends Specification:
         fib <- IO.sleep(100).fork
         zip <- fib.nowOrNever
       yield zip.getIO)
+      .warp
       .runIO
       .===(Outcome.Success(Outcome.Cancelled))
     }
@@ -267,6 +283,7 @@ class FiberTest extends Specification:
         _ <- IO.sleep(100)
         zip <- fib.nowOrNever
       yield zip.get)
+      .warp
       .runIO
       .===(Outcome.Success(42))
     }
@@ -278,6 +295,7 @@ class FiberTest extends Specification:
         fib <- IO.sleep(100).fork
         zip <- fib.getOrDie
       yield zip.getIO)
+      .warp
       .runIO
       .isFailure.===(true)
     }
@@ -288,6 +306,7 @@ class FiberTest extends Specification:
         _ <- IO.sleep(100)
         zip <- fib.getOrDie
       yield zip.get)
+      .warp
       .runIO
       .===(Outcome.Success(42))
     }
@@ -308,6 +327,7 @@ class FiberTest extends Specification:
         zip <- fib.await
         a = zip.getIO
       yield a)
+      .warp
       .runIO
       .===(Outcome.Success(Outcome.Cancelled))
     }
@@ -323,6 +343,7 @@ class FiberTest extends Specification:
         zip <- fib.await
         a = zip.getIO
       yield a)
+      .warp
       .runIO
       .===(Outcome.Success(Outcome.Cancelled))
     }
@@ -339,6 +360,7 @@ class FiberTest extends Specification:
         a <- fib1.join *! fib2.join
       yield a)
       .handleWith(E.handlers.all)
+      .warp
       .runIO
       .===(Outcome.Success(Left(List("A", "B"))))
     }
@@ -353,6 +375,7 @@ class FiberTest extends Specification:
         _ <- W.tell("2")
       yield a)
       .handleWith(W.handler.justState)
+      .warp
       .runIO
       .===(Outcome.Success(List("1", "A", "B", "2")))
     }
@@ -368,6 +391,7 @@ class FiberTest extends Specification:
         d <- fib2.join
       yield s"$a-$b-$c-$d")
       .handleWith(C.handler)
+      .warp
       .runIO
       .===(Outcome.Success(List(
         "true-a-x-1",
@@ -400,6 +424,7 @@ class FiberTest extends Specification:
         _ <- W1.tell("e")
       yield x)
       .handleWith(W1.handler)
+      .warp
       .runIO
       .===(Outcome.Success(("c", "adbe")))
     }

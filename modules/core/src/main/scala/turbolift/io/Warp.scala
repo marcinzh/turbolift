@@ -10,7 +10,7 @@ import turbolift.Extensions.Identity
 
 sealed trait Warp:
   def name: String
-  def parent: Warp
+  def parent: Option[Warp | Fiber.Untyped]
   def isRoot: Boolean
 
   /** Snapshot of this warp's elements. */
@@ -66,8 +66,11 @@ object Warp:
     case Cancel
     case Shutdown
 
+  object ExitMode:
+    def default: ExitMode = Cancel
+
   def handler(exitMode: ExitMode, name: String = ""): Handler[Identity, Identity, Warp, IO] =
-    Handler.fromFunction[Identity, Identity, Warp, IO]:
+    Handler.fromFunction:
       [A, U] => (comp: A !! (U & Warp)) => Warp.apply(exitMode, name)(comp)
 
   object handlers:
@@ -76,40 +79,24 @@ object Warp:
     def cancelOnExit(name: String): Handler[Identity, Identity, Warp, IO] = handler(ExitMode.Cancel, name)
     def shutdownOnExit(name: String): Handler[Identity, Identity, Warp, IO] = handler(ExitMode.Shutdown, name)
 
-  /** The global warp.
-    *
-    * The parent of every initial warp.
-    * There can be multiple initial warps (each with corresponding initial fiber),
-    * due to reentrancy of `.run`.
-    */
+  /** The global warp. */
   def root: Warp = WarpImpl.root
 
-  /** The outermost scoped warp. */
-  def initial: Warp !! IO = CC.EnvAsk(_.initialWarp)
-
   /** The innermost scoped warp. */
-  def current: Warp !! (IO & Warp) = CC.EnvAsk(_.currentWarp)
+  def current: Warp !! (IO & Warp) = CC.EnvAsk(_.currentWarp.nn)
 
   /** Creates a new scoped warp, encompassing given computation. */
-  def apply[A, U <: IO](body: A !! (U & Warp)): A !! U = CC.SpawnWarp(ExitMode.Cancel, body, "")
+  def apply[A, U <: IO](body: A !! (U & Warp)): A !! U = CC.SpawnWarp(ExitMode.default, body, "")
 
   /** Creates a new scoped warp, encompassing given computation. */
   def apply[A, U <: IO](exitMode: ExitMode, name: String = "")(body: A !! (U & Warp)): A !! U = CC.SpawnWarp(exitMode, body, "")
-
-  /** Like [[apply]], but also passes newly created warp to given computation. */
-  def use[A, U <: IO](fun: Warp => A !! (U & Warp)): A !! U = apply(current.flatMap(fun))
-
-  /** Creates an unscoped warp. */
-  def spawn: Warp !! (IO & Warp) = current.map(_.unsafeSpawn())
 
   /** Syntax for creating new child warp with a name. */
   def named(name: String): NamedCompanionSyntax = new NamedCompanionSyntax(name)
 
   final class NamedCompanionSyntax(name: String):
-    def apply[A, U <: IO](body: A !! (U & Warp)): A !! U = CC.SpawnWarp(ExitMode.Cancel, body, name)
-    def use[A, U <: IO](fun: Warp => A !! U): A !! U = apply(current.flatMap(fun))
-    def spawn: Warp !! (IO & Warp) = current.map(_.unsafeSpawn(name))
+    def apply[A, U <: IO](body: A !! (U & Warp)): A !! U = CC.SpawnWarp(ExitMode.default, body, name)
+    def apply[A, U <: IO](exitMode: ExitMode)(body: A !! (U & Warp)): A !! U = CC.SpawnWarp(exitMode, body, name)
 
   final class NamedSyntax(warp: Warp, name: String):
     def fork[A, U](comp: A !! U): Fiber[A, U] !! IO = CC.ForkFiber(warp, comp, name)
-    def spawn: Warp !! IO = IO(warp.unsafeSpawn(name))

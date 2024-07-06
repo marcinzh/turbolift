@@ -310,7 +310,7 @@ private final class MainLoop:
 
               case FrameKind.WARP =>
                 theFiber.suspend(fallthrough.tag, payload, fallthrough, stack2, store2)
-                val warp = store.getEnv.currentWarp
+                val warp = store.getEnv.currentWarp.nn
                 val tried = warp.exitMode match
                   case Warp.ExitMode.Cancel => warp.tryGetCancelledBy(theFiber)
                   case Warp.ExitMode.Shutdown => warp.tryGetAwaitedBy(theFiber)
@@ -423,7 +423,7 @@ private final class MainLoop:
 
       case Tags.ForkFiber =>
         val instr = payload.asInstanceOf[CC.ForkFiber[Any, Any]]
-        val warp = if instr.warp != null then instr.warp.nn.asImpl else store.getEnv.currentWarp
+        val warp = if instr.warp != null then instr.warp.nn.asImpl else store.getEnv.currentWarp.nn
         val (storeDown, storeFork) = OpCascaded.fork(stack, store)
         val stackFork = stack.makeFork
         val child = FiberImpl.createExplicit(warp, instr.name, instr.callback)
@@ -482,13 +482,13 @@ private final class MainLoop:
         val instr = payload.asInstanceOf[CC.SpawnWarp[Any, Any]]
         val oldEnv = store.getEnv
         val oldWarp = oldEnv.currentWarp
-        val newWarp = new WarpImpl(oldWarp, instr.name, instr.exitMode)
-        if oldWarp.tryAddWarp(newWarp) then
-          val newEnv = oldEnv.copy(currentWarp = newWarp)
-          val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, newEnv.asLocal, FrameKind.warp)
-          loopComp(instr.body, SC.Pop, stack2, store2)
-        else
-          impossible
+        val parent: WarpImpl | FiberImpl = if oldWarp != null then oldWarp.nn else theFiber
+        val newWarp = new WarpImpl(parent, instr.name, instr.exitMode)
+        if oldWarp != null then
+          oldWarp.nn.tryAddWarp(newWarp)
+        val newEnv = oldEnv.copy(currentWarp = newWarp)
+        val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, newEnv.asLocal, FrameKind.warp)
+        loopComp(instr.body, SC.Pop, stack2, store2)
 
       case Tags.AwaitWarp =>
         val instr = payload.asInstanceOf[CC.AwaitWarp]

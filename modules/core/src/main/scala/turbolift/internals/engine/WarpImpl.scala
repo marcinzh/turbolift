@@ -4,20 +4,13 @@ import turbolift.io.{Fiber, Warp}
 
 
 private[turbolift] final class WarpImpl private[engine] (
-  private val theParent: WarpImpl | Null,
+  private val theParent: WarpImpl | FiberImpl | Null,
   private var theName: String,
   val exitMode: Warp.ExitMode | Null,
 ) extends ChildLink with Warp.Unsealed:
   private var packedChildCount: Long = 0
   private var firstChild: ChildLink | Null = null
-  private var callback: (() => Unit) | Null = null
   // protected[this] val pad1 = 0
-
-
-  def initMain(cb: () => Unit): Unit =
-    callback = cb
-    varyingBits = (varyingBits | Bits.Warp_Shutdown).toByte
-
 
   private def isChildless: Boolean = packedChildCount == 0L
   private def isShutdown: Boolean = Bits.isShutdown(varyingBits)
@@ -206,11 +199,9 @@ private[turbolift] final class WarpImpl private[engine] (
   private def doFinalize(): Unit =
     notifyAllWaiters()
 
-    if theParent != null then
-      theParent.nn.removeWarp(this)
-
-    if callback != null then
-      callback.nn()
+    theParent match
+      case warp: WarpImpl => warp.removeWarp(this)
+      case _ => ()
 
 
   private def doDescend(deep: Boolean): ChildLink | Null =
@@ -239,7 +230,7 @@ private[turbolift] final class WarpImpl private[engine] (
 
   override def toString: String = name
   override def isRoot: Boolean = theParent == null
-  override def parent: Warp = if theParent != null then theParent else this
+  override def parent: Option[Warp | Fiber.Untyped] = if theParent == null then None else Some(theParent)
   override def unsafeChildren(): Iterable[Fiber.Untyped | Warp] = collectChildren(_ => true)
   override def unsafeFibers(): Iterable[FiberImpl] = collectChildren(_.isInstanceOf[FiberImpl])
   override def unsafeWarps(): Iterable[Warp] = collectChildren(_.isInstanceOf[WarpImpl])
@@ -308,12 +299,6 @@ private[turbolift] final class WarpImpl private[engine] (
 private[turbolift] object WarpImpl:
   val root: WarpImpl = new WarpImpl(null, "RootWarp", null)
   
-  private[engine] def initial(): WarpImpl =
-    val warp = new WarpImpl(root, "", Warp.ExitMode.Cancel)
-    warp.theName = "Init" + warp.name
-    root.tryAddWarp(warp)
-    warp
-
   private inline val ONE_FIBER = 1L
   private inline val ONE_WARP = 1L << 32
   private def unpackFiberCount(n: Long): Int = n.toInt

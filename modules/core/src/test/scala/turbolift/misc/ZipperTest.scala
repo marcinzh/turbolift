@@ -18,6 +18,7 @@ class ZipperTest extends Specification:
           zip <- fib.await
           a <- zip.run
         yield a)
+        .warp
         .runIO
         .===(Outcome.Success(42))
       }
@@ -28,6 +29,7 @@ class ZipperTest extends Specification:
           zip <- fib.await
           a = zip.handleIO.map(_.get)
         yield a)
+        .warp
         .runIO
         .===(Outcome.Success(Outcome.Success(42)))
       }
@@ -38,6 +40,7 @@ class ZipperTest extends Specification:
           zip <- fib.await
           a = zip.get
         yield a)
+        .warp
         .runIO
         .===(Outcome.Success(42))
       }
@@ -48,6 +51,7 @@ class ZipperTest extends Specification:
           zip <- fib.await
           oa = zip.getIO
         yield oa)
+        .warp
         .runIO
         .===(Outcome.Success(Outcome.Success(42)))
       }
@@ -66,6 +70,7 @@ class ZipperTest extends Specification:
         a <- zip3.run
       yield a)
       .handleWith(E.handlers.all)
+      .warp
       .runIO
       .===(Outcome.Success(Left(List("A", "B"))))
     }
@@ -83,6 +88,7 @@ class ZipperTest extends Specification:
         _ <- W.tell("2")
       yield a)
       .handleWith(W.handler.justState)
+      .warp
       .runIO
       .===(Outcome.Success(List("1", "A", "B", "2")))
     }

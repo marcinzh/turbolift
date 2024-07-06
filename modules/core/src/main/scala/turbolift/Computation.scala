@@ -286,7 +286,7 @@ object Computation:
     def runMT: A = Executor.MT.runSync(thiz, "").get
 
 
-  extension [A](thiz: Computation[A, IO & Warp])
+  extension [A](thiz: Computation[A, IO])
     /** Runs the computation, provided that it requests IO effect only, or none at all. */
     def runIO(using mode: Mode = Mode.default): Outcome[A] = Executor.pick(mode).runSync(thiz, "")
 
@@ -302,6 +302,7 @@ object Computation:
 
 
   extension [A, U <: IO](thiz: Computation[A, U & Warp])
+    def warp: A !! U = thiz.warpCancelOnExit
     def warp(exitMode: Warp.ExitMode, name: String = ""): A !! U = thiz.handleWith(Warp.handler(exitMode, name))
     def warpCancelOnExit: A !! U = warp(Warp.ExitMode.Cancel, "")
     def warpShutdownOnExit: A !! U = warp(Warp.ExitMode.Shutdown, "")
@@ -385,6 +386,6 @@ object Computation:
     def run(using mode: Mode = Mode.default, ev: Any <:< U): Outcome[A] = Executor.pick(mode).runSync(comp, name)
 
   object NamedSyntax:
-    extension [A](thiz: NamedSyntax[A, IO & Warp])
+    extension [A](thiz: NamedSyntax[A, IO])
       def runIO(using mode: Mode = Mode.default): Outcome[A] = Executor.pick(mode).runSync(thiz.comp, thiz.name)
       def runAsync(using mode: Mode = Mode.default)(callback: Outcome[A] => Unit): Unit = Executor.pick(mode).runAsync(thiz.comp,thiz. name, callback)

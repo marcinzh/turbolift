@@ -11,8 +11,8 @@ class WarpTest extends Specification:
   sequential
 
   "empty scoped warp" >>{
-    Warp:
-      !!.pure(42)
+    !!.pure(42)
+    .warp
     .runIO
     .===(Outcome.Success(42))
   }
@@ -21,47 +21,34 @@ class WarpTest extends Specification:
     "child list" >>{
       (for
         g <- Gate(1)
-        warp <- Warp.spawn
-        fib1 <- g.enter.forkAt(warp)
-        fib2 <- g.enter.forkAt(warp)
-        warp2 <- warp.spawn
-        a <- warp.children.map(_.size)
-        b <- warp.fibers.map(_.size)
-        c <- warp.warps.map(_.size)
+        warp0 <- Warp.current
+        warp1 <- warp0.spawn
+        fib1 <- g.enter.forkAt(warp1)
+        fib2 <- g.enter.forkAt(warp1)
+        warp2 <- warp1.spawn
+        a <- warp1.children.map(_.size)
+        b <- warp1.fibers.map(_.size)
+        c <- warp1.warps.map(_.size)
         _ <- g.open
       yield (a, b, c))
+      .warp
       .runIO
       .===(Outcome.Success((3, 2, 1)))
     }
   }
 
   "child & parent" >> {
-    "initial warp is current warp" >>{
-      (for
-        warp1 <- Warp.current
-        warp2 <- Warp.initial
-        ok = warp1 == warp2
-      yield ok)
-      .runIO
-      .===(Outcome.Success(true))
+    "global warp's parent" >>{
+      Warp.root.parent === None
     }
 
-    "initial warp's parent" >>{
+    "outermost warp's parent" >>{
       (for
-        warp2 <- Warp.current
-        warp1 = Warp.root
-        ok = warp1 == warp2.parent
-      yield ok)
-      .runIO
-      .===(Outcome.Success(true))
-    }
-
-    "initial fiber's parent" >>{
-      (for
-        warp <- Warp.current
         fib <- Fiber.current
-        ok = fib.parent == warp
+        warp <- Warp.current
+        ok = warp.parent == Some(fib)
       yield ok)
+      .warp
       .runIO
       .===(Outcome.Success(true))
     }
@@ -72,6 +59,7 @@ class WarpTest extends Specification:
         fib <- !!.unit.fork
         ok = warp == fib.parent 
       yield ok)
+      .warp
       .runIO
       .===(Outcome.Success(true))
     }
@@ -79,47 +67,43 @@ class WarpTest extends Specification:
     "scoped warp's parent" >>{
       (for
         warp1 <- Warp.current
-        warp2 <-
-          Warp:
-            Warp.current
-        ok = warp2.parent == warp1
+        warp2 <- Warp.current.warp
+        ok = warp2.parent == Some(warp1)
       yield ok)
+      .warp
       .runIO
       .===(Outcome.Success(true))
     }
   }
 
   "awaiting & cancelling" >> {
-    "initial warp on exit cancels child fiber" >>{
-      @volatile var v = 42
-      (for
-        g <- Gate(1)
-        _ <- (g.open &&! IO.sleep(100)).guarantee(IO { v = 1337 }).fork
-        _ <- g.enter
-      yield v)
-      .runIO
-      .map((_, v))
-      .===(Outcome.Success((42, 1337)))
-    }
-
-    "scoped warp on exit cancels child fiber" >>{
+    "scoped warp with ExitMode == Cancel" >>{
       (for
         v <- AtomicVar.fresh(1)
-        _ <-
-          Warp:
-            (IO.sleep(100) &&! v.event(2)).fork
+        _ <- (IO.sleep(100) &&! v.event(2)).guarantee(v.event(5)).fork.warpCancelOnExit
         _ <- v.event(3)
         a <- v.get
       yield a)
       .runIO
-      .===(Outcome.Success(13))
+      .===(Outcome.Success(153))
+    }
+
+    "scoped warp with ExitMode == Shutdown" >>{
+      (for
+        v <- AtomicVar.fresh(1)
+        _ <- (IO.sleep(100) &&! v.event(2)).fork.warpShutdownOnExit
+        _ <- v.event(3)
+        a <- v.get
+      yield a)
+      .runIO
+      .===(Outcome.Success(123))
     }
 
     "spawn & cancel" >>{
       (for
         v <- AtomicVar.fresh(1)
         g <- Gate(1)
-        warp <- Warp.spawn
+        warp <- Warp.current.flatMap(_.spawn)
         _ <- warp.fork:
           for
             _ <- v.event(2)
@@ -132,6 +116,7 @@ class WarpTest extends Specification:
         _ <- warp.cancel
         a <- v.get
       yield a)
+      .warp
       .runIO
       .===(Outcome.Success(124))
     }
@@ -141,7 +126,7 @@ class WarpTest extends Specification:
         g <- Gate(1)
         v1 <- AtomicVar.fresh(1)
         v2 <- AtomicVar.fresh("a")
-        warp <- Warp.spawn
+        warp <- Warp.current.flatMap(_.spawn)
         _ <- (g.enter &&! v1.put(2)).forkAt(warp)
         _ <- (g.enter &&! v2.put("b")).forkAt(warp)
         _ <- g.open
@@ -149,6 +134,7 @@ class WarpTest extends Specification:
         a <- v1.get
         b <- v2.get
       yield (a, b))
+      .warp
       .runIO
       .===(Outcome.Success((2, "b")))
     }
@@ -157,16 +143,16 @@ class WarpTest extends Specification:
   "unwind in scoped warp" >> {
     "exception" >>{
       case object E extends Exception
-      Warp:
-        IO(throw E)
+      IO(throw E)
+      .warp
       .runIO
       .===(Outcome.Failure(E))
     }
 
     "Error effect" >>{
       case object E extends Error[String]
-      Warp:
-        E.raise("OMG")
+      E.raise("OMG")
+      .warp
       .handleWith(E.handler)
       .runIO
       .===(Outcome.Success(Left("OMG")))
@@ -177,11 +163,11 @@ class WarpTest extends Specification:
       (for
         v <- AtomicVar.fresh(42)
         e <- 
-          Warp:
-            (for
-              _ <- (IO.sleep(1000) &&! v.put(1337)).fork
-              _ <- E.raise("OMG")
-            yield ())
+          (for
+            _ <- (IO.sleep(1000) &&! v.put(1337)).fork
+            _ <- E.raise("OMG")
+          yield ())
+          .warp
           .handleWith(E.handler)
         a <- v.get
       yield (a, e))
@@ -196,12 +182,12 @@ class WarpTest extends Specification:
         v2 <- AtomicVar.fresh("a")
         g <- Gate(1)
         e <- 
-          Warp:
-            (for
-              _ <- (g.open &&! IO.sleep(1000) &&! v1.put(1337)).guarantee(v2.put("b")).fork
-              _ <- g.enter
-              _ <- E.raise("OMG")
-            yield ())
+          (for
+            _ <- (g.open &&! IO.sleep(1000) &&! v1.put(1337)).guarantee(v2.put("b")).fork
+            _ <- g.enter
+            _ <- E.raise("OMG")
+          yield ())
+          .warp
           .handleWith(E.handler)
         a <- v1.get
         b <- v2.get

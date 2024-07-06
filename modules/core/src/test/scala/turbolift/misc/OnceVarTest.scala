@@ -86,6 +86,7 @@ class OnceVarTest extends Specification:
         _ <- (IO.sleep(100) &&! ovar.put(42)).fork
         a <- ovar.get
       yield a)
+      .warp
       .runIO
       .===(Outcome.Success(42))
     }
@@ -96,6 +97,7 @@ class OnceVarTest extends Specification:
         fib <- ovar.get.fork
         _ <- fib.cancel
       yield ())
+      .warp
       .runIO
       .===(Outcome.Success(()))
     }

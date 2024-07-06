@@ -20,6 +20,7 @@ private[turbolift] final class FiberImpl private (
   private[engine] var suspendedStack: Stack | Null = null
   private[engine] var suspendedStore: Store | Null = null
 
+  private def this(constantBits: Byte, theName: String) = this(constantBits, null.asInstanceOf[Hook], theName)
 
   //@#@TODO refac: move to Executor
   def run(): Halt =
@@ -76,9 +77,9 @@ private[turbolift] final class FiberImpl private (
           warp.unsafeCancelAndForget()
         null
 
-      case Hook(warp, cb) =>
-        warp.removeFiber(this)
-        cb(payload.asInstanceOf[ZipperImpl])
+      case hook: Hook =>
+        hook.warp.removeFiber(this)
+        hook.call()
         null
 
 
@@ -249,7 +250,7 @@ private[turbolift] final class FiberImpl private (
     theParent match
       case fiber: FiberImpl => fiber
       case warp: WarpImpl => warp
-      case Hook(warp, _) => warp
+      case Hook(warp, _, _) => warp
 
 
   private def doDescend(
@@ -522,7 +523,7 @@ private[turbolift] final class FiberImpl private (
     theParent match
       case fiber: FiberImpl => fiber.untyped
       case warp: WarpImpl => warp
-      case Hook(warp, _) => warp
+      case Hook(warp, _, _) => warp
 
 
   override def unsafeCancelAndForget(): Unit = doCancelAndForget()
@@ -604,17 +605,24 @@ private[turbolift] object FiberImpl:
   def create(comp: Computation[?, ?], executor: Executor, name: String, isReentry: Boolean, callback: Callback): FiberImpl =
     val reentryBit = if isReentry then Bits.Const_Reentry else 0
     val constantBits = (Bits.Tree_Root | reentryBit).toByte
-    val warp = WarpImpl.initial()
-    val fiber = new FiberImpl(constantBits, warp, name)
+    val fiber = new FiberImpl(constantBits, name)
+    val warp = WarpImpl.root
+    fiber.theParent = Hook(warp, fiber, callback.asInstanceOf[Any => Unit])
     warp.tryAddFiber(fiber)
-    warp.initMain(() => callback(fiber.makeOutcome))
-    val env = Env.initial(warp, executor)
+    val env = Env.initial(executor)
     fiber.suspendInitial(comp.untyped, env)
     fiber
 
-  def createExplicit(warp: WarpImpl, name: String, callback: (ZipperImpl => Any) | Null): FiberImpl =
-    val parent = if callback == null then warp else Hook(warp, callback.nn)
-    new FiberImpl(Bits.Tree_Explicit.toByte, parent, name)
+
+  def createExplicit(warp: WarpImpl, name: String, callback: (ZipperImpl => Unit) | Null): FiberImpl =
+    val fiber = new FiberImpl(Bits.Tree_Explicit.toByte, name)
+    fiber.theParent = if callback == null then warp else Hook(warp, fiber, callback.nn.asInstanceOf[Any => Unit])
+    fiber
 
 
-  final case class Hook(parent: WarpImpl, callback: ZipperImpl => Any)
+  final case class Hook(warp: WarpImpl, fiber: FiberImpl, callback: Any => Unit):
+    def call(): Unit =
+      if fiber.isExplicit then
+        callback(fiber.suspendedPayload)
+      else
+        callback(fiber.makeOutcome)

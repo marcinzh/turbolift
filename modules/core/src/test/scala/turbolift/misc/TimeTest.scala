@@ -10,7 +10,7 @@ class TimeTest extends Specification:
 
   "Basic ops" >> {
     "sleep" >>{
-      IO.sleep(1).unsafeRun === Outcome.Success(())
+      IO.sleep(1).runIO === Outcome.Success(())
     }
 
     "fork & sleep & join" >>{
@@ -18,7 +18,8 @@ class TimeTest extends Specification:
         fib <- (IO.sleep(10) &&! !!.pure(42)).fork
         a <- fib.join
       yield a)
-      .unsafeRun === Outcome.Success(42)
+      .warp
+      .runIO === Outcome.Success(42)
     }
 
     "fork & sleep & cancel" >>{
@@ -28,6 +29,7 @@ class TimeTest extends Specification:
         _ <- fib.cancel
         a <- v.get
       yield a)
-      .unsafeRun === Outcome.Success(42)
+      .warp
+      .runIO === Outcome.Success(42)
     }
   }
