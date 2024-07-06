@@ -421,7 +421,7 @@ private final class MainLoop:
         val warp = if instr.warp != null then instr.warp.nn.asImpl else store.getEnv.currentWarp
         val (storeDown, storeFork) = OpCascaded.fork(stack, store)
         val stackFork = stack.makeFork
-        val child = FiberImpl.createExplicit(warp, instr.name)
+        val child = FiberImpl.createExplicit(warp, instr.name, instr.callback)
         child.suspend(instr.comp.tag, instr.comp, SC.Pop, stackFork, storeFork)
         if warp.tryAddFiber(child) then
           child.resume()

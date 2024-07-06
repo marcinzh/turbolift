@@ -70,6 +70,14 @@ object Fiber:
   /** Create a new fiber in specified [[Warp]]. */
   def forkAt[A, U](warp: Warp)(comp: A !! U): Fiber[A, U] !! IO = CC.ForkFiber(warp, comp, "")
 
+  /** Experimental */
+  def forkWithCallback[A, U](
+    warp: Warp,
+    comp: A !! U,
+    callback: Zipper[A, U] => Unit,
+    name: String = "",
+  ): Fiber[A, U] !! (IO & Warp) = CC.ForkFiber(null, comp, "", callback.asInstanceOf[Zipper.Untyped => Unit])
+
   /** Syntax for creating new [[Fiber]] with a name. */
   def named(name: String) = new NamedSyntax(name)
 

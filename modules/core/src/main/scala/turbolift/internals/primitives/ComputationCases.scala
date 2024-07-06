@@ -4,7 +4,7 @@ import turbolift.{!!, Signature}
 import turbolift.Computation.{Unsealed, Untyped}
 import turbolift.HandlerCases.Primitive
 import turbolift.effects.IO
-import turbolift.io.{Snap, Fiber, Warp, OnceVar}
+import turbolift.io.{Snap, Fiber, Warp, OnceVar, Zipper}
 import turbolift.interpreter.{Interpreter, Continuation}
 import turbolift.internals.engine.{Env}
 import turbolift.internals.executor.Executor
@@ -31,7 +31,7 @@ private[turbolift] object ComputationCases:
   final class Unsnap[A, U](val snap: Snap[A]) extends Unsealed[A, U](Tags.Unsnap)
   final class EnvAsk[A](val fun: Env => A) extends Unsealed[A, Any](Tags.EnvAsk)
   final class EnvMod[A, U](val fun: Env => Env, val body: A !! U) extends Unsealed[A, U](Tags.EnvMod)
-  final class ForkFiber[A, U](val warp: Warp | Null, val comp: A !! U, val name: String) extends Unsealed[Fiber[A, U], Any](Tags.ForkFiber)
+  final class ForkFiber[A, U](val warp: Warp | Null, val comp: A !! U, val name: String, val callback: (Zipper.Untyped => Unit) | Null = null) extends Unsealed[Fiber[A, U], Any](Tags.ForkFiber)
   final class AwaitFiber[A, U](val fiber: Fiber.Untyped, val isCancel: Boolean, val isVoid: Boolean) extends Unsealed[A, U](Tags.AwaitFiber)
   object CurrentFiber extends Unsealed[Fiber.Untyped, Any](Tags.CurrentFiber)
   final class SpawnWarp[A, U](val warp: Warp | Null, val body: A !! (U & Warp), val name: String) extends Unsealed[A, U](Tags.SpawnWarp)

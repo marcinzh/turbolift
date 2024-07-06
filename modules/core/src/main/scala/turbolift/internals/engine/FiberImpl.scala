@@ -6,11 +6,12 @@ import turbolift.internals.primitives.{Tags, ComputationCases => CC}
 import turbolift.internals.executor.Executor
 import turbolift.internals.engine.{StepCases => SC}
 import Cause.{Cancelled => CancelPayload}
+import FiberImpl.Hook
 
 
 private[turbolift] final class FiberImpl private (
   private[engine] val constantBits: Byte,
-  private[engine] var theParent: WarpImpl | FiberImpl,
+  private[engine] var theParent: WarpImpl | FiberImpl | Hook,
   private[engine] var theName: String,
 ) extends ChildLink with Fiber.Unsealed:
   private[engine] var suspendedTag: Byte = 0
@@ -73,6 +74,11 @@ private[turbolift] final class FiberImpl private (
         warp.removeFiber(this)
         if isRoot then
           warp.unsafeCancelAndForget()
+        null
+
+      case Hook(warp, cb) =>
+        warp.removeFiber(this)
+        cb(payload.asInstanceOf[ZipperImpl])
         null
 
 
@@ -243,6 +249,7 @@ private[turbolift] final class FiberImpl private (
     theParent match
       case fiber: FiberImpl => fiber
       case warp: WarpImpl => warp
+      case Hook(warp, _) => warp
 
 
   private def doDescend(
@@ -515,6 +522,7 @@ private[turbolift] final class FiberImpl private (
     theParent match
       case fiber: FiberImpl => fiber.untyped
       case warp: WarpImpl => warp
+      case Hook(warp, _) => warp
 
 
   override def unsafeCancelAndForget(): Unit = doCancelAndForget()
@@ -604,5 +612,9 @@ private[turbolift] object FiberImpl:
     fiber.suspendInitial(comp.untyped, env)
     fiber
 
-  def createExplicit(parent: WarpImpl, name: String): FiberImpl =
+  def createExplicit(warp: WarpImpl, name: String, callback: (ZipperImpl => Any) | Null): FiberImpl =
+    val parent = if callback == null then warp else Hook(warp, callback.nn)
     new FiberImpl(Bits.Tree_Explicit.toByte, parent, name)
+
+
+  final case class Hook(parent: WarpImpl, callback: ZipperImpl => Any)
