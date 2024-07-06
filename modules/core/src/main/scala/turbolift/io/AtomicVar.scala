@@ -5,20 +5,9 @@ import turbolift.!!
 import turbolift.effects.IO
 
 
-sealed trait AtomicVarGet[@specialized(Int, Long, Boolean) S]:
-  final def get: S !! IO = !!.impure(unsafeGet)
-  final def gets[A](f: S => A): A !! IO = !!.impure(f(unsafeGet))
-  def unsafeGet: S
-
-
-sealed trait AtomicVarPut[@specialized(Int, Long, Boolean) S]:
-  final def put(s: S): Unit !! IO = !!.impure(unsafePut(s))
-  def unsafePut(s: S): Unit
-
-
-sealed trait AtomicVar[@specialized(Int, Long, Boolean) S] extends AtomicVarGet[S] with AtomicVarPut[S]:
-  final def asGet: AtomicVarGet[S] = this
-  final def asPut: AtomicVarPut[S] = this
+sealed trait AtomicVar[@specialized(Int, Long, Boolean) S] extends AtomicVar.Get[S] with AtomicVar.Put[S]:
+  final def asGet: AtomicVar.Get[S] = this
+  final def asPut: AtomicVar.Put[S] = this
   
   final def swap(s: S): S !! IO = !!.impure(unsafeSwap(s))
   final def modify(f: S => S): Unit !! IO = op(f, s => s, (_, _) => ())
@@ -90,6 +79,17 @@ sealed trait AtomicVar[@specialized(Int, Long, Boolean) S] extends AtomicVarGet[
 
 
 object AtomicVar:
+  sealed trait Get[@specialized(Int, Long, Boolean) S]:
+    final def get: S !! IO = !!.impure(unsafeGet)
+    final def gets[A](f: S => A): A !! IO = !!.impure(f(unsafeGet))
+    def unsafeGet: S
+
+
+  sealed trait Put[@specialized(Int, Long, Boolean) S]:
+    final def put(s: S): Unit !! IO = !!.impure(unsafePut(s))
+    def unsafePut(s: S): Unit
+
+
   def fresh(initial: Int): AtomicVar[Int] !! IO = freshInt(initial)
   def fresh(initial: Long): AtomicVar[Long] !! IO = freshLong(initial)
   def fresh(initial: Boolean): AtomicVar[Boolean] !! IO = freshBoolean(initial)
