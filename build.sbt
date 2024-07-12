@@ -68,6 +68,7 @@ lazy val bindless = project
     Deps.cps,
     Deps.specs2_core,
   ))
+  .settings(licenses += ("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")))
   .dependsOn(core)
 
 lazy val site = (project in file("docs"))
