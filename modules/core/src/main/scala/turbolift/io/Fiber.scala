@@ -8,7 +8,7 @@ sealed trait Fiber[+A, -U]:
   def name: String
   def parent: Fiber.Untyped | Warp
 
-  /** Snapshot of this fiber's [[Status]]. */
+  /** Snapshot of this fiber's [[Fiber.Status Status]]. */
   final def status: Fiber.Status !! IO = !!.impure(unsafeStatus())
 
   /** Awaits completion of this fiber, returns its **pure** result and absorbs its effects. */
@@ -76,7 +76,7 @@ object Fiber:
     comp: A !! U,
     callback: Zipper[A, U] => Unit,
     name: String = "",
-  ): Fiber[A, U] !! (IO & Warp) = CC.ForkFiber(null, comp, "", callback.asInstanceOf[Zipper.Untyped => Unit])
+  ): Fiber[A, U] !! (IO & Warp) = CC.ForkFiber(null, comp, name, callback.asInstanceOf[Zipper.Untyped => Unit])
 
   /** Syntax for creating new [[Fiber]] with a name. */
   def named(name: String) = new NamedSyntax(name)

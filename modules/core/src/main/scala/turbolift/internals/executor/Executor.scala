@@ -1,4 +1,5 @@
 package turbolift.internals.executor
+import java.util.concurrent.{Executor => JExecutor}
 import scala.concurrent.ExecutionContext
 import turbolift.Computation
 import turbolift.effects.IO
@@ -20,7 +21,8 @@ object Executor:
   def zero(): Executor = new ZeroThreadedExecutor
   def multi: Executor = ForeignExecutor.default
   def reentrant: Executor = ReentrantExecutor.default
-  def foreign(exec: ExecutionContext): Executor = new ForeignExecutor(exec)
+  def fromScala(e: ExecutionContext): Executor = ForeignExecutor.fromScala(e)
+  def fromJava(e: JExecutor): Executor = ForeignExecutor.fromJava(e)
 
   def MT: Executor = multi
   def ST: Executor = zero()

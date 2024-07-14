@@ -6,7 +6,7 @@ import turbolift.io.Outcome
 import turbolift.internals.engine.{FiberImpl, Halt}
 
 
-private[turbolift]final class ForeignExecutor(val underlying: ExecutionContext) extends Executor:
+private[turbolift] final class ForeignExecutor(val underlying: ExecutionContext) extends Executor:
   private[turbolift] override def resume(fiber: FiberImpl): Unit =
     underlying.execute:
       new Runnable:
@@ -27,7 +27,8 @@ private[turbolift]final class ForeignExecutor(val underlying: ExecutionContext) 
     resume(fiber)
 
 
-object ForeignExecutor:
+private[turbolift] object ForeignExecutor:
   lazy val default = fromJava(Executors.newWorkStealingPool().nn)
 
   def fromJava(e: JExecutor): ForeignExecutor = new ForeignExecutor(ExecutionContext.fromExecutor(e))
+  def fromScala(e: ExecutionContext): ForeignExecutor = new ForeignExecutor(e)

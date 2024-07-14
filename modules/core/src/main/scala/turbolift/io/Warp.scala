@@ -22,7 +22,7 @@ sealed trait Warp:
   /** Like [[children]], but filtered to return warps only. */
   final def warps: Iterable[Warp] !! IO = IO(unsafeWarps())
 
-  /** Snapshot of this warp's [[Status]]. */
+  /** Snapshot of this warp's [[Warp.Status Status]]. */
   final def status: Warp.Status !! IO = IO(unsafeStatus())
 
   /** Complete this warp, by cancelling all its children and waiting for their completion. */
