@@ -61,7 +61,7 @@ sealed trait Interpreter extends Signature:
   def onJoin(s1: Local, s2: Local): Local
 
   //@#@TODO
-  def resurceUnsafeHint: Boolean = false
+  private def resurceUnsafeHint: Boolean = false
 
   /** Creates a [[turbolift.Handler Handler]] from this interpreter. */
   final def toHandler: ThisHandler = HC.Primitive[From, To, Elim, Intro](this)

@@ -41,7 +41,7 @@ class IOTest extends Specification:
 
 
   "executeOn" >> {
-    val otherExec = Executor.foreign(scala.concurrent.ExecutionContext.global)
+    val otherExec = Executor.fromScala(scala.concurrent.ExecutionContext.global)
 
     "basic" >>{
       IO.executeOn(otherExec)(!!.pure(42))

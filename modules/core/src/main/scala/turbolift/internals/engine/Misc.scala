@@ -4,7 +4,7 @@ import turbolift.io.{Outcome, Exceptions, Snap, Fiber, Zipper, Warp, OnceVar}
 import turbolift.interpreter.Continuation
 
 
-export turbolift.interpreter.Interpreter.{Untyped => Prompt}
+private[turbolift] type Prompt = turbolift.interpreter.Interpreter.Untyped
 export turbolift.interpreter.Interpreter.Io.{untyped => PromptIO}
 
 

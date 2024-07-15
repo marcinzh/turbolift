@@ -6,5 +6,5 @@ private final class Entry (
   val location: Location.Shallow,
 )
 
-object Entry:
+private object Entry:
   val initial: Entry = Entry(PromptIO, Location.Shallow(0, 0))
