@@ -96,11 +96,11 @@ private trait Store_opaque:
 
 
     final def ::?(that: Store | Null): Store =
-      Store.wrap(thiz.unwrap.updated(TAIL_INDEX, that.asLocal))
+      Store.wrap(thiz.unwrap.updated(TAIL_INDEX, that))
 
 
     final def setTailInPlace(tailOrNull: Store | Null): Unit =
-      thiz.unwrap.updated(TAIL_INDEX, tailOrNull.asLocal)
+      thiz.unwrap(TAIL_INDEX) = tailOrNull
 
 
     //@#@TODO use

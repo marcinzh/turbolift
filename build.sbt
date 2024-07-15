@@ -1,5 +1,5 @@
 ThisBuild / organization := "io.github.marcinzh"
-ThisBuild / version := "0.92.0"
+ThisBuild / version := "0.93.0-SNAPSHOT"
 ThisBuild / scalaVersion := "3.3.3"
 ThisBuild / scalacOptions ++= Seq(
   "-deprecation",
