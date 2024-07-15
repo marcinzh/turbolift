@@ -13,9 +13,7 @@ private final class MainLoop:
   private var theFiber: FiberImpl = null.asInstanceOf[FiberImpl]
   private var theTickLow: Int = 0
   private var theTickHigh: Int = 0
-  private var cachedLocation: Location.Deep = Location.Deep.empty
-  private var cachedPrompt: Prompt = null.asInstanceOf[Prompt]
-  protected[this] val pad1, pad2, pad3, pad4 = 0L
+  protected[this] val pad1, pad2, pad3, pad4, pad5 = 0L
 
 
   def run(): Halt =
@@ -24,7 +22,6 @@ private final class MainLoop:
     theTickHigh = theFiber.suspendedEnv.tickHigh
     if theFiber.cancellationCheck() then
       theFiber.suspendAsCancelled()
-    clearCache()
     outerLoop()
 
 
@@ -99,9 +96,28 @@ private final class MainLoop:
 
         case Tags.Perform =>
           val instr = payload.asInstanceOf[CC.Perform[Any, Any, Signature]]
-          val prompt = findPromptBySignature(stack, instr.sig)
+          val (prompt, location) = stack.findSignature(instr.sig)
           val comp2 = instr.op(prompt).asInstanceOf[AnyComp]
-          loopComp(comp2, step, stack, store)
+          (comp2.tag: @switch) match
+            case Tags.LocalGet =>
+              val instr = comp2.asInstanceOf[CC.LocalGet]
+              val local = store.getDeep(location)
+              loopStep(local, step, stack, store)
+
+            case Tags.LocalPut =>
+              val instr = comp2.asInstanceOf[CC.LocalPut[Any]]
+              val store2 = store.setDeep(location, instr.local.asLocal)
+              loopStep((), step, stack, store2)
+
+            case Tags.LocalUpdate =>
+              val instr = comp2.asInstanceOf[CC.LocalUpdate[Any, Any]]
+              //@#@OPTY Store.update
+              val local = store.getDeep(location)
+              val (value, local2) = instr.fun(local)
+              val store2 = store.setDeep(location, local2.asLocal)
+              loopStep(value, step, stack, store2)
+
+            case _ => loopComp(comp2, step, stack, store)
 
         case Tags.Pure =>
           val instr = payload.asInstanceOf[CC.Pure[Any]]
@@ -112,27 +128,6 @@ private final class MainLoop:
           val instr = payload.asInstanceOf[CC.Impure[Any, Any]]
           val payload2 = instr.thunk()
           loopStep(payload2, step, stack, store)
-
-        case Tags.LocalGet =>
-          val instr = payload.asInstanceOf[CC.LocalGet]
-          val location = locatePrompt(stack, instr.prompt)
-          val local = store.getDeep(location)
-          loopStep(local, step, stack, store)
-
-        case Tags.LocalPut =>
-          val instr = payload.asInstanceOf[CC.LocalPut[Any]]
-          val location = locatePrompt(stack, instr.prompt)
-          val store2 = store.setDeep(location, instr.local.asLocal)
-          loopStep((), step, stack, store2)
-
-        case Tags.LocalUpdate =>
-          val instr = payload.asInstanceOf[CC.LocalUpdate[Any, Any]]
-          val location = locatePrompt(stack, instr.prompt)
-          //@#@OPTY Store.update
-          val local = store.getDeep(location)
-          val (value, local2) = instr.fun(local)
-          val store2 = store.setDeep(location, local2.asLocal)
-          loopStep(value, step, stack, store2)
 
         case _ =>
           loopMore(tag, payload, step, stack, store) match
@@ -165,9 +160,30 @@ private final class MainLoop:
       (tag, payload, step, stack, store)
 
     (tag: @switch) match
+      case Tags.LocalGet =>
+        val instr = payload.asInstanceOf[CC.LocalGet]
+        val location = stack.locatePrompt(instr.prompt)
+        val local = store.getDeep(location)
+        loopStep(local, step, stack, store)
+
+      case Tags.LocalPut =>
+        val instr = payload.asInstanceOf[CC.LocalPut[Any]]
+        val location = stack.locatePrompt(instr.prompt)
+        val store2 = store.setDeep(location, instr.local.asLocal)
+        loopStep((), step, stack, store2)
+
+      case Tags.LocalUpdate =>
+        val instr = payload.asInstanceOf[CC.LocalUpdate[Any, Any]]
+        val location = stack.locatePrompt(instr.prompt)
+        //@#@OPTY Store.update
+        val local = store.getDeep(location)
+        val (value, local2) = instr.fun(local)
+        val store2 = store.setDeep(location, local2.asLocal)
+        loopStep(value, step, stack, store2)
+
       case Tags.Delimit =>
         val instr = payload.asInstanceOf[CC.Delimit[Any, Local, Any]]
-        val location = locatePrompt(stack, instr.prompt)
+        val location = stack.locatePrompt(instr.prompt)
         val local =
           if instr.fun == null
           then instr.local
@@ -182,7 +198,6 @@ private final class MainLoop:
         loopStep(payload2, step2, stack, store)
 
       case Tags.Resume =>
-        clearCache()
         val instr = payload.asInstanceOf[CC.Resume[Any, Any, Local, Any]]
         val cont = instr.cont.asImpl
         val (stack2, store2) = OpSplit.merge(
@@ -195,12 +210,11 @@ private final class MainLoop:
         loopStep(instr.value, cont.step, stack2, store2)
 
       case Tags.Capture =>
-        clearCache()
         val instr = payload.asInstanceOf[CC.Capture[Any, Any, Any, Any]]
-        val location = locatePrompt(stack, instr.prompt)
+        val location = stack.locatePrompt(instr.prompt)
         val (stackHi, storeHi, stepMid, stackLo, storeLo) = OpSplit.split(stack, store, location)
         //@#@THOV only the shallow paty of location2 is used
-        val location2 = locatePrompt(stackHi, instr.prompt)
+        val location2 = stackHi.locatePrompt(instr.prompt)
         val cont = new ContImpl(stackHi, storeHi, step, location2)
         val comp2 = (instr.fun: @unchecked) match
           case f: Function1[Any, AnyComp] => f(cont)
@@ -272,7 +286,6 @@ private final class MainLoop:
           loopCancel(stack, store)
 
       case Tags.Handle =>
-        clearCache()
         val instr = payload.asInstanceOf[CC.Handle[Any, Any, [_] =>> Any, [_] =>> Any, Any, Any]]
         val prompt = instr.handler.interpreter.untyped
         for sig <- prompt.signatures do
@@ -290,7 +303,6 @@ private final class MainLoop:
         loopComp(comp2, SC.Pop, stack2, store2)
 
       case Tags.Step_Unwind =>
-        clearCache()
         val instr = step.asInstanceOf[SC.Unwind]
         if stack.canPop then
           val (stack2, store2, step2, prompt, frame, local) = OpPush.pop(stack, store)
@@ -575,33 +587,6 @@ private final class MainLoop:
 
   def become(fiber: FiberImpl): Unit =
     theFiber = fiber
-
-
-  private def clearCache(): Unit =
-    cachedLocation = Location.Deep.empty
-    cachedPrompt = null.asInstanceOf[Prompt]
-
-
-  private def locatePrompt(stack: Stack, prompt: Prompt): Location.Deep =
-    if cachedPrompt == prompt then
-      cachedLocation
-    else
-      stack.locateSignature(prompt.signatures.head)
-
-
-  private def findPromptBySignature(stack: Stack, sig: Signature): Prompt =
-    @tailrec def loop(stack: Stack, depth: Int = 0): Prompt =
-      val entry = stack.lookup.findBySignature(sig)
-      if entry != null then
-        cachedPrompt = entry.prompt
-        cachedLocation = entry.location.withDepth(depth)
-        entry.prompt
-      else
-        if stack.isTailless then
-          Lookup.sigNotFound(sig)
-        else
-          loop(stack.tail, depth + 1)
-    loop(stack, 0)
 
 
 private object MainLoop:
