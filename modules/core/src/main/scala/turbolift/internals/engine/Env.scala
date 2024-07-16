@@ -31,7 +31,7 @@ private[turbolift] final class Env(
     else
       copy(isParallelismRequested = x)
 
-  override def toString = "Env"
+  override def toString = s"Env#%04X".format(hashCode & 0xFFFF)
 
 
 private[internals] object Env:

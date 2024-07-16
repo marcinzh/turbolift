@@ -11,15 +11,16 @@ import MainLoop.LoopMore
 
 private final class MainLoop:
   private var currentFiber: FiberImpl = null.asInstanceOf[FiberImpl]
+  private var currentEnv: Env = null.asInstanceOf[Env]
   private var currentTickLow: Int = 0
   private var currentTickHigh: Int = 0
-  protected[this] val pad1, pad2, pad3, pad4, pad5 = 0L
+  protected[this] val pad1, pad2, pad3, pad4 = 0L
 
 
   def run(): Halt =
     currentFiber.theOwnership = Bits.Ownership_Self
-    currentTickLow = currentFiber.suspendedEnv.tickLow
-    currentTickHigh = currentFiber.suspendedEnv.tickHigh
+    currentTickLow = currentEnv.tickLow
+    currentTickHigh = currentEnv.tickHigh
     if currentFiber.cancellationCheck() then
       currentFiber.suspendAsCancelled()
     outerLoop()
@@ -136,7 +137,7 @@ private final class MainLoop:
     else
       if currentTickHigh > 0 then
         currentTickHigh -= 1
-        currentTickLow = store.getEnv.tickLow
+        currentTickLow = currentEnv.tickLow
         if currentFiber.cancellationCheck() then
           loopCancel(stack, store)
         else
@@ -207,6 +208,7 @@ private final class MainLoop:
           stackLo = stack,
           storeLo = store,
         )
+        refreshEnv(stack2, store2)
         loopStep(instr.value, cont.step, stack2, store2)
 
       case Tags.Capture =>
@@ -221,16 +223,18 @@ private final class MainLoop:
           case f: Function2[Any, Any, AnyComp] =>
             val local = storeHi.getDeep(location2)
             f(cont, local)
+        refreshEnv(stackLo, storeLo)
         loopComp(comp2, stepMid, stackLo, storeLo)
 
       case Tags.Step_Bridge =>
         val (stack2, store2, step2) = OpPush.drop(stack, store)
+        refreshEnv(stack2, store2)
         loopStep(payload, step2, stack2, store2)
 
       case Tags.ZipPar =>
         val instr = payload.asInstanceOf[CC.ZipPar[Any, Any, Any, Any]]
         //@#@TODO Too conservative? Should check for `features.isParallel` at `mark`, instead of at stack top
-        if stack.accumFeatures.isParallel && store.getEnv.isParallelismRequested then
+        if stack.accumFeatures.isParallel && currentEnv.isParallelismRequested then
           val fiberLeft = currentFiber.createChild(Bits.ZipPar_Left)
           val fiberRight = currentFiber.createChild(Bits.ZipPar_Right)
           if currentFiber.tryStartRace(fiberLeft, fiberRight) then
@@ -240,7 +244,7 @@ private final class MainLoop:
             val stack2 = stack.makeFork
             fiberRight.suspend(instr.rhs.tag, instr.rhs, SC.Pop, stack2, storeRight)
             fiberRight.resume()
-            become(fiberLeft)
+            becomeWithSameEnv(fiberLeft)
             innerLoop(instr.lhs.tag, instr.lhs, SC.Pop, stack2, storeLeft)
           else
             //// Must have been cancelled meanwhile
@@ -252,7 +256,7 @@ private final class MainLoop:
 
       case Tags.OrPar =>
         val instr = payload.asInstanceOf[CC.OrPar[Any, Any]]
-        if stack.accumFeatures.isParallel && store.getEnv.isParallelismRequested then
+        if stack.accumFeatures.isParallel && currentEnv.isParallelismRequested then
           val fiberLeft = currentFiber.createChild(Bits.OrPar_Left)
           val fiberRight = currentFiber.createChild(Bits.OrPar_Right)
           if currentFiber.tryStartRace(fiberLeft, fiberRight) then
@@ -262,7 +266,7 @@ private final class MainLoop:
             val stack2 = stack.makeFork
             fiberRight.suspend(instr.rhs.tag, instr.rhs, SC.Pop, stack2, storeRight)
             fiberRight.resume()
-            become(fiberLeft)
+            becomeWithSameEnv(fiberLeft)
             innerLoop(instr.lhs.tag, instr.lhs, SC.Pop, stack2, storeLeft)
           else
             //// Must have been cancelled meanwhile
@@ -279,7 +283,7 @@ private final class MainLoop:
           val (storeDown, storeLeft) = OpCascaded.fork(stack, store)
           currentFiber.suspendForRace(instr.rhsFun, step, stack, storeDown)
           val stack2 = stack.makeFork
-          become(fiberLeft)
+          becomeWithSameEnv(fiberLeft)
           innerLoop(instr.lhs.tag, instr.lhs, SC.Pop, stack2, storeLeft)
         else
           //// Must have been cancelled meanwhile
@@ -310,6 +314,7 @@ private final class MainLoop:
           if prompt.isIo then
             frame.kind.unwrap match
               case FrameKind.PLAIN =>
+                refreshEnv(stack2, store2)
                 loopStep(payload, fallthrough, stack2, store2)
 
               case FrameKind.GUARD =>
@@ -318,11 +323,12 @@ private final class MainLoop:
                   case Step.UnwindKind.Abort  => Snap.Aborted(payload, instr.prompt.nn)
                   case Step.UnwindKind.Cancel => Snap.Cancelled
                   case Step.UnwindKind.Throw  => Snap.Failure(payload.asInstanceOf[Cause])
+                refreshEnv(stack2, store2)
                 loopStep(payload2, step2, stack2, store2)
 
               case FrameKind.WARP =>
                 currentFiber.suspend(fallthrough.tag, payload, fallthrough, stack2, store2)
-                val warp = store.getEnv.currentWarp.nn
+                val warp = currentEnv.currentWarp.nn
                 val tried = warp.exitMode match
                   case Warp.ExitMode.Cancel => warp.tryGetCancelledBy(currentFiber)
                   case Warp.ExitMode.Shutdown => warp.tryGetAwaitedBy(currentFiber)
@@ -332,6 +338,7 @@ private final class MainLoop:
                   case Bits.WaiterAlreadyCancelled => impossible //// Latch is set
                   case Bits.WaiteeAlreadyCompleted =>
                     currentFiber.clearSuspension()
+                    refreshEnv(stack2, store2)
                     loopStep(payload, fallthrough, stack2, store2)
 
               case FrameKind.EXEC =>
@@ -397,17 +404,17 @@ private final class MainLoop:
 
       case Tags.EnvAsk =>
         val instr = payload.asInstanceOf[CC.EnvAsk[Any]]
-        val value = instr.fun(store.getEnv)
+        val value = instr.fun(currentEnv)
         loopStep(value, step, stack, store)
 
       case Tags.EnvMod =>
         val instr = payload.asInstanceOf[CC.EnvMod[Any, Any]]
-        val env1 = store.getEnv
-        val env2 = instr.fun(env1)
-        if env1 == env2 then
+        val env2 = instr.fun(currentEnv)
+        if currentEnv == env2 then
           loopComp(instr.body, step, stack, store)
         else
           val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, env2.asLocal, FrameKind.plain)
+          this.currentEnv = env2
           loopComp(instr.body, SC.Pop, stack2, store2)
 
       case Tags.AwaitOnceVar =>
@@ -435,7 +442,7 @@ private final class MainLoop:
 
       case Tags.ForkFiber =>
         val instr = payload.asInstanceOf[CC.ForkFiber[Any, Any]]
-        val warp = if instr.warp != null then instr.warp.nn.asImpl else store.getEnv.currentWarp.nn
+        val warp = if instr.warp != null then instr.warp.nn.asImpl else currentEnv.currentWarp.nn
         val (storeDown, storeFork) = OpCascaded.fork(stack, store)
         val stackFork = stack.makeFork
         val child = FiberImpl.createExplicit(warp, instr.name, instr.callback)
@@ -492,14 +499,14 @@ private final class MainLoop:
 
       case Tags.SpawnWarp =>
         val instr = payload.asInstanceOf[CC.SpawnWarp[Any, Any]]
-        val oldEnv = store.getEnv
-        val oldWarp = oldEnv.currentWarp
+        val oldWarp = currentEnv.currentWarp
         val parent: WarpImpl | FiberImpl = if oldWarp != null then oldWarp.nn else currentFiber
         val newWarp = new WarpImpl(parent, instr.name, instr.exitMode)
         if oldWarp != null then
           oldWarp.nn.tryAddWarp(newWarp)
-        val newEnv = oldEnv.copy(currentWarp = newWarp)
+        val newEnv = currentEnv.copy(currentWarp = newWarp)
         val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, newEnv.asLocal, FrameKind.warp)
+        this.currentEnv = newEnv
         loopComp(instr.body, SC.Pop, stack2, store2)
 
       case Tags.AwaitWarp =>
@@ -559,11 +566,10 @@ private final class MainLoop:
 
       case Tags.ExecOn =>
         val instr = payload.asInstanceOf[CC.ExecOn[Any, Any]]
-        val env = store.getEnv
-        if env.executor == instr.exec then
+        if currentEnv.executor == instr.exec then
           loopComp(instr.body, step, stack, store)
         else
-          val env2 = env.copy(executor = instr.exec)
+          val env2 = currentEnv.copy(executor = instr.exec)
           val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, env2.asLocal, FrameKind.exec)
           currentFiber.suspend(instr.body.tag, instr.body, SC.Pop, stack2, store2)
           currentFiber.resume()
@@ -585,8 +591,17 @@ private final class MainLoop:
       case fiber2 => become(fiber2.nn); Halt.Become
 
 
+  def becomeWithSameEnv(fiber: FiberImpl): Unit =
+    currentFiber = fiber
+
+
   def become(fiber: FiberImpl): Unit =
     currentFiber = fiber
+    refreshEnv(fiber.suspendedStack.nn, fiber.suspendedStore.nn) 
+
+
+  def refreshEnv(stack: Stack, store: Store): Unit =
+    currentEnv = OpPush.findTopmostEnv(stack, store)
 
 
 private object MainLoop:

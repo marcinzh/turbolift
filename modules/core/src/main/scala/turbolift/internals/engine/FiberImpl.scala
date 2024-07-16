@@ -429,12 +429,10 @@ private[turbolift] final class FiberImpl private (
   //-------------------------------------------------------------------
 
 
-  def suspendedEnv: Env = suspendedStore.nn.getEnv
-
-
   def resume(): Unit =
     assert(isSuspended)
-    suspendedEnv.executor.resume(this)
+    val env = OpPush.findTopmostEnv(suspendedStack.nn, suspendedStore.nn)
+    env.executor.resume(this)
 
 
   private def isSuspended: Boolean = suspendedStack != null

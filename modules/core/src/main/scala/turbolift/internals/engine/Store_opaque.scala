@@ -3,14 +3,12 @@ import scala.annotation.tailrec
 
 
 //// 0th array member is the tail
-//// 1st array member is a copy of the topmost Env
 
 private trait Store_opaque:
   private final inline val TAIL_INDEX = 0
-  private final inline val ENV_INDEX = 1
-  private final inline val RESERVED = 2
+  private final inline val RESERVED = 1
 
-  final def initial(env: Env): Store = Store.wrap(Array(null, env, env))
+  final def initial(env: Env): Store = Store.wrap(Array(null, env))
 
   extension (thiz: Store)
     final def isEmpty: Boolean = thiz.unwrap.size == RESERVED
@@ -53,19 +51,7 @@ private trait Store_opaque:
     final def seti(i: Int, s: Local): Store = Store.wrap(thiz.unwrap.updated(i + RESERVED, s))
     final def setInPlace(i: Int, s: Local): Unit = thiz.unwrap(i + RESERVED) = s
     final def getShallow(l: Location.Shallow): Local = geti(l.localIndex)
-
-
-    final def setShallow(l: Location.Shallow, s: Local, isIo: Boolean): Store =
-      val that = seti(l.localIndex, s)
-      if isIo then
-        that.setEnvInPlace(s)
-      that
-
-
-    final def getEnv: Env = thiz.unwrap(ENV_INDEX).asInstanceOf[Env]
-    final def getEnvAsLocal: Local = thiz.unwrap(ENV_INDEX).asLocal
-    final def setEnv(env: Env): Store = Store.wrap(thiz.unwrap.updated(ENV_INDEX, env))
-    final def setEnvInPlace(env: Any): Unit = thiz.unwrap(ENV_INDEX) = env
+    final def setShallow(l: Location.Shallow, s: Local): Store = seti(l.localIndex, s)
 
     final def push(s: Local): Store = Store.wrap(thiz.unwrap :+ s)
     final def pop: Store = Store.wrap(thiz.unwrap.init)
@@ -79,9 +65,9 @@ private trait Store_opaque:
 
     final def pushNewSegment(s: Local): Store =
       if s.isVoid then
-        Store.wrap(Array(thiz, thiz.getEnv))
+        Store.wrap(Array(thiz))
       else
-        Store.wrap(Array(thiz, thiz.getEnv, s))
+        Store.wrap(Array(thiz, s))
 
 
     final def blankClone(): Store = blankClone(thiz.localCount)
@@ -91,7 +77,6 @@ private trait Store_opaque:
       val arr1 = thiz.unwrap
       val arr2 = new Array[Any](newLocalCount + RESERVED)
       arr2(TAIL_INDEX) = arr1(TAIL_INDEX)
-      arr2(ENV_INDEX) = arr1(ENV_INDEX)
       Store.wrap(arr2)
 
 
@@ -107,11 +92,10 @@ private trait Store_opaque:
     final def copyTailless: Store =
       val arr1 = thiz.unwrap
       val arr2 = new Array[Any](localCount + RESERVED)
-      arr2(ENV_INDEX) = arr1(ENV_INDEX)
       val n = localCount
       var i = 0
       while i < n do
-        arr2(i) = arr1(i)
+        arr2(i + RESERVED) = arr1(i + RESERVED)
         i += 1
       Store.wrap(arr2)
 

@@ -3,6 +3,10 @@ import scala.annotation.tailrec
 
 
 private object OpPush:
+  def findTopmostEnv(stack: Stack, store: Store): Env =
+    store.getDeep(stack.locateIO).asEnv
+
+
   def pushBase(stack: Stack, store: Store, step: Step, prompt: Prompt, local: Local): (Stack, Store) =
     if stack.promptCount <= Location.MAX_SEGMENT_SIZE then
       val newStack = stack.pushBase(prompt, step, localIndex = store.nextLocalIndex)
@@ -17,7 +21,7 @@ private object OpPush:
       val loc = location.asShallow
       if prompt.isStateful then
         val oldLocal = store.getShallow(loc)
-        val newStore = if local.isVoid then store else store.setShallow(loc, local, prompt.isIo)
+        val newStore = if local.isVoid then store else store.setShallow(loc, local)
         val newStack = stack.pushNested(promptIndex = loc.promptIndex, step, oldLocal, kind)
         (newStack, newStore)
       else
@@ -68,7 +72,7 @@ private object OpPush:
           val lastLocal = store.getShallow(location)
           val newStore =
             if topFrame.hasNext then
-              store.setShallow(location, topFrame.local, topPrompt.isIo)
+              store.setShallow(location, topFrame.local)
             else
               store.pop
           (newStore, lastLocal)

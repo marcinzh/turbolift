@@ -158,8 +158,6 @@ private object OpSplit:
       addPromptInPlace(prompt, bundle.pile, newStack, promptIndex, destLocalIndex, destSigIndex)
       if prompt.isStateful then
         newStore.setInPlace(destLocalIndex, bundle.local)
-        if prompt.isIo then
-          newStore.setEnvInPlace(bundle.local.asEnv)
       if bundle.pile.hasBase then
         val forkPile = Pile.base(prompt, destForkPromptIndex)
         addPromptInPlace(prompt, forkPile, newStack.fork, destForkPromptIndex, destForkLocalIndex, destForkSigIndex)
