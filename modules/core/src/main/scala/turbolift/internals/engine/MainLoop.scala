@@ -10,18 +10,18 @@ import MainLoop.LoopMore
 
 
 private final class MainLoop:
-  private var theFiber: FiberImpl = null.asInstanceOf[FiberImpl]
-  private var theTickLow: Int = 0
-  private var theTickHigh: Int = 0
+  private var currentFiber: FiberImpl = null.asInstanceOf[FiberImpl]
+  private var currentTickLow: Int = 0
+  private var currentTickHigh: Int = 0
   protected[this] val pad1, pad2, pad3, pad4, pad5 = 0L
 
 
   def run(): Halt =
-    theFiber.theOwnership = Bits.Ownership_Self
-    theTickLow = theFiber.suspendedEnv.tickLow
-    theTickHigh = theFiber.suspendedEnv.tickHigh
-    if theFiber.cancellationCheck() then
-      theFiber.suspendAsCancelled()
+    currentFiber.theOwnership = Bits.Ownership_Self
+    currentTickLow = currentFiber.suspendedEnv.tickLow
+    currentTickHigh = currentFiber.suspendedEnv.tickHigh
+    if currentFiber.cancellationCheck() then
+      currentFiber.suspendAsCancelled()
     outerLoop()
 
 
@@ -32,12 +32,12 @@ private final class MainLoop:
 
   @tailrec private def outerLoop(): Halt =
     val result =
-      val currentTag     = theFiber.suspendedTag
-      val currentPayload = theFiber.suspendedPayload.nn
-      val currentStep    = theFiber.suspendedStep.nn
-      val currentStack   = theFiber.suspendedStack.nn
-      val currentStore   = theFiber.suspendedStore.nn
-      theFiber.clearSuspension()
+      val currentTag     = currentFiber.suspendedTag
+      val currentPayload = currentFiber.suspendedPayload.nn
+      val currentStep    = currentFiber.suspendedStep.nn
+      val currentStack   = currentFiber.suspendedStack.nn
+      val currentStore   = currentFiber.suspendedStore.nn
+      currentFiber.clearSuspension()
       try
         innerLoop(
           tag      = currentTag,
@@ -72,8 +72,8 @@ private final class MainLoop:
     inline def loopCancel(stack: Stack, store: Store): Halt.Loop =
       innerLoop(Tags.Step_Unwind, CancelPayload, Step.Cancel, stack, store)
 
-    if theTickLow > 0 then
-      theTickLow -= 1
+    if currentTickLow > 0 then
+      currentTickLow -= 1
       (tag: @switch) match
         case Tags.MapFlat | Tags.MapPure =>
           val instr = payload.asInstanceOf[CC.Map[Any, Any]]
@@ -134,16 +134,16 @@ private final class MainLoop:
             case halt: Halt.Loop => halt
             case (tag2, payload2, step2, stack2, store2) => innerLoop(tag2, payload2, step2, stack2, store2)
     else
-      if theTickHigh > 0 then
-        theTickHigh -= 1
-        theTickLow = store.getEnv.tickLow
-        if theFiber.cancellationCheck() then
+      if currentTickHigh > 0 then
+        currentTickHigh -= 1
+        currentTickLow = store.getEnv.tickLow
+        if currentFiber.cancellationCheck() then
           loopCancel(stack, store)
         else
           innerLoop(tag, payload, step, stack, store)
       else
-        theFiber.suspend(tag, payload, step, stack, store)
-        Halt.Yield(theFiber)
+        currentFiber.suspend(tag, payload, step, stack, store)
+        Halt.Yield(currentFiber)
 
 
   private def loopMore(tag: Byte, payload: Any, step: Step, stack: Stack, store: Store): LoopMore =
@@ -231,12 +231,12 @@ private final class MainLoop:
         val instr = payload.asInstanceOf[CC.ZipPar[Any, Any, Any, Any]]
         //@#@TODO Too conservative? Should check for `features.isParallel` at `mark`, instead of at stack top
         if stack.accumFeatures.isParallel && store.getEnv.isParallelismRequested then
-          val fiberLeft = theFiber.createChild(Bits.ZipPar_Left)
-          val fiberRight = theFiber.createChild(Bits.ZipPar_Right)
-          if theFiber.tryStartRace(fiberLeft, fiberRight) then
+          val fiberLeft = currentFiber.createChild(Bits.ZipPar_Left)
+          val fiberRight = currentFiber.createChild(Bits.ZipPar_Right)
+          if currentFiber.tryStartRace(fiberLeft, fiberRight) then
             val (storeTmp, storeLeft) = OpCascaded.fork(stack, store)
             val (storeDown, storeRight) = OpCascaded.fork(stack, storeTmp)
-            theFiber.suspendForRace(instr.fun, step, stack, storeDown)
+            currentFiber.suspendForRace(instr.fun, step, stack, storeDown)
             val stack2 = stack.makeFork
             fiberRight.suspend(instr.rhs.tag, instr.rhs, SC.Pop, stack2, storeRight)
             fiberRight.resume()
@@ -253,12 +253,12 @@ private final class MainLoop:
       case Tags.OrPar =>
         val instr = payload.asInstanceOf[CC.OrPar[Any, Any]]
         if stack.accumFeatures.isParallel && store.getEnv.isParallelismRequested then
-          val fiberLeft = theFiber.createChild(Bits.OrPar_Left)
-          val fiberRight = theFiber.createChild(Bits.OrPar_Right)
-          if theFiber.tryStartRace(fiberLeft, fiberRight) then
+          val fiberLeft = currentFiber.createChild(Bits.OrPar_Left)
+          val fiberRight = currentFiber.createChild(Bits.OrPar_Right)
+          if currentFiber.tryStartRace(fiberLeft, fiberRight) then
             val (storeTmp, storeLeft) = OpCascaded.fork(stack, store)
             val (storeDown, storeRight) = OpCascaded.fork(stack, storeTmp)
-            theFiber.suspendForRace(null, step, stack, storeDown)
+            currentFiber.suspendForRace(null, step, stack, storeDown)
             val stack2 = stack.makeFork
             fiberRight.suspend(instr.rhs.tag, instr.rhs, SC.Pop, stack2, storeRight)
             fiberRight.resume()
@@ -274,10 +274,10 @@ private final class MainLoop:
 
       case Tags.OrSeq =>
         val instr = payload.asInstanceOf[CC.OrSeq[Any, Any]]
-        val fiberLeft = theFiber.createChild(Bits.OrSeq)
-        if theFiber.tryStartRaceOfOne(fiberLeft) then
+        val fiberLeft = currentFiber.createChild(Bits.OrSeq)
+        if currentFiber.tryStartRaceOfOne(fiberLeft) then
           val (storeDown, storeLeft) = OpCascaded.fork(stack, store)
-          theFiber.suspendForRace(instr.rhsFun, step, stack, storeDown)
+          currentFiber.suspendForRace(instr.rhsFun, step, stack, storeDown)
           val stack2 = stack.makeFork
           become(fiberLeft)
           innerLoop(instr.lhs.tag, instr.lhs, SC.Pop, stack2, storeLeft)
@@ -321,22 +321,22 @@ private final class MainLoop:
                 loopStep(payload2, step2, stack2, store2)
 
               case FrameKind.WARP =>
-                theFiber.suspend(fallthrough.tag, payload, fallthrough, stack2, store2)
+                currentFiber.suspend(fallthrough.tag, payload, fallthrough, stack2, store2)
                 val warp = store.getEnv.currentWarp.nn
                 val tried = warp.exitMode match
-                  case Warp.ExitMode.Cancel => warp.tryGetCancelledBy(theFiber)
-                  case Warp.ExitMode.Shutdown => warp.tryGetAwaitedBy(theFiber)
+                  case Warp.ExitMode.Cancel => warp.tryGetCancelledBy(currentFiber)
+                  case Warp.ExitMode.Shutdown => warp.tryGetAwaitedBy(currentFiber)
                   case _ => impossible //// this is a scoped warp, so it must have ExitMode
                 tried match
                   case Bits.WaiterSubscribed => Halt.ThreadDisowned
                   case Bits.WaiterAlreadyCancelled => impossible //// Latch is set
                   case Bits.WaiteeAlreadyCompleted =>
-                    theFiber.clearSuspension()
+                    currentFiber.clearSuspension()
                     loopStep(payload, fallthrough, stack2, store2)
 
               case FrameKind.EXEC =>
-                theFiber.suspend(fallthrough.tag, payload, fallthrough, stack2, store2)
-                theFiber.resume()
+                currentFiber.suspend(fallthrough.tag, payload, fallthrough, stack2, store2)
+                currentFiber.resume()
                 Halt.ThreadDisowned
           else
             if instr.kind.isPop then
@@ -392,7 +392,7 @@ private final class MainLoop:
             val step2 = theAborted.prompt.unwind
             loopStep(payload2, step2, stack, store)
           case Snap.Cancelled =>
-            theFiber.cancelBySelf()
+            currentFiber.cancelBySelf()
             loopCancel(stack, store)
 
       case Tags.EnvAsk =>
@@ -417,14 +417,14 @@ private final class MainLoop:
         if OnceVarImpl.Empty != value then
           loopStep(value, step, stack, store)
         else
-          theFiber.suspend(Tags.NotifyOnceVar, ovar, step, stack, store)
-          ovar.tryGetAwaitedBy(theFiber) match
+          currentFiber.suspend(Tags.NotifyOnceVar, ovar, step, stack, store)
+          ovar.tryGetAwaitedBy(currentFiber) match
             case Bits.WaiterSubscribed => Halt.ThreadDisowned
             case Bits.WaiterAlreadyCancelled =>
-              theFiber.clearSuspension()
+              currentFiber.clearSuspension()
               loopCancel(stack, store)
             case Bits.WaiteeAlreadyCompleted =>
-              theFiber.clearSuspension()
+              currentFiber.clearSuspension()
               val value = ovar.theContent
               loopStep(value, step, stack, store)
 
@@ -450,33 +450,33 @@ private final class MainLoop:
       case Tags.AwaitFiber =>
         val instr = payload.asInstanceOf[CC.AwaitFiber[Any, Any]]
         val waitee = instr.fiber.asImpl
-        if theFiber != waitee then
+        if currentFiber != waitee then
           val tag2: Byte = if instr.isVoid then Tags.NotifyFiberVoid else Tags.NotifyFiber
-          theFiber.suspend(tag2, waitee, step, stack, store)
+          currentFiber.suspend(tag2, waitee, step, stack, store)
           val tried =
             if instr.isCancel
-            then waitee.tryGetCancelledBy(theFiber)
-            else waitee.tryGetAwaitedBy(theFiber)
+            then waitee.tryGetCancelledBy(currentFiber)
+            else waitee.tryGetAwaitedBy(currentFiber)
           tried match
             case Bits.WaiterSubscribed => Halt.ThreadDisowned
             case Bits.WaiterAlreadyCancelled =>
-              theFiber.clearSuspension()
+              currentFiber.clearSuspension()
               loopCancel(stack, store)
             case Bits.WaiteeAlreadyCompleted =>
-              theFiber.clearSuspension()
+              currentFiber.clearSuspension()
               val payload2 = if instr.isVoid then () else waitee.getOrMakeZipper
               loopStep(payload2, step, stack, store)
         else
           if instr.isCancel then
-            theFiber.cancelBySelf()
+            currentFiber.cancelBySelf()
             loopCancel(stack, store)
           else
-            val zombie = new Blocker.Zombie(theFiber)
-            theFiber.suspend(step.tag, zombie, step, stack, store)
-            if theFiber.tryGetBlocked() then
+            val zombie = new Blocker.Zombie(currentFiber)
+            currentFiber.suspend(step.tag, zombie, step, stack, store)
+            if currentFiber.tryGetBlocked() then
               Halt.ThreadDisowned
             else
-              theFiber.clearSuspension()
+              currentFiber.clearSuspension()
               loopCancel(stack, store)
 
       case Tags.NotifyFiber =>
@@ -488,13 +488,13 @@ private final class MainLoop:
         loopStep((), step, stack, store)
 
       case Tags.CurrentFiber =>
-        loopStep(theFiber, step, stack, store)
+        loopStep(currentFiber, step, stack, store)
 
       case Tags.SpawnWarp =>
         val instr = payload.asInstanceOf[CC.SpawnWarp[Any, Any]]
         val oldEnv = store.getEnv
         val oldWarp = oldEnv.currentWarp
-        val parent: WarpImpl | FiberImpl = if oldWarp != null then oldWarp.nn else theFiber
+        val parent: WarpImpl | FiberImpl = if oldWarp != null then oldWarp.nn else currentFiber
         val newWarp = new WarpImpl(parent, instr.name, instr.exitMode)
         if oldWarp != null then
           oldWarp.nn.tryAddWarp(newWarp)
@@ -505,40 +505,40 @@ private final class MainLoop:
       case Tags.AwaitWarp =>
         val instr = payload.asInstanceOf[CC.AwaitWarp]
         val warp = instr.warp.asImpl
-        theFiber.suspend(step.tag, (), step, stack, store)
+        currentFiber.suspend(step.tag, (), step, stack, store)
         val tried =
           if instr.isCancel
-          then warp.tryGetCancelledBy(theFiber)
-          else warp.tryGetAwaitedBy(theFiber)
+          then warp.tryGetCancelledBy(currentFiber)
+          else warp.tryGetAwaitedBy(currentFiber)
         tried match
           case Bits.WaiterSubscribed => Halt.ThreadDisowned
           case Bits.WaiterAlreadyCancelled =>
-            theFiber.clearSuspension()
+            currentFiber.clearSuspension()
             loopCancel(stack, store)
           case Bits.WaiteeAlreadyCompleted =>
-            theFiber.clearSuspension()
+            currentFiber.clearSuspension()
             loopStep((), step, stack, store)
 
       case Tags.Blocking =>
         val instr = payload.asInstanceOf[CC.Blocking[Any, Any]]
-        val blocker = new Blocker.Interruptible(theFiber, instr.thunk)
-        theFiber.suspend(Tags.NotifyBlocker, blocker, step, stack, store)
-        if theFiber.tryGetBlocked() then
+        val blocker = new Blocker.Interruptible(currentFiber, instr.thunk)
+        currentFiber.suspend(Tags.NotifyBlocker, blocker, step, stack, store)
+        if currentFiber.tryGetBlocked() then
           blocker.block()
           Halt.ThreadDisowned
         else
-          theFiber.clearSuspension()
+          currentFiber.clearSuspension()
           loopCancel(stack, store)
 
       case Tags.Sleep =>
         val instr = payload.asInstanceOf[CC.Sleep]
-        val blocker = new Blocker.Sleeper(theFiber)
-        theFiber.suspend(Tags.NotifyBlocker, blocker, step, stack, store)
-        if theFiber.tryGetBlocked() then
+        val blocker = new Blocker.Sleeper(currentFiber)
+        currentFiber.suspend(Tags.NotifyBlocker, blocker, step, stack, store)
+        if currentFiber.tryGetBlocked() then
           blocker.sleep(instr.length, instr.unit)
           Halt.ThreadDisowned
         else
-          theFiber.clearSuspension()
+          currentFiber.clearSuspension()
           loopCancel(stack, store)
 
       case Tags.NotifyBlocker =>
@@ -565,13 +565,13 @@ private final class MainLoop:
         else
           val env2 = env.copy(executor = instr.exec)
           val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, env2.asLocal, FrameKind.exec)
-          theFiber.suspend(instr.body.tag, instr.body, SC.Pop, stack2, store2)
-          theFiber.resume()
+          currentFiber.suspend(instr.body.tag, instr.body, SC.Pop, stack2, store2)
+          currentFiber.resume()
           Halt.ThreadDisowned
 
       case Tags.Yield =>
-        theFiber.suspend(step.tag, (), step, stack, store)
-        Halt.Yield(theFiber)
+        currentFiber.suspend(step.tag, (), step, stack, store)
+        Halt.Yield(currentFiber)
 
 
   //-------------------------------------------------------------------
@@ -580,13 +580,13 @@ private final class MainLoop:
 
 
   private def endOfLoop(completion: Int, payload: Any, stack: Stack | Null): Halt.Loop =
-    theFiber.doFinalize(completion, payload, stack) match
-      case null => Halt.retire(theFiber.isReentry)
+    currentFiber.doFinalize(completion, payload, stack) match
+      case null => Halt.retire(currentFiber.isReentry)
       case fiber2 => become(fiber2.nn); Halt.Become
 
 
   def become(fiber: FiberImpl): Unit =
-    theFiber = fiber
+    currentFiber = fiber
 
 
 private object MainLoop:
