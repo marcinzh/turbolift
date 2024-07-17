@@ -9,7 +9,7 @@ private object OpPush:
 
   def pushBase(stack: Stack, store: Store, step: Step, prompt: Prompt, local: Local): (Stack, Store) =
     if stack.promptCount <= Location.MAX_SEGMENT_SIZE then
-      val newStack = stack.pushBase(prompt, step, localIndex = store.nextLocalIndex)
+      val newStack = stack.pushBase(prompt, step, localIndex = store.nextStoreIndex)
       val newStore = if prompt.isStateful then store.push(local) else store
       (newStack, newStore)
     else
@@ -18,7 +18,7 @@ private object OpPush:
 
   def pushNested(stack: Stack, store: Store, step: Step, prompt: Prompt, location: Location.Deep, local: Local, kind: FrameKind): (Stack, Store) =
     if location.segmentDepth == 0 then
-      val loc = location.asShallow
+      val loc = location.shallow
       if prompt.isStateful then
         val oldLocal = store.getShallow(loc)
         val newStore = if local.isVoid then store else store.setShallow(loc, local)

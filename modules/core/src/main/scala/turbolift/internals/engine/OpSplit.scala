@@ -178,8 +178,7 @@ private object OpSplit:
     destSigIndex: Int,
   ): Unit =
     destStack.piles(destPromptIndex) = pile
-    val loc = Location.Shallow(promptIndex = destPromptIndex, localIndex = destLocalIndex)
-    val entry = Entry(prompt, loc)
+    val entry = Entry(prompt, Location.Shallow(promptIndex = destPromptIndex, storeIndex = destLocalIndex))
     val sigs = prompt.signatures
     val lookup = destStack.lookup
     val n = sigs.size

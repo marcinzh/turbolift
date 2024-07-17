@@ -69,7 +69,7 @@ private final class Stack private (
   @tailrec def locateSignature(sig: Signature, depth: Int = 0): Location.Deep =
     val entry = lookup.findBySignature(sig)
     if entry != null then
-      entry.location.withDepth(depth)
+      entry.deepLocation(depth)
     else
       if isTailless then
         Lookup.sigNotFound(sig)
@@ -80,7 +80,7 @@ private final class Stack private (
   @tailrec def findSignature(sig: Signature, depth: Int = 0): (Prompt, Location.Deep) =
     val entry = lookup.findBySignature(sig)
     if entry != null then
-      (entry.prompt, entry.location.withDepth(depth))
+      (entry.prompt, entry.deepLocation(depth))
     else
       if isTailless then
         Lookup.sigNotFound(sig)
@@ -98,7 +98,7 @@ private final class Stack private (
     @tailrec def loop(i: Int, j: Int): Location.Shallow =
       val pile = piles(i)
       if pile.maxHeight == n then
-        Location.Shallow(promptIndex = i, localIndex = j)
+        Location.Shallow(promptIndex = i, storeIndex = j)
       else
         loop(i + 1, j + pile.prompt.localCount)
     loop(0, 0)
@@ -123,7 +123,7 @@ private final class Stack private (
 
 
   private def pushBase_Aux(pile: Pile, prompt: Prompt, features: Features, localIndex: Int): Stack =
-    val newEntry = Entry(prompt, Location.Shallow(promptIndex = promptCount, localIndex = localIndex))
+    val newEntry = Entry(prompt, Location.Shallow(promptIndex = promptCount, storeIndex = localIndex))
     new Stack(
       lookup = lookup.push(newEntry),
       piles = piles :+ pile,

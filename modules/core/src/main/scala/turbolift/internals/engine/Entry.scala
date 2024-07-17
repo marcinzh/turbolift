@@ -1,10 +1,17 @@
 package turbolift.internals.engine
 
 
-private final class Entry (
+private final class Entry(
   val prompt: Prompt,
-  val location: Location.Shallow,
-)
+  val promptIndex: Int,
+  val storeIndex: Int,
+):
+  def this(prompt: Prompt, location: Location.Shallow) =
+    this(prompt, promptIndex = location.promptIndex, storeIndex = location.storeIndex)
+
+  def deepLocation(depth: Int): Location.Deep =
+    Location.Deep(promptIndex = promptIndex, storeIndex = storeIndex, segmentDepth = depth)
+
 
 private object Entry:
-  val initial: Entry = Entry(PromptIO, Location.Shallow(0, 0))
+  val initial: Entry = Entry(PromptIO, promptIndex = 0, storeIndex = 0)
