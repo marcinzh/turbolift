@@ -9,15 +9,21 @@ import Cause.{Cancelled => CancelPayload}
 import MainLoop.LoopMore
 
 
-private final class MainLoop:
-  private var currentFiber: FiberImpl = null.asInstanceOf[FiberImpl]
-  private var currentEnv: Env = null.asInstanceOf[Env]
-  private var currentTickLow: Int = 0
-  private var currentTickHigh: Int = 0
+private sealed abstract class MainLoop0 extends Runnable:
+  protected var currentFiber: FiberImpl = null.asInstanceOf[FiberImpl]
+  protected var currentEnv: Env = null.asInstanceOf[Env]
+  protected var currentTickLow: Int = 0
+  protected var currentTickHigh: Int = 0
+
+
+private[internals] abstract class MainLoop extends MainLoop0:
   protected[this] val pad1, pad2, pad3, pad4 = 0L
 
 
-  def run(): Halt =
+  def this(fiber: FiberImpl) = { this(); become(fiber) }
+
+
+  final def runCurrent(): Halt =
     currentFiber.theOwnership = Bits.Ownership_Self
     currentTickLow = currentEnv.tickLow
     currentTickHigh = currentEnv.tickHigh
@@ -31,7 +37,7 @@ private final class MainLoop:
   //-------------------------------------------------------------------
 
 
-  @tailrec private def outerLoop(): Halt =
+  @tailrec private final def outerLoop(): Halt =
     val result =
       val currentTag     = currentFiber.suspendedTag
       val currentPayload = currentFiber.suspendedPayload.nn
@@ -63,7 +69,7 @@ private final class MainLoop:
   //-------------------------------------------------------------------
 
 
-  @tailrec private def innerLoop(tag: Byte, payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop =
+  @tailrec private final def innerLoop(tag: Byte, payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop =
     inline def loopStep(payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop =
       innerLoop(step.tag, payload, step, stack, store)
 
@@ -144,7 +150,7 @@ private final class MainLoop:
           innerLoop(tag, payload, step, stack, store)
       else
         currentFiber.suspend(tag, payload, step, stack, store)
-        Halt.Yield(currentFiber)
+        Halt.Yield
 
 
   private def loopMore(tag: Byte, payload: Any, step: Step, stack: Stack, store: Store): LoopMore =
@@ -577,7 +583,7 @@ private final class MainLoop:
 
       case Tags.Yield =>
         currentFiber.suspend(step.tag, (), step, stack, store)
-        Halt.Yield(currentFiber)
+        Halt.Yield
 
 
   //-------------------------------------------------------------------
@@ -585,22 +591,30 @@ private final class MainLoop:
   //-------------------------------------------------------------------
 
 
-  private def endOfLoop(completion: Int, payload: Any, stack: Stack | Null): Halt.Loop =
+  private final def endOfLoop(completion: Int, payload: Any, stack: Stack | Null): Halt.Loop =
     currentFiber.doFinalize(completion, payload, stack) match
-      case null => Halt.retire(currentFiber.isReentry)
+      case null => Halt.Retire
       case fiber2 => become(fiber2.nn); Halt.Become
 
 
-  def becomeWithSameEnv(fiber: FiberImpl): Unit =
-    currentFiber = fiber
+  final def becomeClear(): Unit =
+    currentFiber = null.asInstanceOf[FiberImpl]
+    currentEnv = null.asInstanceOf[Env]
 
 
-  def become(fiber: FiberImpl): Unit =
+  final def become(fiber: FiberImpl): Unit =
     currentFiber = fiber
     refreshEnv(fiber.suspendedStack.nn, fiber.suspendedStore.nn) 
 
 
-  def refreshEnv(stack: Stack, store: Store): Unit =
+  final def getCurrentFiber: FiberImpl = currentFiber
+
+
+  private final def becomeWithSameEnv(fiber: FiberImpl): Unit =
+    currentFiber = fiber
+
+
+  private final def refreshEnv(stack: Stack, store: Store): Unit =
     currentEnv = OpPush.findTopmostEnv(stack, store)
 
 

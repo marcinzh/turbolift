@@ -2,11 +2,12 @@ package turbolift.internals.executor
 import scala.annotation.tailrec
 import turbolift.Computation
 import turbolift.io.Outcome
-import turbolift.internals.engine.{FiberImpl, WaiterLink, Halt}
+import turbolift.internals.engine.{FiberImpl, WaiterLink, MainLoop, Halt}
 
 
 private[internals] final class ZeroThreadedExecutor extends WaiterLink.Queue with Executor:
   private var isDone: Boolean = false
+  private val mainLoop = new MainLoop { override def run() = () } //// `run` is not used by this executor
 
   override def toString = s"ZeroThreadedExecutor@${hashCode.toHexString}"
 
@@ -16,8 +17,8 @@ private[internals] final class ZeroThreadedExecutor extends WaiterLink.Queue wit
     def callback(o: Outcome[A]): Unit =
       outcome = o
       isDone = true
-    val fiber = FiberImpl.create(comp, this, name, isReentry = false, callback)
-    drain(fiber)
+    mainLoop.become(FiberImpl.create(comp, this, name, isReentry = false, callback))
+    drain()
     outcome
 
 
@@ -30,34 +31,42 @@ private[internals] final class ZeroThreadedExecutor extends WaiterLink.Queue wit
       val wasEmpty = isEmpty
       enqueue(fiber)
       if wasEmpty then
+        mainLoop.become(fiber)
         notify()
     }
 
 
-  @tailrec private def drain(fiber: FiberImpl): Unit =
-    fiber.run() match
-      case Halt.Yield(yielder) =>
-        val next =
-          synchronized {
-            if isEmpty then
-              yielder
-            else
-              enqueue(yielder)
-              dequeue()
-          }
-        drain(next)
-
-      case _ =>
-        val next =
-          synchronized {
-            if isEmpty then
-              if !isDone then
-                wait()
+  private def drain(): Unit =
+    var keepGoing = true
+    while keepGoing do
+      mainLoop.runCurrent() match
+        case Halt.Yield =>
+          val last = mainLoop.getCurrentFiber
+          val next =
+            synchronized {
+              if !isEmpty then
+                enqueue(last)
                 dequeue()
               else
                 null
-            else
-              dequeue()
-          }
-        if next != null then
-          drain(next)
+            }
+          if next != null then
+            mainLoop.become(next)
+
+        case _ =>
+          val next =
+            synchronized {
+              if isEmpty then
+                if !isDone then
+                  wait()
+                  dequeue()
+                else
+                  null
+              else
+                dequeue()
+            }
+          if next != null then
+            mainLoop.become(next)
+          else
+            mainLoop.becomeClear()
+            keepGoing = false

@@ -22,12 +22,6 @@ private[turbolift] final class FiberImpl private (
 
   private def this(constantBits: Byte, theName: String) = this(constantBits, null.asInstanceOf[Hook], theName)
 
-  //@#@TODO refac: move to Executor
-  def run(): Halt =
-    val ml = new MainLoop
-    ml.become(this)
-    ml.run()
-
 
   //-------------------------------------------------------------------
   // Finalization
@@ -580,7 +574,7 @@ private[turbolift] final class FiberImpl private (
 
   private def isRoot: Boolean = Bits.isRoot(constantBits)
   private def isExplicit: Boolean = Bits.isExplicit(constantBits)
-  private[engine] def isReentry: Boolean = Bits.isReentry(constantBits)
+  private[internals] def isReentry: Boolean = Bits.isReentry(constantBits)
   private def getCompletion: Int = Bits.getCompletion(varyingBits)
   private def getArbiterBits: Int = Bits.getArbiter(varyingBits)
 

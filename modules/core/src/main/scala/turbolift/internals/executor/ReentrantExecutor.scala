@@ -4,7 +4,7 @@ import java.util.concurrent.ArrayBlockingQueue
 import scala.annotation.tailrec
 import turbolift.Computation
 import turbolift.io.Outcome
-import turbolift.internals.engine.{FiberImpl, WaiterLink, Halt}
+import turbolift.internals.engine.{FiberImpl, WaiterLink, MainLoop, Halt}
 
 
 private[turbolift] final class ReentrantExecutor(maxBusyThreads: Int) extends WaiterLink.Queue with Executor:
@@ -46,30 +46,41 @@ private[turbolift] final class ReentrantExecutor(maxBusyThreads: Int) extends Wa
     Pool.instance.execute(new Run(initial))
 
 
-  private final class Run(private var todo: FiberImpl | Null) extends Runnable:
-    override def run(): Unit =
-      ReentrantExecutor.currentVar.set(enclosing)
-      while todo != null do
-        val halt = todo.nn.run()
-        todo = halt match
-          case Halt.Yield(yielder) =>
-            enclosing.atomically {
-              if isEmpty then
-                yielder
-              else
-                enqueue(yielder)
-                dequeue()
-            }
+  private final class Run(initial: FiberImpl) extends MainLoop(initial):
+    ReentrantExecutor.currentVar.set(enclosing)
 
-          case Halt.Retire(reentry) =>
-            enclosing.atomically {
-              if isEmpty then
-                if !reentry then
-                  idleCounter = idleCounter + 1
-                null
-              else
-                dequeue()
-            }
+    override def run(): Unit =
+      var keepGoing = true
+      while keepGoing do
+        runCurrent() match
+          case Halt.Yield =>
+            val last = getCurrentFiber
+            val next =
+              enclosing.atomically {
+                if !isEmpty then
+                  enqueue(last)
+                  dequeue()
+                else
+                  null
+              }
+            if next != null then
+              become(next)
+
+          case _ =>
+            val next =
+              enclosing.atomically {
+                if isEmpty then
+                  if !getCurrentFiber.isReentry then
+                    idleCounter = idleCounter + 1
+                  null
+                else
+                  dequeue()
+              }
+            if next != null then
+              become(next)
+            else
+              becomeClear()
+              keepGoing = false
 
 
 private[turbolift] object ReentrantExecutor:
