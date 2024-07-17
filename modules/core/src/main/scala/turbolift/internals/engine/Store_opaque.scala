@@ -2,24 +2,23 @@ package turbolift.internals.engine
 import scala.annotation.tailrec
 
 
-//// 0th array member is the tail
+//// the last array member is the tail
 
 private trait Store_opaque:
-  private final inline val TAIL_INDEX = 0
   private final inline val RESERVED = 1
 
-  final def initial(env: Env): Store = Store.wrap(Array(null, env))
+  final def initial(env: Env): Store = Store.wrap(Array(env, null))
 
   extension (thiz: Store)
     final def isEmpty: Boolean = thiz.unwrap.size == RESERVED
     final def localCount: Int = thiz.unwrap.size - RESERVED
-    final def nextLocalIndex: Int = localCount
+    final def nextStoreIndex: Int = localCount
 
 
     final def getDeep(l: Location.Deep): Local =
       @tailrec def loop(todo: Store, depth: Int): Local =
         if depth == 0 then
-          todo.geti(l.localIndex)
+          todo.geti(l.storeIndex)
         else
           if !todo.isTailless then
             loop(todo.tail, depth - 1)
@@ -31,7 +30,7 @@ private trait Store_opaque:
     final def setDeep(l: Location.Deep, s: Local): Store =
       def loop(todo: Store, depth: Int): Store =
         if depth == 0 then
-          todo.seti(l.localIndex, s)
+          todo.seti(l.storeIndex, s)
         else
           if !todo.isTailless then
             todo ::? loop(todo.tail, depth - 1)
@@ -47,45 +46,55 @@ private trait Store_opaque:
         setDeep(l, s)
 
 
-    final def geti(i: Int): Local = thiz.unwrap(i + RESERVED).asLocal
-    final def seti(i: Int, s: Local): Store = Store.wrap(thiz.unwrap.updated(i + RESERVED, s))
-    final def setInPlace(i: Int, s: Local): Unit = thiz.unwrap(i + RESERVED) = s
-    final def getShallow(l: Location.Shallow): Local = geti(l.localIndex)
-    final def setShallow(l: Location.Shallow, s: Local): Store = seti(l.localIndex, s)
+    final def geti(i: Int): Local = thiz.unwrap(i).asLocal
+    final def seti(i: Int, s: Local): Store = Store.wrap(thiz.unwrap.updated(i, s))
+    final def setInPlace(i: Int, s: Local): Unit = thiz.unwrap(i) = s
+    final def getShallow(l: Location.Shallow): Local = geti(l.storeIndex)
+    final def setShallow(l: Location.Shallow, s: Local): Store = seti(l.storeIndex, s)
 
-    final def push(s: Local): Store = Store.wrap(thiz.unwrap :+ s)
-    final def pop: Store = Store.wrap(thiz.unwrap.init)
-    final def top: Local = thiz.unwrap.last.asLocal
-    final def head: Local = thiz.unwrap(RESERVED).asLocal
+    final def head: Local = thiz.unwrap(0).asLocal
+    final def isTailless: Boolean = thiz.unwrap.last.asInstanceOf[Any] == null
+    final def tail: Store = thiz.unwrap.last.asInstanceOf[Store]
+    final def tailOrNull: Store | Null = thiz.unwrap.last.asInstanceOf[Store | Null]
+    inline final def tailIndex: Int = thiz.unwrap.size - 1
 
-    final def isTailless: Boolean = thiz.unwrap(TAIL_INDEX).asInstanceOf[Any] == null
-    final def tail: Store = thiz.unwrap(TAIL_INDEX).asInstanceOf[Store]
-    final def tailOrNull: Store | Null = thiz.unwrap(TAIL_INDEX).asInstanceOf[Store | Null]
+
+    final def push(s: Local): Store =
+      val arr = thiz.unwrap :+ thiz.tail
+      arr(arr.size - 2) = s
+      Store.wrap(arr)
+
+
+    final def pop: Store =
+      val t = thiz.unwrap.last
+      val arr = thiz.unwrap.init
+      arr(arr.size - 1) = t
+      Store.wrap(arr)
 
 
     final def pushNewSegment(s: Local): Store =
       if s.isVoid then
         Store.wrap(Array(thiz))
       else
-        Store.wrap(Array(thiz, s))
+        Store.wrap(Array(s, thiz))
 
 
     final def blankClone(): Store = blankClone(thiz.localCount)
 
 
     final def blankClone(newLocalCount: Int): Store =
-      val arr1 = thiz.unwrap
-      val arr2 = new Array[Any](newLocalCount + RESERVED)
-      arr2(TAIL_INDEX) = arr1(TAIL_INDEX)
-      Store.wrap(arr2)
+      val n = newLocalCount + RESERVED
+      val arr = new Array[Any](n)
+      arr(n - 1) = thiz.unwrap.last //// clone keeps the tail of the original
+      Store.wrap(arr)
 
 
     final def ::?(that: Store | Null): Store =
-      Store.wrap(thiz.unwrap.updated(TAIL_INDEX, that))
+      Store.wrap(thiz.unwrap.updated(thiz.tailIndex, that))
 
 
     final def setTailInPlace(tailOrNull: Store | Null): Unit =
-      thiz.unwrap(TAIL_INDEX) = tailOrNull
+      thiz.unwrap(thiz.tailIndex) = tailOrNull
 
 
     //@#@TODO use
@@ -95,7 +104,7 @@ private trait Store_opaque:
       val n = localCount
       var i = 0
       while i < n do
-        arr2(i + RESERVED) = arr1(i + RESERVED)
+        arr2(i) = arr1(i)
         i += 1
       Store.wrap(arr2)
 
