@@ -80,7 +80,13 @@ class WarpTest extends Specification:
     "scoped warp with ExitMode == Cancel" >>{
       (for
         v <- AtomicVar.fresh(1)
-        _ <- (IO.sleep(100) &&! v.event(2)).guarantee(v.event(5)).fork.warpCancelOnExit
+        g <- Gate(1)
+        _ <-
+          (for
+            fib <- (g.open &&! IO.sleep(100) &&! v.event(2)).guarantee(v.event(5)).fork
+            _ <- g.enter
+          yield ())
+          .warpCancelOnExit
         _ <- v.event(3)
         a <- v.get
       yield a)
