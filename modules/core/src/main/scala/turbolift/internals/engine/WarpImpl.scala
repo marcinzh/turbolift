@@ -5,6 +5,7 @@ import turbolift.io.{Fiber, Warp}
 
 private[turbolift] final class WarpImpl private[engine] (
   private val theParent: WarpImpl | FiberImpl | Null,
+  private val theOuter: WarpImpl | Null,
   private var theName: String,
   val exitMode: Warp.ExitMode | Null,
 ) extends ChildLink with Warp.Unsealed:
@@ -229,8 +230,8 @@ private[turbolift] final class WarpImpl private[engine] (
 
 
   override def toString: String = name
-  override def isRoot: Boolean = theParent == null
   override def parent: Option[Warp | Fiber.Untyped] = if theParent == null then None else Some(theParent)
+  override def outer: Option[Warp] = if theOuter == null then None else Some(theOuter)
   override def unsafeChildren(): Iterable[Fiber.Untyped | Warp] = collectChildren(_ => true)
   override def unsafeFibers(): Iterable[FiberImpl] = collectChildren(_.isInstanceOf[FiberImpl])
   override def unsafeWarps(): Iterable[Warp] = collectChildren(_.isInstanceOf[WarpImpl])
@@ -272,7 +273,7 @@ private[turbolift] final class WarpImpl private[engine] (
 
 
   override def unsafeSpawn(name: String): Warp =
-    val child = new WarpImpl(this, name, null)
+    val child = new WarpImpl(this, null, name, null)
     if !tryAddWarp(child) then
       child.varyingBits = Bits.Warp_Completed
     child
@@ -297,7 +298,7 @@ private[turbolift] final class WarpImpl private[engine] (
 
 
 private[turbolift] object WarpImpl:
-  val root: WarpImpl = new WarpImpl(null, "RootWarp", null)
+  val root: WarpImpl = new WarpImpl(null, null, "RootWarp", null)
   
   private inline val ONE_FIBER = 1L
   private inline val ONE_WARP = 1L << 32

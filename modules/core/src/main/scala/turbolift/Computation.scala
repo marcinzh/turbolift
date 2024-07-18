@@ -304,8 +304,8 @@ object Computation:
   extension [A, U <: IO](thiz: Computation[A, U & Warp])
     def warp: A !! U = thiz.warpCancelOnExit
     def warp(exitMode: Warp.ExitMode, name: String = ""): A !! U = thiz.handleWith(Warp.handler(exitMode, name))
-    def warpCancelOnExit: A !! U = warp(Warp.ExitMode.Cancel, "")
-    def warpShutdownOnExit: A !! U = warp(Warp.ExitMode.Shutdown, "")
+    def warpCancelOnExit: A !! U = warpCancelOnExit("")
+    def warpShutdownOnExit: A !! U = warpShutdownOnExit("")
     def warpCancelOnExit(name: String): A !! U = warp(Warp.ExitMode.Cancel, name)
     def warpShutdownOnExit(name: String): A !! U = warp(Warp.ExitMode.Shutdown, name)
 

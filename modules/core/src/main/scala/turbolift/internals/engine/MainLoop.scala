@@ -505,14 +505,10 @@ private[internals] abstract class MainLoop extends MainLoop0:
 
       case Tags.SpawnWarp =>
         val instr = payload.asInstanceOf[CC.SpawnWarp[Any, Any]]
-        val oldWarp = currentEnv.currentWarp
-        val parent: WarpImpl | FiberImpl = if oldWarp != null then oldWarp.nn else currentFiber
-        val newWarp = new WarpImpl(parent, instr.name, instr.exitMode)
-        if oldWarp != null then
-          oldWarp.nn.tryAddWarp(newWarp)
-        val newEnv = currentEnv.copy(currentWarp = newWarp)
-        val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, newEnv.asLocal, FrameKind.warp)
-        this.currentEnv = newEnv
+        val warp = new WarpImpl(currentFiber, currentEnv.currentWarp, instr.name, instr.exitMode)
+        val env2 = currentEnv.copy(currentWarp = warp)
+        val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, env2.asLocal, FrameKind.warp)
+        this.currentEnv = env2
         loopComp(instr.body, SC.Pop, stack2, store2)
 
       case Tags.AwaitWarp =>

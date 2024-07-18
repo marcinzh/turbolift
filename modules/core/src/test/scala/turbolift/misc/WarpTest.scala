@@ -42,7 +42,7 @@ class WarpTest extends Specification:
       Warp.root.parent === None
     }
 
-    "outermost warp's parent" >>{
+    "scoped warp's parent" >>{
       (for
         fib <- Fiber.current
         warp <- Warp.current
@@ -64,11 +64,11 @@ class WarpTest extends Specification:
       .===(Outcome.Success(true))
     }
 
-    "scoped warp's parent" >>{
+    "2 nested scoped warps" >>{
       (for
         warp1 <- Warp.current
         warp2 <- Warp.current.warp
-        ok = warp2.parent == Some(warp1)
+        ok = warp2.outer == Some(warp1)
       yield ok)
       .warp
       .runIO
@@ -77,7 +77,7 @@ class WarpTest extends Specification:
   }
 
   "awaiting & cancelling" >> {
-    "scoped warp with ExitMode == Cancel" >>{
+    "scoped warp & automatic cancel" >>{
       (for
         v <- AtomicVar.fresh(1)
         g <- Gate(1)
@@ -94,7 +94,7 @@ class WarpTest extends Specification:
       .===(Outcome.Success(153))
     }
 
-    "scoped warp with ExitMode == Shutdown" >>{
+    "scoped warp & automatic shutdown" >>{
       (for
         v <- AtomicVar.fresh(1)
         _ <- (IO.sleep(100) &&! v.event(2)).fork.warpShutdownOnExit
@@ -105,11 +105,11 @@ class WarpTest extends Specification:
       .===(Outcome.Success(123))
     }
 
-    "spawn & cancel" >>{
+    "unscoped warp & manual cancel" >>{
       (for
         v <- AtomicVar.fresh(1)
         g <- Gate(1)
-        warp <- Warp.current.flatMap(_.spawn)
+        warp <- Warp.unscoped
         _ <- warp.fork:
           for
             _ <- v.event(2)
@@ -127,12 +127,12 @@ class WarpTest extends Specification:
       .===(Outcome.Success(124))
     }
 
-    "spawn & shutdown" >>{
+    "unscoped warp & manual shutdown" >>{
       (for
         g <- Gate(1)
         v1 <- AtomicVar.fresh(1)
         v2 <- AtomicVar.fresh("a")
-        warp <- Warp.current.flatMap(_.spawn)
+        warp <- Warp.unscoped
         _ <- (g.enter &&! v1.put(2)).forkAt(warp)
         _ <- (g.enter &&! v2.put("b")).forkAt(warp)
         _ <- g.open
