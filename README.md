@@ -10,7 +10,7 @@ Runnable with `scala-cli`
 
 ```scala
 //> using scala "3.3.3"
-//> using dep "io.github.marcinzh::turbolift-core:0.92.0"
+//> using dep "io.github.marcinzh::turbolift-core:0.94.0"
 import turbolift.!!
 import turbolift.effects.{Reader, State, Error}
 
@@ -32,7 +32,7 @@ import turbolift.effects.{Reader, State, Error}
 
   val result =
     program
-    .handleWith(MyState.handler(100).justState)
+    .handleWith(MyState.handler(100))
     .handleWith(MyReader.handler(3))
     .handleWith(MyError.handler)
     .run
@@ -46,8 +46,8 @@ Same, but with [bindless](modules/bindless) syntax extension:
 
 ```scala
 //> using scala "3.3.3"
-//> using dep "io.github.marcinzh::turbolift-core:0.92.0"
-//> using dep "io.github.marcinzh::turbolift-bindless:0.92.0"
+//> using dep "io.github.marcinzh::turbolift-core:0.94.0"
+//> using dep "io.github.marcinzh::turbolift-bindless:0.94.0"
 import turbolift.!!
 import turbolift.effects.{Reader, State, Error}
 import turbolift.bindless._
