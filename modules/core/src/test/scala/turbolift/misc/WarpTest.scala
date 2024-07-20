@@ -189,3 +189,45 @@ class WarpTest extends Specification:
       .runSync === Outcome.Success((42, "b", Left("OMG")))
     }
   }
+
+
+  "mixing explicit & implicit fibers: implicit fiber should inherit scoped warp from the parent fiber" >> {
+    "trivial" >>{
+      "2 implicit" >>{
+        (!!.pure(42) *! !!.pure(1337))
+        .warp
+        .runSync === Outcome.Success((42, 1337))
+      }
+
+      "1 explicit" >>{
+        (for
+          fib <- !!.pure(42).fork
+          a <- fib.join
+        yield a)
+        .warp
+        .runSync === Outcome.Success(42)
+      }
+    }
+
+    "mixing 2 implicit & 1 explicit" >> {
+      "fork left" >>{
+        (for
+          workaround <- (!!.pure(42).fork *! !!.pure(1337))
+          (fib, b) = workaround
+          a <- fib.join
+        yield (a, b))
+        .warp
+        .runSync === Outcome.Success((42, 1337))
+      }
+
+      "fork right" >>{
+        (for
+          workaround <- (!!.pure(42) *! !!.pure(1337).fork)
+          (a, fib) = workaround
+          b <- fib.join
+        yield (a, b))
+        .warp
+        .runSync === Outcome.Success((42, 1337))
+      }
+    }
+  }
