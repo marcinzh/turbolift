@@ -242,8 +242,11 @@ object Effect:
     /** Read as `Apply`
      *
      * This effect, but with given type parameter applied.
+     *
+     * **HACK:** In order to enforce invariance,
+     * we ned to apply it the same parameter **twice**, e.g. `@@[Int, Int]`
      */
-    type @@[X]
+    type @@[-X, +Y >: X]
 
     /** API for defining custom **effects**.*/
     inline def polymorphize[X] = new Polymorphize[X]
@@ -251,11 +254,11 @@ object Effect:
     /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
     final class Polymorphize[X]:
       inline def polyFx: Fx[X] = monomorphic.asInstanceOf[Fx[X]]
-      inline def perform[A, U](inline f: (fx: Fx[X]) => A !! (U & fx.type)): A !! (U & @@[X]) = f(polyFx).cast[A, @@[X] & U]
-      inline def handler[F[+_], G[+_], N](inline f: (fx: Fx[X]) => Handler[F, G, fx.type, N]): Handler[F, G, @@[X], N] = f(polyFx).castElim[@@[X]]
+      inline def perform[A, U](inline f: (fx: Fx[X]) => A !! (U & fx.type)): A !! (U & @@[X, X]) = f(polyFx).cast[A, @@[X, X] & U]
+      inline def handler[F[+_], G[+_], N](inline f: (fx: Fx[X]) => Handler[F, G, fx.type, N]): Handler[F, G, @@[X, X], N] = f(polyFx).castElim[@@[X, X]]
       inline def apply[A](inline f: Polymorphize[X] => A): A = f(this)
-      inline def lift[A, U, Fxx <: Fx[X]](comp: A !! (@@[X] & U)): A !! (Fxx & U) = comp.cast[A, Fxx & U]
-      inline def unlift[A, U, Fxx <: Fx[X]](comp: A !! (Fxx & U)): A !! (@@[X] & U) = comp.cast[A, @@[X] & U]
+      inline def lift[A, U, Fxx <: Fx[X]](comp: A !! (@@[X, X] & U)): A !! (Fxx & U) = comp.cast[A, Fxx & U]
+      inline def unlift[A, U, Fxx <: Fx[X]](comp: A !! (Fxx & U)): A !! (@@[X, X] & U) = comp.cast[A, @@[X, X] & U]
 
 
   /** API for defining custom **effects**.

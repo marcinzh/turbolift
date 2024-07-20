@@ -199,14 +199,14 @@ object StateEffect:
  * Otherwise, application of the handler will fail to typecheck.
  */
 abstract class PolyStateEffect extends Effect.Polymorphic_=(new StateEffect[Any] {}):
-  final def get[S]: S !! @@[S] = polymorphize[S].perform(_.get)
+  final def get[S]: S !! @@[S, S] = polymorphize[S].perform(_.get)
   final def gets[S] = new GetsApply[S]
-  final def put[S](s: S): Unit !! @@[S] = polymorphize[S].perform(_.put(s))
-  final def swap[S](s: S): S !! @@[S] = polymorphize[S].perform(_.swap(s))
-  final def modify[S](f: S => S): Unit !! @@[S] = polymorphize[S].perform(_.modify(f))
-  final def modifyGet[S](f: S => S): S !! @@[S] = polymorphize[S].perform(_.modifyGet(f))
-  final def getModify[S](f: S => S): S !! @@[S] = polymorphize[S].perform(_.getModify(f))
-  final def getModifyGet[S](f: S => S): (S, S) !! @@[S] = polymorphize[S].perform(_.getModifyGet(f))
+  final def put[S](s: S): Unit !! @@[S, S] = polymorphize[S].perform(_.put(s))
+  final def swap[S](s: S): S !! @@[S, S] = polymorphize[S].perform(_.swap(s))
+  final def modify[S](f: S => S): Unit !! @@[S, S] = polymorphize[S].perform(_.modify(f))
+  final def modifyGet[S](f: S => S): S !! @@[S, S] = polymorphize[S].perform(_.modifyGet(f))
+  final def getModify[S](f: S => S): S !! @@[S, S] = polymorphize[S].perform(_.getModify(f))
+  final def getModifyGet[S](f: S => S): (S, S) !! @@[S, S] = polymorphize[S].perform(_.getModifyGet(f))
   final def update[S] = new UpdateApply[S]
   final def updateGet[S] = new UpdateGetApply[S]
   final def getUpdate[S] = new GetUpdateApply[S]
@@ -232,89 +232,89 @@ abstract class PolyStateEffect extends Effect.Polymorphic_=(new StateEffect[Any]
 
   /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
   final class GetsApply[S]:
-    def apply[A](f: S => A): A !! @@[S] = polymorphize[S].perform(_.gets(f))
+    def apply[A](f: S => A): A !! @@[S, S] = polymorphize[S].perform(_.gets(f))
 
   /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
   final class UpdateApply[S]:
-    def apply[A](f: S => (A, S)): A !! @@[S] = polymorphize[S].perform(_.update(f))
+    def apply[A](f: S => (A, S)): A !! @@[S, S] = polymorphize[S].perform(_.update(f))
 
   /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
   final class UpdateGetApply[S]:
-    def apply[A](f: S => (A, S)): (A, S) !! @@[S] = polymorphize[S].perform(_.updateGet(f))
+    def apply[A](f: S => (A, S)): (A, S) !! @@[S, S] = polymorphize[S].perform(_.updateGet(f))
 
   /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
   final class GetUpdateApply[S]:
-    def apply[A](f: S => (A, S)): (A, S) !! @@[S] = polymorphize[S].perform(_.getUpdate(f))
+    def apply[A](f: S => (A, S)): (A, S) !! @@[S, S] = polymorphize[S].perform(_.getUpdate(f))
 
   /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
   final class GetUpdateGetApply[S]:
-    def apply[A](f: S => (A, S)): (A, S, S) !! @@[S] = polymorphize[S].perform(_.getUpdateGet(f))
+    def apply[A](f: S => (A, S)): (A, S, S) !! @@[S, S] = polymorphize[S].perform(_.getUpdateGet(f))
 
   /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
   final class GetsEffApply[S]:
-    def apply[A, U <: @@[S]](f: S => A !! U): A !! U = polymorphize[S].perform(_.getsEff(f))
+    def apply[A, U <: @@[S, S]](f: S => A !! U): A !! U = polymorphize[S].perform(_.getsEff(f))
 
   /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
   final class PutEffApply[S]:
-    def apply[U <: @@[S]](s: S !! U): Unit !! U = polymorphize[S].perform(_.putEff(s))
+    def apply[U <: @@[S, S]](s: S !! U): Unit !! U = polymorphize[S].perform(_.putEff(s))
 
   /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
   final class SwapEffApply[S]:
-    def apply[U <: @@[S]](s: S !! U): S !! U = polymorphize[S].perform(_.swapEff(s))
+    def apply[U <: @@[S, S]](s: S !! U): S !! U = polymorphize[S].perform(_.swapEff(s))
 
   /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
   final class ModifyEffApply[S]:
-    def apply[U <: @@[S]](f: S => S !! U): Unit !! U = polymorphize[S].perform(_.modifyEff(f))
+    def apply[U <: @@[S, S]](f: S => S !! U): Unit !! U = polymorphize[S].perform(_.modifyEff(f))
 
   /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
   final class ModifyGetEffApply[S]:
-    def apply[U <: @@[S]](f: S => S !! U): S !! U = polymorphize[S].perform(_.modifyGetEff(f))
+    def apply[U <: @@[S, S]](f: S => S !! U): S !! U = polymorphize[S].perform(_.modifyGetEff(f))
 
   /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
   final class GetModifyEffApply[S]:
-    def apply[U <: @@[S]](f: S => S !! U): S !! U = polymorphize[S].perform(_.getModifyEff(f))
+    def apply[U <: @@[S, S]](f: S => S !! U): S !! U = polymorphize[S].perform(_.getModifyEff(f))
 
   /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
   final class GetModifyGetEffApply[S]:
-    def apply[U <: @@[S]](f: S => S !! U): (S, S) !! U = polymorphize[S].perform(_.getModifyGetEff(f))
+    def apply[U <: @@[S, S]](f: S => S !! U): (S, S) !! U = polymorphize[S].perform(_.getModifyGetEff(f))
 
   /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
   final class UpdateEffApply[S]:
-    def apply[A, U <: @@[S]](f: S => (A, S) !! U): A !! U = polymorphize[S].perform(_.updateEff(f))
+    def apply[A, U <: @@[S, S]](f: S => (A, S) !! U): A !! U = polymorphize[S].perform(_.updateEff(f))
 
   /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
   final class UpdateGetEffApply[S]:
-    def apply[A, U <: @@[S]](f: S => (A, S) !! U): (A, S) !! U = polymorphize[S].perform(_.updateGetEff(f))
+    def apply[A, U <: @@[S, S]](f: S => (A, S) !! U): (A, S) !! U = polymorphize[S].perform(_.updateGetEff(f))
 
   /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
   final class GetUpdateEffApply[S]:
-    def apply[A, U <: @@[S]](f: S => (A, S) !! U): (A, S) !! U = polymorphize[S].perform(_.getUpdateEff(f))
+    def apply[A, U <: @@[S, S]](f: S => (A, S) !! U): (A, S) !! U = polymorphize[S].perform(_.getUpdateEff(f))
 
   /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
   final class GetUpdateGetEffApply[S]:
-    def apply[A, U <: @@[S]](f: S => (A, S) !! U): (A, S, S) !! U = polymorphize[S].perform(_.getUpdateGetEff(f))
+    def apply[A, U <: @@[S, S]](f: S => (A, S) !! U): (A, S, S) !! U = polymorphize[S].perform(_.getUpdateGetEff(f))
 
   /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
   final class LocalPutApply[S]:
-    def apply[A, U <: @@[S]](s: S)(body: A !! U): A !! U = polymorphize[S].perform(_.localPut(s)(body))
+    def apply[A, U <: @@[S, S]](s: S)(body: A !! U): A !! U = polymorphize[S].perform(_.localPut(s)(body))
 
   /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
   final class LocalPutEffApply[S]:
-    def apply[A, U <: @@[S]](s: S !! U)(body: A !! U): A !! U = polymorphize[S].perform(_.localPutEff(s)(body))
+    def apply[A, U <: @@[S, S]](s: S !! U)(body: A !! U): A !! U = polymorphize[S].perform(_.localPutEff(s)(body))
 
   /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
   final class LocalModifyApply[S]:
-    def apply[A, U <: @@[S]](f: S => S)(body: A !! U): A !! U = polymorphize[S].perform(_.localModify(f)(body))
+    def apply[A, U <: @@[S, S]](f: S => S)(body: A !! U): A !! U = polymorphize[S].perform(_.localModify(f)(body))
 
   /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
   final class LocalModifyEffApply[S]:
-    def apply[A, U <: @@[S]](f: S => S !! U)(body: A !! U): A !! U = polymorphize[S].perform(_.localModifyEff(f)(body))
+    def apply[A, U <: @@[S, S]](f: S => S !! U)(body: A !! U): A !! U = polymorphize[S].perform(_.localModifyEff(f)(body))
 
 
   /** Predefined handlers for this effect. */
   object handlers:
-    def local[S](initial: S): Handler[Identity, (_, S), @@[S], Any] = polymorphize[S].handler(_.handlers.local(initial))
-    def shared[S](initial: S): Handler[Identity, (_, S), @@[S], IO] = polymorphize[S].handler(_.handlers.shared(initial))
+    def local[S](initial: S): Handler[Identity, (_, S), @@[S, S], Any] = polymorphize[S].handler(_.handlers.local(initial))
+    def shared[S](initial: S): Handler[Identity, (_, S), @@[S, S], IO] = polymorphize[S].handler(_.handlers.shared(initial))
 
 
 object PolyStateEffect:
@@ -323,7 +323,7 @@ object PolyStateEffect:
      *
      * Defined as an extension, to allow custom redefinitions without restrictions imposed by overriding
      */
-    def handler[S](initial: S): Handler[Identity, (_, S), thiz.@@[S], Any] = thiz.handlers.local(initial)
+    def handler[S](initial: S): Handler[Identity, (_, S), thiz.@@[S, S], Any] = thiz.handlers.local(initial)
 
 
 /** Predefined instance of [[PolyStateEffect]].
@@ -332,4 +332,4 @@ object PolyStateEffect:
  * However, they can be convenient in exploratory code.
  */
 case object State extends PolyStateEffect
-type State[S] = State.@@[S]
+type State[S] = State.@@[S, S]

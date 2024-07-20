@@ -8,7 +8,7 @@ import turbolift.effects.{Reader, Writer, State, Error, Finalizer}
 import turbolift.mode.ST
 
 
-class EffectTest extends Specification:
+class PolyEffectTest extends Specification:
   "Reader" >>{
     trait Foo { def foo: Int }
     trait Bar { def bar: Boolean }
@@ -38,21 +38,6 @@ class EffectTest extends Specification:
     """} must succeed
 
     prog.handleWith(Writer.handler[Nel[Int | Boolean]].justState).run.===(Nel(42, true))
-  }
-
-
-  "State" >>{
-    val prog =
-      (for
-        a <- State.get[Int]
-        _ <- State.put(a + 1)
-      yield a)
-
-    Typecheck {"""
-      val _: Int !! State.@@[Int] = prog
-    """} must succeed
-
-    prog.handleWith(State.handler(42)).run.===((42, 43))
   }
 
 
@@ -107,4 +92,52 @@ class EffectTest extends Specification:
     .handleWith(S1.handler(10))
     .handleWith(S2.handler(100))
     .runIO.toEither.===(Right(((Left(E), 11), 101)))
+  }
+
+
+  "State" >> {
+    "Good" >>{
+      val prog =
+        (for
+          a <- State.get[Int]
+          _ <- State.put(a + 1)
+        yield a)
+
+      Typecheck {"""
+        val _: Int !! State.@@[Int, Int] = prog
+      """} must succeed
+
+      prog.handleWith(State.handler(42)).run.===((42, 43))
+    }
+
+    "Bad 1" >>pending{
+      val prog1 = State.get[Int]
+      val prog2 = State.get[String]
+      //@#@ `Typecheck` doesn't work as expected: it passes even though compiler fails
+      // val prog3 = prog1 &&! prog2
+
+      Typecheck {"""
+        prog1 &&! prog2
+      """} must succeed.not
+    }
+
+    "Bad 2" >>pending{
+      val prog1 = State.put(42)
+      val prog2 = State.put("foo")
+      //@#@ `Typecheck` doesn't work as expected: it passes even though compiler fails
+      // val prog3 = prog1 &&! prog2
+
+      Typecheck {"""
+        prog1 &&! prog2
+      """} must succeed.not
+    }
+
+    "Bad 3" >>{
+      val prog1 = State.get[Int]
+      val prog2 = State.put[String]
+
+      Typecheck {"""
+        prog1.flatMap(prog2)
+      """} must succeed.not
+    }
   }
