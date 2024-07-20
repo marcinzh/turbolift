@@ -39,21 +39,28 @@ private[engine] object OpCascaded:
     def loop(stackSeg: Stack): Store =
       val tail = if stackSeg.hasTail then loop(stackSeg.tail) else null
       val storeSeg = Store.blank(stackSeg.localCount)
+      storeSeg.setTailInPlace(tail)
+
       val n = stackSeg.promptCount
-      var i = 0
-      while i < n do
-        val prompt = stackSeg.piles(i).prompt
+      var promptIndex = 0
+      var localIndex = 0
+      while promptIndex < n do
+        val prompt = stackSeg.piles(promptIndex).prompt
         if prompt.isStateful then
           val entry = fromStack.findEntryByPrompt(prompt)
           val s0 = fromStore.deepGet(entry.storeIndex, entry.segmentDepth)
           if prompt.hasForkJoin then
             val (s1, s2) = prompt.onFork(s0)
             fromStore.deepPutInPlace(entry.storeIndex, entry.segmentDepth, s1.asLocal)
-            storeSeg.setInPlace(i, s2.asLocal)
+            storeSeg.setInPlace(localIndex, s2.asLocal)
           else
-            storeSeg.setInPlace(i, s0.asLocal)
-        i += 1
-      storeSeg.copyWithTail(tail)
+            storeSeg.setInPlace(localIndex, s0.asLocal)
+        end if
+        localIndex += prompt.localCount
+        promptIndex += 1
+      end while
+      storeSeg
+
     val toStore = loop(toStack)
     (fromStore, toStore)
 
@@ -64,10 +71,14 @@ private[engine] object OpCascaded:
       val (tail1, tail2) = if stackSeg.hasTail then loop(stackSeg.tail) else (null, null)
       val storeSeg1 = Store.blank(stackSeg.localCount)
       val storeSeg2 = Store.blank(stackSeg.localCount)
+      storeSeg1.setTailInPlace(tail1)
+      storeSeg2.setTailInPlace(tail2)
+
       val n = stackSeg.promptCount
-      var i = 0
-      while i < n do
-        val prompt = stackSeg.piles(i).prompt
+      var promptIndex = 0
+      var localIndex = 0
+      while promptIndex < n do
+        val prompt = stackSeg.piles(promptIndex).prompt
         if prompt.isStateful then
           val entry = fromStack.findEntryByPrompt(prompt)
           val s0 = fromStore.deepGet(entry.storeIndex, entry.segmentDepth)
@@ -75,13 +86,17 @@ private[engine] object OpCascaded:
             val (s1, s2) = prompt.onFork(s0)
             val (s3, s4) = prompt.onFork(s1)
             fromStore.deepPutInPlace(entry.storeIndex, entry.segmentDepth, s3.asLocal)
-            storeSeg1.setInPlace(i, s2.asLocal)
-            storeSeg2.setInPlace(i, s4.asLocal)
+            storeSeg1.setInPlace(localIndex, s2.asLocal)
+            storeSeg2.setInPlace(localIndex, s4.asLocal)
           else
-            storeSeg1.setInPlace(i, s0.asLocal)
-            storeSeg2.setInPlace(i, s0.asLocal)
-        i += 1
-      (storeSeg1.copyWithTail(tail1), storeSeg2.copyWithTail(tail2))
+            storeSeg1.setInPlace(localIndex, s0.asLocal)
+            storeSeg2.setInPlace(localIndex, s0.asLocal)
+        end if
+        localIndex += prompt.localCount
+        promptIndex += 1
+      end while
+      (storeSeg1, storeSeg2)
+
     val (toStore1, toStore2) = loop(toStack)
     (fromStore, toStore1, toStore2)
 
