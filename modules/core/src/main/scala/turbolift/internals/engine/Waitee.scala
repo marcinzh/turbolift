@@ -42,17 +42,20 @@ private abstract class Waitee extends AtomicBoolean:
 
 
   final private def spinAcquireBoth(fiber: FiberImpl): Boolean =
-    def loop(): Boolean =
+    @tailrec def loop(): Boolean =
       if fiber.spinAcquire() then
-        if spinAcquire() then
-          true
-        else
+        if fiber.isCancellationUnlatched then
+          fiber.setCancellationLatch()
           fiber.spinRelease()
-          loop()
+          false
+        else
+          if spinAcquire() then
+            true
+          else
+            fiber.spinRelease()
+            loop()
       else
-        fiber.setCancellationLatch()
-        fiber.spinRelease()
-        false
+        loop()
     loop()
 
 
