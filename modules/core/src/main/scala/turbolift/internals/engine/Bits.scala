@@ -66,6 +66,9 @@ private object Bits:
   inline val Cancellation_Mask    = 0x3 << Cancellation_Shift
   inline val Cancellation_Shift   = 4
 
+  //@#@ temporary duplicate until compiler bug is fixed
+  final val Cancellation_Latch_Bug: Int = Cancellation_Latch
+
   def getCompletion(bits: Int): Int = bits & Completion_Mask
   def getArbiter(bits: Int): Int = bits & Arbiter_Mask
   def isPending(bits: Int): Boolean = getCompletion(bits) == Completion_Pending

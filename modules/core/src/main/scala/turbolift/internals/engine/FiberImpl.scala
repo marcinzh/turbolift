@@ -44,7 +44,7 @@ private[turbolift] final class FiberImpl private (
     atomically {
       if isCancellationUnlatched then
         //// If cancellation was signalled before reaching completion, it overrides the completion.
-        varyingBits = (varyingBits | Bits.Completion_Cancelled | Bits.Cancellation_Latch).toByte
+        varyingBits = (varyingBits | Bits.Completion_Cancelled /*| Bits.Cancellation_Latch*/).toByte
         suspendedPayload = cancelPayload
       else
         varyingBits = (varyingBits | completion).toByte
@@ -106,19 +106,14 @@ private[turbolift] final class FiberImpl private (
   //-------------------------------------------------------------------
 
 
-  private[engine] def tryGetBlocked(): Boolean =
-    atomically {
-      if isCancellationUnlatched then
-        setCancellationLatch()
-        false
-      else
-        theOwnership = Bits.Ownership_Blocker
-        true
+  private[engine] def tryGetBlocked(isCancellable: Boolean): Boolean =
+    atomicallyTry(isCancellable) {
+      theOwnership = Bits.Ownership_Blocker
     }
 
 
-  private[engine] def tryGetAwaitedBy(waiter: FiberImpl): Int =
-    atomicallyIfNotCancelled(waiter) {
+  private[engine] def tryGetAwaitedBy(waiter: FiberImpl, isWaiterCancellable: Boolean): Int =
+    atomicallyBoth(waiter, isWaiterCancellable) {
       if isPending then
         subscribeWaiterUnsync(waiter)
         Bits.WaiterSubscribed
@@ -132,21 +127,11 @@ private[turbolift] final class FiberImpl private (
   //-------------------------------------------------------------------
 
 
-  private[engine] def isCancellationUnlatched: Boolean = Bits.isCancellationUnlatched(varyingBits)
-
-
-  private[engine] def setCancellationLatch(): Unit =
-    varyingBits = (varyingBits | Bits.Cancellation_Latch).toByte
-
-
-  private[engine] def cancellationCheck(): Boolean =
-    atomically {
-      if isCancellationUnlatched then
-        setCancellationLatch()
-        true
-      else
-        false
-    }
+  private[engine] def cancellationCheck(isCancellable: Boolean): Boolean =
+    if isCancellable then
+      !atomicallyTry(true) {}
+    else
+      false
 
 
   private[engine] def cancelBySelf(): Unit =
@@ -159,7 +144,7 @@ private[turbolift] final class FiberImpl private (
     deepCancelLoop(this)
 
 
-  private[engine] def tryGetCancelledBy(canceller: FiberImpl): Int =
+  private[engine] def tryGetCancelledBy(canceller: FiberImpl, isCancellerCancellable: Boolean): Int =
     var savedLeftRacer: WaiterLink | Null = null
     var savedRightRacer: WaiterLink | Null = null
     var savedVaryingBits: Byte = 0
@@ -168,7 +153,7 @@ private[turbolift] final class FiberImpl private (
     var willDescend = false
 
     val result =
-      atomicallyIfNotCancelled(canceller) {
+      atomicallyBoth(canceller, isCancellerCancellable) {
         if isPending then
           if !isCancelled then
             varyingBits = (varyingBits | Bits.Cancellation_Signal).toByte
@@ -278,21 +263,16 @@ private[turbolift] final class FiberImpl private (
 
   
   //// Called by the ARBITER on itself
-  private[engine] def tryStartRace(leftRacer: FiberImpl, rightRacer: FiberImpl): Boolean =
-    tryStartRaceExt(leftRacer, rightRacer, Bits.Racer_Both)
+  private[engine] def tryStartRace(leftRacer: FiberImpl, rightRacer: FiberImpl, isCancellable: Boolean): Boolean =
+    tryStartRaceExt(leftRacer, rightRacer, isCancellable, Bits.Racer_Both)
 
-  private[engine] def tryStartRaceOfOne(leftRacer: FiberImpl): Boolean =
-    tryStartRaceExt(leftRacer, null, Bits.Racer_Left)
+  private[engine] def tryStartRaceOfOne(leftRacer: FiberImpl, isCancellable: Boolean): Boolean =
+    tryStartRaceExt(leftRacer, null, isCancellable, Bits.Racer_Left)
 
-  private def tryStartRaceExt(leftRacer: FiberImpl, rightRacer: FiberImpl | Null, awaitingBits: Int): Boolean =
-    atomically {
-      if isCancellationUnlatched then
-        setCancellationLatch()
-        false
-      else
-        varyingBits = (varyingBits | awaitingBits).toByte
-        setRacers(leftRacer, rightRacer)
-        true
+  private def tryStartRaceExt(leftRacer: FiberImpl, rightRacer: FiberImpl | Null, isCancellable: Boolean, awaitingBits: Int): Boolean =
+    atomicallyTry(isCancellable) {
+      varyingBits = (varyingBits | awaitingBits).toByte
+      setRacers(leftRacer, rightRacer)
     }
 
 

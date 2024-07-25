@@ -27,7 +27,7 @@ private[internals] abstract class MainLoop extends MainLoop0:
     currentFiber.theOwnership = Bits.Ownership_Self
     currentTickLow = currentEnv.tickLow
     currentTickHigh = currentEnv.tickHigh
-    if currentFiber.cancellationCheck() then
+    if cancellationCheck() then
       currentFiber.suspendAsCancelled()
     outerLoop()
 
@@ -144,7 +144,7 @@ private[internals] abstract class MainLoop extends MainLoop0:
       if currentTickHigh > 0 then
         currentTickHigh -= 1
         currentTickLow = currentEnv.tickLow
-        if currentFiber.cancellationCheck() then
+        if cancellationCheck() then
           loopCancel(stack, store)
         else
           innerLoop(tag, payload, step, stack, store)
@@ -243,7 +243,7 @@ private[internals] abstract class MainLoop extends MainLoop0:
         if stack.accumFeatures.isParallel && currentEnv.isParallelismRequested then
           val fiberLeft = currentFiber.createChild(Bits.ZipPar_Left)
           val fiberRight = currentFiber.createChild(Bits.ZipPar_Right)
-          if currentFiber.tryStartRace(fiberLeft, fiberRight) then
+          if currentFiber.tryStartRace(fiberLeft, fiberRight, currentEnv.isCancellable) then
             val (storeTmp, storeLeft) = OpCascaded.fork(stack, store)
             val (storeDown, storeRight) = OpCascaded.fork(stack, storeTmp)
             currentFiber.suspendForRace(instr.fun, step, stack, storeDown)
@@ -265,7 +265,7 @@ private[internals] abstract class MainLoop extends MainLoop0:
         if stack.accumFeatures.isParallel && currentEnv.isParallelismRequested then
           val fiberLeft = currentFiber.createChild(Bits.OrPar_Left)
           val fiberRight = currentFiber.createChild(Bits.OrPar_Right)
-          if currentFiber.tryStartRace(fiberLeft, fiberRight) then
+          if currentFiber.tryStartRace(fiberLeft, fiberRight, currentEnv.isCancellable) then
             val (storeTmp, storeLeft) = OpCascaded.fork(stack, store)
             val (storeDown, storeRight) = OpCascaded.fork(stack, storeTmp)
             currentFiber.suspendForRace(null, step, stack, storeDown)
@@ -285,7 +285,7 @@ private[internals] abstract class MainLoop extends MainLoop0:
       case Tags.OrSeq =>
         val instr = payload.asInstanceOf[CC.OrSeq[Any, Any]]
         val fiberLeft = currentFiber.createChild(Bits.OrSeq)
-        if currentFiber.tryStartRaceOfOne(fiberLeft) then
+        if currentFiber.tryStartRaceOfOne(fiberLeft, currentEnv.isCancellable) then
           val (storeDown, storeLeft) = OpCascaded.fork(stack, store)
           currentFiber.suspendForRace(instr.rhsFun, step, stack, storeDown)
           val stack2 = stack.makeFork
@@ -318,7 +318,7 @@ private[internals] abstract class MainLoop extends MainLoop0:
           val (stack2, store2, step2, prompt, frame, local) = OpPush.pop(stack, store)
           val fallthrough = if instr.kind.isPop then step2 else step
           if prompt.isIo then
-            frame.kind.unwrap match
+            (frame.kind.unwrap: @switch) match
               case FrameKind.PLAIN =>
                 refreshEnv(stack2, store2)
                 loopStep(payload, fallthrough, stack2, store2)
@@ -336,8 +336,8 @@ private[internals] abstract class MainLoop extends MainLoop0:
                 currentFiber.suspend(fallthrough.tag, payload, fallthrough, stack2, store2)
                 val warp = currentEnv.currentWarp.nn
                 val tried = warp.exitMode match
-                  case Warp.ExitMode.Cancel => warp.tryGetCancelledBy(currentFiber)
-                  case Warp.ExitMode.Shutdown => warp.tryGetAwaitedBy(currentFiber)
+                  case Warp.ExitMode.Cancel => warp.tryGetCancelledBy(currentFiber, currentEnv.isCancellable)
+                  case Warp.ExitMode.Shutdown => warp.tryGetAwaitedBy(currentFiber, currentEnv.isCancellable)
                   case _ => impossible //// this is a scoped warp, so it must have ExitMode
                 tried match
                   case Bits.WaiterSubscribed => Halt.ThreadDisowned
@@ -351,6 +351,14 @@ private[internals] abstract class MainLoop extends MainLoop0:
                 currentFiber.suspend(fallthrough.tag, payload, fallthrough, stack2, store2)
                 currentFiber.resume()
                 Halt.ThreadDisowned
+
+              case FrameKind.SUPPRESS =>
+                refreshEnv(stack2, store2)
+                if cancellationCheck() then
+                  loopCancel(stack2, store2)
+                else
+                  loopStep(payload, fallthrough, stack2, store2)
+            end match
           else
             if instr.kind.isPop then
               val comp2 = prompt.onReturn(payload, local)
@@ -405,6 +413,7 @@ private[internals] abstract class MainLoop extends MainLoop0:
             val step2 = theAborted.prompt.unwind
             loopStep(payload2, step2, stack, store)
           case Snap.Cancelled =>
+            //@#@THOV It should be harmless to self-cancel a fiber, even when it's uncancellable?
             currentFiber.cancelBySelf()
             loopCancel(stack, store)
 
@@ -431,7 +440,7 @@ private[internals] abstract class MainLoop extends MainLoop0:
           loopStep(value, step, stack, store)
         else
           currentFiber.suspend(Tags.NotifyOnceVar, ovar, step, stack, store)
-          ovar.tryGetAwaitedBy(currentFiber) match
+          ovar.tryGetAwaitedBy(currentFiber, currentEnv.isCancellable) match
             case Bits.WaiterSubscribed => Halt.ThreadDisowned
             case Bits.WaiterAlreadyCancelled =>
               currentFiber.clearSuspension()
@@ -468,8 +477,8 @@ private[internals] abstract class MainLoop extends MainLoop0:
           currentFiber.suspend(tag2, waitee, step, stack, store)
           val tried =
             if instr.isCancel
-            then waitee.tryGetCancelledBy(currentFiber)
-            else waitee.tryGetAwaitedBy(currentFiber)
+            then waitee.tryGetCancelledBy(currentFiber, currentEnv.isCancellable)
+            else waitee.tryGetAwaitedBy(currentFiber, currentEnv.isCancellable)
           tried match
             case Bits.WaiterSubscribed => Halt.ThreadDisowned
             case Bits.WaiterAlreadyCancelled =>
@@ -480,13 +489,14 @@ private[internals] abstract class MainLoop extends MainLoop0:
               val payload2 = if instr.isVoid then () else waitee.getOrMakeZipper
               loopStep(payload2, step, stack, store)
         else
+          //// Ignoring `isCancellable` bcoz cancelling is by-self
           if instr.isCancel then
             currentFiber.cancelBySelf()
             loopCancel(stack, store)
           else
             val zombie = new Blocker.Zombie(currentFiber)
             currentFiber.suspend(step.tag, zombie, step, stack, store)
-            if currentFiber.tryGetBlocked() then
+            if currentFiber.tryGetBlocked(currentEnv.isCancellable) then
               Halt.ThreadDisowned
             else
               currentFiber.clearSuspension()
@@ -517,8 +527,8 @@ private[internals] abstract class MainLoop extends MainLoop0:
         currentFiber.suspend(step.tag, (), step, stack, store)
         val tried =
           if instr.isCancel
-          then warp.tryGetCancelledBy(currentFiber)
-          else warp.tryGetAwaitedBy(currentFiber)
+          then warp.tryGetCancelledBy(currentFiber, currentEnv.isCancellable)
+          else warp.tryGetAwaitedBy(currentFiber, currentEnv.isCancellable)
         tried match
           case Bits.WaiterSubscribed => Halt.ThreadDisowned
           case Bits.WaiterAlreadyCancelled =>
@@ -532,7 +542,7 @@ private[internals] abstract class MainLoop extends MainLoop0:
         val instr = payload.asInstanceOf[CC.Blocking[Any, Any]]
         val blocker = new Blocker.Interruptible(currentFiber, instr.thunk)
         currentFiber.suspend(Tags.NotifyBlocker, blocker, step, stack, store)
-        if currentFiber.tryGetBlocked() then
+        if currentFiber.tryGetBlocked(currentEnv.isCancellable) then
           blocker.block()
           Halt.ThreadDisowned
         else
@@ -543,7 +553,7 @@ private[internals] abstract class MainLoop extends MainLoop0:
         val instr = payload.asInstanceOf[CC.Sleep]
         val blocker = new Blocker.Sleeper(currentFiber)
         currentFiber.suspend(Tags.NotifyBlocker, blocker, step, stack, store)
-        if currentFiber.tryGetBlocked() then
+        if currentFiber.tryGetBlocked(currentEnv.isCancellable) then
           blocker.sleep(instr.length, instr.unit)
           Halt.ThreadDisowned
         else
@@ -565,6 +575,21 @@ private[internals] abstract class MainLoop extends MainLoop0:
         val blocker = payload.asInstanceOf[Blocker]
         val payload2 = blocker.toEither
         loopStep(payload2, step, stack, store)
+
+      case Tags.Suppress =>
+        val instr = payload.asInstanceOf[CC.Suppress[Any, Any]]
+        val n1 = currentEnv.suppressions
+        val n2 = 0.max(n1 + instr.delta)
+        if n1 == n2 then
+          loopComp(instr.body, step, stack, store)
+        else
+          val env2 = currentEnv.copy(suppressions = n2)
+          val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, env2.asLocal, FrameKind.suppress)
+          this.currentEnv = env2
+          if cancellationCheck() then
+            loopCancel(stack2, store2)
+          else
+            loopComp(instr.body, SC.Pop, stack2, store2)
 
       case Tags.ExecOn =>
         val instr = payload.asInstanceOf[CC.ExecOn[Any, Any]]
@@ -612,6 +637,10 @@ private[internals] abstract class MainLoop extends MainLoop0:
 
   private final def refreshEnv(stack: Stack, store: Store): Unit =
     currentEnv = OpPush.findTopmostEnv(stack, store)
+
+
+  private final def cancellationCheck(): Boolean =
+     currentFiber.cancellationCheck(currentEnv.isCancellable)
 
 
 private object MainLoop:

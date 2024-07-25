@@ -112,7 +112,7 @@ private trait Store_opaque:
     final def toStr: String = s"Store(${toStrAux})"
 
     final def toStrAux: String =
-      val a = thiz.unwrap.iterator.drop(RESERVED).mkString("[", ", ", "]")
+      val a = thiz.unwrap.iterator.take(localCount).mkString("[", ", ", "]")
       if isTailless then
         a
       else

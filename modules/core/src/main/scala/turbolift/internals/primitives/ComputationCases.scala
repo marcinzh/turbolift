@@ -39,6 +39,7 @@ private[turbolift] object ComputationCases:
   final class AwaitOnceVar[A](val ovar: OnceVar.Get[A]) extends Unsealed[A, IO](Tags.AwaitOnceVar)
   final class Blocking[A, B](val thunk: () => A, isAttempt: Boolean) extends Unsealed[B, IO](Tags.Blocking)
   final class Sleep(val length: Long, val unit: TimeUnit = TimeUnit.MILLISECONDS) extends Unsealed[Unit, IO](Tags.Sleep)
+  final class Suppress[A, U](val body: A !! U, val delta: Int) extends Unsealed[A, U](Tags.Suppress)
   final class ExecOn[A, U](val exec: Executor, val body: A !! U) extends Unsealed[A, U](Tags.ExecOn)
   object Yield extends Unsealed[Unit, Any](Tags.Yield)
 

@@ -7,8 +7,8 @@ private[turbolift] final class OnceVarImpl extends Waitee with OnceVar.Unsealed:
   @volatile var theContent: Any = Empty
 
 
-  def tryGetAwaitedBy(waiter: FiberImpl): Int =
-    atomicallyIfNotCancelled(waiter) {
+  def tryGetAwaitedBy(waiter: FiberImpl, isWaiterCancellable: Boolean): Int =
+    atomicallyBoth(waiter, isWaiterCancellable) {
       if isPending then
         subscribeWaiterUnsync(waiter)
         Bits.WaiterSubscribed

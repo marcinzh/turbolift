@@ -21,6 +21,10 @@ sealed trait IO extends Signature
 case object IO extends IO:
   final override type ThisEffect = IO
 
+
+  //---------- Side Effects ----------
+
+
   def apply[A](value: => A): A !! IO = CC.DoIO(() => value, isAttempt = false)
 
   def attempt[A](value: => A): Either[Throwable, A] !! IO = CC.DoIO(() => value, isAttempt = true)
@@ -28,10 +32,6 @@ case object IO extends IO:
   def blocking[A](value: => A): A !! IO = CC.Blocking(() => value, isAttempt = false)
   
   def blockingAttempt[A](value: => A): Either[Throwable, A] !! IO = CC.Blocking(() => value, isAttempt = true)
-
-  val cancel: Nothing !! IO = unsnap(Snap.Cancelled)
-
-  val yeld: Unit !! IO = CC.Yield
 
 
   //---------- Exceptions ----------
@@ -80,12 +80,36 @@ case object IO extends IO:
       case aa => unsnap(aa)
 
 
-  //---------- Snap ----------
+  //---------- Finalization ----------
 
 
-  def unsnap[A](aa: Snap[A]): A !! IO = CC.Unsnap(aa)
+  def guarantee[A, U <: IO](release: Unit !! U)(body: A !! U): A !! U =
+    guaranteeSnap[A, U](aa => release &&! unsnap(aa))(body)
+
+  def guaranteeSnap[A, U <: IO](release: Snap[A] => A !! U)(body: A !! U): A !! U =
+    uncancellable:
+      cancellableSnap(body)
+      .flatMap(release)
+
+  def bracket[A, B, U <: IO](acquire: A !! U)(release: A => Unit !! U)(use: A => B !! U): B !! U =
+    bracketSnap[A, B, U](acquire)((a, bb) => release(a) &&! unsnap(bb))(use)
+
+  def bracketSnap[A, B, U <: IO](acquire: A !! U)(release: (A, Snap[B]) => B !! U)(use: A => B !! U): B !! U =
+    uncancellable:
+      acquire.flatMap: a =>
+        cancellableSnap(use(a))
+        .flatMap(release(a, _))
+
+  def cancellable[A, U <: IO](comp: A !! U): A !! U = CC.Suppress(comp, -1)
+
+  //@#@TODO fuse
+  def cancellableSnap[A, U <: IO](comp: A !! U): Snap[A] !! U = snap(cancellable(comp))
+
+  def uncancellable[A, U <: IO](comp: A !! U): A !! U = CC.Suppress(comp, +1)
 
   def snap[A, U <: IO](body: A !! U): Snap[A] !! U = CC.DoSnap(body)
+
+  def unsnap[A](aa: Snap[A]): A !! IO = CC.Unsnap(aa)
 
 
   //---------- Time ----------
@@ -116,10 +140,11 @@ case object IO extends IO:
 
   //---------- Others ----------
 
+
   def executor: Executor !! IO = CC.EnvAsk(_.executor)
 
   def executeOn[A, U <: IO](exec: Executor)(body: A !! U): A !! U = CC.ExecOn(exec, body)
 
-  def guarantee[A, U <: IO](release: Unit !! U)(body: A !! U): A !! U =
-    snap(body).flatMap: aa =>
-      release &&! unsnap(aa)
+  val cancel: Nothing !! IO = unsnap(Snap.Cancelled)
+
+  val yeld: Unit !! IO = CC.Yield

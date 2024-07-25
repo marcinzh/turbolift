@@ -11,9 +11,19 @@ private abstract class Waitee extends AtomicBoolean:
   /*protected*/ var theOwnership: Byte = 0 //// meaningful only in FiberImpl, but moved here for convenience
 
 
-  final def isPending: Boolean = Bits.isPending(varyingBits)
-  final def isCancelled: Boolean = Bits.isCancellationSignalled(varyingBits)
-  final def isPendingAndNotCancelled: Boolean = Bits.isPendingAndNotCancelled(varyingBits)
+  //-------------------------------------------------------------------
+  // bits
+  //-------------------------------------------------------------------
+
+
+  private[engine] final def isPending: Boolean = Bits.isPending(varyingBits)
+  private[engine] final def isCancelled: Boolean = Bits.isCancellationSignalled(varyingBits)
+  private[engine] final def isPendingAndNotCancelled: Boolean = Bits.isPendingAndNotCancelled(varyingBits)
+  private[engine] final def isCancellationUnlatched: Boolean = Bits.isCancellationUnlatched(varyingBits)
+
+
+  inline protected final def setCancellationLatch(): Unit =
+    varyingBits = (varyingBits | Bits.Cancellation_Latch_Bug).toByte
 
 
   //-------------------------------------------------------------------
@@ -21,8 +31,8 @@ private abstract class Waitee extends AtomicBoolean:
   //-------------------------------------------------------------------
 
 
-  inline final protected def spinAcquire(): Boolean = compareAndSet(false, true)
-  inline final protected def spinRelease(): Unit = set(false)
+  inline protected final def spinAcquire(): Boolean = compareAndSet(false, true)
+  inline protected final def spinRelease(): Unit = set(false)
 
 
   inline final def atomically[A](inline body: => A): A =
@@ -32,8 +42,19 @@ private abstract class Waitee extends AtomicBoolean:
     a
 
 
-  inline final def atomicallyIfNotCancelled(fiber: FiberImpl)(inline body: => Int): Int =
-    if spinAcquireBoth(fiber) then
+  inline final def atomicallyTry[A](isCancellable: Boolean)(inline body: => Unit): Boolean =
+    atomically {
+      if isCancellable && isCancellationUnlatched then
+        setCancellationLatch()
+        false
+      else
+        body
+        true
+    }
+
+
+  inline final def atomicallyBoth(fiber: FiberImpl, isFiberCancellable: Boolean)(inline body: => Int): Int =
+    if spinAcquireBoth(fiber, isFiberCancellable) then
       val a = body
       spinReleaseBoth(fiber)
       a
@@ -41,10 +62,10 @@ private abstract class Waitee extends AtomicBoolean:
       Bits.WaiterAlreadyCancelled
 
 
-  final private def spinAcquireBoth(fiber: FiberImpl): Boolean =
+  final private def spinAcquireBoth(fiber: FiberImpl, isFiberCancellable: Boolean): Boolean =
     @tailrec def loop(): Boolean =
       if fiber.spinAcquire() then
-        if fiber.isCancellationUnlatched then
+        if isFiberCancellable && fiber.isCancellationUnlatched then
           fiber.setCancellationLatch()
           fiber.spinRelease()
           false
