@@ -336,8 +336,8 @@ private[internals] abstract class MainLoop extends MainLoop0:
                 currentFiber.suspend(fallthrough.tag, payload, fallthrough, stack2, store2)
                 val warp = currentEnv.currentWarp.nn
                 val tried = warp.exitMode match
-                  case Warp.ExitMode.Cancel => warp.tryGetCancelledBy(currentFiber, currentEnv.isCancellable)
-                  case Warp.ExitMode.Shutdown => warp.tryGetAwaitedBy(currentFiber, currentEnv.isCancellable)
+                  case Bits.ExitMode_Cancel => warp.tryGetCancelledBy(currentFiber, currentEnv.isCancellable)
+                  case Bits.ExitMode_Shutdown => warp.tryGetAwaitedBy(currentFiber, currentEnv.isCancellable)
                   case _ => impossible //// this is a scoped warp, so it must have ExitMode
                 tried match
                   case Bits.WaiterSubscribed => Halt.ThreadDisowned

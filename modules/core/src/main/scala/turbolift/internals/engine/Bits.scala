@@ -112,4 +112,8 @@ private object Bits:
   inline val Warp_Cancelled = Cancellation_Signal
   inline val Warp_Shutdown  = Cancellation_Latch
 
+  inline val ExitMode_None = 0
+  inline val ExitMode_Cancel = 1
+  inline val ExitMode_Shutdown = 2
+
   def isShutdown(bits: Int): Boolean = (bits & Warp_Shutdown) != 0
