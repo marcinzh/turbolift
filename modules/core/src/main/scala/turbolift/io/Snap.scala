@@ -31,6 +31,8 @@ sealed abstract class Snap[+A]:
 
 
 object Snap:
+  val unit: Snap[Unit] = Snap.Success(())
+
   def fromOutcome[A](aa: Outcome[A]): Snap[A] = aa.toSnap
 
   sealed abstract class NotSuccess extends Snap[Nothing]

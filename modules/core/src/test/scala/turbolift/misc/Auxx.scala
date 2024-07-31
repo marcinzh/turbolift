@@ -18,3 +18,7 @@ object Auxx:
 
   extension (thiz: AtomicVar[Int])
     def event(d: Int) = thiz.modify(n => n * 10 + d)
+
+  extension (thiz: AtomicVar[Long])
+    @annotation.targetName("event_Long")
+    def event(d: Int) = thiz.modify(n => n * 10 + d)

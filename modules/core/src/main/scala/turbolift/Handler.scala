@@ -176,14 +176,14 @@ object Handler:
       )
 
     /** Like [[mapState]], but the mapping function is effectful. */
-    def flatMapState[S2, U](f: S => S2 !! U): Handler[F, (_, S2), L, (N & U)] =
+    def mapStateEff[S2, U](f: S => S2 !! U): Handler[F, (_, S2), L, (N & U)] =
       thiz.mapEffK([A] => (pair: (A, S)) =>
         val (a, s) = pair
         f(s).map((a, _))
       )
 
-    /** Like [[flatMapState]], but the mapping is executed for its effects only. */
-    def flatTapState[S2, U](f: S => Unit !! U): Handler[F, (_, S), L, (N & U)] =
+    /** Like [[mapStateEff]], but the mapping is executed for its effects only. */
+    def tapStateEff[S2, U](f: S => Unit !! U): Handler[F, (_, S), L, (N & U)] =
       thiz.tapEffK([A] => (pair: (A, S)) =>
         val (_, s) = pair
         f(s)
@@ -264,14 +264,14 @@ object Handler:
       thiz.mapK([A] => (result: Either[E, A]) => result.swap.map(f).swap)
 
     /** Like [[mapLeft]], but the mapping function is effectful. */
-    def flatMapLeft[E2, U](f: E => E2 !! U): Handler[F, Either[E2, _], L, (N & U)] =
+    def mapLeftEff[E2, U](f: E => E2 !! U): Handler[F, Either[E2, _], L, (N & U)] =
       thiz.mapEffK([A] => (result: Either[E, A]) => result match
         case Left(e) => f(e).map(Left(_))
         case Right(a) => !!.pure(Right(a))
       )
 
-    /** Like [[flatMapLeft]], but the mapping is executed for its effects only. */
-    def flatTapLeft[U](f: E => Unit !! U): Handler[F, Either[E, _], L, (N & U)] =
+    /** Like [[mapLeftEff]], but the mapping is executed for its effects only. */
+    def tapLeftEff[U](f: E => Unit !! U): Handler[F, Either[E, _], L, (N & U)] =
       thiz.tapEffK([A] => (result: Either[E, A]) => result match
         case Left(e) => f(e)
         case _ => !!.unit

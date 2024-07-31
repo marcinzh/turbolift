@@ -1,5 +1,5 @@
 package turbolift
-import turbolift.effects.{ChoiceSignature, IO, Each}
+import turbolift.effects.{ChoiceSignature, IO, Each, Finalizer}
 import turbolift.internals.auxx.CanPartiallyHandle
 import turbolift.internals.auxx.IdConst._
 import turbolift.internals.effect.AnyChoice
@@ -308,6 +308,10 @@ object Computation:
     def warpShutdownOnExit: A !! U = warpShutdownOnExit("")
     def warpCancelOnExit(name: String): A !! U = warp(Warp.ExitMode.Cancel, name)
     def warpShutdownOnExit(name: String): A !! U = warp(Warp.ExitMode.Shutdown, name)
+
+
+  extension [A, U <: IO](thiz: Computation[A, U & Finalizer])
+    def finalized: A !! U = Finalizer.scoped(thiz)
 
 
   extension [A, U](thiz: Computation[A, U])
