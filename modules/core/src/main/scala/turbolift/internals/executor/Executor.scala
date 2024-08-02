@@ -5,7 +5,7 @@ import turbolift.Computation
 import turbolift.effects.IO
 import turbolift.mode.Mode
 import turbolift.io.Outcome
-import turbolift.internals.engine.FiberImpl
+import turbolift.internals.engine.concurrent.FiberImpl
 
 
 trait Executor extends ExecutionContext:

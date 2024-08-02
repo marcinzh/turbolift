@@ -1,10 +1,10 @@
-package turbolift.internals.engine
+package turbolift.internals.engine.concurrent
 import scala.annotation.tailrec
 
 
 /** Either Fiber, Warp or Queque */
 
-private abstract class WaiterLink extends Waitee:
+private[engine] abstract class WaiterLink extends Waitee:
   private[engine] var prevWaiter: WaiterLink | Null = null
   private[engine] var nextWaiter: WaiterLink | Null = null
 

@@ -1,10 +1,10 @@
-package turbolift.internals.engine
+package turbolift.internals.engine.concurrent
 import java.util.concurrent.{TimeUnit, Future}
 import java.util.concurrent.atomic.AtomicReference
 import turbolift.internals.executor.{Pool, Scheduler}
 
 
-private sealed trait Blocker:
+private[engine] sealed trait Blocker:
   var result: Any = ()
   var throwable: Throwable | Null = null
   def unblock(): Unit
@@ -18,7 +18,7 @@ private sealed trait Blocker:
       Left(e)
 
 
-private object Blocker:
+private[engine] object Blocker:
   /*private*/ case object Done
   /*private*/ type Done = Done.type
 

@@ -1,10 +1,11 @@
-package turbolift.internals.engine
+package turbolift.internals.engine.stacked
 import scala.annotation.tailrec
 import turbolift.Signature
 import turbolift.interpreter.{Features, Interpreter}
+import Prompt.Syntax._
 
 
-private final class Stack private (
+private[engine] final class Stack private (
   //@#@OPTY use var for append-in-place for one-shot resump
   val lookup: Lookup,
   val piles: Array[Pile],
@@ -88,7 +89,7 @@ private final class Stack private (
         tail.findSignature(sig, depth + 1)
 
 
-  def locateIO: Location.Deep = locatePrompt(PromptIO)
+  def locateIO: Location.Deep = locatePrompt(Prompt.IO)
   def locatePrompt(prompt: Prompt): Location.Deep = locateSignature(prompt.signatures.head)
 
 
@@ -278,10 +279,10 @@ private final class Stack private (
       s"$a |$b| $c"
 
 
-private object Stack:
+private[engine] object Stack:
   val initial: Stack =
     newSegment(
-      prompt = PromptIO,
+      prompt = Prompt.IO,
       isNested = false,
       kind = FrameKind.plain,
       tail = null.asInstanceOf[Stack],

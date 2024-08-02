@@ -1,12 +1,14 @@
-package turbolift.internals.engine
+package turbolift.internals.engine.concurrent
 import turbolift.!!
 import turbolift.effects.IO
 import turbolift.io.{Zipper, Outcome, Cause, Snap}
 import turbolift.internals.primitives.{ComputationCases => CC}
+import turbolift.internals.engine.stacked.{Stack, OpCascaded}
+import turbolift.internals.engine.Misc._
 import ZipperCases._
 
 
-private sealed abstract class ZipperImpl extends Zipper.Unsealed:
+private[engine] sealed abstract class ZipperImpl extends Zipper.Unsealed:
   final override def run: Any !! Nothing =
     this match
       case Functor(payload, stack) => OpCascaded.restart(stack, payload)

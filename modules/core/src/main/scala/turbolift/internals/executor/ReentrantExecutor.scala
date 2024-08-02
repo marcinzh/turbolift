@@ -4,7 +4,8 @@ import java.util.concurrent.ArrayBlockingQueue
 import scala.annotation.tailrec
 import turbolift.Computation
 import turbolift.io.Outcome
-import turbolift.internals.engine.{FiberImpl, WaiterLink, MainLoop, Halt}
+import turbolift.internals.engine.{MainLoop, Halt}
+import turbolift.internals.engine.concurrent.{FiberImpl, WaiterLink}
 
 
 private[turbolift] final class ReentrantExecutor(maxBusyThreads: Int) extends WaiterLink.Queue with Executor:

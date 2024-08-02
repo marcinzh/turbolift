@@ -1,7 +1,7 @@
-package turbolift.internals.engine
+package turbolift.internals.engine.concurrent
 
 
-private object Bits:
+private[engine] object Bits:
   
   //// Common: (UNSHIFTED)
 

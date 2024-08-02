@@ -1,10 +1,12 @@
-package turbolift.internals.engine
+package turbolift.internals.engine.concurrent
 import scala.annotation.{tailrec, switch}
 import turbolift.{Computation, Signature}
 import turbolift.io.{Fiber, Zipper, Warp, OnceVar, Snap, Outcome, Cause, Exceptions}
 import turbolift.internals.primitives.{Tags, ComputationCases => CC}
 import turbolift.internals.executor.Executor
-import turbolift.internals.engine.{StepCases => SC}
+import turbolift.internals.engine.Env
+import turbolift.internals.engine.Misc._
+import turbolift.internals.engine.stacked.{StepCases, Step, Stack, Store, OpCascaded, OpPush}
 import Cause.{Cancelled => CancelPayload}
 import FiberImpl.Hook
 
@@ -181,7 +183,7 @@ private[turbolift] final class FiberImpl private (
   //// - doesn't subscribe the `canceller`
   //// - doesn't initiate `deepCancelLoop`
   //// - returns first pending racer, instead of Int code
-  private[engine] override def deepCancelDown(): ChildLink | Null =
+  private[concurrent] override def deepCancelDown(): ChildLink | Null =
     var savedLeftRacer: WaiterLink | Null = null
     var savedRightRacer: WaiterLink | Null = null
     var savedVaryingBits: Byte = 0
@@ -208,7 +210,7 @@ private[turbolift] final class FiberImpl private (
       null
 
 
-  private[engine] override def deepCancelRight(): ChildLink | Null =
+  private[concurrent] override def deepCancelRight(): ChildLink | Null =
     if whichRacerAmI == Bits.Racer_Left then
       getArbiter.tryGetRightRacer
     else
@@ -225,7 +227,7 @@ private[turbolift] final class FiberImpl private (
     }
 
 
-  private[engine] override def deepCancelUp(): ChildLink =
+  private[concurrent] override def deepCancelUp(): ChildLink =
     theParent match
       case fiber: FiberImpl => fiber
       case warp: WarpImpl => warp
@@ -415,7 +417,7 @@ private[turbolift] final class FiberImpl private (
   private def suspendInitial(comp: AnyComp, env: Env): Unit =
     suspendedTag     = comp.tag
     suspendedPayload = comp
-    suspendedStep    = SC.Pop
+    suspendedStep    = StepCases.Pop
     suspendedStack   = Stack.initial
     suspendedStore   = Store.initial(env)
 

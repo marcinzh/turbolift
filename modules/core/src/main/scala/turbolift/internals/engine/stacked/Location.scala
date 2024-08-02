@@ -1,7 +1,7 @@
-package turbolift.internals.engine
+package turbolift.internals.engine.stacked
 
 
-private object Location:
+private[engine] object Location:
   final val MAX_SEGMENT_SIZE = 12
 
 

@@ -1,7 +1,7 @@
 package turbolift.io
 import turbolift.!!
 import turbolift.effects.IO
-import turbolift.internals.engine.OnceVarImpl
+import turbolift.internals.engine.concurrent.OnceVarImpl
 import turbolift.internals.primitives.{ComputationCases => CC}
 
 

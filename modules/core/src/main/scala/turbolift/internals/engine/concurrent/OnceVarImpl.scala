@@ -1,4 +1,4 @@
-package turbolift.internals.engine
+package turbolift.internals.engine.concurrent
 import turbolift.io.OnceVar
 import OnceVarImpl.Empty
 
@@ -41,5 +41,5 @@ private[turbolift] final class OnceVarImpl extends Waitee with OnceVar.Unsealed:
       None
 
 
-private object OnceVarImpl:
+private[engine] object OnceVarImpl:
   object Empty

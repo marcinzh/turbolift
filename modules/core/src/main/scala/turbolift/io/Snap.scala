@@ -1,7 +1,7 @@
 package turbolift.io
 import turbolift.!!
 import turbolift.effects.IO
-import turbolift.internals.engine.Prompt
+import turbolift.internals.engine.stacked.Prompt
 import scala.util.{Try, Success => TrySuccess, Failure => TryFailure}
 
 

@@ -1,11 +1,12 @@
-package turbolift.internals.engine
+package turbolift.internals.engine.stacked
 import turbolift.interpreter.Void
+import turbolift.internals.engine.Env
 
 
-private opaque type Local = Any
+private[engine] opaque type Local = Any
 
 
-private object Local:
+private[engine] object Local:
   def void: Local = Void
   def nul: Local = null
 
@@ -16,6 +17,6 @@ private object Local:
     def nonVoid: Boolean = Void != thiz
     def asEnv: Env = thiz.asInstanceOf[Env]
 
-
-extension (thiz: Any)
-  private[engine] inline def asLocal: Local = thiz
+  object Syntax:
+    extension (thiz: Any)
+      inline def asLocal: Local = thiz

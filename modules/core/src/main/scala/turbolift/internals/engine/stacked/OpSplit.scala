@@ -1,9 +1,10 @@
-package turbolift.internals.engine
+package turbolift.internals.engine.stacked
 import scala.annotation.tailrec
 import turbolift.interpreter.Features
+import Prompt.Syntax._
 
 
-private object OpSplit:
+private[engine] object OpSplit:
   def split(stack: Stack, store: Store, location: Location.Deep): (Stack, Store, Step, Stack, Store) =
     @tailrec def loop(
       todoStack: Stack,

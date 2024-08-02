@@ -1,4 +1,4 @@
-package turbolift.internals.engine
+package turbolift.internals.engine.stacked
 
 
 private final class Entry(
@@ -14,4 +14,4 @@ private final class Entry(
 
 
 private object Entry:
-  val initial: Entry = Entry(PromptIO, promptIndex = 0, storeIndex = 0)
+  val initial: Entry = Entry(Prompt.IO, promptIndex = 0, storeIndex = 0)

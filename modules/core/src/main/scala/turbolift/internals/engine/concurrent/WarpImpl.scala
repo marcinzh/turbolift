@@ -1,4 +1,4 @@
-package turbolift.internals.engine
+package turbolift.internals.engine.concurrent
 import scala.annotation.tailrec
 import turbolift.io.{Fiber, Warp}
 
@@ -176,7 +176,7 @@ private[turbolift] final class WarpImpl private (
   //// - doesn't subscribe the `canceller`
   //// - doesn't initiate `deepCancelLoop`
   //// - returns first child, instead of Int code
-  private[engine] override def deepCancelDown(): ChildLink | Null =
+  private[concurrent] override def deepCancelDown(): ChildLink | Null =
     var willFinalize = false
     var willDescend = false
 
@@ -201,9 +201,9 @@ private[turbolift] final class WarpImpl private (
         null
 
 
-  private[engine] override def deepCancelRight(): ChildLink | Null = nextChild
+  private[concurrent] override def deepCancelRight(): ChildLink | Null = nextChild
 
-  private[engine] override def deepCancelUp(): ChildLink = theParent.nn
+  private[concurrent] override def deepCancelUp(): ChildLink = theParent.nn
 
 
   //-------------------------------------------------------------------

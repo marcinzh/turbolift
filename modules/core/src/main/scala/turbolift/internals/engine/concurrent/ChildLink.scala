@@ -1,4 +1,4 @@
-package turbolift.internals.engine
+package turbolift.internals.engine.concurrent
 import scala.annotation.tailrec
 
 
@@ -43,9 +43,9 @@ private abstract class ChildLink extends WaiterLink:
 
 
   //// Called only from `deepCancelLoop`
-  private[engine] def deepCancelDown(): ChildLink | Null
-  private[engine] def deepCancelRight(): ChildLink | Null
-  private[engine] def deepCancelUp(): ChildLink
+  private[concurrent] def deepCancelDown(): ChildLink | Null
+  private[concurrent] def deepCancelRight(): ChildLink | Null
+  private[concurrent] def deepCancelUp(): ChildLink
 
 
   //// Recursively cancel all children of `initial`, in "fire & forget" way (no awaiting for completion).

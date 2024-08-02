@@ -2,7 +2,7 @@ package turbolift.io
 import turbolift.{!!, Handler}
 import turbolift.effects.IO
 import turbolift.internals.primitives.{ComputationCases => CC}
-import turbolift.internals.engine.WarpImpl
+import turbolift.internals.engine.concurrent.WarpImpl
 import turbolift.Extensions.Identity
 
 

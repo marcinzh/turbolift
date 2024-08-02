@@ -1,15 +1,16 @@
-package turbolift.internals.engine
+package turbolift.internals.engine.stacked
 import turbolift.!!
 import turbolift.internals.primitives.Tags
+import turbolift.internals.engine.Misc.AnyComp
 import StepCases._
 
 
-private sealed abstract class Step(val tag: Byte):
+private[engine] sealed abstract class Step(val tag: Byte):
   val next: Step | Null
   final override def toString: String = Step.toStr(this)
 
 
-private object StepCases:
+private[engine] object StepCases:
   final class More(_tag: Byte, val fun: Any => Any, override val next: Step) extends Step(_tag)
   final class Push(val body: AnyComp, val prompt: Prompt, override val next: Step) extends Step(Tags.Step_Push)
   sealed abstract class HasNoNext(_tag: Byte) extends Step(_tag) { override val next: Null = null }
@@ -19,7 +20,7 @@ private object StepCases:
   export Step.Pop
 
 
-private object Step:
+private[engine] object Step:
   val Pop = new StepCases.Unwind(UnwindKind.Pop, null)
   val Cancel = new StepCases.Unwind(UnwindKind.Cancel, null)
   val Throw = new StepCases.Unwind(UnwindKind.Throw, null)

@@ -3,7 +3,8 @@ import java.util.concurrent.{Executors, Executor => JExecutor, ArrayBlockingQueu
 import scala.concurrent.ExecutionContext
 import turbolift.Computation
 import turbolift.io.Outcome
-import turbolift.internals.engine.{FiberImpl, MainLoop, Halt}
+import turbolift.internals.engine.{MainLoop, Halt}
+import turbolift.internals.engine.concurrent.FiberImpl
 
 
 private[turbolift] final class ForeignExecutor(val underlying: ExecutionContext) extends Executor:

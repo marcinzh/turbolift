@@ -1,8 +1,10 @@
-package turbolift.internals.engine
+package turbolift.internals.engine.stacked
 import scala.annotation.tailrec
+import turbolift.internals.engine.Env
+import Prompt.Syntax._
 
 
-private object OpPush:
+private[engine] object OpPush:
   def findTopmostEnv(stack: Stack, store: Store): Env =
     store.getDeep(stack.locateIO).asEnv
 
@@ -33,7 +35,7 @@ private object OpPush:
 
   def pushNestedIO(stack: Stack, store: Store, step: Step, local: Local, kind: FrameKind): (Stack, Store) =
     val location = stack.locateIO
-    pushNested(stack, store, step, PromptIO, location, local, kind)
+    pushNested(stack, store, step, Prompt.IO, location, local, kind)
 
 
   private def newTopSegment(stack: Stack, store: Store, step: Step, prompt: Prompt, local: Local, isNested: Boolean, kind: FrameKind): (Stack, Store) =

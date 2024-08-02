@@ -1,9 +1,12 @@
-package turbolift.internals.engine
+package turbolift.internals.engine.stacked
 import scala.annotation.tailrec
 import turbolift.!!
+import turbolift.internals.engine.Misc.AnyComp
+import Prompt.Syntax._
+import Local.Syntax._
 
 
-private object OpCascaded:
+private[engine] object OpCascaded:
   def restart(stack: Stack, ftor: Any): AnyComp =
     def loop(todo: Stack): AnyComp =
       val comp = 

@@ -1,5 +1,6 @@
 package turbolift.internals.engine
 import turbolift.interpreter.Continuation
+import turbolift.internals.engine.stacked.{Step, Stack, Store, Location}
 
 
 private[engine] final class ContImpl(
