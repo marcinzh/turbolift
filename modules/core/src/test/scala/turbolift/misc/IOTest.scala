@@ -40,6 +40,27 @@ class IOTest extends Specification:
   }
 
 
+  "blocking" >> {
+    case object E extends Exception
+
+    "success" >>{
+      IO.blocking(42).runIO.===(Outcome.Success(42))
+    }
+
+    "failure" >>{
+      IO.blocking(throw E).runIO.===(Outcome.Failure(Cause.Thrown(E)))
+    }
+
+    "attempt success" >>{
+      IO.blockingAttempt(42).runIO === Outcome.Success(Right(42))
+    }
+
+    "attempt failure" >>{
+      IO.blockingAttempt(throw E).runIO === Outcome.Success(Left(E))
+    }
+  }
+
+
   "executeOn" >> {
     val otherExec = Executor.fromScala(scala.concurrent.ExecutionContext.global)
 

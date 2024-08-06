@@ -1,24 +1,21 @@
 package turbolift.internals.engine.concurrent
 import java.util.concurrent.{TimeUnit, Future}
 import java.util.concurrent.atomic.AtomicReference
+import turbolift.io.Exceptions
 import turbolift.internals.executor.{Pool, Scheduler}
 
 
 private[engine] sealed trait Blocker:
-  var result: Any = ()
-  var throwable: Throwable | Null = null
   def unblock(): Unit
 
-
-  final def toEither: Either[Throwable, Any] =
-    val e = throwable
-    if e == null then
-      Right(result)
-    else
-      Left(e)
+  def isEither: Boolean = false
+  def getCompletion: Byte = Bits.Completion_Success
+  def getResult: Any = ()
+  final def getThrowable: Throwable = getResult.asInstanceOf[Throwable]
 
 
 private[engine] object Blocker:
+  trait Unsealed extends Blocker
   /*private*/ case object Done
   /*private*/ type Done = Done.type
 
@@ -50,7 +47,13 @@ private[engine] object Blocker:
 
 
 
-  final class Interruptible(fiber: FiberImpl, thunk: () => Any) extends AtomicReference[Thread | Done | Null] with Blocker with Runnable:
+  final class Interruptible(fiber: FiberImpl, thunk: () => Any, override val isEither: Boolean) extends AtomicReference[Thread | Done | Null] with Blocker with Runnable:
+    private var result: Any = null
+    private var completion: Byte = Bits.Completion_Success
+    override def getCompletion: Byte = completion
+    override def getResult: Any = result
+
+
     def block(): Unit = Pool.instance.execute(this)
 
 
@@ -58,12 +61,15 @@ private[engine] object Blocker:
       val thread = Thread.currentThread.nn
       if compareAndSet(null, thread) then
         try
-          this.result = thunk()
-          set(Done)
+          result = thunk()
         catch 
-          case _: InterruptedException => ()
-          case e => this.throwable = e
-      end if
+          case _: InterruptedException =>
+            completion = Bits.Completion_Cancelled
+          case e =>
+            completion = Bits.Completion_Failure
+            result = e
+        finally
+          set(Done)
       fiber.resume()
 
 

@@ -114,6 +114,11 @@ private[turbolift] final class FiberImpl private (
     }
 
 
+  private[engine] def setBlockerUnsync(blocker: Blocker): Unit =
+    suspendedPayload = blocker
+    theOwnership = Bits.Ownership_Blocker
+
+
   private[engine] def tryGetAwaitedBy(waiter: FiberImpl, isWaiterCancellable: Boolean): Int =
     atomicallyBoth(waiter, isWaiterCancellable) {
       if isPending then
@@ -401,7 +406,7 @@ private[turbolift] final class FiberImpl private (
 
 
   //-------------------------------------------------------------------
-  // Suspend
+  // Suspend & Resume
   //-------------------------------------------------------------------
 
 

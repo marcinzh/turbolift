@@ -37,7 +37,7 @@ private[turbolift] object ComputationCases:
   final class SpawnWarp[A, U](val exitMode: Warp.ExitMode, val body: A !! (U & Warp), val name: String) extends Unsealed[A, U](Tags.SpawnWarp)
   final class AwaitWarp(val warp: Warp, val isCancel: Boolean) extends Unsealed[Unit, IO](Tags.AwaitWarp)
   final class AwaitOnceVar[A](val ovar: OnceVar.Get[A]) extends Unsealed[A, IO](Tags.AwaitOnceVar)
-  final class Blocking[A, B](val thunk: () => A, isAttempt: Boolean) extends Unsealed[B, IO](Tags.Blocking)
+  final class Blocking[A, B](val thunk: () => A, val isAttempt: Boolean) extends Unsealed[B, IO](Tags.Blocking)
   final class Sleep(val length: Long, val unit: TimeUnit = TimeUnit.MILLISECONDS) extends Unsealed[Unit, IO](Tags.Sleep)
   final class Suppress[A, U](val body: A !! U, val delta: Int) extends Unsealed[A, U](Tags.Suppress)
   final class ExecOn[A, U](val exec: Executor, val body: A !! U) extends Unsealed[A, U](Tags.ExecOn)

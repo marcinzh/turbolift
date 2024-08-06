@@ -40,10 +40,9 @@ private[turbolift] object Tags:
   inline val Blocking              = 35
   inline val Sleep                 = 36
   inline val NotifyBlocker         = 37
-  inline val NotifyBlockerAttempt  = 38
-  inline val Suppress              = 39
-  inline val ExecOn                = 40
-  inline val Yield                 = 41
+  inline val Suppress              = 38
+  inline val ExecOn                = 39
+  inline val Yield                 = 40
 
 
   def toStr(tag: Int) =
@@ -86,8 +85,7 @@ private[turbolift] object Tags:
       case Blocking              => "Blocking"
       case Sleep                 => "Sleep"
       case NotifyBlocker         => "NotifyBlocker"
-      case NotifyBlockerAttempt  => "NotifyBlockerAttempt"
-      case Suppress           => "Suppress"
+      case Suppress              => "Suppress"
       case ExecOn                => "ExecOn"
       case Yield                 => "Yield"
       case _                     => s"Tag($tag)"

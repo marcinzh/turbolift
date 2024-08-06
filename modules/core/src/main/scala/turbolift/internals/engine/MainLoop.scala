@@ -544,7 +544,7 @@ private[internals] abstract class MainLoop extends MainLoop0:
 
       case Tags.Blocking =>
         val instr = payload.asInstanceOf[CC.Blocking[Any, Any]]
-        val blocker = new Blocker.Interruptible(currentFiber, instr.thunk)
+        val blocker = new Blocker.Interruptible(currentFiber, instr.thunk, instr.isAttempt)
         currentFiber.suspend(Tags.NotifyBlocker, blocker, step, stack, store)
         if currentFiber.tryGetBlocked(currentEnv.isCancellable) then
           blocker.block()
@@ -566,19 +566,24 @@ private[internals] abstract class MainLoop extends MainLoop0:
 
       case Tags.NotifyBlocker =>
         val blocker = payload.asInstanceOf[Blocker]
-        val e = blocker.throwable
-        if e == null then
-          val payload2 = blocker.result
+        if blocker.isEither then
+          val payload2 = blocker.getCompletion match
+            case Bits.Completion_Success => Right(blocker.getResult)
+            case Bits.Completion_Cancelled => Left(Exceptions.Cancelled)
+            case Bits.Completion_Failure => Left(blocker.getThrowable)
           loopStep(payload2, step, stack, store)
         else
-          val step2 = Step.Throw
-          val payload2 = Cause(e)
-          loopStep(payload2, step2, stack, store)
-
-      case Tags.NotifyBlockerAttempt =>
-        val blocker = payload.asInstanceOf[Blocker]
-        val payload2 = blocker.toEither
-        loopStep(payload2, step, stack, store)
+          blocker.getCompletion match
+            case Bits.Completion_Success =>
+              val payload2 = blocker.getResult
+              loopStep(payload2, step, stack, store)
+            case Bits.Completion_Cancelled =>
+              currentFiber.cancelBySelf()
+              loopCancel(stack, store)
+            case Bits.Completion_Failure =>
+              val step2 = Step.Throw
+              val payload2 = Cause(blocker.getThrowable)
+              loopStep(payload2, step2, stack, store)
 
       case Tags.Suppress =>
         val instr = payload.asInstanceOf[CC.Suppress[Any, Any]]
