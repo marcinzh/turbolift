@@ -6,10 +6,10 @@ import turbolift.internals.primitives.{Tags, ComputationCases => CC}
 import turbolift.internals.executor.Executor
 import turbolift.internals.engine.stacked.{StepCases => SC, Step, Stack, Store, Local, Prompt, FrameKind, OpPush, OpSplit, OpCascaded}
 import turbolift.internals.engine.concurrent.{Bits, Blocker, FiberImpl, WarpImpl, OnceVarImpl}
+import Halt.{Retire => ThreadDisowned}
 import Local.Syntax._
 import Prompt.Syntax._
 import Cause.{Cancelled => CancelPayload}
-import MainLoop.LoopMore
 import Misc._
 
 
@@ -21,7 +21,13 @@ private sealed abstract class MainLoop0 extends Runnable:
 
 
 private[internals] abstract class MainLoop extends MainLoop0:
-  protected[this] val pad1, pad2, pad3, pad4 = 0L
+  protected var savedTag: Byte = 0
+  protected var savedPayload: Any = null
+  protected var savedStep: Step = null.asInstanceOf[Step]
+  protected var savedStack: Stack = null.asInstanceOf[Stack]
+  protected var savedStore: Store = null.asInstanceOf[Store]
+  protected[this] val pad1 = 0L
+  protected[this] val pad2 = 0
 
 
   def this(fiber: FiberImpl) = { this(); become(fiber) }
@@ -35,6 +41,22 @@ private[internals] abstract class MainLoop extends MainLoop0:
       currentFiber.suspendAsCancelled()
     outerLoop()
 
+  
+  private final def bounce(tag: Byte, payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop2nd =
+    savedTag     = tag
+    savedPayload = payload
+    savedStep    = step
+    savedStack   = stack
+    savedStore   = store
+    Halt.Bounce
+
+
+  private final def unbounce(): Unit =
+    savedPayload = null
+    savedStep = null.asInstanceOf[Step]
+    savedStack = null.asInstanceOf[Stack]
+    savedStore = null.asInstanceOf[Store]
+
 
   //-------------------------------------------------------------------
   // Outer Loop
@@ -43,19 +65,19 @@ private[internals] abstract class MainLoop extends MainLoop0:
 
   @tailrec private final def outerLoop(): Halt =
     val result =
-      val currentTag     = currentFiber.suspendedTag
-      val currentPayload = currentFiber.suspendedPayload.nn
-      val currentStep    = currentFiber.suspendedStep.nn
-      val currentStack   = currentFiber.suspendedStack.nn
-      val currentStore   = currentFiber.suspendedStore.nn
+      val tag     = currentFiber.suspendedTag
+      val payload = currentFiber.suspendedPayload.nn
+      val step    = currentFiber.suspendedStep.nn
+      val stack   = currentFiber.suspendedStack.nn
+      val store   = currentFiber.suspendedStore.nn
       currentFiber.clearSuspension()
       try
         innerLoop(
-          tag      = currentTag,
-          payload  = currentPayload,
-          step     = currentStep,
-          stack    = currentStack,
-          store    = currentStore,
+          tag      = tag,
+          payload  = payload,
+          step     = step,
+          stack    = stack,
+          store    = store,
         )
       catch e =>
         // e.printStackTrace()
@@ -69,18 +91,18 @@ private[internals] abstract class MainLoop extends MainLoop0:
 
 
   //-------------------------------------------------------------------
-  // Inner Loop
+  // Inner Loop / 1st Stage
   //-------------------------------------------------------------------
 
 
-  @tailrec private final def innerLoop(tag: Byte, payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop =
-    inline def loopStep(payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop =
+  @tailrec private final def innerLoop(tag: Byte, payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop1st =
+    inline def loopStep(payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop1st =
       innerLoop(step.tag, payload, step, stack, store)
 
-    inline def loopComp(comp: Computation[?, ?], step: Step, stack: Stack, store: Store): Halt.Loop =
+    inline def loopComp(comp: Computation[?, ?], step: Step, stack: Stack, store: Store): Halt.Loop1st =
       innerLoop(comp.tag, comp, step, stack, store)
 
-    inline def loopCancel(stack: Stack, store: Store): Halt.Loop =
+    inline def loopCancel(stack: Stack, store: Store): Halt.Loop1st =
       innerLoop(Tags.Step_Unwind, CancelPayload, Step.Cancel, stack, store)
 
     if currentTickLow > 0 then
@@ -142,8 +164,15 @@ private[internals] abstract class MainLoop extends MainLoop0:
 
         case _ =>
           loopMore(tag, payload, step, stack, store) match
-            case halt: Halt.Loop => halt
-            case (tag2, payload2, step2, stack2, store2) => innerLoop(tag2, payload2, step2, stack2, store2)
+            case Halt.Bounce =>
+              val tag2     = savedTag
+              val payload2 = savedPayload
+              val step2    = savedStep
+              val stack2   = savedStack
+              val store2   = savedStore
+              unbounce()
+              innerLoop(tag2, payload2, step2, stack2, store2)
+            case halt: Halt.Loop1st => halt
     else
       if currentTickHigh > 0 then
         currentTickHigh -= 1
@@ -157,18 +186,23 @@ private[internals] abstract class MainLoop extends MainLoop0:
         Halt.Yield
 
 
-  private def loopMore(tag: Byte, payload: Any, step: Step, stack: Stack, store: Store): LoopMore =
-    inline def loopStep(payload: Any, step: Step, stack: Stack, store: Store): LoopMore =
-      (step.tag, payload, step, stack, store)
+  //-------------------------------------------------------------------
+  // Inner Loop / 2nd Stage
+  //-------------------------------------------------------------------
 
-    inline def loopComp(comp: Computation[?, ?], step: Step, stack: Stack, store: Store): LoopMore =
-      (comp.tag, comp, step, stack, store)
 
-    inline def loopCancel(stack: Stack, store: Store): LoopMore =
-      (Tags.Step_Unwind, CancelPayload, Step.Cancel, stack, store)
+  private def loopMore(tag: Byte, payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop2nd =
+    inline def loopStep(payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop2nd =
+      bounce(step.tag, payload, step, stack, store)
 
-    inline def innerLoop(tag: Byte, payload: Any, step: Step, stack: Stack, store: Store): LoopMore =
-      (tag, payload, step, stack, store)
+    inline def loopComp(comp: Computation[?, ?], step: Step, stack: Stack, store: Store): Halt.Loop2nd =
+      bounce(comp.tag, comp, step, stack, store)
+
+    inline def loopCancel(stack: Stack, store: Store): Halt.Loop2nd =
+      bounce(Tags.Step_Unwind, CancelPayload, Step.Cancel, stack, store)
+
+    inline def innerLoop(tag: Byte, payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop2nd =
+      bounce(tag, payload, step, stack, store)
 
     (tag: @switch) match
       case Tags.LocalGet =>
@@ -344,7 +378,7 @@ private[internals] abstract class MainLoop extends MainLoop0:
                   case Bits.ExitMode_Shutdown => warp.tryGetAwaitedBy(currentFiber, currentEnv.isCancellable)
                   case _ => impossible //// this is a scoped warp, so it must have ExitMode
                 tried match
-                  case Bits.WaiterSubscribed => Halt.ThreadDisowned
+                  case Bits.WaiterSubscribed => ThreadDisowned
                   case Bits.WaiterAlreadyCancelled => impossible //// Latch is set
                   case Bits.WaiteeAlreadyCompleted =>
                     currentFiber.clearSuspension()
@@ -354,7 +388,7 @@ private[internals] abstract class MainLoop extends MainLoop0:
               case FrameKind.EXEC =>
                 currentFiber.suspend(fallthrough.tag, payload, fallthrough, stack2, store2)
                 currentFiber.resume()
-                Halt.ThreadDisowned
+                ThreadDisowned
 
               case FrameKind.SUPPRESS =>
                 refreshEnv(stack2, store2)
@@ -445,7 +479,7 @@ private[internals] abstract class MainLoop extends MainLoop0:
         else
           currentFiber.suspend(Tags.NotifyOnceVar, ovar, step, stack, store)
           ovar.tryGetAwaitedBy(currentFiber, currentEnv.isCancellable) match
-            case Bits.WaiterSubscribed => Halt.ThreadDisowned
+            case Bits.WaiterSubscribed => ThreadDisowned
             case Bits.WaiterAlreadyCancelled =>
               currentFiber.clearSuspension()
               loopCancel(stack, store)
@@ -484,7 +518,7 @@ private[internals] abstract class MainLoop extends MainLoop0:
             then waitee.tryGetCancelledBy(currentFiber, currentEnv.isCancellable)
             else waitee.tryGetAwaitedBy(currentFiber, currentEnv.isCancellable)
           tried match
-            case Bits.WaiterSubscribed => Halt.ThreadDisowned
+            case Bits.WaiterSubscribed => ThreadDisowned
             case Bits.WaiterAlreadyCancelled =>
               currentFiber.clearSuspension()
               loopCancel(stack, store)
@@ -501,7 +535,7 @@ private[internals] abstract class MainLoop extends MainLoop0:
             val zombie = new Blocker.Zombie(currentFiber)
             currentFiber.suspend(step.tag, zombie, step, stack, store)
             if currentFiber.tryGetBlocked(currentEnv.isCancellable) then
-              Halt.ThreadDisowned
+              ThreadDisowned
             else
               currentFiber.clearSuspension()
               loopCancel(stack, store)
@@ -534,7 +568,7 @@ private[internals] abstract class MainLoop extends MainLoop0:
           then warp.tryGetCancelledBy(currentFiber, currentEnv.isCancellable)
           else warp.tryGetAwaitedBy(currentFiber, currentEnv.isCancellable)
         tried match
-          case Bits.WaiterSubscribed => Halt.ThreadDisowned
+          case Bits.WaiterSubscribed => ThreadDisowned
           case Bits.WaiterAlreadyCancelled =>
             currentFiber.clearSuspension()
             loopCancel(stack, store)
@@ -548,7 +582,7 @@ private[internals] abstract class MainLoop extends MainLoop0:
         currentFiber.suspend(Tags.NotifyBlocker, blocker, step, stack, store)
         if currentFiber.tryGetBlocked(currentEnv.isCancellable) then
           blocker.block()
-          Halt.ThreadDisowned
+          ThreadDisowned
         else
           currentFiber.clearSuspension()
           loopCancel(stack, store)
@@ -559,7 +593,7 @@ private[internals] abstract class MainLoop extends MainLoop0:
         currentFiber.suspend(Tags.NotifyBlocker, blocker, step, stack, store)
         if currentFiber.tryGetBlocked(currentEnv.isCancellable) then
           blocker.sleep(instr.length, instr.unit)
-          Halt.ThreadDisowned
+          ThreadDisowned
         else
           currentFiber.clearSuspension()
           loopCancel(stack, store)
@@ -609,7 +643,7 @@ private[internals] abstract class MainLoop extends MainLoop0:
           val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, env2.asLocal, FrameKind.exec)
           currentFiber.suspend(instr.body.tag, instr.body, SC.Pop, stack2, store2)
           currentFiber.resume()
-          Halt.ThreadDisowned
+          ThreadDisowned
 
       case Tags.Yield =>
         currentFiber.suspend(step.tag, (), step, stack, store)
@@ -621,7 +655,7 @@ private[internals] abstract class MainLoop extends MainLoop0:
   //-------------------------------------------------------------------
 
 
-  private final def endOfLoop(completion: Int, payload: Any, stack: Stack | Null): Halt.Loop =
+  private final def endOfLoop(completion: Int, payload: Any, stack: Stack | Null): Halt.Loop1st =
     currentFiber.doFinalize(completion, payload, stack) match
       case null => Halt.Retire
       case fiber2 => become(fiber2.nn); Halt.Become
@@ -650,7 +684,3 @@ private[internals] abstract class MainLoop extends MainLoop0:
 
   private final def cancellationCheck(): Boolean =
      currentFiber.cancellationCheck(currentEnv.isCancellable)
-
-
-private object MainLoop:
-  type LoopMore = Halt.Loop | (Byte, Any, Step, Stack, Store)

@@ -7,12 +7,12 @@ object Jolo:
   def run =
     println(VM.current.nn.details)
     """
-      turbolift.internals.engine.FiberImpl
-      turbolift.internals.engine.WarpImpl
-      turbolift.internals.engine.OnceVarImpl
-      turbolift.internals.engine.Stack
+      turbolift.internals.engine.concurrent.FiberImpl
+      turbolift.internals.engine.concurrent.WarpImpl
+      turbolift.internals.engine.concurrent.OnceVarImpl
+      turbolift.internals.engine.stacked.Stack
       turbolift.internals.engine.MainLoop
-      turbolift.internals.executor.MultiThreadedExecutor
+      turbolift.internals.executor.ReentrantExecutor
     """
     .split("\n").map(_.trim).filter(_.nonEmpty)
     .foreach(show)

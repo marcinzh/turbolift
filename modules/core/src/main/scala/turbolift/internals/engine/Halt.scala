@@ -1,7 +1,7 @@
 package turbolift.internals.engine
 
 
-private[internals] sealed abstract class Halt extends Halt.Loop
+private[internals] sealed abstract class Halt extends Halt.Loop1st
 
 
 private[internals] object Halt:
@@ -10,7 +10,7 @@ private[internals] object Halt:
   case object Retire extends Halt
 
   //// Result of `innerLoop`
-  private[engine] sealed abstract class Loop
-  private[engine] case object Become extends Loop
-
-  inline def ThreadDisowned = Retire
+  private[engine] sealed abstract class Loop1st extends Loop2nd
+  private[engine] sealed abstract class Loop2nd
+  private[engine] case object Become extends Loop1st
+  private[engine] case object Bounce extends Loop2nd
