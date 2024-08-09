@@ -10,17 +10,20 @@ import turbolift.internals.engine.{Env}
 import turbolift.internals.executor.Executor
 
 
-private[turbolift] object ComputationCases:
+//@#@TEMP public bcoz inline bug
+// private[turbolift] object ComputationCases:
+object ComputationCases:
+  abstract class Map[A, B, C, U](_tag: Int, val comp: A !! U) extends Unsealed[B, U](_tag) with Function1[A, C]
+  abstract class Perform[A, U, Z <: Signature](val sig: Signature) extends Unsealed[A, U](Tags.Perform) with Function1[Z, A !! U]
+  abstract class Impure[A]() extends Unsealed[A, Any](Tags.Impure) with Function0[A]
+  abstract class LocalUpdate[A, S](val prompt: Interpreter.Untyped) extends Unsealed[A, Any](Tags.LocalUpdate) with Function1[S, (A, S)]
+
   final class Pure[A](val value: A) extends Unsealed[A, Any](Tags.Pure)
-  final class Map[A, U](_tag: Byte, val comp: Untyped, val fun: Any => Any) extends Unsealed[A, U](_tag)
-  final class Perform[A, U, Z <: Signature](val sig: Signature, val op: Z => Any) extends Unsealed[A, U](Tags.Perform)
   final class ZipPar[A, B, C, U](val lhs: A !! U, val rhs: B !! U, val fun: (A, B) => C) extends Unsealed[C, U](Tags.ZipPar)
   final class OrPar[A, U](val lhs: A !! U, val rhs: A !! U) extends Unsealed[A, U](Tags.OrPar)
   final class OrSeq[A, U](val lhs: A !! U, val rhsFun: () => A !! U) extends Unsealed[A, U](Tags.OrSeq)
-  final class Impure[A, U](val thunk: () => A) extends Unsealed[A, U](Tags.Impure)
   final class LocalGet(val prompt: Interpreter.Untyped) extends Unsealed[Any, Any](Tags.LocalGet)
   final class LocalPut[S](val prompt: Interpreter.Untyped, val local: S) extends Unsealed[Unit, Any](Tags.LocalPut)
-  final class LocalUpdate[A, S](val prompt: Interpreter.Untyped, val fun: S => (A, S)) extends Unsealed[A, Any](Tags.LocalUpdate)
   final class Resume[A, B, S, U](val cont: Continuation[A, B, S, U], val value: A, val local: S) extends Unsealed[B, U](Tags.Resume)
   final class Delimit[A, S, U](val prompt: Interpreter.Untyped, val body: Untyped, val local: S, val fun: (S => S) | Null) extends Unsealed[A, U](Tags.Delimit)
   final class Capture[A, B, S, U](val prompt: Interpreter.Untyped, val fun: ContFun[A, B, S, U]) extends Unsealed[A, U](Tags.Capture)

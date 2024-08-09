@@ -1,7 +1,9 @@
 package turbolift.internals.primitives
 
 
-private[turbolift] object Tags:
+//@#@TEMP public bcoz inline bug
+// private[turbolift] object Tags:
+object Tags:
   inline val MapFlat               = 0
   inline val MapPure               = 1
   inline val Step_MoreFlat         = 2

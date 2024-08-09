@@ -109,10 +109,10 @@ private[internals] abstract class MainLoop extends MainLoop0:
       currentTickLow -= 1
       (tag: @switch) match
         case Tags.MapFlat | Tags.MapPure =>
-          val instr = payload.asInstanceOf[CC.Map[Any, Any]]
+          val instr = payload.asInstanceOf[CC.Map[Any, Any, Any, Any]]
           val comp2 = instr.comp
           val tag2 = tag + Tags.Step_MoreFlat - Tags.MapFlat
-          val step2 = SC.More(tag2, instr.fun, step)
+          val step2 = SC.More(tag2, instr, step)
           loopComp(comp2, step2, stack, store)
 
         case Tags.Step_MoreFlat =>
@@ -130,7 +130,7 @@ private[internals] abstract class MainLoop extends MainLoop0:
         case Tags.Perform =>
           val instr = payload.asInstanceOf[CC.Perform[Any, Any, Signature]]
           val (prompt, location) = stack.findSignature(instr.sig)
-          val comp2 = instr.op(prompt)
+          val comp2 = instr(prompt)
           (comp2.tag: @switch) match
             case Tags.LocalGet =>
               val local = store.getDeep(location)
@@ -143,7 +143,7 @@ private[internals] abstract class MainLoop extends MainLoop0:
 
             case Tags.LocalUpdate =>
               val instr2 = comp2.asInstanceOf[CC.LocalUpdate[Any, Local]]
-              val (value, store2) = store.updateDeep(location, instr2.fun)
+              val (value, store2) = store.updateDeep(location, instr2)
               loopStep(value, step, stack, store2)
 
             case _ => loopComp(comp2, step, stack, store)
@@ -154,8 +154,8 @@ private[internals] abstract class MainLoop extends MainLoop0:
           loopStep(payload2, step, stack, store)
 
         case Tags.Impure =>
-          val instr = payload.asInstanceOf[CC.Impure[Any, Any]]
-          val payload2 = instr.thunk()
+          val instr = payload.asInstanceOf[CC.Impure[Any]]
+          val payload2 = instr()
           loopStep(payload2, step, stack, store)
 
         case _ =>
@@ -216,7 +216,7 @@ private[internals] abstract class MainLoop extends MainLoop0:
       case Tags.LocalUpdate =>
         val instr = payload.asInstanceOf[CC.LocalUpdate[Any, Local]]
         val location = stack.locatePrompt(instr.prompt)
-        val (value, store2) = store.updateDeep(location, instr.fun)
+        val (value, store2) = store.updateDeep(location, instr)
         loopStep(value, step, stack, store2)
 
       case Tags.Delimit =>

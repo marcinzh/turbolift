@@ -32,14 +32,24 @@ def !! = Computation
  */
 
 sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift] val tag: Int):
-  final def map[B](f: A => B): B !! U = new CC.Map(Tags.MapPure, this.untyped, f.asInstanceOf[Any => Any])
-  final def flatMap[B, U2 <: U](f: A => B !! U2): B !! U2 = new CC.Map(Tags.MapFlat, this.untyped, f.asInstanceOf[Any => Any])
+  private final def map_bug[B](f: A => B): B !! U =
+    new CC.Map[A, B, B, U](Tags.MapPure, this):
+      override def apply(a: A): B = f(a)
+
+  final inline def map[B](inline f: A => B): B !! U =
+    new CC.Map[A, B, B, U](Tags.MapPure, this):
+      override def apply(a: A): B = f(a)
+
+  final inline def flatMap[B, U2 <: U](inline f: A => B !! U2): B !! U2 =
+    new CC.Map[A, B, B !! U2, U2](Tags.MapFlat, this):
+      override def apply(a: A): B !! U2 = f(a)
+
   final def flatten[B, U2 <: U](implicit ev: A <:< (B !! U2)): B !! U2 = flatMap(ev)
   @deprecated final def flatTap[B, U2 <: U](f: A => B !! U2): A !! U2 = tapEff(f)
   final def tapEff[B, U2 <: U](f: A => B !! U2): A !! U2 = flatMap(a => f(a).as(a))
 
   /** Composes 2 independent computations sequentially */
-  final def zip[B, U2 <: U](that: => B !! U2): (A, B) !! U2 = flatMap(a => that.map((a, _)))
+  final def zip[B, U2 <: U](that: => B !! U2): (A, B) !! U2 = flatMap(a => that.map_bug((a, _)))
 
   /** Composes 2 independent computations parallelly (if possible).
    *
@@ -76,7 +86,7 @@ sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift]
    * being inherently sequential (e.g. `State.handlers.local` or `Error.handlers.first`).
    * In such case, `&!` behaves like `&&!`.
    */
-  final def &![B, U2 <: U](that: B !! U2): B !! U2 = zipPar(that).map(_._2)
+  final def &![B, U2 <: U](that: B !! U2): B !! U2 = zipPar(that).map_bug(_._2)
   
   /** Composes 2 independent computations sequentially, discarding result of the first. */
   final def &&![B, U2 <: U](that: => B !! U2): B !! U2 = flatMap(_ => that)
@@ -87,10 +97,10 @@ sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift]
    * being inherently sequential (e.g. `State.handlers.local` or `Error.handlers.first`).
    * In such case, `&<!` behaves like `&&<!`.
    */
-  final def &<![B, U2 <: U](that: B !! U2): A !! U2 = zipPar(that).map(_._1)
+  final def &<![B, U2 <: U](that: B !! U2): A !! U2 = zipPar(that).map_bug(_._1)
 
   /** Composes 2 independent computations sequentially, discarding result of the second. */
-  final def &&<![B, U2 <: U](that: => B !! U2): A !! U2 = flatMap(a => that.map(_ => a))
+  final def &&<![B, U2 <: U](that: => B !! U2): A !! U2 = flatMap(a => that.as(a))
 
   /** Races 2 computations.
    *
@@ -125,7 +135,8 @@ sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift]
 
   private[turbolift] final def untyped = this.asInstanceOf[Any !! Any]
 
-  final override def toString = s"turbolift.Computation@${hashCode.toHexString}"
+  //@#@OLD
+  // final override def toString = s"turbolift.Computation@${hashCode.toHexString}"
 
   //---------- IO operations in postfix syntax ----------
 
@@ -179,7 +190,9 @@ object Computation:
 
   def pure[A](a: A): A !! Any = new CC.Pure(a)
 
-  def impure[A](a: => A): A !! Any = new CC.Impure(() => a)
+  inline def impure[A](inline a: => A): A !! Any =
+    new CC.Impure[A]:
+      override def apply(): A = a
 
   def impureEff[A, U](comp: => A !! U): A !! U = unit.flatMap(_ => comp)
   @deprecated def defer[A, U](comp: => A !! U): A !! U = impureEff(comp)
