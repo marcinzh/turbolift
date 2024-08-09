@@ -21,7 +21,7 @@ private sealed abstract class MainLoop0 extends Runnable:
 
 
 private[internals] abstract class MainLoop extends MainLoop0:
-  protected var savedTag: Byte = 0
+  protected var savedTag: Int = 0
   protected var savedPayload: Any = null
   protected var savedStep: Step = null.asInstanceOf[Step]
   protected var savedStack: Stack = null.asInstanceOf[Stack]
@@ -42,7 +42,7 @@ private[internals] abstract class MainLoop extends MainLoop0:
     outerLoop()
 
   
-  private final def bounce(tag: Byte, payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop2nd =
+  private final def bounce(tag: Int, payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop2nd =
     savedTag     = tag
     savedPayload = payload
     savedStep    = step
@@ -95,7 +95,7 @@ private[internals] abstract class MainLoop extends MainLoop0:
   //-------------------------------------------------------------------
 
 
-  @tailrec private final def innerLoop(tag: Byte, payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop1st =
+  @tailrec private final def innerLoop(tag: Int, payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop1st =
     inline def loopStep(payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop1st =
       innerLoop(step.tag, payload, step, stack, store)
 
@@ -111,7 +111,7 @@ private[internals] abstract class MainLoop extends MainLoop0:
         case Tags.MapFlat | Tags.MapPure =>
           val instr = payload.asInstanceOf[CC.Map[Any, Any]]
           val comp2 = instr.comp
-          val tag2 = (tag + (Tags.Step_MoreFlat - Tags.MapFlat)).toByte
+          val tag2 = tag + Tags.Step_MoreFlat - Tags.MapFlat
           val step2 = SC.More(tag2, instr.fun, step)
           loopComp(comp2, step2, stack, store)
 
@@ -189,7 +189,7 @@ private[internals] abstract class MainLoop extends MainLoop0:
   //-------------------------------------------------------------------
 
 
-  private def loopMore(tag: Byte, payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop2nd =
+  private def loopMore(tag: Int, payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop2nd =
     inline def loopStep(payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop2nd =
       bounce(step.tag, payload, step, stack, store)
 
@@ -199,7 +199,7 @@ private[internals] abstract class MainLoop extends MainLoop0:
     inline def loopCancel(stack: Stack, store: Store): Halt.Loop2nd =
       bounce(Tags.Step_Unwind, CancelPayload, Step.Cancel, stack, store)
 
-    inline def innerLoop(tag: Byte, payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop2nd =
+    inline def innerLoop(tag: Int, payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop2nd =
       bounce(tag, payload, step, stack, store)
 
     (tag: @switch) match
@@ -508,7 +508,7 @@ private[internals] abstract class MainLoop extends MainLoop0:
         val instr = payload.asInstanceOf[CC.AwaitFiber[Any, Any]]
         val waitee = instr.fiber.asImpl
         if currentFiber != waitee then
-          val tag2: Byte = if instr.isVoid then Tags.NotifyFiberVoid else Tags.NotifyFiber
+          val tag2 = if instr.isVoid then Tags.NotifyFiberVoid else Tags.NotifyFiber
           currentFiber.suspend(tag2, waitee, step, stack, store)
           val tried =
             if instr.isCancel

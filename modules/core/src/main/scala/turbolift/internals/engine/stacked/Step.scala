@@ -5,15 +5,15 @@ import turbolift.internals.engine.Misc.AnyComp
 import StepCases._
 
 
-private[engine] sealed abstract class Step(val tag: Byte):
+private[engine] sealed abstract class Step(val tag: Int):
   val next: Step | Null
   final override def toString: String = Step.toStr(this)
 
 
 private[engine] object StepCases:
-  final class More(_tag: Byte, val fun: Any => Any, override val next: Step) extends Step(_tag)
+  final class More(_tag: Int, val fun: Any => Any, override val next: Step) extends Step(_tag)
   final class Push(val body: AnyComp, val prompt: Prompt, override val next: Step) extends Step(Tags.Step_Push)
-  sealed abstract class HasNoNext(_tag: Byte) extends Step(_tag) { override val next: Null = null }
+  sealed abstract class HasNoNext(_tag: Int) extends Step(_tag) { override val next: Null = null }
   final class Unwind(val kind: Step.UnwindKind, val prompt: Prompt | Null) extends HasNoNext(Tags.Step_Unwind)
   case object Bridge extends HasNoNext(Tags.Step_Bridge)
 

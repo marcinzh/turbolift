@@ -420,7 +420,7 @@ private[turbolift] final class FiberImpl private (
 
 
   private def suspendInitial(comp: AnyComp, env: Env): Unit =
-    suspendedTag     = comp.tag
+    suspendedTag     = comp.tag.toByte
     suspendedPayload = comp
     suspendedStep    = StepCases.Pop
     suspendedStack   = Stack.initial
@@ -428,14 +428,14 @@ private[turbolift] final class FiberImpl private (
 
 
   private[engine] def suspend(
-    tag: Byte,
+    tag: Int,
     payload: Any,
     step: Step,
     stack: Stack,
     store: Store,
   ): Unit =
     assert(!isSuspended)
-    suspendedTag     = tag
+    suspendedTag     = tag.toByte
     suspendedPayload = payload
     suspendedStep    = step
     suspendedStack   = stack
@@ -463,23 +463,23 @@ private[turbolift] final class FiberImpl private (
 
 
   private def suspendAsSuccessPure(value: Any): Unit =
-    suspendedTag = suspendedStep.nn.tag
+    suspendedTag = suspendedStep.nn.tag.toByte
     suspendedPayload = value
 
 
   private def suspendAsSuccessComp(comp: AnyComp): Unit =
-    suspendedTag = comp.tag
+    suspendedTag = comp.tag.toByte
     suspendedPayload = comp
 
 
   private[engine] def suspendAsCancelled(): Unit =
-    suspendedTag = Step.Cancel.tag
+    suspendedTag = Step.Cancel.tag.toByte
     suspendedStep = Step.Cancel
     suspendedPayload = CancelPayload
 
 
   private def suspendAsFailure(cause: Cause): Unit =
-    suspendedTag = Step.Throw.tag
+    suspendedTag = Step.Throw.tag.toByte
     suspendedStep = Step.Throw
     suspendedPayload = cause
 

@@ -31,7 +31,7 @@ def !! = Computation
  * @tparam U Type-level set of effects requested by this computation.
  */
 
-sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift] val tag: Byte):
+sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift] val tag: Int):
   final def map[B](f: A => B): B !! U = new CC.Map(Tags.MapPure, this.untyped, f.asInstanceOf[Any => Any])
   final def flatMap[B, U2 <: U](f: A => B !! U2): B !! U2 = new CC.Map(Tags.MapFlat, this.untyped, f.asInstanceOf[Any => Any])
   final def flatten[B, U2 <: U](implicit ev: A <:< (B !! U2)): B !! U2 = flatMap(ev)
@@ -159,7 +159,7 @@ sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift]
   */
 
 object Computation:
-  private[turbolift] abstract class Unsealed[A, U](_tag: Byte) extends Computation[A, U](_tag)
+  private[turbolift] abstract class Unsealed[A, U](_tag: Int) extends Computation[A, U](_tag)
   private[turbolift] type Untyped = Computation[Any, Any]
 
   private def pairCtorFun[A, B]: (A, B) => (A, B) = pairCtorVal.asInstanceOf[(A, B) => (A, B)]
