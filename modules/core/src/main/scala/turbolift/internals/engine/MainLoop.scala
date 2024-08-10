@@ -116,6 +116,16 @@ private[internals] abstract class MainLoop extends MainLoop0:
           val instr1 = payload.asInstanceOf[CC.Map[Any, Any, Any, Any]]
           val comp1 = instr1.comp
           (comp1.tag: @switch) match
+            case Tags.Pure =>
+              val instr2 = comp1.asInstanceOf[CC.Pure[Any]]
+              val payload2 = instr1(instr2.value)
+              loopTag(tag, payload2, step, stack, store)
+
+            case Tags.Impure =>
+              val instr2 = comp1.asInstanceOf[CC.Impure[Any]]
+              val payload2 = instr1(instr2())
+              loopTag(tag, payload2, step, stack, store)
+
             case Tags.Perform =>
               val instr2 = comp1.asInstanceOf[CC.Perform[Any, Any, Signature]]
               val (prompt, location) = stack.findSignature(instr2.sig)
