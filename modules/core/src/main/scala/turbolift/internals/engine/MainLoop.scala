@@ -105,15 +105,48 @@ private[internals] abstract class MainLoop extends MainLoop0:
     inline def loopCancel(stack: Stack, store: Store): Halt.Loop1st =
       innerLoop(Tags.Step_Unwind, CancelPayload, Step.Cancel, stack, store)
 
+    inline def loopTag(tag: Int, payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop1st =
+      val tag2 = if tag == Tags.MapFlat then payload.asInstanceOf[AnyComp].tag else step.tag
+      innerLoop(tag2, payload, step, stack, store)
+
     if currentTickLow > 0 then
       currentTickLow -= 1
       (tag: @switch) match
         case Tags.MapFlat | Tags.MapPure =>
-          val instr = payload.asInstanceOf[CC.Map[Any, Any, Any, Any]]
-          val comp2 = instr.comp
-          val tag2 = tag + Tags.Step_MoreFlat - Tags.MapFlat
-          val step2 = SC.More(tag2, instr, step)
-          loopComp(comp2, step2, stack, store)
+          val instr1 = payload.asInstanceOf[CC.Map[Any, Any, Any, Any]]
+          val comp1 = instr1.comp
+          (comp1.tag: @switch) match
+            case Tags.Perform =>
+              val instr2 = comp1.asInstanceOf[CC.Perform[Any, Any, Signature]]
+              val (prompt, location) = stack.findSignature(instr2.sig)
+              val comp2 = instr2(prompt)
+              (comp2.tag: @switch) match
+                case Tags.LocalGet =>
+                  val local = store.getDeep(location)
+                  val payload2 = instr1(local)
+                  loopTag(tag, payload2, step, stack, store)
+
+                case Tags.LocalPut =>
+                  val instr3 = comp2.asInstanceOf[CC.LocalPut[Local]]
+                  val store2 = store.setDeep(location, instr3.local)
+                  val payload2 = instr1(())
+                  loopTag(tag, payload2, step, stack, store2)
+
+                case Tags.LocalUpdate =>
+                  val instr3 = comp2.asInstanceOf[CC.LocalUpdate[Any, Local]]
+                  val (value, store2) = store.updateDeep(location, instr3)
+                  val payload2 = instr1(value)
+                  loopTag(tag, payload2, step, stack, store2)
+
+                case _ =>
+                  val tag2 = tag + Tags.Step_MoreFlat - Tags.MapFlat
+                  val step2 = SC.More(tag2, instr1, step)
+                  loopComp(comp2, step2, stack, store)
+
+            case _ =>
+              val tag2 = tag + Tags.Step_MoreFlat - Tags.MapFlat
+              val step2 = SC.More(tag2, instr1, step)
+              loopComp(comp1, step2, stack, store)
 
         case Tags.Step_MoreFlat =>
           val instr = step.asInstanceOf[SC.More]
@@ -158,6 +191,24 @@ private[internals] abstract class MainLoop extends MainLoop0:
           val payload2 = instr()
           loopStep(payload2, step, stack, store)
 
+        case Tags.LocalGet =>
+          val instr = payload.asInstanceOf[CC.LocalGet]
+          val location = stack.locatePrompt(instr.prompt)
+          val local = store.getDeep(location)
+          loopStep(local, step, stack, store)
+
+        case Tags.LocalPut =>
+          val instr = payload.asInstanceOf[CC.LocalPut[Local]]
+          val location = stack.locatePrompt(instr.prompt)
+          val store2 = store.setDeep(location, instr.local)
+          loopStep((), step, stack, store2)
+
+        case Tags.LocalUpdate =>
+          val instr = payload.asInstanceOf[CC.LocalUpdate[Any, Local]]
+          val location = stack.locatePrompt(instr.prompt)
+          val (value, store2) = store.updateDeep(location, instr)
+          loopStep(value, step, stack, store2)
+
         case _ =>
           loopMore(tag, payload, step, stack, store) match
             case Halt.Bounce =>
@@ -201,24 +252,6 @@ private[internals] abstract class MainLoop extends MainLoop0:
       bounce(tag, payload, step, stack, store)
 
     (tag: @switch) match
-      case Tags.LocalGet =>
-        val instr = payload.asInstanceOf[CC.LocalGet]
-        val location = stack.locatePrompt(instr.prompt)
-        val local = store.getDeep(location)
-        loopStep(local, step, stack, store)
-
-      case Tags.LocalPut =>
-        val instr = payload.asInstanceOf[CC.LocalPut[Local]]
-        val location = stack.locatePrompt(instr.prompt)
-        val store2 = store.setDeep(location, instr.local)
-        loopStep((), step, stack, store2)
-
-      case Tags.LocalUpdate =>
-        val instr = payload.asInstanceOf[CC.LocalUpdate[Any, Local]]
-        val location = stack.locatePrompt(instr.prompt)
-        val (value, store2) = store.updateDeep(location, instr)
-        loopStep(value, step, stack, store2)
-
       case Tags.Delimit =>
         val instr = payload.asInstanceOf[CC.Delimit[Any, Local, Any]]
         val location = stack.locatePrompt(instr.prompt)
