@@ -63,7 +63,7 @@ sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift]
   final def zipWith[B, C, U2 <: U](that: => B !! U2)(f: (A, B) => C): C !! U2 = flatMap(a => that.map(f(a, _)))
 
   /** Like [[zipPar]], but followed by untupled `map`. */
-  final def zipWithPar[B, C, U2 <: U](that: B !! U2)(f: (A, B) => C): C !! U2 = new CC.ZipPar(this, that, f)
+  final def zipWithPar[B, C, U2 <: U](that: B !! U2)(f: (A, B) => C): C !! U2 = CC.intristic(_.intristicZipPar(this, that, f))
   
   /** Discards the result, and replaces it by given pure value. */
   final def as[B](value: B): B !! U = map(_ => value)
@@ -107,14 +107,14 @@ sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift]
    * Runs both computations parallelly, each in fresh fiber.
    * Once one of them finishes, the other is cancelled.
    */
-  final def |![A2 >: A, U2 <: U & IO](that: A2 !! U2): A2 !! U2 = new CC.OrPar(this, that)
+  final def |![A2 >: A, U2 <: U & IO](that: A2 !! U2): A2 !! U2 = CC.intristic(_.intristicOrPar(this, that))
 
   /** Sequential "or-else" operator.
    *
    * Runs the first computations in fresh fiber.
    * If it ends up cancelled, the second computation is run.
    */
-  final def ||![A2 >: A, U2 <: U & IO](that: => A2 !! U2): A2 !! U2 = new CC.OrSeq(this, () => that)
+  final def ||![A2 >: A, U2 <: U & IO](that: => A2 !! U2): A2 !! U2 = CC.intristic(_.intristicOrSeq(this, () => that))
 
   /** Parallel version of `++!`. */
   final def +![A2 >: A, U2 <: U & ChoiceSignature](that: A2 !! U2): A2 !! U2 = AnyChoice.plusPar(this, that)
@@ -277,8 +277,8 @@ object Computation:
   def iterateUntil[A, U](init: A, cond: A => Boolean)(body: A => A !! U): A !! U =
     iterateWhile(init, a => !cond(a))(body)
 
-  def envAsk[A](f: Env => A): A !! Any = new CC.EnvAsk(f)
-  def envMod[A, U](f: Env => Env, body: A !! U): A !! U = new CC.EnvMod(f, body)
+  def envAsk[A](f: Env => A): A !! Any = CC.intristic(_.intristicEnvAsk(f))
+  def envMod[A, U](f: Env => Env, body: A !! U): A !! U = CC.intristic(_.intristicEnvMod(f, body))
 
   def isParallel: Boolean !! Any = envAsk(_.isParallelismRequested)
   def isSequential: Boolean !! Any = isParallel.map(!_)

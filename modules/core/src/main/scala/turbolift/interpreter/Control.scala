@@ -29,14 +29,14 @@ final class Control[S, Q, F[+_], V] private[interpreter] (private val interp: In
    * Unwinds the stack up to the end of the effect's scope.
    * The unwound part of the stack is reified as a [[Continuation]] object.
    */
-  def capture[A, U](f: Cont[A, U] => F[Q] !! U): A !! U = CC.Capture(interp, f)
+  def capture[A, U](f: Cont[A, U] => F[Q] !! U): A !! U = CC.intristic(_.intristicCapture(interp, f))
 
 
   /** Like [[capture]], except it also accesses the local state.
    *
    * Fusion of [[Local.get]] and [[capture]].
    */
-  def captureGet[A, U](f: (Cont[A, U], S) => F[Q] !! U): A !! U = CC.Capture(interp, f)
+  def captureGet[A, U](f: (Cont[A, U], S) => F[Q] !! U): A !! U = CC.intristic(_.intristicCaptureGet(interp, f))
 
   /** Unwind the stack until the end of the effect's scope.
    *
@@ -45,7 +45,7 @@ final class Control[S, Q, F[+_], V] private[interpreter] (private val interp: In
    * 
    *  However, `abort(value)` also invokes finalization clauses during stack unwinding.
    */
-  def abort(value: F[Q]): Nothing !! V = CC.Abort(interp, value)
+  def abort(value: F[Q]): Nothing !! V = CC.intristic(_.intristicAbort(interp, value))
 
   /** Changes scope of the effect.
    *
@@ -59,8 +59,8 @@ final class Control[S, Q, F[+_], V] private[interpreter] (private val interp: In
    *
    * Upon exit of [[delimit]]'s body, the local state is restored to its original value.
    */
-  def delimitPut[A, U <: V](body: A !! U, s: S): F[A] !! U = CC.Delimit(interp, body.untyped, s, null)
+  def delimitPut[A, U <: V](body: A !! U, s: S): F[A] !! U = CC.intristic(_.intristicDelimitPut(interp, body.untyped, s))
   
   /** Like [[delimitPut]], but modifies the local state, instead of replacing it. */
-  def delimitModify[A, U <: V](body: A !! U, f: S => S): F[A] !! U = CC.Delimit(interp, body.untyped, Void.as[S], f)
+  def delimitModify[A, U <: V](body: A !! U, f: S => S): F[A] !! U = CC.intristic(_.intristicDelimitMod(interp, body.untyped, f))
 

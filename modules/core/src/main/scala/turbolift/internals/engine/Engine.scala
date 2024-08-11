@@ -1,7 +1,9 @@
 package turbolift.internals.engine
+import java.util.concurrent.TimeUnit
 import scala.annotation.{tailrec, switch}
-import turbolift.{Computation, Signature}
+import turbolift.{!!, Computation, Signature}
 import turbolift.io.{Fiber, Zipper, Warp, OnceVar, Snap, Outcome, Cause, Exceptions}
+import turbolift.interpreter.{Interpreter, Continuation}
 import turbolift.internals.primitives.{Tags, ComputationCases => CC}
 import turbolift.internals.executor.Executor
 import turbolift.internals.engine.stacked.{StepCases => SC, Step, Stack, Store, Local, Prompt, FrameKind, OpPush, OpSplit, OpCascaded}
@@ -20,14 +22,14 @@ private sealed abstract class Engine0 extends Runnable:
   protected var currentTickHigh: Int = 0
 
 
-private[internals] abstract class Engine extends Engine0:
+/*private[turbolift]*/ abstract class Engine extends Engine0:
   protected var savedTag: Int = 0
   protected var savedPayload: Any = null
   protected var savedStep: Step = null.asInstanceOf[Step]
   protected var savedStack: Stack = null.asInstanceOf[Stack]
   protected var savedStore: Store = null.asInstanceOf[Store]
-  protected[this] val pad1 = 0L
-  protected[this] val pad2 = 0
+  protected val pad1 = 0L
+  protected val pad2 = 0
 
 
   def this(fiber: FiberImpl) = { this(); become(fiber) }
@@ -42,22 +44,6 @@ private[internals] abstract class Engine extends Engine0:
     outerLoop()
 
   
-  private final def bounce(tag: Int, payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop2nd =
-    savedTag     = tag
-    savedPayload = payload
-    savedStep    = step
-    savedStack   = stack
-    savedStore   = store
-    Halt.Bounce
-
-
-  private final def unbounce(): Unit =
-    savedPayload = null
-    savedStep = null.asInstanceOf[Step]
-    savedStack = null.asInstanceOf[Stack]
-    savedStore = null.asInstanceOf[Store]
-
-
   //-------------------------------------------------------------------
   // Outer Loop
   //-------------------------------------------------------------------
@@ -227,7 +213,10 @@ private[internals] abstract class Engine extends Engine0:
               val step2    = savedStep
               val stack2   = savedStack
               val store2   = savedStore
-              unbounce()
+              savedPayload = null
+              savedStep = null.asInstanceOf[Step]
+              savedStack = null.asInstanceOf[Stack]
+              savedStore = null.asInstanceOf[Store]
               innerLoop(tag2, payload2, step2, stack2, store2)
             case halt: Halt.Loop1st => halt
     else
@@ -248,136 +237,65 @@ private[internals] abstract class Engine extends Engine0:
   //-------------------------------------------------------------------
 
 
-  private def loopMore(tag: Int, payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop2nd =
+  private final def loopMore(tag: Int, payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop2nd =
+    inline def innerLoop(tag: Int, payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop2nd =
+      savedTag     = tag
+      savedPayload = payload
+      savedStep    = step
+      savedStack   = stack
+      savedStore   = store
+      Halt.Bounce
+
     inline def loopStep(payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop2nd =
-      bounce(step.tag, payload, step, stack, store)
+      innerLoop(step.tag, payload, step, stack, store)
 
     inline def loopComp(comp: Computation[?, ?], step: Step, stack: Stack, store: Store): Halt.Loop2nd =
-      bounce(comp.tag, comp, step, stack, store)
+      innerLoop(comp.tag, comp, step, stack, store)
 
     inline def loopCancel(stack: Stack, store: Store): Halt.Loop2nd =
-      bounce(Tags.Step_Unwind, CancelPayload, Step.Cancel, stack, store)
-
-    inline def innerLoop(tag: Int, payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop2nd =
-      bounce(tag, payload, step, stack, store)
+      innerLoop(Tags.Step_Unwind, CancelPayload, Step.Cancel, stack, store)
 
     (tag: @switch) match
-      case Tags.Delimit =>
-        val instr = payload.asInstanceOf[CC.Delimit[Any, Local, Any]]
-        val location = stack.locatePrompt(instr.prompt)
-        val local =
-          if instr.fun == null
-          then instr.local
-          else instr.fun(store.getDeep(location))
-        val (stack2, store2) = OpPush.pushNested(stack, store, step, instr.prompt, location, local, FrameKind.plain)
-        loopComp(instr.body, SC.Pop, stack2, store2)
+      case Tags.Intristic => 
+        savedTag     = tag
+        savedPayload = payload
+        savedStep    = step
+        savedStack   = stack
+        savedStore   = store
+        val instr = payload.asInstanceOf[CC.Intristic[Any, Any]]
+        instr(this)
 
-      case Tags.Abort =>
-        val instr = payload.asInstanceOf[CC.Abort[Any, Any]]
-        val step2 = instr.prompt.unwind
-        val payload2 = instr.value
-        loopStep(payload2, step2, stack, store)
+      case Tags.NotifyOnceVar =>
+        val ovar = payload.asInstanceOf[OnceVarImpl]
+        val value = ovar.theContent
+        loopStep(value, step, stack, store)
 
-      case Tags.Resume =>
-        val instr = payload.asInstanceOf[CC.Resume[Any, Any, Local, Any]]
-        val cont = instr.cont.asImpl
-        val (stack2, store2) = OpSplit.merge(
-          stackHi = cont.stack,
-          storeHi = cont.store.setDeepIfNotVoid(cont.location, instr.local),
-          stepMid = step,
-          stackLo = stack,
-          storeLo = store,
-        )
-        refreshEnv(stack2, store2)
-        loopStep(instr.value, cont.step, stack2, store2)
+      case Tags.NotifyFiber =>
+        val waitee = payload.asInstanceOf[FiberImpl]
+        val zipper = waitee.getOrMakeZipper
+        loopStep(zipper, step, stack, store)
 
-      case Tags.Capture =>
-        val instr = payload.asInstanceOf[CC.Capture[Any, Any, Any, Any]]
-        val location = stack.locatePrompt(instr.prompt)
-        val (stackHi, storeHi, stepMid, stackLo, storeLo) = OpSplit.split(stack, store, location)
-        //@#@THOV only the shallow paty of location2 is used
-        val location2 = stackHi.locatePrompt(instr.prompt)
-        val cont = new ContImpl(stackHi, storeHi, step, location2)
-        val comp2 = (instr.fun: @unchecked) match
-          case f: Function1[Any, AnyComp] => f(cont)
-          case f: Function2[Any, Any, AnyComp] =>
-            val local = storeHi.getDeep(location2)
-            f(cont, local)
-        refreshEnv(stackLo, storeLo)
-        loopComp(comp2, stepMid, stackLo, storeLo)
+      case Tags.NotifyFiberVoid =>
+        loopStep((), step, stack, store)
 
-      case Tags.Step_Bridge =>
-        val (stack2, store2, step2) = OpPush.drop(stack, store)
-        refreshEnv(stack2, store2)
-        loopStep(payload, step2, stack2, store2)
-
-      case Tags.ZipPar =>
-        val instr = payload.asInstanceOf[CC.ZipPar[Any, Any, Any, Any]]
-        //@#@TODO Too conservative? Should check for `features.isParallel` at `mark`, instead of at stack top
-        if stack.accumFeatures.isParallel && currentEnv.isParallelismRequested then
-          val fiberLeft = currentFiber.createChild(Bits.ZipPar_Left)
-          val fiberRight = currentFiber.createChild(Bits.ZipPar_Right)
-          if currentFiber.tryStartRace(fiberLeft, fiberRight, currentEnv.isCancellable) then
-            val (storeTmp, storeLeft) = OpCascaded.fork(stack, store)
-            val (storeDown, storeRight) = OpCascaded.fork(stack, storeTmp)
-            currentFiber.suspendForRace(instr.fun, step, stack, storeDown)
-            val stack2 = stack.makeFork
-            fiberRight.suspend(instr.rhs.tag, instr.rhs, SC.Pop, stack2, storeRight)
-            fiberRight.resume()
-            becomeWithSameEnv(fiberLeft)
-            innerLoop(instr.lhs.tag, instr.lhs, SC.Pop, stack2, storeLeft)
-          else
-            //// Must have been cancelled meanwhile
-            loopCancel(stack, store)
+      case Tags.NotifyBlocker =>
+        val blocker = payload.asInstanceOf[Blocker]
+        if blocker.isEither then
+          val payload2 = blocker.getCompletion match
+            case Bits.Completion_Success => Right(blocker.getResult)
+            case Bits.Completion_Cancelled => Left(Exceptions.Cancelled)
+            case Bits.Completion_Failure => Left(blocker.getThrowable)
+          loopStep(payload2, step, stack, store)
         else
-          //// Fallback to sequential
-          val comp2 = instr.lhs.zipWith(instr.rhs)(instr.fun)
-          loopComp(comp2, step, stack, store)
-
-      case Tags.OrPar =>
-        val instr = payload.asInstanceOf[CC.OrPar[Any, Any]]
-        if stack.accumFeatures.isParallel && currentEnv.isParallelismRequested then
-          val fiberLeft = currentFiber.createChild(Bits.OrPar_Left)
-          val fiberRight = currentFiber.createChild(Bits.OrPar_Right)
-          if currentFiber.tryStartRace(fiberLeft, fiberRight, currentEnv.isCancellable) then
-            val (storeTmp, storeLeft) = OpCascaded.fork(stack, store)
-            val (storeDown, storeRight) = OpCascaded.fork(stack, storeTmp)
-            currentFiber.suspendForRace(null, step, stack, storeDown)
-            val stack2 = stack.makeFork
-            fiberRight.suspend(instr.rhs.tag, instr.rhs, SC.Pop, stack2, storeRight)
-            fiberRight.resume()
-            becomeWithSameEnv(fiberLeft)
-            innerLoop(instr.lhs.tag, instr.lhs, SC.Pop, stack2, storeLeft)
-          else
-            //// Must have been cancelled meanwhile
-            loopCancel(stack, store)
-        else
-          //// Fallback to sequential
-          val comp2 = CC.OrSeq(instr.lhs, () => instr.rhs)
-          loopComp(comp2, step, stack, store)
-
-      case Tags.OrSeq =>
-        val instr = payload.asInstanceOf[CC.OrSeq[Any, Any]]
-        val fiberLeft = currentFiber.createChild(Bits.OrSeq)
-        if currentFiber.tryStartRaceOfOne(fiberLeft, currentEnv.isCancellable) then
-          val (storeDown, storeLeft) = OpCascaded.fork(stack, store)
-          currentFiber.suspendForRace(instr.rhsFun, step, stack, storeDown)
-          val stack2 = stack.makeFork
-          becomeWithSameEnv(fiberLeft)
-          innerLoop(instr.lhs.tag, instr.lhs, SC.Pop, stack2, storeLeft)
-        else
-          //// Must have been cancelled meanwhile
-          loopCancel(stack, store)
-
-      case Tags.Handle =>
-        val instr = payload.asInstanceOf[CC.Handle[Any, Any, [_] =>> Any, [_] =>> Any, Any, Any]]
-        val prompt = instr.handler.interpreter.untyped
-        for sig <- prompt.signatures do
-          if stack.containsSignature(sig) then
-            panic(s"Unsupported feature: shadowing effect ${sig}.")
-        val comp2 = prompt.onInitial
-        val step2 = new SC.Push(instr.body, prompt, step)
-        loopComp(comp2, step2, stack, store)
+          blocker.getCompletion match
+            case Bits.Completion_Success => loopStep(blocker.getResult, step, stack, store)
+            case Bits.Completion_Cancelled =>
+              currentFiber.cancelBySelf()
+              loopCancel(stack, store)
+            case Bits.Completion_Failure =>
+              val step2 = Step.Throw
+              val payload2 = Cause(blocker.getThrowable)
+              loopStep(payload2, step2, stack, store)
 
       case Tags.Step_Push =>
         val instr = step.asInstanceOf[SC.Push]
@@ -385,6 +303,11 @@ private[internals] abstract class Engine extends Engine0:
         val (stack2, store2) = OpPush.pushBase(stack, store, step2, instr.prompt, payload.asLocal)
         val comp2 = instr.body
         loopComp(comp2, SC.Pop, stack2, store2)
+
+      case Tags.Step_Bridge =>
+        val (stack2, store2, step2) = OpPush.drop(stack, store)
+        refreshEnv(stack2, store2)
+        loopStep(payload, step2, stack2, store2)
 
       case Tags.Step_Unwind =>
         val instr = step.asInstanceOf[SC.Unwind]
@@ -407,7 +330,7 @@ private[internals] abstract class Engine extends Engine0:
                 loopStep(payload2, step2, stack2, store2)
 
               case FrameKind.WARP =>
-                currentFiber.suspend(fallthrough.tag, payload, fallthrough, stack2, store2)
+                currentFiber.suspendStep(payload, fallthrough, stack2, store2)
                 val warp = currentEnv.currentWarp.nn
                 val tried = warp.exitMode match
                   case Bits.ExitMode_Cancel => warp.tryGetCancelledBy(currentFiber, currentEnv.isCancellable)
@@ -422,7 +345,7 @@ private[internals] abstract class Engine extends Engine0:
                     loopStep(payload, fallthrough, stack2, store2)
 
               case FrameKind.EXEC =>
-                currentFiber.suspend(fallthrough.tag, payload, fallthrough, stack2, store2)
+                currentFiber.suspendStep(payload, fallthrough, stack2, store2)
                 currentFiber.resume()
                 ThreadDisowned
 
@@ -448,242 +371,479 @@ private[internals] abstract class Engine extends Engine0:
             case Step.UnwindKind.Throw  => Bits.Completion_Failure
           endOfLoop(completion, payload, stack)
 
-      case Tags.DoIO =>
-        val instr = payload.asInstanceOf[CC.DoIO[Any, Any]]
-        var result: Any = null
-        var throwable: Throwable | Null = null
-        try
-          result = instr.thunk()
-        catch
-          case e => throwable = e
-        if throwable == null then
-          val payload2 = if instr.isAttempt then Right(result) else result
-          loopStep(payload2, step, stack, store)
-        else
-          if instr.isAttempt then
-            val payload2 = Left(throwable)
-            loopStep(payload2, step, stack, store)
-          else
-            val step2 = Step.Throw
-            val payload2 = Cause(throwable.nn)
-            loopStep(payload2, step2, stack, store)
 
-      case Tags.DoSnap =>
-        val instr = payload.asInstanceOf[CC.DoSnap[Any, Any]]
-        val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, Local.void, FrameKind.guard)
-        loopComp(instr.body, SC.Pop, stack2, store2)
+  //-------------------------------------------------------------------
+  // Intristics Aux
+  //-------------------------------------------------------------------
 
-      case Tags.Unsnap =>
-        val instr = payload.asInstanceOf[CC.Unsnap[Any, Any]]
-        //@#@TODO forbid uncancelling, it wouldnt work correctly anyway
-        instr.snap match
-          case Snap.Success(payload2) =>
-            loopStep(payload2, step, stack, store)
-          case Snap.Failure(payload2) =>
-            val step2 = Step.Throw
-            loopStep(payload2, step2, stack, store)
-          case theAborted: Snap.Aborted =>
-            val payload2 = theAborted.value
-            val step2 = theAborted.prompt.unwind
-            loopStep(payload2, step2, stack, store)
-          case Snap.Cancelled =>
-            //@#@THOV It should be harmless to self-cancel a fiber, even when it's uncancellable?
-            currentFiber.cancelBySelf()
-            loopCancel(stack, store)
 
-      case Tags.EnvAsk =>
-        val instr = payload.asInstanceOf[CC.EnvAsk[Any]]
-        val value = instr.fun(currentEnv)
-        loopStep(value, step, stack, store)
+  private final def intristicLoop(tag: Int, payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop2nd =
+    savedPayload = payload
+    savedTag = tag
+    savedStep = step
+    savedStack = stack
+    savedStore = store
+    Halt.Bounce
 
-      case Tags.EnvMod =>
-        val instr = payload.asInstanceOf[CC.EnvMod[Any, Any]]
-        val env2 = instr.fun(currentEnv)
-        if currentEnv == env2 then
-          loopComp(instr.body, step, stack, store)
-        else
-          val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, env2.asLocal, FrameKind.plain)
-          this.currentEnv = env2
-          loopComp(instr.body, SC.Pop, stack2, store2)
+  private final def intristicLoopStep(value: Any, step: Step, stack: Stack, store: Store): Halt.Loop2nd =
+    intristicLoop(step.tag, value, step, stack, store)
 
-      case Tags.AwaitOnceVar =>
-        val instr = payload.asInstanceOf[CC.AwaitOnceVar[Any]]
-        val ovar = instr.ovar.asImpl
-        val value = ovar.theContent
-        if OnceVarImpl.Empty != value then
-          loopStep(value, step, stack, store)
-        else
-          currentFiber.suspend(Tags.NotifyOnceVar, ovar, step, stack, store)
-          ovar.tryGetAwaitedBy(currentFiber, currentEnv.isCancellable) match
-            case Bits.WaiterSubscribed => ThreadDisowned
-            case Bits.WaiterAlreadyCancelled =>
-              currentFiber.clearSuspension()
-              loopCancel(stack, store)
-            case Bits.WaiteeAlreadyCompleted =>
-              currentFiber.clearSuspension()
-              val value = ovar.theContent
-              loopStep(value, step, stack, store)
+  private final def intristicLoopComp(comp: !![?, ?], step: Step, stack: Stack, store: Store): Halt.Loop2nd =
+    intristicLoop(comp.tag, comp, step, stack, store)
 
-      case Tags.NotifyOnceVar =>
-        val ovar = payload.asInstanceOf[OnceVarImpl]
-        val value = ovar.theContent
-        loopStep(value, step, stack, store)
+  private final def intristicLoopStepRefreshEnv(value: Any, step: Step, stack: Stack, store: Store): Halt.Loop2nd =
+    refreshEnv(stack, store)
+    intristicLoopStep(value, step, stack, store)
 
-      case Tags.ForkFiber =>
-        val instr = payload.asInstanceOf[CC.ForkFiber[Any, Any]]
-        val warp = if instr.warp != null then instr.warp.nn.asImpl else currentEnv.currentWarp.nn
-        val (storeDown, storeFork) = OpCascaded.fork(stack, store)
-        val stackFork = stack.makeFork
-        val child = FiberImpl.createExplicit(warp, instr.name, instr.callback)
-        child.suspend(instr.comp.tag, instr.comp, SC.Pop, stackFork, storeFork)
-        if warp.tryAddFiber(child) then
-          child.resume()
-          loopStep(child, step, stack, storeDown)
-        else
-          child.suspendAsCancelled()
-          loopStep(child, step, stack, store)
+  private final def intristicLoopCompRefreshEnv(comp: !![?, ?], step: Step, stack: Stack, store: Store): Halt.Loop2nd =
+    refreshEnv(stack, store)
+    intristicLoopComp(comp, step, stack, store)
 
-      case Tags.AwaitFiber =>
-        val instr = payload.asInstanceOf[CC.AwaitFiber[Any, Any]]
-        val waitee = instr.fiber.asImpl
-        if currentFiber != waitee then
-          val tag2 = if instr.isVoid then Tags.NotifyFiberVoid else Tags.NotifyFiber
-          currentFiber.suspend(tag2, waitee, step, stack, store)
-          val tried =
-            if instr.isCancel
-            then waitee.tryGetCancelledBy(currentFiber, currentEnv.isCancellable)
-            else waitee.tryGetAwaitedBy(currentFiber, currentEnv.isCancellable)
-          tried match
-            case Bits.WaiterSubscribed => ThreadDisowned
-            case Bits.WaiterAlreadyCancelled =>
-              currentFiber.clearSuspension()
-              loopCancel(stack, store)
-            case Bits.WaiteeAlreadyCompleted =>
-              currentFiber.clearSuspension()
-              val payload2 = if instr.isVoid then () else waitee.getOrMakeZipper
-              loopStep(payload2, step, stack, store)
-        else
-          //// Ignoring `isCancellable` bcoz cancelling is by-self
-          if instr.isCancel then
-            currentFiber.cancelBySelf()
-            loopCancel(stack, store)
-          else
-            val zombie = new Blocker.Zombie(currentFiber)
-            currentFiber.suspend(step.tag, zombie, step, stack, store)
-            if currentFiber.tryGetBlocked(currentEnv.isCancellable) then
-              ThreadDisowned
-            else
-              currentFiber.clearSuspension()
-              loopCancel(stack, store)
+  private final def intristicLoopCancel(stack: Stack, store: Store): Halt.Loop2nd =
+    intristicLoop(Tags.Step_Unwind, CancelPayload, Step.Cancel, stack, store)
 
-      case Tags.NotifyFiber =>
-        val waitee = payload.asInstanceOf[FiberImpl]
-        val zipper = waitee.getOrMakeZipper
-        loopStep(zipper, step, stack, store)
 
-      case Tags.NotifyFiberVoid =>
-        loopStep((), step, stack, store)
+  //-------------------------------------------------------------------
+  // Intristics
+  //-------------------------------------------------------------------
 
-      case Tags.CurrentFiber =>
-        loopStep(currentFiber, step, stack, store)
 
-      case Tags.SpawnWarp =>
-        val instr = payload.asInstanceOf[CC.SpawnWarp[Any, Any]]
-        val warp = new WarpImpl(currentFiber, currentEnv.currentWarp, instr.name, instr.exitMode)
-        val env2 = currentEnv.copy(currentWarp = warp)
-        val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, env2.asLocal, FrameKind.warp)
-        this.currentEnv = env2
-        loopComp(instr.body, SC.Pop, stack2, store2)
+  final def intristicDelimitPut[S](prompt: Interpreter.Untyped, body: AnyComp, local: S): Halt.Loop2nd =
+    val step = savedStep
+    val stack = savedStack
+    val store = savedStore
+    //-------------------
+    val location = stack.locatePrompt(prompt)
+    val (stack2, store2) = OpPush.pushNested(stack, store, step, prompt, location, local.asLocal, FrameKind.plain)
+    intristicLoopComp(body, SC.Pop, stack2, store2)
 
-      case Tags.AwaitWarp =>
-        val instr = payload.asInstanceOf[CC.AwaitWarp]
-        val warp = instr.warp.asImpl
-        currentFiber.suspend(step.tag, (), step, stack, store)
-        val tried =
-          if instr.isCancel
-          then warp.tryGetCancelledBy(currentFiber, currentEnv.isCancellable)
-          else warp.tryGetAwaitedBy(currentFiber, currentEnv.isCancellable)
-        tried match
-          case Bits.WaiterSubscribed => ThreadDisowned
-          case Bits.WaiterAlreadyCancelled =>
-            currentFiber.clearSuspension()
-            loopCancel(stack, store)
-          case Bits.WaiteeAlreadyCompleted =>
-            currentFiber.clearSuspension()
-            loopStep((), step, stack, store)
 
-      case Tags.Blocking =>
-        val instr = payload.asInstanceOf[CC.Blocking[Any, Any]]
-        val blocker = new Blocker.Interruptible(currentFiber, instr.thunk, instr.isAttempt)
-        currentFiber.suspend(Tags.NotifyBlocker, blocker, step, stack, store)
+  final def intristicDelimitMod[S](prompt: Interpreter.Untyped, body: AnyComp, fun: S => S): Halt.Loop2nd =
+    val step = savedStep
+    val stack = savedStack
+    val store = savedStore
+    //-------------------
+    val location = stack.locatePrompt(prompt)
+    val local2 = fun.asInstanceOf[Local => Local](store.getDeep(location))
+    val (stack2, store2) = OpPush.pushNested(stack, store, step, prompt, location, local2, FrameKind.plain)
+    intristicLoopComp(body, SC.Pop, stack2, store2)
+
+
+  final def intristicAbort(prompt: Interpreter.Untyped, value: Any): Halt.Loop2nd =
+    val step = savedStep
+    val stack = savedStack
+    val store = savedStore
+    //-------------------
+    intristicLoopStep(value, prompt.unwind, stack, store)
+
+
+  final def intristicResume[A, B, S, U](cont0: Continuation[A, B, S, U], value: A): Halt.Loop2nd =
+    val step = savedStep
+    val stack = savedStack
+    val store = savedStore
+    //-------------------
+    val cont = cont0.asImpl
+    val (stack2, store2) = OpSplit.merge(
+      stackHi = cont.stack,
+      storeHi = cont.store,
+      stepMid = step,
+      stackLo = stack,
+      storeLo = store,
+    )
+    intristicLoopStepRefreshEnv(value, cont.step, stack2, store2)
+
+
+  final def intristicResumePut[A, B, S, U](cont0: Continuation[A, B, S, U], value: A, local: S): Halt.Loop2nd =
+    val step = savedStep
+    val stack = savedStack
+    val store = savedStore
+    //-------------------
+    val cont = cont0.asImpl
+    val (stack2, store2) = OpSplit.merge(
+      stackHi = cont.stack,
+      storeHi = cont.store.setDeepIfNotVoid(cont.location, local.asLocal),
+      stepMid = step,
+      stackLo = stack,
+      storeLo = store,
+    )
+    intristicLoopStepRefreshEnv(value, cont.step, stack2, store2)
+
+
+  final def intristicCapture[A, B, S, U](prompt: Interpreter.Untyped, fun: Continuation[A, B, S, U] => B !! U): Halt.Loop2nd =
+    val step = savedStep
+    val stack = savedStack
+    val store = savedStore
+    //-------------------
+    val location = stack.locatePrompt(prompt)
+    val (stackHi, storeHi, stepMid, stackLo, storeLo) = OpSplit.split(stack, store, location)
+    //@#@THOV only the shallow paty of location2 is used
+    val location2 = stackHi.locatePrompt(prompt)
+    val cont = new ContImpl(stackHi, storeHi, step, location2)
+    val comp2 = fun(cont.cast[A, B, S, U])
+    intristicLoopCompRefreshEnv(comp2, stepMid, stackLo, storeLo)
+
+
+  final def intristicCaptureGet[A, B, S, U](prompt: Interpreter.Untyped, fun: (Continuation[A, B, S, U], S) => B !! U): Halt.Loop2nd =
+    val step = savedStep
+    val stack = savedStack
+    val store = savedStore
+    //-------------------
+    val location = stack.locatePrompt(prompt)
+    val (stackHi, storeHi, stepMid, stackLo, storeLo) = OpSplit.split(stack, store, location)
+    //@#@THOV only the shallow paty of location2 is used
+    val location2 = stackHi.locatePrompt(prompt)
+    val cont = new ContImpl(stackHi, storeHi, step, location2)
+    val comp2 =
+      val local = storeHi.getDeep(location2)
+      fun(cont.cast[A, B, S, U], local.asInstanceOf[S])
+    intristicLoopCompRefreshEnv(comp2, stepMid, stackLo, storeLo)
+
+
+  final def intristicZipPar[A, B, C, U](lhs: A !! U, rhs: B !! U, fun: (A, B) => C): Halt.Loop2nd =
+    val step = savedStep
+    val stack = savedStack
+    val store = savedStore
+    //-------------------
+    //@#@TODO Too conservative? Should check for `features.isParallel` at `mark`, instead of at stack top
+    if stack.accumFeatures.isParallel && currentEnv.isParallelismRequested then
+      val fiberLeft = currentFiber.createChild(Bits.ZipPar_Left)
+      val fiberRight = currentFiber.createChild(Bits.ZipPar_Right)
+      if currentFiber.tryStartRace(fiberLeft, fiberRight, currentEnv.isCancellable) then
+        val (storeTmp, storeLeft) = OpCascaded.fork(stack, store)
+        val (storeDown, storeRight) = OpCascaded.fork(stack, storeTmp)
+        currentFiber.suspendForRace(fun, step, stack, storeDown)
+        val stack2 = stack.makeFork
+        fiberRight.suspend(rhs.tag, rhs, SC.Pop, stack2, storeRight)
+        fiberRight.resume()
+        becomeWithSameEnv(fiberLeft)
+        intristicLoopComp(lhs, SC.Pop, stack2, storeLeft)
+      else
+        //// Must have been cancelled meanwhile
+        intristicLoopCancel(stack, store)
+    else
+      //// Fallback to sequential
+      val comp2 = lhs.zipWith(rhs)(fun)
+      intristicLoopComp(comp2, step, stack, store)
+
+
+  final def intristicOrPar[A, U](lhs: A !! U, rhs: A !! U): Halt.Loop2nd =
+    val step = savedStep
+    val stack = savedStack
+    val store = savedStore
+    //-------------------
+    if stack.accumFeatures.isParallel && currentEnv.isParallelismRequested then
+      val fiberLeft = currentFiber.createChild(Bits.OrPar_Left)
+      val fiberRight = currentFiber.createChild(Bits.OrPar_Right)
+      if currentFiber.tryStartRace(fiberLeft, fiberRight, currentEnv.isCancellable) then
+        val (storeTmp, storeLeft) = OpCascaded.fork(stack, store)
+        val (storeDown, storeRight) = OpCascaded.fork(stack, storeTmp)
+        currentFiber.suspendForRace(null, step, stack, storeDown)
+        val stack2 = stack.makeFork
+        fiberRight.suspend(rhs.tag, rhs, SC.Pop, stack2, storeRight)
+        fiberRight.resume()
+        becomeWithSameEnv(fiberLeft)
+        intristicLoopComp(lhs, SC.Pop, stack2, storeLeft)
+      else
+        //// Must have been cancelled meanwhile
+        intristicLoopCancel(stack, store)
+    else
+      //// Fallback to sequential
+      val comp2 = lhs ||! rhs
+      intristicLoopComp(comp2, step, stack, store)
+
+
+  final def intristicOrSeq[A, U](lhs: A !! U, rhsFun: () => A !! U): Halt.Loop2nd =
+    val step = savedStep
+    val stack = savedStack
+    val store = savedStore
+    //-------------------
+    val fiberLeft = currentFiber.createChild(Bits.OrSeq)
+    if currentFiber.tryStartRaceOfOne(fiberLeft, currentEnv.isCancellable) then
+      val (storeDown, storeLeft) = OpCascaded.fork(stack, store)
+      currentFiber.suspendForRace(rhsFun, step, stack, storeDown)
+      val stack2 = stack.makeFork
+      becomeWithSameEnv(fiberLeft)
+      intristicLoopComp(lhs, SC.Pop, stack2, storeLeft)
+    else
+      //// Must have been cancelled meanwhile
+      intristicLoopCancel(stack, store)
+
+
+  final def intristicHandle(body: AnyComp, interp: Interpreter.Untyped): Halt.Loop2nd =
+    val step = savedStep
+    val stack = savedStack
+    val store = savedStore
+    //-------------------
+    val prompt = interp
+    for sig <- prompt.signatures do
+      if stack.containsSignature(sig) then
+        panic(s"Unsupported feature: shadowing effect ${sig}.")
+    val comp2 = prompt.onInitial
+    val step2 = new SC.Push(body, prompt, step)
+    intristicLoopComp(comp2, step2, stack, store)
+
+
+  final def intristicDoIO[A, B](thunk: () => A, isAttempt: Boolean): Halt.Loop2nd =
+    val step = savedStep
+    val stack = savedStack
+    val store = savedStore
+    //-------------------
+    var result: Any = null
+    var throwable: Throwable | Null = null
+    try
+      result = thunk()
+    catch
+      case e => throwable = e
+    if throwable == null then
+      val payload2 = if isAttempt then Right(result) else result
+      intristicLoopStep(payload2, step, stack, store)
+    else
+      if isAttempt then
+        val payload2 = Left(throwable)
+        intristicLoopStep(payload2, step, stack, store)
+      else
+        val step2 = Step.Throw
+        val payload2 = Cause(throwable.nn)
+        intristicLoopStep(payload2, step2, stack, store)
+
+
+  final def intristicSnap[A, U](body: A !! U): Halt.Loop2nd =
+    val step = savedStep
+    val stack = savedStack
+    val store = savedStore
+    //-------------------
+    val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, Local.void, FrameKind.guard)
+    intristicLoopComp(body, SC.Pop, stack2, store2)
+
+
+  final def intristicUnsnap[A, U](snap: Snap[A]): Halt.Loop2nd =
+    val step = savedStep
+    val stack = savedStack
+    val store = savedStore
+    //-------------------
+    //@#@TODO forbid uncancelling, it wouldnt work correctly anyway
+    snap match
+      case Snap.Success(payload2) => intristicLoopStep(payload2, step, stack, store)
+      case Snap.Failure(payload2) => intristicLoopStep(payload2, Step.Throw, stack, store)
+      case theAborted: Snap.Aborted => intristicLoopStep(theAborted.value, theAborted.prompt.unwind, stack, store)
+      case Snap.Cancelled =>
+        //@#@THOV It should be harmless to self-cancel a fiber, even when it's uncancellable?
+        currentFiber.cancelBySelf()
+        intristicLoopCancel(stack, store)
+
+
+  final def intristicEnvAsk[A](fun: Env => A): Halt.Loop2nd =
+    val step = savedStep
+    val stack = savedStack
+    val store = savedStore
+    //-------------------
+    val value = fun(currentEnv)
+    intristicLoopStep(value, step, stack, store)
+
+
+  final def intristicEnvMod[A, U](fun: Env => Env, body: A !! U): Halt.Loop2nd =
+    val step = savedStep
+    val stack = savedStack
+    val store = savedStore
+    //-------------------
+    val env2 = fun(currentEnv)
+    if currentEnv == env2 then
+      intristicLoopComp(body, step, stack, store)
+    else
+      val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, env2.asLocal, FrameKind.plain)
+      this.currentEnv = env2
+      intristicLoopComp(body, SC.Pop, stack2, store2)
+
+
+  final def intristicAwaitOnceVar[A](ovar0: OnceVar.Get[A]): Halt.Loop2nd =
+    val step = savedStep
+    val stack = savedStack
+    val store = savedStore
+    //-------------------
+    val ovar = ovar0.asImpl
+    val value = ovar.theContent
+    if OnceVarImpl.Empty != value then
+      intristicLoopStep(value, step, stack, store)
+    else
+      currentFiber.suspend(Tags.NotifyOnceVar, ovar, step, stack, store)
+      ovar.tryGetAwaitedBy(currentFiber, currentEnv.isCancellable) match
+        case Bits.WaiterSubscribed => ThreadDisowned
+        case Bits.WaiterAlreadyCancelled =>
+          currentFiber.clearSuspension()
+          intristicLoopCancel(stack, store)
+        case Bits.WaiteeAlreadyCompleted =>
+          currentFiber.clearSuspension()
+          val value = ovar.theContent
+          intristicLoopStep(value, step, stack, store)
+
+
+  final def intristicForkFiber[A, U](warp0: Warp | Null, comp: A !! U, name: String, callback: (Zipper.Untyped => Unit) | Null = null): Halt.Loop2nd =
+    val step = savedStep
+    val stack = savedStack
+    val store = savedStore
+    //-------------------
+    val warp = if warp0 != null then warp0.nn.asImpl else currentEnv.currentWarp.nn
+    val (storeDown, storeFork) = OpCascaded.fork(stack, store)
+    val stackFork = stack.makeFork
+    val child = FiberImpl.createExplicit(warp, name, callback)
+    child.suspend(comp.tag, comp, SC.Pop, stackFork, storeFork)
+    if warp.tryAddFiber(child) then
+      child.resume()
+      intristicLoopStep(child, step, stack, storeDown)
+    else
+      child.suspendAsCancelled()
+      intristicLoopStep(child, step, stack, store)
+
+
+  final def intristicAwaitFiber[A, U](fiber: Fiber.Untyped, isCancel: Boolean, isVoid: Boolean): Halt.Loop2nd =
+    val step = savedStep
+    val stack = savedStack
+    val store = savedStore
+    //-------------------
+    val waitee = fiber.asImpl
+    if currentFiber != waitee then
+      val tag2 = if isVoid then Tags.NotifyFiberVoid else Tags.NotifyFiber
+      currentFiber.suspend(tag2, waitee, step, stack, store)
+      val tried =
+        if isCancel
+        then waitee.tryGetCancelledBy(currentFiber, currentEnv.isCancellable)
+        else waitee.tryGetAwaitedBy(currentFiber, currentEnv.isCancellable)
+      tried match
+        case Bits.WaiterSubscribed => ThreadDisowned
+        case Bits.WaiterAlreadyCancelled =>
+          currentFiber.clearSuspension()
+          intristicLoopCancel(stack, store)
+        case Bits.WaiteeAlreadyCompleted =>
+          currentFiber.clearSuspension()
+          val payload2 = if isVoid then () else waitee.getOrMakeZipper
+          intristicLoopStep(payload2, step, stack, store)
+    else
+      //// Ignoring `isCancellable` bcoz cancelling is by-self
+      if isCancel then
+        currentFiber.cancelBySelf()
+        intristicLoopCancel(stack, store)
+      else
+        val zombie = new Blocker.Zombie(currentFiber)
+        currentFiber.suspendStep(zombie, step, stack, store)
         if currentFiber.tryGetBlocked(currentEnv.isCancellable) then
-          blocker.block()
           ThreadDisowned
         else
           currentFiber.clearSuspension()
-          loopCancel(stack, store)
+          intristicLoopCancel(stack, store)
 
-      case Tags.Sleep =>
-        val instr = payload.asInstanceOf[CC.Sleep]
-        val blocker = new Blocker.Sleeper(currentFiber)
-        currentFiber.suspend(Tags.NotifyBlocker, blocker, step, stack, store)
-        if currentFiber.tryGetBlocked(currentEnv.isCancellable) then
-          blocker.sleep(instr.length, instr.unit)
-          ThreadDisowned
-        else
-          currentFiber.clearSuspension()
-          loopCancel(stack, store)
 
-      case Tags.NotifyBlocker =>
-        val blocker = payload.asInstanceOf[Blocker]
-        if blocker.isEither then
-          val payload2 = blocker.getCompletion match
-            case Bits.Completion_Success => Right(blocker.getResult)
-            case Bits.Completion_Cancelled => Left(Exceptions.Cancelled)
-            case Bits.Completion_Failure => Left(blocker.getThrowable)
-          loopStep(payload2, step, stack, store)
-        else
-          blocker.getCompletion match
-            case Bits.Completion_Success =>
-              val payload2 = blocker.getResult
-              loopStep(payload2, step, stack, store)
-            case Bits.Completion_Cancelled =>
-              currentFiber.cancelBySelf()
-              loopCancel(stack, store)
-            case Bits.Completion_Failure =>
-              val step2 = Step.Throw
-              val payload2 = Cause(blocker.getThrowable)
-              loopStep(payload2, step2, stack, store)
+  final def intristicCurrentFiber(): Halt.Loop2nd =
+    val step = savedStep
+    val stack = savedStack
+    val store = savedStore
+    //-------------------
+    intristicLoopStep(currentFiber, step, stack, store)
 
-      case Tags.Suppress =>
-        val instr = payload.asInstanceOf[CC.Suppress[Any, Any]]
-        val n1 = currentEnv.suppressions
-        val n2 = 0.max(n1 + instr.delta)
-        if n1 == n2 then
-          loopComp(instr.body, step, stack, store)
-        else
-          val env2 = currentEnv.copy(suppressions = n2)
-          val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, env2.asLocal, FrameKind.suppress)
-          this.currentEnv = env2
-          if cancellationCheck() then
-            loopCancel(stack2, store2)
-          else
-            loopComp(instr.body, SC.Pop, stack2, store2)
 
-      case Tags.ExecOn =>
-        val instr = payload.asInstanceOf[CC.ExecOn[Any, Any]]
-        if currentEnv.executor == instr.exec then
-          loopComp(instr.body, step, stack, store)
-        else
-          val env2 = currentEnv.copy(executor = instr.exec)
-          val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, env2.asLocal, FrameKind.exec)
-          currentFiber.suspend(instr.body.tag, instr.body, SC.Pop, stack2, store2)
-          currentFiber.resume()
-          ThreadDisowned
+  final def intristicSpawnWarp[A, U](exitMode: Warp.ExitMode, body: A !! (U & Warp), name: String): Halt.Loop2nd =
+    val step = savedStep
+    val stack = savedStack
+    val store = savedStore
+    //-------------------
+    val warp = new WarpImpl(currentFiber, currentEnv.currentWarp, name, exitMode)
+    val env2 = currentEnv.copy(currentWarp = warp)
+    val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, env2.asLocal, FrameKind.warp)
+    this.currentEnv = env2
+    intristicLoopComp(body, SC.Pop, stack2, store2)
 
-      case Tags.Yield =>
-        currentFiber.suspend(step.tag, (), step, stack, store)
-        Halt.Yield
+
+  final def intristicAwaitWarp(warp0: Warp, isCancel: Boolean): Halt.Loop2nd =
+    val step = savedStep
+    val stack = savedStack
+    val store = savedStore
+    //-------------------
+    val warp = warp0.asImpl
+    currentFiber.suspendStep((), step, stack, store)
+    val tried =
+      if isCancel
+      then warp.tryGetCancelledBy(currentFiber, currentEnv.isCancellable)
+      else warp.tryGetAwaitedBy(currentFiber, currentEnv.isCancellable)
+    tried match
+      case Bits.WaiterSubscribed => ThreadDisowned
+      case Bits.WaiterAlreadyCancelled =>
+        currentFiber.clearSuspension()
+        intristicLoopCancel(stack, store)
+      case Bits.WaiteeAlreadyCompleted =>
+        currentFiber.clearSuspension()
+        intristicLoopStep((), step, stack, store)
+
+
+  final def intristicBlocking[A, B](thunk: () => A, isAttempt: Boolean): Halt.Loop2nd =
+    val step = savedStep
+    val stack = savedStack
+    val store = savedStore
+    //-------------------
+    val blocker = new Blocker.Interruptible(currentFiber, thunk, isAttempt)
+    currentFiber.suspend(Tags.NotifyBlocker, blocker, step, stack, store)
+    if currentFiber.tryGetBlocked(currentEnv.isCancellable) then
+      blocker.block()
+      ThreadDisowned
+    else
+      currentFiber.clearSuspension()
+      intristicLoopCancel(stack, store)
+
+
+  final def intristicSleep(length: Long, unit: TimeUnit = TimeUnit.MILLISECONDS): Halt.Loop2nd =
+    val step = savedStep
+    val stack = savedStack
+    val store = savedStore
+    //-------------------
+    val blocker = new Blocker.Sleeper(currentFiber)
+    currentFiber.suspend(Tags.NotifyBlocker, blocker, step, stack, store)
+    if currentFiber.tryGetBlocked(currentEnv.isCancellable) then
+      blocker.sleep(length, unit)
+      ThreadDisowned
+    else
+      currentFiber.clearSuspension()
+      intristicLoopCancel(stack, store)
+
+
+  final def intristicSuppress[A, U](body: A !! U, delta: Int): Halt.Loop2nd =
+    val step = savedStep
+    val stack = savedStack
+    val store = savedStore
+    //-------------------
+    val n1 = currentEnv.suppressions
+    val n2 = 0.max(n1 + delta)
+    if n1 == n2 then
+      intristicLoopComp(body, step, stack, store)
+    else
+      val env2 = currentEnv.copy(suppressions = n2)
+      val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, env2.asLocal, FrameKind.suppress)
+      this.currentEnv = env2
+      if cancellationCheck() then
+        intristicLoopCancel(stack2, store2)
+      else
+        intristicLoopComp(body, SC.Pop, stack2, store2)
+
+
+  final def intristicExecOn[A, U](exec: Executor, body: A !! U): Halt.Loop2nd =
+    val step = savedStep
+    val stack = savedStack
+    val store = savedStore
+    //-------------------
+    if currentEnv.executor == exec then
+      intristicLoopComp(body, step, stack, store)
+    else
+      val env2 = currentEnv.copy(executor = exec)
+      val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, env2.asLocal, FrameKind.exec)
+      currentFiber.suspendComp(body , SC.Pop, stack2, store2)
+      currentFiber.resume()
+      ThreadDisowned
+
+
+  final def intristicYield: Halt.Loop2nd =
+    val step = savedStep
+    val stack = savedStack
+    val store = savedStore
+    //-------------------
+    currentFiber.suspend(step.tag, (), step, stack, store)
+    Halt.Yield
 
 
   //-------------------------------------------------------------------
@@ -719,4 +879,8 @@ private[internals] abstract class Engine extends Engine0:
 
 
   private final def cancellationCheck(): Boolean =
-     currentFiber.cancellationCheck(currentEnv.isCancellable)
+    currentFiber.cancellationCheck(currentEnv.isCancellable)
+
+
+/*private[turbolift]*/ object Engine:
+  type IntristicResult = Halt.Loop2nd

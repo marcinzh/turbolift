@@ -442,6 +442,24 @@ private[turbolift] final class FiberImpl private (
     suspendedStore   = store
 
 
+  private[engine] def suspendStep(
+    payload: Any,
+    step: Step,
+    stack: Stack,
+    store: Store,
+  ): Unit =
+    suspend(step.tag, payload, step, stack,store)
+
+
+  private[engine] def suspendComp(
+    comp: Computation[?, ?],
+    step: Step,
+    stack: Stack,
+    store: Store,
+  ): Unit =
+    suspend(comp.tag, comp, step, stack,store)
+
+
   private[engine] def clearSuspension(): Unit =
     suspendedTag     = 0
     suspendedPayload = null

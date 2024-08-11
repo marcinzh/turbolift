@@ -15,19 +15,19 @@ sealed trait Fiber[+A, -U]:
   final def join: A !! (U & IO) = await.flatMap(_.run)
 
   /** Awaits completion of this fiber and returns its **effectful** result. */
-  final def await: Zipper[A, U] !! IO = CC.AwaitFiber(this, isCancel = false, isVoid = false)
+  final def await: Zipper[A, U] !! IO = CC.intristic(_.intristicAwaitFiber(this, isCancel = false, isVoid = false))
 
   /** Awaits completion of this fiber and disards its result (including the effects). */
-  final def awaitVoid: Unit !! IO = CC.AwaitFiber(this, isCancel = false, isVoid = true)
+  final def awaitVoid: Unit !! IO = CC.intristic(_.intristicAwaitFiber(this, isCancel = false, isVoid = true))
 
   /** Cancels this fiber and await its completion. */
-  final def cancel: Unit !! IO = CC.AwaitFiber(this, isCancel = true, isVoid = true)
+  final def cancel: Unit !! IO = CC.intristic(_.intristicAwaitFiber(this, isCancel = true, isVoid = true))
 
   /** Cancels this fiber without awaiting its completion. */
   final def cancelAndForget: Unit !! IO = !!.impure(unsafeCancelAndForget())
 
   /** Get result of this fiber now, or cancel it if it's still pending. */
-  final def nowOrNever: Zipper[A, U] !! IO = CC.AwaitFiber(this, isCancel = true, isVoid = false)
+  final def nowOrNever: Zipper[A, U] !! IO = CC.intristic(_.intristicAwaitFiber(this, isCancel = true, isVoid = false))
 
   /** Get result of this fiber now, or fail it's still pending. */
   final def getOrDie: Zipper[A, U] !! IO = poll.flatMap(IO.fromOption(_)(new Exceptions.Pending))
@@ -59,16 +59,16 @@ object Fiber:
     case Blocker
 
   /** Get the current fiber. */
-  def current: Fiber.Untyped !! IO = CC.CurrentFiber
+  def current: Fiber.Untyped !! IO = CC.intristic(_.intristicCurrentFiber())
 
   /** Get the current fiber, explicitly ascribing its type. */
   def currentTypeunsafe[A, U]: Fiber[A, U] !! IO = current.cast[Fiber[A, U], IO]
 
   /** Create a new fiber in the current [[Warp]]. */
-  def fork[A, U](comp: A !! U): Fiber[A, U] !! (IO & Warp) = CC.ForkFiber(null, comp, "")
+  def fork[A, U](comp: A !! U): Fiber[A, U] !! (IO & Warp) = CC.intristic(_.intristicForkFiber(null, comp, ""))
 
   /** Create a new fiber in specified [[Warp]]. */
-  def forkAt[A, U](warp: Warp)(comp: A !! U): Fiber[A, U] !! IO = CC.ForkFiber(warp, comp, "")
+  def forkAt[A, U](warp: Warp)(comp: A !! U): Fiber[A, U] !! IO = CC.intristic(_.intristicForkFiber(warp, comp, ""))
 
   /** Experimental */
   def forkWithCallback[A, U](
@@ -76,11 +76,11 @@ object Fiber:
     comp: A !! U,
     callback: Zipper[A, U] => Unit,
     name: String = "",
-  ): Fiber[A, U] !! (IO & Warp) = CC.ForkFiber(null, comp, name, callback.asInstanceOf[Zipper.Untyped => Unit])
+  ): Fiber[A, U] !! (IO & Warp) = CC.intristic(_.intristicForkFiber(null, comp, name, callback.asInstanceOf[Zipper.Untyped => Unit]))
 
   /** Syntax for creating new [[Fiber]] with a name. */
   def named(name: String) = new NamedSyntax(name)
 
   final class NamedSyntax(name: String):
-    def fork[A, U](comp: A !! U): Fiber[A, U] !! (IO & Warp) = CC.ForkFiber(null, comp, name)
-    def forkAt[A, U](warp: Warp)(comp: A !! U): Fiber[A, U] !! IO = CC.ForkFiber(warp, comp, name)
+    def fork[A, U](comp: A !! U): Fiber[A, U] !! (IO & Warp) = CC.intristic(_.intristicForkFiber(null, comp, name))
+    def forkAt[A, U](warp: Warp)(comp: A !! U): Fiber[A, U] !! IO = CC.intristic(_.intristicForkFiber(warp, comp, name))

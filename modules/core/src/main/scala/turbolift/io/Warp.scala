@@ -35,13 +35,13 @@ sealed trait Warp:
   final def status: Warp.Status !! IO = IO(unsafeStatus())
 
   /** Complete this warp, by cancelling all its children and waiting for their completion. */
-  final def cancel: Unit !! IO = CC.AwaitWarp(this, isCancel = true)
+  final def cancel: Unit !! IO = CC.intristic(_.intristicAwaitWarp(this, isCancel = true))
 
   /** Like [[cancel]], but without waiting for the completion. */
   final def cancelAndForget: Unit !! IO = IO(unsafeCancelAndForget())
 
   /** Complete this warp, by waiting until it becomes childless. */
-  final def shutdown: Unit !! IO = CC.AwaitWarp(this, isCancel = false)
+  final def shutdown: Unit !! IO = CC.intristic(_.intristicAwaitWarp(this, isCancel = false))
 
   /** Trigger completion of this warp as soon it becomes childless.
     *
@@ -53,7 +53,7 @@ sealed trait Warp:
   final def fork[A, U](comp: A !! U): Fiber[A, U] !! IO = fork(name)(comp)
 
   /** Create a child [[Fiber]]. */
-  final def fork[A, U](name: String)(comp: A !! U): Fiber[A, U] !! IO = CC.ForkFiber(this, comp, name)
+  final def fork[A, U](name: String)(comp: A !! U): Fiber[A, U] !! IO = CC.intristic(_.intristicForkFiber(this, comp, name))
 
   /** Create a child [[Warp]]. */
   final def spawn: Warp !! IO = spawn("")
@@ -97,7 +97,7 @@ object Warp:
   def root: Warp = WarpImpl.root
 
   /** The innermost scoped warp. */
-  def current: Warp !! (IO & Warp) = CC.EnvAsk(_.currentWarp.nn)
+  def current: Warp !! (IO & Warp) = CC.intristic(_.intristicEnvAsk(_.currentWarp.nn))
 
   /** Creates a new unscoped warp. */
   def unscoped: Warp !! (IO & Warp) = unscoped("")
@@ -106,7 +106,7 @@ object Warp:
   def unscoped(name: String): Warp !! (IO & Warp) = current.flatMap(_.spawn(name))
 
   /** Creates a new scoped warp. */
-  def scoped[A, U <: IO](exitMode: ExitMode, name: String = "")(body: A !! (U & Warp)): A !! U = CC.SpawnWarp(exitMode, body, name)
+  def scoped[A, U <: IO](exitMode: ExitMode, name: String = "")(body: A !! (U & Warp)): A !! U = CC.intristic(_.intristicSpawnWarp(exitMode, body, name))
 
   /** Creates a new scoped warp. */
   def cancelOnExit[A, U <: IO](body: A !! (U & Warp)): A !! U = cancelOnExit("")(body)

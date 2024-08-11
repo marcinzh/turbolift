@@ -303,7 +303,7 @@ private[turbolift] object HandlerCases:
     interpreter: Interpreter.Apply[From, To, Elim, Intro]
   ) extends Handler[From, To, Elim, Intro]:
     override def doHandle[A, U](comp: From[A] !! (U & Elim)): To[A] !! (U & Intro) =
-      new CC.Handle[A, U, From, To, Elim, Intro](comp, this)
+      CC.intristic(_.intristicHandle(comp.untyped, interpreter.untyped))
 
   final case class Piped[From1[+_], From2[+_], To1[+_], To2[+_], Elim1, Elim2, Intro1, Intro2, Hidden](
     first: Handler[From1, To1, Elim1, Intro1 & Hidden],
