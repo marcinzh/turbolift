@@ -13,14 +13,14 @@ import Cause.{Cancelled => CancelPayload}
 import Misc._
 
 
-private sealed abstract class MainLoop0 extends Runnable:
+private sealed abstract class Engine0 extends Runnable:
   protected var currentFiber: FiberImpl = null.asInstanceOf[FiberImpl]
   protected var currentEnv: Env = null.asInstanceOf[Env]
   protected var currentTickLow: Int = 0
   protected var currentTickHigh: Int = 0
 
 
-private[internals] abstract class MainLoop extends MainLoop0:
+private[internals] abstract class Engine extends Engine0:
   protected var savedTag: Int = 0
   protected var savedPayload: Any = null
   protected var savedStep: Step = null.asInstanceOf[Step]

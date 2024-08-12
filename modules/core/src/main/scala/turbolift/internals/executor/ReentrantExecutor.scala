@@ -4,7 +4,7 @@ import java.util.concurrent.ArrayBlockingQueue
 import scala.annotation.tailrec
 import turbolift.Computation
 import turbolift.io.Outcome
-import turbolift.internals.engine.{MainLoop, Halt}
+import turbolift.internals.engine.{Engine, Halt}
 import turbolift.internals.engine.concurrent.{FiberImpl, WaiterLink}
 
 
@@ -47,7 +47,7 @@ private[turbolift] final class ReentrantExecutor(maxBusyThreads: Int) extends Wa
     Pool.instance.execute(new Run(initial))
 
 
-  private final class Run(initial: FiberImpl) extends MainLoop(initial):
+  private final class Run(initial: FiberImpl) extends Engine(initial):
     ReentrantExecutor.currentVar.set(enclosing)
 
     override def run(): Unit =

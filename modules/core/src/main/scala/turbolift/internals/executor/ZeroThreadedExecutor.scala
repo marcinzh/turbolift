@@ -2,13 +2,13 @@ package turbolift.internals.executor
 import scala.annotation.tailrec
 import turbolift.Computation
 import turbolift.io.Outcome
-import turbolift.internals.engine.{MainLoop, Halt}
+import turbolift.internals.engine.{Engine, Halt}
 import turbolift.internals.engine.concurrent.{FiberImpl, WaiterLink}
 
 
 private[internals] final class ZeroThreadedExecutor extends WaiterLink.Queue with Executor:
   private var isDone: Boolean = false
-  private val mainLoop = new MainLoop { override def run() = () } //// `run` is not used by this executor
+  private val engine = new Engine { override def run() = () } //// `run` is not used by this executor
 
   override def toString = s"ZeroThreadedExecutor@${hashCode.toHexString}"
 
@@ -18,7 +18,7 @@ private[internals] final class ZeroThreadedExecutor extends WaiterLink.Queue wit
     def callback(o: Outcome[A]): Unit =
       outcome = o
       isDone = true
-    mainLoop.become(FiberImpl.create(comp, this, name, isReentry = false, callback))
+    engine.become(FiberImpl.create(comp, this, name, isReentry = false, callback))
     drain()
     outcome
 
@@ -32,7 +32,7 @@ private[internals] final class ZeroThreadedExecutor extends WaiterLink.Queue wit
       val wasEmpty = isEmpty
       enqueue(fiber)
       if wasEmpty then
-        mainLoop.become(fiber)
+        engine.become(fiber)
         notify()
     }
 
@@ -40,9 +40,9 @@ private[internals] final class ZeroThreadedExecutor extends WaiterLink.Queue wit
   private def drain(): Unit =
     var keepGoing = true
     while keepGoing do
-      mainLoop.runCurrent() match
+      engine.runCurrent() match
         case Halt.Yield =>
-          val last = mainLoop.getCurrentFiber
+          val last = engine.getCurrentFiber
           val next =
             synchronized {
               if !isEmpty then
@@ -52,7 +52,7 @@ private[internals] final class ZeroThreadedExecutor extends WaiterLink.Queue wit
                 null
             }
           if next != null then
-            mainLoop.become(next)
+            engine.become(next)
 
         case _ =>
           val next =
@@ -67,7 +67,7 @@ private[internals] final class ZeroThreadedExecutor extends WaiterLink.Queue wit
                 dequeue()
             }
           if next != null then
-            mainLoop.become(next)
+            engine.become(next)
           else
-            mainLoop.becomeClear()
+            engine.becomeClear()
             keepGoing = false

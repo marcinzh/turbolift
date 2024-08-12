@@ -11,7 +11,7 @@ object Jolo:
       turbolift.internals.engine.concurrent.WarpImpl
       turbolift.internals.engine.concurrent.OnceVarImpl
       turbolift.internals.engine.stacked.Stack
-      turbolift.internals.engine.MainLoop
+      turbolift.internals.engine.Engine
       turbolift.internals.executor.ReentrantExecutor
     """
     .split("\n").map(_.trim).filter(_.nonEmpty)
