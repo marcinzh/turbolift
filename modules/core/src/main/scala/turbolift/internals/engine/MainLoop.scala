@@ -130,23 +130,21 @@ private[internals] abstract class MainLoop extends MainLoop0:
         case Tags.Perform =>
           val instr = payload.asInstanceOf[CC.Perform[Any, Any, Signature]]
           val (prompt, location) = stack.findSignature(instr.sig)
-          val comp2 = instr.op(prompt).asInstanceOf[AnyComp]
+          val comp2 = instr.op(prompt)
           (comp2.tag: @switch) match
             case Tags.LocalGet =>
-              val instr = comp2.asInstanceOf[CC.LocalGet]
               val local = store.getDeep(location)
               loopStep(local, step, stack, store)
 
             case Tags.LocalPut =>
-              val instr = comp2.asInstanceOf[CC.LocalPut[Any]]
-              val store2 = store.setDeep(location, instr.local.asLocal)
+              val instr2 = comp2.asInstanceOf[CC.LocalPut[Any]]
+              val store2 = store.setDeep(location, instr2.local.asLocal)
               loopStep((), step, stack, store2)
 
             case Tags.LocalUpdate =>
-              val instr = comp2.asInstanceOf[CC.LocalUpdate[Any, Any]]
-              //@#@OPTY Store.update
+              val instr2 = comp2.asInstanceOf[CC.LocalUpdate[Any, Any]]
               val local = store.getDeep(location)
-              val (value, local2) = instr.fun(local)
+              val (value, local2) = instr2.fun(local)
               val store2 = store.setDeep(location, local2.asLocal)
               loopStep(value, step, stack, store2)
 
@@ -220,7 +218,6 @@ private[internals] abstract class MainLoop extends MainLoop0:
       case Tags.LocalUpdate =>
         val instr = payload.asInstanceOf[CC.LocalUpdate[Any, Any]]
         val location = stack.locatePrompt(instr.prompt)
-        //@#@OPTY Store.update
         val local = store.getDeep(location)
         val (value, local2) = instr.fun(local)
         val store2 = store.setDeep(location, local2.asLocal)
