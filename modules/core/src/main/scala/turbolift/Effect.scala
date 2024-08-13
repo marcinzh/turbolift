@@ -1,6 +1,5 @@
 package turbolift
 import turbolift.internals.effect.{EffectImpl, CanPerform}
-import turbolift.internals.primitives.{ComputationCases => CC}
 /**
  * Base trait for any user-defined effect.
  *

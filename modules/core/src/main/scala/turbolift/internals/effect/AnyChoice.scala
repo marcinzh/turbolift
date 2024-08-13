@@ -1,7 +1,6 @@
 package turbolift.internals.effect
 import turbolift.!!
 import turbolift.effects.ChoiceSignature
-import turbolift.internals.primitives.{ComputationCases => CC}
 
 
 /** Virtual `Choice` effect instance.

@@ -1,6 +1,5 @@
 package turbolift.interpreter
-import turbolift.!!
-import turbolift.internals.primitives.{ComputationCases => CC}
+import turbolift.{!!, ComputationCases => CC}
 import turbolift.interpreter.Void
 
 /** Delimited continuation obtained from [[Control.capture]].

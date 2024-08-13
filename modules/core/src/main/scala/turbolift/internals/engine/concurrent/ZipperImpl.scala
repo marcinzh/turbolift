@@ -2,7 +2,6 @@ package turbolift.internals.engine.concurrent
 import turbolift.!!
 import turbolift.effects.IO
 import turbolift.io.{Zipper, Outcome, Cause, Snap}
-import turbolift.internals.primitives.{ComputationCases => CC}
 import turbolift.internals.engine.stacked.{Stack, OpCascaded}
 import turbolift.internals.engine.Misc._
 import ZipperCases._

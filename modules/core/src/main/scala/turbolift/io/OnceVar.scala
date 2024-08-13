@@ -1,8 +1,7 @@
 package turbolift.io
-import turbolift.!!
+import turbolift.{!!, ComputationCases => CC}
 import turbolift.effects.IO
 import turbolift.internals.engine.concurrent.OnceVarImpl
-import turbolift.internals.primitives.{ComputationCases => CC}
 
 
 sealed trait OnceVar[A] extends OnceVar.Get[A] with OnceVar.Put[A]:
@@ -17,7 +16,7 @@ object OnceVar:
 
 
   sealed trait Get[A]:
-    @annotation.targetName("get_public")
+    @annotation.targetName("get_OnceVar")
     final def get: A !! IO = CC.intristic(_.intristicAwaitOnceVar(this))
     final def tryGet: Option[A] !! IO = !!.impure(unsafeTryGet)
     def unsafeTryGet: Option[A]

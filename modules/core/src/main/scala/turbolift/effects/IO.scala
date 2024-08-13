@@ -2,10 +2,9 @@ package turbolift.effects
 import java.time.Instant
 import scala.util.{Try, Success => TrySuccess, Failure => TryFailure}
 import scala.concurrent.duration._
-import turbolift.{!!, Signature}
+import turbolift.{!!, Signature, ComputationCases => CC}
 import turbolift.io.{Cause, Snap}
 import turbolift.internals.executor.Executor
-import turbolift.internals.primitives.{ComputationCases => CC}
 
 
 sealed trait IO extends Signature

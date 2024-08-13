@@ -1,6 +1,6 @@
 package turbolift.internals.effect
 import turbolift.{!!, Signature}
-import turbolift.internals.primitives.{ComputationCases => CC}
+import turbolift.{ComputationCases => CC}
 
 
 trait CanPerform[Z <: Signature] extends Signature:
@@ -8,5 +8,4 @@ trait CanPerform[Z <: Signature] extends Signature:
    *  method into the [[turbolift.Computation Computation]] monad.
    */
   final inline def perform[A, U <: ThisEffect](inline f: (Z & Signature { type ThisEffect = U }) => A !! U): A !! U =
-    new CC.Perform[A, U, Z & Signature { type ThisEffect = U }](this):
-      override def apply(z: Z & Signature { type ThisEffect = U }): A !! U = f(z)
+    CC.perform[A, U, Z & Signature { type ThisEffect = U }](this, f)

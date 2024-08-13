@@ -3,10 +3,11 @@ import turbolift.effects.{ChoiceSignature, IO, Each, Finalizer}
 import turbolift.internals.auxx.CanPartiallyHandle
 import turbolift.internals.effect.AnyChoice
 import turbolift.internals.executor.Executor
-import turbolift.internals.engine.Env
-import turbolift.internals.primitives.{Tags, ComputationCases => CC}
+import turbolift.interpreter.Interpreter 
+import turbolift.internals.engine.{Env, Engine, Tags}
 import turbolift.io.{Outcome, Fiber, Warp}
 import turbolift.mode.Mode
+import turbolift.{ComputationCases => CC}
 
 
 /** Alias for [[Computation]] type. Meant to be used in infix form. */
@@ -168,8 +169,8 @@ sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift]
   * }}}
   */
 
+
 object Computation:
-  private[turbolift] abstract class Unsealed[A, U](_tag: Int) extends Computation[A, U](_tag)
   private[turbolift] type Untyped = Computation[Any, Any]
 
   private def pairCtorFun[A, B]: (A, B) => (A, B) = pairCtorVal.asInstanceOf[(A, B) => (A, B)]
@@ -405,3 +406,29 @@ object Computation:
     extension [A](thiz: NamedSyntax[A, IO])
       def runIO(using mode: Mode = Mode.default): Outcome[A] = Executor.pick(mode).runSync(thiz.comp, thiz.name)
       def runAsync(using mode: Mode = Mode.default)(callback: Outcome[A] => Unit): Unit = Executor.pick(mode).runAsync(thiz.comp,thiz. name, callback)
+
+
+//@#@TEMP public bcoz inline bug
+// private[turbolift] object ComputationCases:
+object ComputationCases:
+  private[turbolift] final class Pure[A](val value: A) extends Computation[A, Any](Tags.Pure)
+  private[turbolift] final class LocalGet(val prompt: Interpreter.Untyped) extends Computation[Any, Any](Tags.LocalGet)
+  private[turbolift] final class LocalPut[S](val prompt: Interpreter.Untyped, val local: S) extends Computation[Unit, Any](Tags.LocalPut)
+  //@#@TEMP public bcoz inline bug
+  sealed abstract class Map[A, B, C, U](_tag: Int, val comp: A !! U) extends Computation[B, U](_tag) with Function1[A, C]
+  sealed abstract class Impure[A]() extends Computation[A, Any](Tags.Impure) with Function0[A]
+  sealed abstract class Intristic[A, U] extends Computation[A, U](Tags.Intristic) with Function[Engine, Engine.IntristicResult]
+  sealed abstract class Perform[A, U, Z <: Signature](val sig: Signature) extends Computation[A, U](Tags.Perform) with Function1[Z, A !! U]
+  sealed abstract class LocalUpdate[A, S](val prompt: Interpreter.Untyped) extends Computation[A, Any](Tags.LocalUpdate) with Function1[S, (A, S)]
+
+  private[turbolift] inline def intristic[A, U](f: Engine => Engine.IntristicResult): A !! U =
+    new CC.Intristic[A, U]:
+      override def apply(engine: Engine): Engine.IntristicResult = f(engine)
+
+  private[turbolift] inline def perform[A, U, Z <: Signature](sig: Signature, inline f: Z => A !! U): A !! U =
+    new Perform[A, U, Z](sig):
+      override def apply(z: Z): A !! U = f(z)
+
+  private[turbolift] inline def localUpdate[A, S](interp: Interpreter.Untyped, inline f: S => (A, S)): A !! Any =
+    new LocalUpdate[A, S](interp):
+      override def apply(s: S): (A, S) = f(s)

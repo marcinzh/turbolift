@@ -2,7 +2,6 @@ package turbolift.internals.engine.concurrent
 import scala.annotation.{tailrec, switch}
 import turbolift.{Computation, Signature}
 import turbolift.io.{Fiber, Zipper, Warp, OnceVar, Snap, Outcome, Cause, Exceptions}
-import turbolift.internals.primitives.{Tags, ComputationCases => CC}
 import turbolift.internals.executor.Executor
 import turbolift.internals.engine.Env
 import turbolift.internals.engine.Misc._

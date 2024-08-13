@@ -1,7 +1,7 @@
 package turbolift.interpreter
 import turbolift.!!
-import turbolift.internals.primitives.{ComputationCases => CC}
 import turbolift.interpreter.Void
+import turbolift.{ComputationCases => CC}
 
 /** Local state of effect.
  *
@@ -29,10 +29,7 @@ final class Local[S, V] private[interpreter] (private val interp: Interpreter.Un
   inline def modifyGet(inline f: S => S): S !! V = update(s => { val s2 = f(s); (s2, s2) })
   inline def getModify(inline f: S => S): S !! V = update(s => { val s2 = f(s); (s, s2) })
   inline def getModifyGet(inline f: S => S): (S, S) !! V = update(s => { val s2 = f(s); ((s, s2), s2) })
+  inline def update[A](inline f: S => (A, S)): A !! V = CC.localUpdate(interp, f)
   inline def updateGet[A](inline f: S => (A, S)): (A, S) !! V = update(s => { val xs2 @ (_, s2) = f(s); (xs2, s2) })
   inline def getUpdate[A](inline f: S => (A, S)): (A, S) !! V = update(s => { val (x, s2) = f(s); ((x, s), s2) })
   inline def getUpdateGet[A](inline f: S => (A, S)): (A, S, S) !! V = update(s => { val (x, s2) = f(s); ((x, s, s2), s2) })
-
-  inline def update[A](inline f: S => (A, S)): A !! V =
-    new CC.LocalUpdate[A, S](interp):
-      override def apply(s: S): (A, S) = f(s)

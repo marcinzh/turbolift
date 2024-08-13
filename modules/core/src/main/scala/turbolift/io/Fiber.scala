@@ -1,7 +1,6 @@
 package turbolift.io
-import turbolift.!!
+import turbolift.{!!, ComputationCases => CC}
 import turbolift.effects.IO
-import turbolift.internals.primitives.{ComputationCases => CC}
 
 
 sealed trait Fiber[+A, -U]:
