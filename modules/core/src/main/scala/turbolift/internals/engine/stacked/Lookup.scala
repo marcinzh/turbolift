@@ -9,7 +9,7 @@ private opaque type Lookup <: AnyRef = Array[Lookup.Element]
 
 private object Lookup:
   type Element = Signature | Entry
-  // val initial: Lookup = Array[Element]()
+
   val empty: Lookup = Array[Element]()
 
   def blank(sigCount: Int): Lookup = new Array[Element](sigCount * 2)

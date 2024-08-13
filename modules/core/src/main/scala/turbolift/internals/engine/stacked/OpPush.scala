@@ -6,7 +6,10 @@ import Prompt.Syntax._
 
 private[engine] object OpPush:
   def findTopmostEnv(stack: Stack, store: Store): Env =
-    store.getDeep(stack.locateIO).asEnv
+    if store.isTailless then
+      store.head.asEnv
+    else
+      store.getDeep(stack.locateIO).asEnv
 
 
   def pushBase(stack: Stack, store: Store, step: Step, prompt: Prompt, local: Local): (Stack, Store) =

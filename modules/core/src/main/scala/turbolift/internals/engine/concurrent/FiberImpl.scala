@@ -448,7 +448,7 @@ private[turbolift] final class FiberImpl private (
     stack: Stack,
     store: Store,
   ): Unit =
-    suspend(step.tag, payload, step, stack,store)
+    suspend(step.tag, payload, step, stack, store)
 
 
   private[engine] def suspendComp(
@@ -457,7 +457,7 @@ private[turbolift] final class FiberImpl private (
     stack: Stack,
     store: Store,
   ): Unit =
-    suspend(comp.tag, comp, step, stack,store)
+    suspend(comp.tag, comp, step, stack, store)
 
 
   private[engine] def clearSuspension(): Unit =
