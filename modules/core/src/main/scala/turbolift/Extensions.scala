@@ -1,6 +1,5 @@
 package turbolift
 import turbolift.internals.extensions._
-import turbolift.internals.auxx.IdConst
 
 /** Orphaned extensions.
  *
@@ -16,4 +15,8 @@ object Extensions
   with FoldExtensions
   with MapFilterExtensions
   with TraverseExtensions:
-    export IdConst._
+    export turbolift.{Identity, Const}
+
+
+type Identity[X] = X
+type Const[C] = [_] =>> C

@@ -1,10 +1,10 @@
 package turbolift
 import scala.util.{Try, Success, Failure}
 import turbolift.internals.auxx.{CanPartiallyHandle, CanPipe}
-import turbolift.internals.auxx.IdConst._
 import turbolift.interpreter.Interpreter
 import turbolift.internals.primitives.{ComputationCases => CC}
 import turbolift.typeclass.ExtendTuple
+// import Extensions.{Id, Const}
 
 /** Used to delimit scope of effect(s).
  *

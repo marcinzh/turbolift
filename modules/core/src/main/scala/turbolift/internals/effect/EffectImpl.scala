@@ -1,7 +1,6 @@
 package turbolift.internals.effect
 import turbolift.{!!, Signature, Effect, Handler}
 import turbolift.interpreter.{Interpreter => IC, Mixins}
-import turbolift.internals.auxx.IdConst
 
 
 final class EffectImpl[Fx](sigs: Array[Signature]):
@@ -36,4 +35,4 @@ final class EffectImpl[Fx](sigs: Array[Signature]):
 
 
   export Mixins.{Sequential, Parallel}
-  export IdConst._
+  export turbolift.{Identity, Const}
