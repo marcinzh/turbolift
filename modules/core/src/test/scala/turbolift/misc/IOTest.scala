@@ -61,6 +61,30 @@ class IOTest extends Specification:
   }
 
 
+  "async" >> {
+    case object E extends Exception
+
+    "success" >>{
+      @volatile var x: Int = -1
+      (for
+        a <- IO.async: cb =>
+          x = 42
+          cb(Right("omg"))
+        b <- IO(x)
+      yield (a, b))
+      .runIO
+      .===(Outcome.Success(("omg", 42)))
+    }
+
+    "failure" >>{
+      IO.async: cb =>
+        cb(Left(E))
+      .runIO
+      .===(Outcome.Failure(Cause.Thrown(E)))
+    }
+  }
+
+
   "executeOn" >> {
     val otherExec = Executor.fromScala(scala.concurrent.ExecutionContext.global)
 

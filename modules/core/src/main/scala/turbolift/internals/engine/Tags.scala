@@ -20,10 +20,11 @@ object Tags:
   inline val NotifyOnceVar         = 12
   inline val NotifyFiber           = 13
   inline val NotifyFiberVoid       = 14
-  inline val NotifyBlocker         = 15
-  inline val Step_Push             = 16
-  inline val Step_Bridge           = 17
-  inline val Step_Unwind           = 18
+  inline val NotifyEither          = 15
+  inline val NotifyBlocker         = 16
+  inline val Step_Push             = 17
+  inline val Step_Bridge           = 18
+  inline val Step_Unwind           = 19
 
   def toStr(tag: Int) =
     tag match
@@ -43,6 +44,7 @@ object Tags:
       case NotifyOnceVar         => "NotifyOnceVar"
       case NotifyFiber           => "NotifyFiber"
       case NotifyFiberVoid       => "NotifyFiberVoid"
+      case NotifyEither          => "NotifyEither"
       case NotifyBlocker         => "NotifyBlocker"
       case Step_Push             => "Step_Push"
       case Step_Bridge           => "Step_Bridge"

@@ -28,9 +28,12 @@ case object IO extends IO:
 
   def attempt[A](thunk: => A): Either[Throwable, A] !! IO = CC.sync(isAttempt = true, thunk)
 
+  def async[A](callback: (Either[Throwable, A] => Unit) => Unit): A !! IO = CC.intristic(_.intristicAsync(callback))
+
   def blocking[A](thunk: => A): A !! IO = CC.intristic(_.intristicBlocking(() => thunk, isAttempt = false))
   
   def blockingAttempt[A](thunk: => A): Either[Throwable, A] !! IO = CC.intristic(_.intristicBlocking(() => thunk, isAttempt = true))
+
 
 
   //---------- Exceptions ----------

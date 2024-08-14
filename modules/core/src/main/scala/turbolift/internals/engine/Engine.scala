@@ -91,6 +91,9 @@ private sealed abstract class Engine0 extends Runnable:
     inline def loopCancel(stack: Stack, store: Store): Halt.Loop1st =
       innerLoop(Tags.Step_Unwind, CancelPayload, Step.Cancel, stack, store)
 
+    inline def loopThrow(throwable: Throwable, stack: Stack, store: Store): Halt.Loop1st =
+      innerLoop(Tags.Step_Unwind, Cause(throwable), Step.Throw, stack, store)
+
     inline def loopTag(tag: Int, payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop1st =
       val tag2 = if tag == Tags.MapFlat then payload.asInstanceOf[AnyComp].tag else step.tag
       innerLoop(tag2, payload, step, stack, store)
@@ -218,12 +221,9 @@ private sealed abstract class Engine0 extends Runnable:
             loopStep(payload2, step, stack, store)
           else
             if instr.isAttempt then
-              val payload2 = Left(throwable)
-              loopStep(payload2, step, stack, store)
+              loopStep(Left(throwable), step, stack, store)
             else
-              val step2 = Step.Throw
-              val payload2 = Cause(throwable.nn)
-              loopStep(payload2, step2, stack, store)
+              loopThrow(throwable.nn, stack, store)
 
         case _ =>
           loopMore(tag, payload, step, stack, store) match
@@ -275,6 +275,9 @@ private sealed abstract class Engine0 extends Runnable:
     inline def loopCancel(stack: Stack, store: Store): Halt.Loop2nd =
       innerLoop(Tags.Step_Unwind, CancelPayload, Step.Cancel, stack, store)
 
+    inline def loopThrow(throwable: Throwable, stack: Stack, store: Store): Halt.Loop2nd =
+      innerLoop(Tags.Step_Unwind, Cause(throwable), Step.Throw, stack, store)
+
     (tag: @switch) match
       case Tags.Intristic => 
         savedTag     = tag
@@ -298,6 +301,11 @@ private sealed abstract class Engine0 extends Runnable:
       case Tags.NotifyFiberVoid =>
         loopStep((), step, stack, store)
 
+      case Tags.NotifyEither =>
+        payload.asInstanceOf[Either[Throwable, Any]] match
+          case Right(a) => loopStep(a, step, stack, store)
+          case Left(e) => loopThrow(e, stack, store)
+
       case Tags.NotifyBlocker =>
         val blocker = payload.asInstanceOf[Blocker]
         if blocker.isEither then
@@ -312,10 +320,7 @@ private sealed abstract class Engine0 extends Runnable:
             case Bits.Completion_Cancelled =>
               currentFiber.cancelBySelf()
               loopCancel(stack, store)
-            case Bits.Completion_Failure =>
-              val step2 = Step.Throw
-              val payload2 = Cause(blocker.getThrowable)
-              loopStep(payload2, step2, stack, store)
+            case Bits.Completion_Failure => loopThrow(blocker.getThrowable, stack, store)
 
       case Tags.Step_Push =>
         val instr = step.asInstanceOf[SC.Push]
@@ -767,6 +772,12 @@ private sealed abstract class Engine0 extends Runnable:
       case Bits.WaiteeAlreadyCompleted =>
         currentFiber.clearSuspension()
         intristicLoopStep((), step, stack, store)
+
+
+  final def intristicAsync[A](callback: (Either[Throwable, A] => Unit) => Unit): Halt.Loop2nd =
+    currentFiber.suspend(Tags.NotifyEither, null, savedStep, savedStack, savedStore)
+    callback(currentFiber)
+    ThreadDisowned
 
 
   final def intristicBlocking[A, B](thunk: () => A, isAttempt: Boolean): Halt.Loop2nd =

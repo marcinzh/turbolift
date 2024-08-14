@@ -14,7 +14,7 @@ private[turbolift] final class FiberImpl private (
   private[engine] val constantBits: Byte,
   private[engine] var theParent: WarpImpl | FiberImpl | Hook,
   private[engine] var theName: String,
-) extends ChildLink with Fiber.Unsealed:
+) extends ChildLink with Fiber.Unsealed with Function1[Either[Throwable, Any], Unit]:
   private[engine] var suspendedTag: Byte = 0
   private[engine] var suspendedPayload: Any = null
   private[engine] var suspendedStep: Step | Null = null
@@ -409,6 +409,12 @@ private[turbolift] final class FiberImpl private (
   //-------------------------------------------------------------------
 
 
+  //// `this` == callback for IO.async
+  override def apply(e: Either[Throwable, Any]): Unit =
+    suspendedPayload = e
+    resume()
+
+
   def resume(): Unit =
     assert(isSuspended)
     val env = OpPush.findTopmostEnv(suspendedStack.nn, suspendedStore.nn)
@@ -479,7 +485,7 @@ private[turbolift] final class FiberImpl private (
     suspendedStore   = store
 
 
-  private def suspendAsSuccessPure(value: Any): Unit =
+  private[engine] def suspendAsSuccessPure(value: Any): Unit =
     suspendedTag = suspendedStep.nn.tag.toByte
     suspendedPayload = value
 
@@ -495,7 +501,7 @@ private[turbolift] final class FiberImpl private (
     suspendedPayload = CancelPayload
 
 
-  private def suspendAsFailure(cause: Cause): Unit =
+  private[engine] def suspendAsFailure(cause: Cause): Unit =
     suspendedTag = Step.Throw.tag.toByte
     suspendedStep = Step.Throw
     suspendedPayload = cause
