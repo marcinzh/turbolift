@@ -137,15 +137,13 @@ private[internals] abstract class MainLoop extends MainLoop0:
               loopStep(local, step, stack, store)
 
             case Tags.LocalPut =>
-              val instr2 = comp2.asInstanceOf[CC.LocalPut[Any]]
-              val store2 = store.setDeep(location, instr2.local.asLocal)
+              val instr2 = comp2.asInstanceOf[CC.LocalPut[Local]]
+              val store2 = store.setDeep(location, instr2.local)
               loopStep((), step, stack, store2)
 
             case Tags.LocalUpdate =>
-              val instr2 = comp2.asInstanceOf[CC.LocalUpdate[Any, Any]]
-              val local = store.getDeep(location)
-              val (value, local2) = instr2.fun(local)
-              val store2 = store.setDeep(location, local2.asLocal)
+              val instr2 = comp2.asInstanceOf[CC.LocalUpdate[Any, Local]]
+              val (value, store2) = store.updateDeep(location, instr2.fun)
               loopStep(value, step, stack, store2)
 
             case _ => loopComp(comp2, step, stack, store)
@@ -210,17 +208,15 @@ private[internals] abstract class MainLoop extends MainLoop0:
         loopStep(local, step, stack, store)
 
       case Tags.LocalPut =>
-        val instr = payload.asInstanceOf[CC.LocalPut[Any]]
+        val instr = payload.asInstanceOf[CC.LocalPut[Local]]
         val location = stack.locatePrompt(instr.prompt)
-        val store2 = store.setDeep(location, instr.local.asLocal)
+        val store2 = store.setDeep(location, instr.local)
         loopStep((), step, stack, store2)
 
       case Tags.LocalUpdate =>
-        val instr = payload.asInstanceOf[CC.LocalUpdate[Any, Any]]
+        val instr = payload.asInstanceOf[CC.LocalUpdate[Any, Local]]
         val location = stack.locatePrompt(instr.prompt)
-        val local = store.getDeep(location)
-        val (value, local2) = instr.fun(local)
-        val store2 = store.setDeep(location, local2.asLocal)
+        val (value, store2) = store.updateDeep(location, instr.fun)
         loopStep(value, step, stack, store2)
 
       case Tags.Delimit =>

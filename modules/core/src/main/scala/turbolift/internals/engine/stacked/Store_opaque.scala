@@ -42,6 +42,23 @@ private trait Store_opaque:
       loop(thiz, l.segmentDepth)
 
 
+    final def updateDeep[A](l: Location.Deep, f: Local => (A, Local)): (A, Store) =
+      var a: A = null.asInstanceOf[A]
+      def loop(todo: Store, depth: Int): Store =
+        if depth == 0 then
+          val s1 = todo.geti(l.storeIndex)
+          val a_s2 = f(s1)
+          a = a_s2._1
+          todo.seti(l.storeIndex, a_s2._2)
+        else
+          if !todo.isTailless then
+            todo ::? loop(todo.tail, depth - 1)
+          else
+            notFound(l)
+      val that = loop(thiz, l.segmentDepth)
+      (a, that)
+
+
     final def setDeepIfNotVoid(l: Location.Deep, s: Local): Store =
       if s.isVoid then
         thiz
