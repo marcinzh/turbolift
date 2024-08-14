@@ -417,9 +417,14 @@ object ComputationCases:
   //@#@TEMP public bcoz inline bug
   sealed abstract class Map[A, B, C, U](_tag: Int, val comp: A !! U) extends Computation[B, U](_tag) with Function1[A, C]
   sealed abstract class Impure[A]() extends Computation[A, Any](Tags.Impure) with Function0[A]
+  sealed abstract class Sync[A, B](val isAttempt: Boolean) extends Computation[B, IO](Tags.Sync) with Function0[A]
   sealed abstract class Intristic[A, U] extends Computation[A, U](Tags.Intristic) with Function[Engine, Engine.IntristicResult]
   sealed abstract class Perform[A, U, Z <: Signature](val sig: Signature) extends Computation[A, U](Tags.Perform) with Function1[Z, A !! U]
   sealed abstract class LocalUpdate[A, S](val prompt: Interpreter.Untyped) extends Computation[A, Any](Tags.LocalUpdate) with Function1[S, (A, S)]
+
+  private[turbolift] inline def sync[A, B](isAttempt: Boolean, inline thunk: => A): B !! IO =
+    new Sync[A, B](isAttempt):
+      override def apply(): A = thunk
 
   private[turbolift] inline def intristic[A, U](f: Engine => Engine.IntristicResult): A !! U =
     new CC.Intristic[A, U]:

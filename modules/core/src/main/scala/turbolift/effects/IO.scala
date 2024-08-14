@@ -24,13 +24,13 @@ case object IO extends IO:
   //---------- Side Effects ----------
 
 
-  def apply[A](value: => A): A !! IO = CC.intristic(_.intristicDoIO(() => value, isAttempt = false))
+  def apply[A](thunk: => A): A !! IO = CC.sync(isAttempt = false, thunk)
 
-  def attempt[A](value: => A): Either[Throwable, A] !! IO = CC.intristic(_.intristicDoIO(() => value, isAttempt = true))
+  def attempt[A](thunk: => A): Either[Throwable, A] !! IO = CC.sync(isAttempt = true, thunk)
 
-  def blocking[A](value: => A): A !! IO = CC.intristic(_.intristicBlocking(() => value, isAttempt = false))
+  def blocking[A](thunk: => A): A !! IO = CC.intristic(_.intristicBlocking(() => thunk, isAttempt = false))
   
-  def blockingAttempt[A](value: => A): Either[Throwable, A] !! IO = CC.intristic(_.intristicBlocking(() => value, isAttempt = true))
+  def blockingAttempt[A](thunk: => A): Either[Throwable, A] !! IO = CC.intristic(_.intristicBlocking(() => thunk, isAttempt = true))
 
 
   //---------- Exceptions ----------

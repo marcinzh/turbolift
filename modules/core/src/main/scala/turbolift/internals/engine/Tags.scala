@@ -14,15 +14,16 @@ object Tags:
   inline val LocalGet              = 7
   inline val LocalPut              = 8
   inline val LocalUpdate           = 9
-  inline val Intristic             = 10
+  inline val Sync                  = 10
 
-  inline val NotifyOnceVar         = 11
-  inline val NotifyFiber           = 12
-  inline val NotifyFiberVoid       = 13
-  inline val NotifyBlocker         = 14
-  inline val Step_Push             = 15
-  inline val Step_Bridge           = 16
-  inline val Step_Unwind           = 17
+  inline val Intristic             = 11
+  inline val NotifyOnceVar         = 12
+  inline val NotifyFiber           = 13
+  inline val NotifyFiberVoid       = 14
+  inline val NotifyBlocker         = 15
+  inline val Step_Push             = 16
+  inline val Step_Bridge           = 17
+  inline val Step_Unwind           = 18
 
   def toStr(tag: Int) =
     tag match
@@ -36,8 +37,9 @@ object Tags:
       case LocalGet              => "LocalGet"
       case LocalPut              => "LocalPut"
       case LocalUpdate           => "LocalUpdate"
-      case Intristic             => "Intristic"
+      case Sync                  => "Sync"
 
+      case Intristic             => "Intristic"
       case NotifyOnceVar         => "NotifyOnceVar"
       case NotifyFiber           => "NotifyFiber"
       case NotifyFiberVoid       => "NotifyFiberVoid"

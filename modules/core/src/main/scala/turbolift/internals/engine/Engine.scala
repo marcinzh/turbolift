@@ -205,6 +205,26 @@ private sealed abstract class Engine0 extends Runnable:
           val (value, store2) = store.updateDeep(location, instr)
           loopStep(value, step, stack, store2)
 
+        case Tags.Sync =>
+          val instr = payload.asInstanceOf[CC.Sync[Any, Any]]
+          var result: Any = null
+          var throwable: Throwable | Null = null
+          try
+            result = instr()
+          catch
+            case e => throwable = e
+          if throwable == null then
+            val payload2 = if instr.isAttempt then Right(result) else result
+            loopStep(payload2, step, stack, store)
+          else
+            if instr.isAttempt then
+              val payload2 = Left(throwable)
+              loopStep(payload2, step, stack, store)
+            else
+              val step2 = Step.Throw
+              val payload2 = Cause(throwable.nn)
+              loopStep(payload2, step2, stack, store)
+
         case _ =>
           loopMore(tag, payload, step, stack, store) match
             case Halt.Bounce =>
@@ -581,30 +601,6 @@ private sealed abstract class Engine0 extends Runnable:
     val comp2 = prompt.onInitial
     val step2 = new SC.Push(body, prompt, step)
     intristicLoopComp(comp2, step2, stack, store)
-
-
-  final def intristicDoIO[A, B](thunk: () => A, isAttempt: Boolean): Halt.Loop2nd =
-    val step = savedStep
-    val stack = savedStack
-    val store = savedStore
-    //-------------------
-    var result: Any = null
-    var throwable: Throwable | Null = null
-    try
-      result = thunk()
-    catch
-      case e => throwable = e
-    if throwable == null then
-      val payload2 = if isAttempt then Right(result) else result
-      intristicLoopStep(payload2, step, stack, store)
-    else
-      if isAttempt then
-        val payload2 = Left(throwable)
-        intristicLoopStep(payload2, step, stack, store)
-      else
-        val step2 = Step.Throw
-        val payload2 = Cause(throwable.nn)
-        intristicLoopStep(payload2, step2, stack, store)
 
 
   final def intristicSnap[A, U](body: A !! U): Halt.Loop2nd =
