@@ -48,9 +48,8 @@ private[turbolift] final class ReentrantExecutor(maxBusyThreads: Int) extends Wa
 
 
   private final class Run(initial: FiberImpl) extends Engine(initial):
-    ReentrantExecutor.currentVar.set(enclosing)
-
     override def run(): Unit =
+      ReentrantExecutor.currentVar.set(enclosing)
       var keepGoing = true
       while keepGoing do
         runCurrent() match
