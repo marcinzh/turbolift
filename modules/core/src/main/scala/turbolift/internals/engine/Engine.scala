@@ -3,13 +3,13 @@ import java.util.concurrent.TimeUnit
 import scala.annotation.{tailrec, switch}
 import turbolift.{!!, Computation, Signature, ComputationCases => CC}
 import turbolift.io.{Fiber, Zipper, Warp, Snap, Outcome, Cause, Exceptions}
-import turbolift.io.{OnceVar}
+import turbolift.io.{OnceVar, CountDownLatch}
 import turbolift.interpreter.{Interpreter, Continuation}
 import turbolift.internals.executor.Executor
 import turbolift.internals.engine.Tags
 import turbolift.internals.engine.stacked.{StepCases => SC, Step, Stack, Store, Local, Prompt, FrameKind, OpPush, OpSplit, OpCascaded}
 import turbolift.internals.engine.concurrent.{Bits, Blocker, FiberImpl, WarpImpl}
-import turbolift.internals.engine.concurrent.util.{OnceVarImpl}
+import turbolift.internals.engine.concurrent.util.{OnceVarImpl, CountDownLatchImpl}
 import Halt.{Retire => ThreadDisowned}
 import Local.Syntax._
 import Prompt.Syntax._
@@ -295,12 +295,12 @@ private sealed abstract class Engine0 extends Runnable:
         val value = ovar.theContent
         loopStep(value, step, stack, store)
 
-      case Tags.NotifyFiber =>
+      case Tags.NotifyZipper =>
         val waitee = payload.asInstanceOf[FiberImpl]
         val zipper = waitee.getOrMakeZipper
         loopStep(zipper, step, stack, store)
 
-      case Tags.NotifyFiberVoid =>
+      case Tags.NotifyUnit =>
         loopStep((), step, stack, store)
 
       case Tags.NotifyEither =>
@@ -705,7 +705,7 @@ private sealed abstract class Engine0 extends Runnable:
     //-------------------
     val waitee = fiber.asImpl
     if currentFiber != waitee then
-      val tag2 = if isVoid then Tags.NotifyFiberVoid else Tags.NotifyFiber
+      val tag2 = if isVoid then Tags.NotifyUnit else Tags.NotifyZipper
       currentFiber.suspend(tag2, waitee, step, stack, store)
       val tried =
         if isCancel
@@ -853,6 +853,22 @@ private sealed abstract class Engine0 extends Runnable:
     //-------------------
     currentFiber.suspend(step.tag, (), step, stack, store)
     Halt.Yield
+
+
+  final def intristicAwaitCountDownLatch(latch: CountDownLatch): Halt.Loop2nd =
+    val step = savedStep
+    val stack = savedStack
+    val store = savedStore
+    //-------------------
+    currentFiber.suspend(Tags.NotifyUnit, latch, step, stack, store)
+    latch.asImpl.tryGetAwaitedBy(currentFiber, currentEnv.isCancellable) match
+      case Bits.WaiterSubscribed => ThreadDisowned
+      case Bits.WaiterAlreadyCancelled =>
+        currentFiber.clearSuspension()
+        intristicLoopCancel(stack, store)
+      case Bits.WaiteeAlreadyCompleted =>
+        currentFiber.clearSuspension()
+        intristicLoopStep((), step, stack, store)
 
 
   //-------------------------------------------------------------------
