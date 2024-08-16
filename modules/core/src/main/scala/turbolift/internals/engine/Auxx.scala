@@ -1,7 +1,7 @@
 package turbolift.internals.engine
-import turbolift.io.{Fiber, Zipper, Warp, OnceVar}
+import turbolift.io.{Fiber, Zipper, Warp}
 import turbolift.interpreter.Continuation
-import turbolift.internals.engine.concurrent.{FiberImpl, WarpImpl, ZipperImpl, OnceVarImpl}
+import turbolift.internals.engine.concurrent.{FiberImpl, WarpImpl, ZipperImpl}
 
 
 extension (thiz: Continuation[?, ?, ?, ?])
@@ -15,6 +15,3 @@ extension (thiz: Zipper[?, ?])
 
 extension (thiz: Warp)
   private[engine] inline def asImpl: WarpImpl = thiz.asInstanceOf[WarpImpl]
-
-extension (thiz: OnceVar.Get[?])
-  private[engine] inline def asImpl: OnceVarImpl = thiz.asInstanceOf[OnceVarImpl]

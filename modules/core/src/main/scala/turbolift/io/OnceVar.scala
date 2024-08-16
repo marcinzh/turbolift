@@ -1,13 +1,13 @@
 package turbolift.io
 import turbolift.{!!, ComputationCases => CC}
 import turbolift.effects.IO
-import turbolift.internals.engine.concurrent.OnceVarImpl
+import turbolift.internals.engine.concurrent.util.OnceVarImpl
 
 
 sealed trait OnceVar[A] extends OnceVar.Get[A] with OnceVar.Put[A]:
   final def asGet: OnceVar.Get[A] = this
   final def asPut: OnceVar.Put[A] = this
-  final def untyped: Fiber.Untyped = asInstanceOf[Fiber.Untyped]
+
 
 
 object OnceVar:
@@ -20,6 +20,8 @@ object OnceVar:
     final def get: A !! IO = CC.intristic(_.intristicAwaitOnceVar(this))
     final def tryGet: Option[A] !! IO = !!.impure(unsafeTryGet)
     def unsafeTryGet: Option[A]
+
+    private[turbolift] def asImpl: OnceVarImpl = asInstanceOf[OnceVarImpl]
 
 
   sealed trait Put[A]:

@@ -2,12 +2,14 @@ package turbolift.internals.engine
 import java.util.concurrent.TimeUnit
 import scala.annotation.{tailrec, switch}
 import turbolift.{!!, Computation, Signature, ComputationCases => CC}
-import turbolift.io.{Fiber, Zipper, Warp, OnceVar, Snap, Outcome, Cause, Exceptions}
+import turbolift.io.{Fiber, Zipper, Warp, Snap, Outcome, Cause, Exceptions}
+import turbolift.io.{OnceVar}
 import turbolift.interpreter.{Interpreter, Continuation}
 import turbolift.internals.executor.Executor
 import turbolift.internals.engine.Tags
 import turbolift.internals.engine.stacked.{StepCases => SC, Step, Stack, Store, Local, Prompt, FrameKind, OpPush, OpSplit, OpCascaded}
-import turbolift.internals.engine.concurrent.{Bits, Blocker, FiberImpl, WarpImpl, OnceVarImpl}
+import turbolift.internals.engine.concurrent.{Bits, Blocker, FiberImpl, WarpImpl}
+import turbolift.internals.engine.concurrent.util.{OnceVarImpl}
 import Halt.{Retire => ThreadDisowned}
 import Local.Syntax._
 import Prompt.Syntax._
