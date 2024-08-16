@@ -127,10 +127,15 @@ private abstract class Waitee extends AtomicBoolean:
     val x = firstWaiter
     if x != null then
       firstWaiter = null
-      //@#@OPTY use `executor.resumeMany`, but only when all waiters are on the same executor
-      @tailrec def loop(waiter: FiberImpl): Unit =
-        waiter.resume()
-        val next = waiter.nextWaiter.nn.asFiber
-        if next != x then
-          loop(next)
-      loop(x)
+      Waitee.notifyAllWaitersLoop(x)
+
+
+private[concurrent] object Waitee:
+  def notifyAllWaitersLoop(firstWaiter: FiberImpl): Unit =
+    //@#@OPTY use `executor.resumeMany`, but only when all waiters are on the same executor
+    @tailrec def loop(waiter: FiberImpl): Unit =
+      waiter.resume()
+      val next = waiter.nextWaiter.nn.asFiber
+      if next != firstWaiter then
+        loop(next)
+    loop(firstWaiter)

@@ -3,13 +3,13 @@ import java.util.concurrent.TimeUnit
 import scala.annotation.{tailrec, switch}
 import turbolift.{!!, Computation, Signature, ComputationCases => CC}
 import turbolift.io.{Fiber, Zipper, Warp, Snap, Outcome, Cause, Exceptions}
-import turbolift.io.{OnceVar, CountDownLatch}
+import turbolift.io.{OnceVar, CountDownLatch, CyclicBarrier}
 import turbolift.interpreter.{Interpreter, Continuation}
 import turbolift.internals.executor.Executor
 import turbolift.internals.engine.Tags
 import turbolift.internals.engine.stacked.{StepCases => SC, Step, Stack, Store, Local, Prompt, FrameKind, OpPush, OpSplit, OpCascaded}
 import turbolift.internals.engine.concurrent.{Bits, Blocker, FiberImpl, WarpImpl}
-import turbolift.internals.engine.concurrent.util.{OnceVarImpl, CountDownLatchImpl}
+import turbolift.internals.engine.concurrent.util.{OnceVarImpl, CountDownLatchImpl, CyclicBarrierImpl}
 import Halt.{Retire => ThreadDisowned}
 import Local.Syntax._
 import Prompt.Syntax._
@@ -862,6 +862,22 @@ private sealed abstract class Engine0 extends Runnable:
     //-------------------
     currentFiber.suspend(Tags.NotifyUnit, latch, step, stack, store)
     latch.asImpl.tryGetAwaitedBy(currentFiber, currentEnv.isCancellable) match
+      case Bits.WaiterSubscribed => ThreadDisowned
+      case Bits.WaiterAlreadyCancelled =>
+        currentFiber.clearSuspension()
+        intristicLoopCancel(stack, store)
+      case Bits.WaiteeAlreadyCompleted =>
+        currentFiber.clearSuspension()
+        intristicLoopStep((), step, stack, store)
+
+
+  final def intristicAwaitCyclicBarrier(barrier: CyclicBarrier): Halt.Loop2nd =
+    val step = savedStep
+    val stack = savedStack
+    val store = savedStore
+    //-------------------
+    currentFiber.suspend(Tags.NotifyUnit, barrier, step, stack, store)
+    barrier.asImpl.tryGetAwaitedBy(currentFiber, currentEnv.isCancellable) match
       case Bits.WaiterSubscribed => ThreadDisowned
       case Bits.WaiterAlreadyCancelled =>
         currentFiber.clearSuspension()
