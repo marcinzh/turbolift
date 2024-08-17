@@ -5,7 +5,7 @@ import scala.annotation.tailrec
 
 /** Either Fiber, Warp, Queque or OnceVar */
 
-private[engine] abstract class Waitee extends AtomicBoolean:
+private[engine] abstract class Waitee extends SpinLock:
   protected var firstWaiter: FiberImpl | Null = null
   protected var varyingBits: Byte = 0
   /*protected*/ var theOwnership: Byte = 0 //// meaningful only in FiberImpl, but moved here for convenience
@@ -29,10 +29,6 @@ private[engine] abstract class Waitee extends AtomicBoolean:
   //-------------------------------------------------------------------
   // atomically
   //-------------------------------------------------------------------
-
-
-  inline protected final def spinAcquire(): Boolean = compareAndSet(false, true)
-  inline protected final def spinRelease(): Unit = set(false)
 
 
   inline final def atomically[A](inline body: => A): A =

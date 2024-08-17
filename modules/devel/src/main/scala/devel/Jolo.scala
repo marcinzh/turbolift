@@ -9,7 +9,7 @@ object Jolo:
     """
       turbolift.internals.engine.concurrent.FiberImpl
       turbolift.internals.engine.concurrent.WarpImpl
-      turbolift.internals.engine.concurrent.OnceVarImpl
+      turbolift.internals.engine.concurrent.util.OnceVarImpl
       turbolift.internals.engine.stacked.Stack
       turbolift.internals.engine.Engine
       turbolift.internals.executor.ReentrantExecutor
