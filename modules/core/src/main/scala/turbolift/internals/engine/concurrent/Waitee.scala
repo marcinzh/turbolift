@@ -130,6 +130,16 @@ private abstract class Waitee extends AtomicBoolean:
       Waitee.notifyAllWaitersLoop(x)
 
 
+  final def removeFirstWaiter(): Unit =
+    val x = firstWaiter.nn
+    val y = x.nextWaiter
+    if x == y then
+      firstWaiter = null
+    else
+      firstWaiter = y.nn.asFiber
+    x.removeWaiterAtSelf()
+
+
 private[concurrent] object Waitee:
   def notifyAllWaitersLoop(firstWaiter: FiberImpl): Unit =
     //@#@OPTY use `executor.resumeMany`, but only when all waiters are on the same executor

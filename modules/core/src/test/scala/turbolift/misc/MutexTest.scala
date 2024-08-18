@@ -62,4 +62,27 @@ class MutexTest extends Specification:
       .runIO
       .===(Outcome.Success(13))
     }
+
+    "very sequential access" >>{
+      (for
+        v <- AtomicVar.fresh(0)
+        g0 <- Gate(3)
+        g1 <- Gate(1)
+        g2 <- Gate(1)
+        g3 <- Gate(1)
+        mutex <- Mutex.fresh
+        _ <- Warp.shutdownOnExit:
+          for
+            _ <- g0.open &&!               mutex.lock(g1.open &&! v.event(1) &&! g3.enter).fork
+            _ <- g0.open &&! (g1.enter &&! mutex.lock(g2.open &&! v.event(2))).fork
+            _ <- g0.open &&! (g2.enter &&! mutex.lock(            v.event(3))).fork
+            _ <- g0.enter
+            _ <- IO.sleep(100)
+            _ <- g3.open
+          yield ()
+        n <- v.get
+      yield n)
+      .runIO
+      .===(Outcome.Success(123))
+    }
   }

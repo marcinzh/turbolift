@@ -26,6 +26,7 @@ private[turbolift] final class MutexImpl extends Waitee with Mutex.Unsealed:
         isLocked = false
       else
         savedFirstWaiter = firstWaiter
+        removeFirstWaiter()
     }
 
     if savedFirstWaiter != null then
