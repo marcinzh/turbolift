@@ -54,7 +54,7 @@ private sealed abstract class Engine0 extends Runnable:
   @tailrec private final def outerLoop(): Halt =
     val result =
       val tag     = currentFiber.suspendedTag
-      val payload = currentFiber.suspendedPayload.nn
+      val payload = currentFiber.suspendedPayload
       val step    = currentFiber.suspendedStep.nn
       val stack   = currentFiber.suspendedStack.nn
       val store   = currentFiber.suspendedStore.nn
@@ -658,28 +658,6 @@ private sealed abstract class Engine0 extends Runnable:
       intristicLoopComp(body, SC.Pop, stack2, store2)
 
 
-  final def intristicAwaitOnceVar[A](ovar0: OnceVar.Get[A]): Halt.Loop2nd =
-    val step = savedStep
-    val stack = savedStack
-    val store = savedStore
-    //-------------------
-    val ovar = ovar0.asImpl
-    val value = ovar.theContent
-    if OnceVarImpl.Empty != value then
-      intristicLoopStep(value, step, stack, store)
-    else
-      currentFiber.suspend(Tags.NotifyOnceVar, ovar, step, stack, store)
-      ovar.tryGetAwaitedBy(currentFiber, currentEnv.isCancellable) match
-        case Bits.WaiterSubscribed => ThreadDisowned
-        case Bits.WaiterAlreadyCancelled =>
-          currentFiber.clearSuspension()
-          intristicLoopCancel(stack, store)
-        case Bits.WaiteeAlreadyCompleted =>
-          currentFiber.clearSuspension()
-          val value = ovar.theContent
-          intristicLoopStep(value, step, stack, store)
-
-
   final def intristicForkFiber[A, U](warp0: Warp | Null, comp: A !! U, name: String, callback: (Zipper.Untyped => Unit) | Null = null): Halt.Loop2nd =
     val step = savedStep
     val stack = savedStack
@@ -841,7 +819,7 @@ private sealed abstract class Engine0 extends Runnable:
     else
       val env2 = currentEnv.copy(executor = exec)
       val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, env2.asLocal, FrameKind.exec)
-      currentFiber.suspendComp(body , SC.Pop, stack2, store2)
+      currentFiber.suspendComp(body, SC.Pop, stack2, store2)
       currentFiber.resume()
       ThreadDisowned
 
@@ -853,6 +831,28 @@ private sealed abstract class Engine0 extends Runnable:
     //-------------------
     currentFiber.suspend(step.tag, (), step, stack, store)
     Halt.Yield
+
+
+  final def intristicAwaitOnceVar[A](ovar0: OnceVar.Get[A]): Halt.Loop2nd =
+    val step = savedStep
+    val stack = savedStack
+    val store = savedStore
+    //-------------------
+    val ovar = ovar0.asImpl
+    val value = ovar.theContent
+    if OnceVarImpl.Empty != value then
+      intristicLoopStep(value, step, stack, store)
+    else
+      currentFiber.suspend(Tags.NotifyOnceVar, ovar, step, stack, store)
+      ovar.tryGetAwaitedBy(currentFiber, currentEnv.isCancellable) match
+        case Bits.WaiterSubscribed => ThreadDisowned
+        case Bits.WaiterAlreadyCancelled =>
+          currentFiber.clearSuspension()
+          intristicLoopCancel(stack, store)
+        case Bits.WaiteeAlreadyCompleted =>
+          currentFiber.clearSuspension()
+          val value = ovar.theContent
+          intristicLoopStep(value, step, stack, store)
 
 
   final def intristicAwaitCountDownLatch(latch: CountDownLatch): Halt.Loop2nd =
