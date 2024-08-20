@@ -18,7 +18,7 @@ object Tags:
 
   inline val Intrinsic             = 11
   inline val NotifyOnceVar         = 12
-  inline val NotifyZipper          = 13
+  inline val NotifyFiber           = 13
   inline val NotifyUnit            = 14
   inline val NotifyEither          = 15
   inline val NotifyBlocker         = 16
@@ -42,7 +42,7 @@ object Tags:
 
       case Intrinsic             => "Intrinsic"
       case NotifyOnceVar         => "NotifyOnceVar"
-      case NotifyZipper          => "NotifyZipper"
+      case NotifyFiber           => "NotifyFiber"
       case NotifyUnit            => "NotifyUnit"
       case NotifyEither          => "NotifyEither"
       case NotifyBlocker         => "NotifyBlocker"

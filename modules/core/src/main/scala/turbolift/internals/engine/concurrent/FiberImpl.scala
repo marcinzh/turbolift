@@ -15,6 +15,7 @@ private[turbolift] final class FiberImpl private (
   private[engine] var theParent: WarpImpl | FiberImpl | Hook,
   private[engine] var theName: String,
 ) extends ChildLink with Fiber.Unsealed with Function1[Either[Throwable, Any], Unit]:
+  private[engine] var theWaitee: Waitee | Blocker | Null = null
   private[engine] var suspendedTag: Byte = 0
   private[engine] var suspendedPayload: Any = null
   private[engine] var suspendedStep: Step | Null = null
@@ -107,15 +108,21 @@ private[turbolift] final class FiberImpl private (
   //-------------------------------------------------------------------
 
 
-  private[engine] def tryGetBlocked(isCancellable: Boolean): Boolean =
+  private[engine] def tryGetBlocked(blocker: Blocker, isCancellable: Boolean): Boolean =
     atomicallyTry(isCancellable) {
-      theOwnership = Bits.Ownership_Blocker
+      setBlockerUnsync(blocker)
     }
 
 
   private[engine] def setBlockerUnsync(blocker: Blocker): Unit =
-    suspendedPayload = blocker
     theOwnership = Bits.Ownership_Blocker
+    theWaitee = blocker
+
+
+  private[engine] def getWaiteeAs[T <: Waitee | Blocker]: T =
+    val x = theWaitee.asInstanceOf[T]
+    theWaitee = null
+    x
 
 
   private[engine] def tryGetAwaitedBy(waiter: FiberImpl, isWaiterCancellable: Boolean): Int =
@@ -155,7 +162,7 @@ private[turbolift] final class FiberImpl private (
     var savedRightRacer: WaiterLink | Null = null
     var savedVaryingBits: Byte = 0
     var savedOwnership: Byte = 0
-    var savedPayload: Any = null
+    var savedWaitee: Waitee | Blocker | Null = null
     var willDescend = false
 
     val result =
@@ -166,9 +173,9 @@ private[turbolift] final class FiberImpl private (
             willDescend = true
             savedLeftRacer = prevWaiter
             savedRightRacer = nextWaiter
-            savedOwnership = theOwnership
             savedVaryingBits = varyingBits
-            savedPayload = suspendedPayload
+            savedOwnership = theOwnership
+            savedWaitee = theWaitee
           subscribeWaiterUnsync(canceller)
           Bits.WaiterSubscribed
         else
@@ -176,7 +183,7 @@ private[turbolift] final class FiberImpl private (
       }
 
     if willDescend then
-      val racer = doDescend(savedLeftRacer, savedRightRacer, savedVaryingBits, savedOwnership, savedPayload)
+      val racer = doDescend(savedLeftRacer, savedRightRacer, savedVaryingBits, savedOwnership, savedWaitee)
       if racer != null then
         racer.deepCancelLoop(this)
     result
@@ -192,7 +199,7 @@ private[turbolift] final class FiberImpl private (
     var savedRightRacer: WaiterLink | Null = null
     var savedVaryingBits: Byte = 0
     var savedOwnership: Byte = 0
-    var savedPayload: Any = null
+    var savedWaitee: Waitee | Blocker | Null = null
 
     val willDescend =
       atomically {
@@ -202,14 +209,14 @@ private[turbolift] final class FiberImpl private (
           savedRightRacer = nextWaiter
           savedOwnership = theOwnership
           savedVaryingBits = varyingBits
-          savedPayload = suspendedPayload
+          savedWaitee = theWaitee
           true
         else
           false
       }
 
     if willDescend then
-      doDescend(savedLeftRacer, savedRightRacer, savedVaryingBits, savedOwnership, savedPayload)
+      doDescend(savedLeftRacer, savedRightRacer, savedVaryingBits, savedOwnership, savedWaitee)
     else
       null
 
@@ -243,7 +250,7 @@ private[turbolift] final class FiberImpl private (
     savedRightRacer: WaiterLink | Null,
     savedVaryingBits: Byte,
     savedOwnership: Byte,
-    savedPayload: Any,
+    savedWaitee: Waitee | Blocker | Null,
   ): FiberImpl | Null =
     savedOwnership match
       case Bits.Ownership_Self =>
@@ -253,12 +260,12 @@ private[turbolift] final class FiberImpl private (
           case _ => savedLeftRacer.asInstanceOf[FiberImpl]
 
       case Bits.Ownership_Waitee =>
-        val waitee = savedPayload.asInstanceOf[Waitee]
+        val waitee = savedWaitee.asInstanceOf[Waitee]
         waitee.unsubscribeWaiter(this)
         null
 
       case Bits.Ownership_Blocker =>
-        val blocker = savedPayload.asInstanceOf[Blocker]
+        val blocker = savedWaitee.asInstanceOf[Blocker]
         blocker.unblock()
         null
 
@@ -536,11 +543,11 @@ private[turbolift] final class FiberImpl private (
     var savedRightLink: WaiterLink | Null = null
     var savedVaryingBits: Byte = 0
     var savedOwnership: Byte = 0
-    var savedPayload: Any = null
+    var savedWaitee: Waitee | Blocker | Null = null
     atomically {
       savedVaryingBits = varyingBits
       savedOwnership = theOwnership
-      savedPayload = suspendedPayload
+      savedWaitee = theWaitee
       savedLeftLink = prevWaiter
       savedRightLink = nextWaiter
     }
@@ -548,7 +555,7 @@ private[turbolift] final class FiberImpl private (
       val role =
         def l = savedLeftLink.nn.asFiber
         def r = savedRightLink.nn.asFiber
-        def w = savedPayload.asInstanceOf[Fiber.Untyped | Warp | OnceVar.Untyped]
+        def w = savedWaitee.asInstanceOf[Fiber.Untyped | Warp | OnceVar.Untyped]
         import Fiber.Role
         theOwnership match
           case Bits.Ownership_Self =>

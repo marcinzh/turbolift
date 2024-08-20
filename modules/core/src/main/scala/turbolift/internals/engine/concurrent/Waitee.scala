@@ -99,6 +99,7 @@ private abstract class Waitee extends AtomicBoolean:
     else
       x.insertWaiterBeforeSelf(waiter)
     waiter.theOwnership = Bits.Ownership_Waitee
+    waiter.theWaitee = this
 
 
   final def unsubscribeWaiter(waiter: FiberImpl): Unit =

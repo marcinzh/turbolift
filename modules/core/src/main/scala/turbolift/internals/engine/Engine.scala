@@ -43,6 +43,7 @@ private sealed abstract class Engine0 extends Runnable:
     currentTickHigh = currentEnv.tickHigh
     if cancellationCheck() then
       currentFiber.suspendAsCancelled()
+      currentFiber.theWaitee = null
     outerLoop()
 
   
@@ -291,14 +292,15 @@ private sealed abstract class Engine0 extends Runnable:
         instr(this)
 
       case Tags.NotifyOnceVar =>
-        val ovar = payload.asInstanceOf[OnceVarImpl]
+        val ovar = currentFiber.getWaiteeAs[OnceVarImpl]
         val value = ovar.theContent
         loopStep(value, step, stack, store)
 
-      case Tags.NotifyZipper =>
-        val waitee = payload.asInstanceOf[FiberImpl]
-        val zipper = waitee.getOrMakeZipper
-        loopStep(zipper, step, stack, store)
+      case Tags.NotifyFiber =>
+        val fiber = currentFiber.getWaiteeAs[FiberImpl]
+        val isVoid = payload.asInstanceOf[Boolean]
+        val payload2 = if isVoid then () else fiber.getOrMakeZipper
+        loopStep(payload2, step, stack, store)
 
       case Tags.NotifyUnit =>
         loopStep((), step, stack, store)
@@ -309,7 +311,7 @@ private sealed abstract class Engine0 extends Runnable:
           case Left(e) => loopThrow(e, stack, store)
 
       case Tags.NotifyBlocker =>
-        val blocker = payload.asInstanceOf[Blocker]
+        val blocker = currentFiber.getWaiteeAs[Blocker]
         if blocker.isEither then
           val payload2 = blocker.getCompletion match
             case Bits.Completion_Success => Right(blocker.getResult)
@@ -683,8 +685,7 @@ private sealed abstract class Engine0 extends Runnable:
     //-------------------
     val waitee = fiber.asImpl
     if currentFiber != waitee then
-      val tag2 = if isVoid then Tags.NotifyUnit else Tags.NotifyZipper
-      currentFiber.suspend(tag2, waitee, step, stack, store)
+      currentFiber.suspend(Tags.NotifyFiber, isVoid, step, stack, store)
       val tried =
         if isCancel
         then waitee.tryGetCancelledBy(currentFiber, currentEnv.isCancellable)
@@ -705,8 +706,8 @@ private sealed abstract class Engine0 extends Runnable:
         intrinsicLoopCancel(stack, store)
       else
         val zombie = new Blocker.Zombie(currentFiber)
-        currentFiber.suspendStep(zombie, step, stack, store)
-        if currentFiber.tryGetBlocked(currentEnv.isCancellable) then
+        currentFiber.suspendStep(null, step, stack, store)
+        if currentFiber.tryGetBlocked(zombie, currentEnv.isCancellable) then
           ThreadDisowned
         else
           currentFiber.clearSuspension()
@@ -766,8 +767,8 @@ private sealed abstract class Engine0 extends Runnable:
     val store = savedStore
     //-------------------
     val blocker = new Blocker.Interruptible(currentFiber, thunk, isAttempt)
-    currentFiber.suspend(Tags.NotifyBlocker, blocker, step, stack, store)
-    if currentFiber.tryGetBlocked(currentEnv.isCancellable) then
+    currentFiber.suspend(Tags.NotifyBlocker, null, step, stack, store)
+    if currentFiber.tryGetBlocked(blocker, currentEnv.isCancellable) then
       blocker.block()
       ThreadDisowned
     else
@@ -781,8 +782,8 @@ private sealed abstract class Engine0 extends Runnable:
     val store = savedStore
     //-------------------
     val blocker = new Blocker.Sleeper(currentFiber)
-    currentFiber.suspend(Tags.NotifyBlocker, blocker, step, stack, store)
-    if currentFiber.tryGetBlocked(currentEnv.isCancellable) then
+    currentFiber.suspend(Tags.NotifyBlocker, null, step, stack, store)
+    if currentFiber.tryGetBlocked(blocker, currentEnv.isCancellable) then
       blocker.sleep(length, unit)
       ThreadDisowned
     else
@@ -843,7 +844,7 @@ private sealed abstract class Engine0 extends Runnable:
     if OnceVarImpl.Empty != value then
       intrinsicLoopStep(value, step, stack, store)
     else
-      currentFiber.suspend(Tags.NotifyOnceVar, ovar, step, stack, store)
+      currentFiber.suspend(Tags.NotifyOnceVar, null, step, stack, store)
       ovar.tryGetAwaitedBy(currentFiber, currentEnv.isCancellable) match
         case Bits.WaiterSubscribed => ThreadDisowned
         case Bits.WaiterAlreadyCancelled =>
@@ -860,7 +861,7 @@ private sealed abstract class Engine0 extends Runnable:
     val stack = savedStack
     val store = savedStore
     //-------------------
-    currentFiber.suspend(Tags.NotifyUnit, latch, step, stack, store)
+    currentFiber.suspend(Tags.NotifyUnit, null, step, stack, store)
     latch.asImpl.tryGetAwaitedBy(currentFiber, currentEnv.isCancellable) match
       case Bits.WaiterSubscribed => ThreadDisowned
       case Bits.WaiterAlreadyCancelled =>
@@ -876,7 +877,7 @@ private sealed abstract class Engine0 extends Runnable:
     val stack = savedStack
     val store = savedStore
     //-------------------
-    currentFiber.suspend(Tags.NotifyUnit, barrier, step, stack, store)
+    currentFiber.suspend(Tags.NotifyUnit, null, step, stack, store)
     barrier.asImpl.tryGetAwaitedBy(currentFiber, currentEnv.isCancellable) match
       case Bits.WaiterSubscribed => ThreadDisowned
       case Bits.WaiterAlreadyCancelled =>
@@ -892,7 +893,7 @@ private sealed abstract class Engine0 extends Runnable:
     val stack = savedStack
     val store = savedStore
     //-------------------
-    currentFiber.suspend(Tags.NotifyUnit, mutex, step, stack, store)
+    currentFiber.suspend(Tags.NotifyUnit, null, step, stack, store)
     mutex.asImpl.tryGetAcquiredBy(currentFiber, currentEnv.isCancellable) match
       case Bits.WaiterSubscribed => ThreadDisowned
       case Bits.WaiterAlreadyCancelled =>
