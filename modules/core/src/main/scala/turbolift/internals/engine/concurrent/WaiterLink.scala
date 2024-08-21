@@ -43,6 +43,13 @@ private[engine] abstract class WaiterLink extends Waitee:
     firstNext.clearWaiterLink()
     firstNext
 
+
+  private[engine] final def removeRangeOfWaitersAtSelf(last: WaiterLink): Unit =
+    val oldLast = prevWaiter.nn
+    val newFirst = last.nextWaiter.nn
+    oldLast.linkWaiterWith(newFirst)
+
+
   //@#@ unused
   private[engine] final def appendManyWaiters(that: WaiterLink): Unit =
     val leftFirst = this

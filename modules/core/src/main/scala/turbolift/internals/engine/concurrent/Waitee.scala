@@ -128,7 +128,7 @@ private abstract class Waitee extends AtomicBoolean:
     val x = firstWaiter
     if x != null then
       firstWaiter = null
-      Waitee.notifyAllWaitersLoop(x)
+      Waitee.notifyAllWaiters(x)
 
 
   final def removeFirstWaiter(): Unit =
@@ -142,11 +142,13 @@ private abstract class Waitee extends AtomicBoolean:
 
 
 private[concurrent] object Waitee:
-  def notifyAllWaitersLoop(firstWaiter: FiberImpl): Unit =
+  def notifyAllWaiters(first: FiberImpl): Unit = notifyRangeOfWaiters(first, first.prevWaiter.nn.asFiber)
+
+
+  def notifyRangeOfWaiters(first: FiberImpl, last: FiberImpl): Unit =
     //@#@OPTY use `executor.resumeMany`, but only when all waiters are on the same executor
     @tailrec def loop(waiter: FiberImpl): Unit =
       waiter.resume()
-      val next = waiter.nextWaiter.nn.asFiber
-      if next != firstWaiter then
-        loop(next)
-    loop(firstWaiter)
+      if waiter != last then
+        loop(waiter.nextWaiter.nn.asFiber)
+    loop(first)

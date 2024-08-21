@@ -25,5 +25,5 @@ private[turbolift] final class CyclicBarrierImpl(private val capacity: Int) exte
       }
 
     if savedFirstWaiter != null then
-      Waitee.notifyAllWaitersLoop(savedFirstWaiter.nn)
+      Waitee.notifyAllWaiters(savedFirstWaiter.nn)
     result
