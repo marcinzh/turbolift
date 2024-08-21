@@ -5,7 +5,7 @@ import scala.annotation.tailrec
 
 /** Either Fiber, Warp, Queque or OnceVar */
 
-private abstract class Waitee extends AtomicBoolean:
+private[engine] abstract class Waitee extends AtomicBoolean:
   protected var firstWaiter: FiberImpl | Null = null
   protected var varyingBits: Byte = 0
   /*protected*/ var theOwnership: Byte = 0 //// meaningful only in FiberImpl, but moved here for convenience
@@ -98,6 +98,14 @@ private abstract class Waitee extends AtomicBoolean:
       waiter.linkWaiterWithSelf()
     else
       x.insertWaiterBeforeSelf(waiter)
+    waiter.theOwnership = Bits.Ownership_Waitee
+    waiter.theWaitee = this
+
+
+  //// Simpler `subscribeWaiterUnsync` when we know current waiter list is empty
+  final def subscribeFirstWaiterUnsync(waiter: FiberImpl): Unit =
+    firstWaiter = waiter
+    waiter.linkWaiterWithSelf()
     waiter.theOwnership = Bits.Ownership_Waitee
     waiter.theWaitee = this
 

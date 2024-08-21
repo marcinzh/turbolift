@@ -3,13 +3,13 @@ import java.util.concurrent.TimeUnit
 import scala.annotation.{tailrec, switch}
 import turbolift.{!!, Computation, Signature, ComputationCases => CC}
 import turbolift.io.{Fiber, Zipper, Warp, Snap, Outcome, Cause, Exceptions}
-import turbolift.io.{OnceVar, CountDownLatch, CyclicBarrier, Mutex, Semaphore}
+import turbolift.io.{OnceVar, CountDownLatch, CyclicBarrier, Mutex, Semaphore, Channel}
 import turbolift.interpreter.{Interpreter, Continuation}
 import turbolift.internals.executor.Executor
 import turbolift.internals.engine.Tags
 import turbolift.internals.engine.stacked.{StepCases => SC, Step, Stack, Store, Local, Prompt, FrameKind, OpPush, OpSplit, OpCascaded}
-import turbolift.internals.engine.concurrent.{Bits, Blocker, FiberImpl, WarpImpl}
-import turbolift.internals.engine.concurrent.util.{OnceVarImpl, CountDownLatchImpl, CyclicBarrierImpl, MutexImpl, SemaphoreImpl}
+import turbolift.internals.engine.concurrent.{Bits, Blocker, Waitee, FiberImpl, WarpImpl}
+import turbolift.internals.engine.concurrent.util.{OnceVarImpl, CountDownLatchImpl, CyclicBarrierImpl, MutexImpl, SemaphoreImpl, ChannelImpl}
 import Halt.{Retire => ThreadDisowned}
 import Local.Syntax._
 import Prompt.Syntax._
@@ -303,6 +303,7 @@ private sealed abstract class Engine0 extends Runnable:
         loopStep(payload2, step, stack, store)
 
       case Tags.NotifyUnit =>
+        val _ = currentFiber.getWaiteeAs[Waitee] //@#@THOV resume-with-a-value
         loopStep((), step, stack, store)
 
       case Tags.NotifyEither =>
@@ -919,6 +920,38 @@ private sealed abstract class Engine0 extends Runnable:
         currentFiber.clearSuspension()
         intrinsicLoopStep((), step, stack, store)
 
+
+  final def intrinsicGetChannel[A](channel: Channel.Get[A]): Halt.Loop2nd =
+    val step = savedStep
+    val stack = savedStack
+    val store = savedStore
+    //-------------------
+    currentFiber.suspendStep(null, step, stack, store)
+    val (code, value) = channel.asImpl.tryGetBy(currentFiber, currentEnv.isCancellable)
+    code match
+      case Bits.WaiterSubscribed => ThreadDisowned
+      case Bits.WaiterAlreadyCancelled =>
+        currentFiber.clearSuspension()
+        intrinsicLoopCancel(stack, store)
+      case Bits.WaiteeAlreadyCompleted =>
+        currentFiber.clearSuspension()
+        intrinsicLoopStep(value, step, stack, store)
+
+
+  final def intrinsicPutChannel[A](channel: Channel.Put[A], value: A): Halt.Loop2nd =
+    val step = savedStep
+    val stack = savedStack
+    val store = savedStore
+    //-------------------
+    currentFiber.suspend(Tags.NotifyUnit, value, step, stack, store)
+    channel.asImpl.tryPutBy(currentFiber, currentEnv.isCancellable) match
+      case Bits.WaiterSubscribed => ThreadDisowned
+      case Bits.WaiterAlreadyCancelled =>
+        currentFiber.clearSuspension()
+        intrinsicLoopCancel(stack, store)
+      case Bits.WaiteeAlreadyCompleted =>
+        currentFiber.clearSuspension()
+        intrinsicLoopStep((), step, stack, store)
 
 
   //-------------------------------------------------------------------
