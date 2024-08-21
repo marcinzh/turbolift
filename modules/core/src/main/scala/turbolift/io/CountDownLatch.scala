@@ -5,7 +5,7 @@ import turbolift.internals.engine.concurrent.util.CountDownLatchImpl
 
 
 sealed trait CountDownLatch:
-  final def await: Unit !! IO = CC.intristic(_.intristicAwaitCountDownLatch(this))
+  final def await: Unit !! IO = CC.intrinsic(_.intrinsicAwaitCountDownLatch(this))
 
   final def release: Unit !! IO = !!.impure(unsafeRelease())
 

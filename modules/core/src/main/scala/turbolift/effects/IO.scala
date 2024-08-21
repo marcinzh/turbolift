@@ -28,11 +28,11 @@ case object IO extends IO:
 
   def attempt[A](thunk: => A): Either[Throwable, A] !! IO = CC.sync(isAttempt = true, thunk)
 
-  def async[A](callback: (Either[Throwable, A] => Unit) => Unit): A !! IO = CC.intristic(_.intristicAsync(callback))
+  def async[A](callback: (Either[Throwable, A] => Unit) => Unit): A !! IO = CC.intrinsic(_.intrinsicAsync(callback))
 
-  def blocking[A](thunk: => A): A !! IO = CC.intristic(_.intristicBlocking(() => thunk, isAttempt = false))
+  def blocking[A](thunk: => A): A !! IO = CC.intrinsic(_.intrinsicBlocking(() => thunk, isAttempt = false))
   
-  def blockingAttempt[A](thunk: => A): Either[Throwable, A] !! IO = CC.intristic(_.intristicBlocking(() => thunk, isAttempt = true))
+  def blockingAttempt[A](thunk: => A): Either[Throwable, A] !! IO = CC.intrinsic(_.intrinsicBlocking(() => thunk, isAttempt = true))
 
 
 
@@ -102,24 +102,24 @@ case object IO extends IO:
         cancellableSnap(use(a))
         .flatMap(release(a, _))
 
-  def cancellable[A, U <: IO](comp: A !! U): A !! U = CC.intristic(_.intristicSuppress(comp, -1))
+  def cancellable[A, U <: IO](comp: A !! U): A !! U = CC.intrinsic(_.intrinsicSuppress(comp, -1))
 
   //@#@TODO fuse
   def cancellableSnap[A, U <: IO](comp: A !! U): Snap[A] !! U = snap(cancellable(comp))
 
-  def uncancellable[A, U <: IO](comp: A !! U): A !! U = CC.intristic(_.intristicSuppress(comp, +1))
+  def uncancellable[A, U <: IO](comp: A !! U): A !! U = CC.intrinsic(_.intrinsicSuppress(comp, +1))
 
-  def snap[A, U <: IO](body: A !! U): Snap[A] !! U = CC.intristic(_.intristicSnap(body))
+  def snap[A, U <: IO](body: A !! U): Snap[A] !! U = CC.intrinsic(_.intrinsicSnap(body))
 
-  def unsnap[A](aa: Snap[A]): A !! IO = CC.intristic(_.intristicUnsnap(aa))
+  def unsnap[A](aa: Snap[A]): A !! IO = CC.intrinsic(_.intrinsicUnsnap(aa))
 
 
   //---------- Time ----------
 
 
-  def sleep(millis: Long): Unit !! IO = CC.intristic(_.intristicSleep(millis))
+  def sleep(millis: Long): Unit !! IO = CC.intrinsic(_.intrinsicSleep(millis))
 
-  def sleep(duration: FiniteDuration): Unit !! IO = CC.intristic(_.intristicSleep(duration.length, duration.unit))
+  def sleep(duration: FiniteDuration): Unit !! IO = CC.intrinsic(_.intrinsicSleep(duration.length, duration.unit))
 
   val nowRaw: Long !! IO = !!.impure(System.currentTimeMillis())
 
@@ -143,10 +143,10 @@ case object IO extends IO:
   //---------- Others ----------
 
 
-  def executor: Executor !! IO = CC.intristic(_.intristicEnvAsk(_.executor))
+  def executor: Executor !! IO = CC.intrinsic(_.intrinsicEnvAsk(_.executor))
 
-  def executeOn[A, U <: IO](exec: Executor)(body: A !! U): A !! U = CC.intristic(_.intristicExecOn(exec, body))
+  def executeOn[A, U <: IO](exec: Executor)(body: A !! U): A !! U = CC.intrinsic(_.intrinsicExecOn(exec, body))
 
   val cancel: Nothing !! IO = unsnap(Snap.Cancelled)
 
-  val yeld: Unit !! IO = CC.intristic(_.intristicYield)
+  val yeld: Unit !! IO = CC.intrinsic(_.intrinsicYield)

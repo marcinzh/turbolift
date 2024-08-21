@@ -12,10 +12,10 @@ import turbolift.interpreter.Void
 
 abstract class Continuation[A, B, S, U] extends Function1[A, B !! U]:
   /** Resumes the continuation. */
-  final override def apply(a: A): B !! U = CC.intristic(_.intristicResume(this, a))
+  final override def apply(a: A): B !! U = CC.intrinsic(_.intrinsicResume(this, a))
 
   /** Resumes the continuation, also updating the local state. */
-  final def apply(a: A, s: S): B !! U = CC.intristic(_.intristicResumePut(this, a, s))
+  final def apply(a: A, s: S): B !! U = CC.intrinsic(_.intrinsicResumePut(this, a, s))
 
   /** Tupled version of binary [[apply]]. */
   final def tupled(a_s: (A, S)): B !! U = apply(a_s._1, a_s._2)

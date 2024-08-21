@@ -16,7 +16,7 @@ object Tags:
   inline val LocalUpdate           = 9
   inline val Sync                  = 10
 
-  inline val Intristic             = 11
+  inline val Intrinsic             = 11
   inline val NotifyOnceVar         = 12
   inline val NotifyZipper          = 13
   inline val NotifyUnit            = 14
@@ -40,7 +40,7 @@ object Tags:
       case LocalUpdate           => "LocalUpdate"
       case Sync                  => "Sync"
 
-      case Intristic             => "Intristic"
+      case Intrinsic             => "Intrinsic"
       case NotifyOnceVar         => "NotifyOnceVar"
       case NotifyZipper          => "NotifyZipper"
       case NotifyUnit            => "NotifyUnit"

@@ -5,7 +5,7 @@ import turbolift.internals.engine.concurrent.util.MutexImpl
 
 
 sealed trait Mutex:
-  final def acquire: Unit !! IO = CC.intristic(_.intristicAcquireMutex(this))
+  final def acquire: Unit !! IO = CC.intrinsic(_.intrinsicAcquireMutex(this))
 
   final def release: Unit !! IO = !!.impure(unsafeRelease())
 

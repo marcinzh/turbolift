@@ -5,7 +5,7 @@ import turbolift.internals.engine.concurrent.util.CyclicBarrierImpl
 
 
 sealed trait CyclicBarrier:
-  final def await: Unit !! IO = CC.intristic(_.intristicAwaitCyclicBarrier(this))
+  final def await: Unit !! IO = CC.intrinsic(_.intrinsicAwaitCyclicBarrier(this))
 
   private[turbolift] final def asImpl: CyclicBarrierImpl = asInstanceOf[CyclicBarrierImpl]
 
