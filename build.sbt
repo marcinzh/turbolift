@@ -7,6 +7,7 @@ ThisBuild / scalacOptions ++= Seq(
   "-unchecked",
   "-Ykind-projector:underscores",
   "-Xfatal-warnings",
+  "-release", "11",
 )
 
 val Deps = {
