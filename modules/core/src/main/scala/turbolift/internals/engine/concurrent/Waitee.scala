@@ -8,7 +8,6 @@ import scala.annotation.tailrec
 private[engine] abstract class Waitee extends SpinLock:
   protected var firstWaiter: FiberImpl | Null = null
   protected var varyingBits: Byte = 0
-  /*protected*/ var theOwnership: Byte = 0 //// meaningful only in FiberImpl, but moved here for convenience
 
 
   //-------------------------------------------------------------------
@@ -22,8 +21,21 @@ private[engine] abstract class Waitee extends SpinLock:
   private[engine] final def isCancellationUnlatched: Boolean = Bits.isCancellationUnlatched(varyingBits)
 
 
+  //// {{ meaningful only in FiberImpl, but moved here for convenience
+
   inline protected final def setCancellationLatch(): Unit =
     varyingBits = (varyingBits | Bits.Cancellation_Latch_Bug).toByte
+
+  inline protected final def clearOwnership(): Unit =
+    varyingBits = (varyingBits & ~Bits.Ownership_Mask_Bug).toByte
+
+  inline protected final def setOwnershipToBlocker(): Unit =
+    varyingBits = (varyingBits | Bits.Ownership_Blocker_Bug).toByte
+
+  inline protected final def setOwnershipToWaitee(): Unit =
+    varyingBits = (varyingBits | Bits.Ownership_Waitee_Bug).toByte
+
+  //// }}
 
 
   //-------------------------------------------------------------------
@@ -94,15 +106,15 @@ private[engine] abstract class Waitee extends SpinLock:
       waiter.linkWaiterWithSelf()
     else
       x.insertWaiterBeforeSelf(waiter)
-    waiter.theOwnership = Bits.Ownership_Waitee
+    waiter.setOwnershipToWaitee()
     waiter.theWaitee = this
 
 
-  //// Simpler `subscribeWaiterUnsync` when we know current waiter list is empty
+  //// Simpler `subscribeWaiterUnsync`, for when the caller knows that waiter list is empty
   final def subscribeFirstWaiterUnsync(waiter: FiberImpl): Unit =
     firstWaiter = waiter
     waiter.linkWaiterWithSelf()
-    waiter.theOwnership = Bits.Ownership_Waitee
+    waiter.setOwnershipToWaitee()
     waiter.theWaitee = this
 
 
@@ -117,7 +129,7 @@ private[engine] abstract class Waitee extends SpinLock:
               firstWaiter = waiter.nextWaiter.nn.asFiber
             waiter.removeWaiterAtSelf()
           //// Not necessary but makes `status` more accurate
-          waiter.theOwnership = Bits.Ownership_Self
+          waiter.clearOwnership()
           waiter.clearWaiterLink()
           true
         else

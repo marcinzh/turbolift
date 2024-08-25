@@ -38,10 +38,9 @@ private sealed abstract class Engine0 extends Runnable:
 
 
   final def runCurrent(): Halt =
-    currentFiber.theOwnership = Bits.Ownership_Self
     currentTickLow = currentEnv.tickLow
     currentTickHigh = currentEnv.tickHigh
-    if cancellationCheck() then
+    if cancellationCheckOnResumption() then
       currentFiber.suspendAsCancelled()
       currentFiber.theWaitee = null
     outerLoop()
@@ -988,6 +987,11 @@ private sealed abstract class Engine0 extends Runnable:
 
   private final def cancellationCheck(): Boolean =
     currentFiber.cancellationCheck(currentEnv.isCancellable)
+
+
+  private final def cancellationCheckOnResumption(): Boolean =
+    currentFiber.cancellationCheckOnResumption(currentEnv.isCancellable)
+
 
 
 /*private[turbolift]*/ object Engine:

@@ -115,7 +115,7 @@ private[turbolift] final class FiberImpl private (
 
 
   private[engine] def setBlockerUnsync(blocker: Blocker): Unit =
-    theOwnership = Bits.Ownership_Blocker
+    setOwnershipToBlocker()
     theWaitee = blocker
 
 
@@ -147,6 +147,18 @@ private[turbolift] final class FiberImpl private (
       false
 
 
+  private[engine] def cancellationCheckOnResumption(isCancellable: Boolean): Boolean =
+    atomically {
+      if isCancellable && isCancellationUnlatched then
+        setCancellationLatch()
+        clearOwnership()
+        true
+      else
+        clearOwnership()
+        false
+    }
+
+
   private[engine] def cancelBySelf(): Unit =
     atomically {
       varyingBits = (varyingBits | Bits.Cancellation_Signal | Bits.Cancellation_Latch).toByte
@@ -160,9 +172,8 @@ private[turbolift] final class FiberImpl private (
   private[engine] def tryGetCancelledBy(canceller: FiberImpl, isCancellerCancellable: Boolean): Int =
     var savedLeftRacer: WaiterLink | Null = null
     var savedRightRacer: WaiterLink | Null = null
-    var savedVaryingBits: Byte = 0
-    var savedOwnership: Byte = 0
     var savedWaitee: Waitee | Blocker | Null = null
+    var savedVaryingBits: Byte = 0
     var willDescend = false
 
     val result =
@@ -173,9 +184,8 @@ private[turbolift] final class FiberImpl private (
             willDescend = true
             savedLeftRacer = prevWaiter
             savedRightRacer = nextWaiter
-            savedVaryingBits = varyingBits
-            savedOwnership = theOwnership
             savedWaitee = theWaitee
+            savedVaryingBits = varyingBits
           subscribeWaiterUnsync(canceller)
           Bits.WaiterSubscribed
         else
@@ -183,7 +193,7 @@ private[turbolift] final class FiberImpl private (
       }
 
     if willDescend then
-      val racer = doDescend(savedLeftRacer, savedRightRacer, savedVaryingBits, savedOwnership, savedWaitee)
+      val racer = doDescend(savedLeftRacer, savedRightRacer, savedWaitee, savedVaryingBits)
       if racer != null then
         racer.deepCancelLoop(this)
     result
@@ -197,9 +207,8 @@ private[turbolift] final class FiberImpl private (
   private[concurrent] override def deepCancelDown(): ChildLink | Null =
     var savedLeftRacer: WaiterLink | Null = null
     var savedRightRacer: WaiterLink | Null = null
-    var savedVaryingBits: Byte = 0
-    var savedOwnership: Byte = 0
     var savedWaitee: Waitee | Blocker | Null = null
+    var savedVaryingBits: Byte = 0
 
     val willDescend =
       atomically {
@@ -207,16 +216,15 @@ private[turbolift] final class FiberImpl private (
           varyingBits = (varyingBits | Bits.Cancellation_Signal).toByte
           savedLeftRacer = prevWaiter
           savedRightRacer = nextWaiter
-          savedOwnership = theOwnership
-          savedVaryingBits = varyingBits
           savedWaitee = theWaitee
+          savedVaryingBits = varyingBits
           true
         else
           false
       }
 
     if willDescend then
-      doDescend(savedLeftRacer, savedRightRacer, savedVaryingBits, savedOwnership, savedWaitee)
+      doDescend(savedLeftRacer, savedRightRacer, savedWaitee, savedVaryingBits)
     else
       null
 
@@ -248,11 +256,10 @@ private[turbolift] final class FiberImpl private (
   private def doDescend(
     savedLeftRacer: WaiterLink | Null,
     savedRightRacer: WaiterLink | Null,
-    savedVaryingBits: Byte,
-    savedOwnership: Byte,
     savedWaitee: Waitee | Blocker | Null,
+    savedVaryingBits: Byte,
   ): FiberImpl | Null =
-    savedOwnership match
+    Bits.getOwnership(savedVaryingBits) match
       case Bits.Ownership_Self =>
         Bits.getArbiter(savedVaryingBits) match
           case Bits.Arbiter_None => null
@@ -541,23 +548,23 @@ private[turbolift] final class FiberImpl private (
   override def unsafeStatus(): Fiber.Status =
     var savedLeftLink: WaiterLink | Null = null
     var savedRightLink: WaiterLink | Null = null
-    var savedVaryingBits: Byte = 0
-    var savedOwnership: Byte = 0
     var savedWaitee: Waitee | Blocker | Null = null
+    var savedVaryingBits: Byte = 0
+
     atomically {
-      savedVaryingBits = varyingBits
-      savedOwnership = theOwnership
-      savedWaitee = theWaitee
       savedLeftLink = prevWaiter
       savedRightLink = nextWaiter
+      savedWaitee = theWaitee
+      savedVaryingBits = varyingBits
     }
+
     if Bits.isPending(savedVaryingBits) then
       val role =
         def l = savedLeftLink.nn.asFiber
         def r = savedRightLink.nn.asFiber
         def w = savedWaitee.asInstanceOf[Fiber.Untyped | Warp | OnceVar.Untyped]
         import Fiber.Role
-        theOwnership match
+        Bits.getOwnership(savedVaryingBits) match
           case Bits.Ownership_Self =>
             Bits.getArbiter(savedVaryingBits) match
               case Bits.Arbiter_None => if savedLeftLink == null then Role.Runner else Role.Standby
