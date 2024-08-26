@@ -33,6 +33,7 @@ trait ErrorEffect[E, E1] extends Effect[ErrorSignature[E, E1]] with ErrorSignatu
   object handlers:
     def first(using One[E, E1]): ThisHandler[Identity, Either[E, _], Any] = ErrorEffect.this.errorHandler_first
     def all(using Accum[E, E1]): ThisHandler[Identity, Either[E, _], Any] = ErrorEffect.this.errorHandler_all
+    def allReduce(using E =:= E1)(plus: (E, E1) => E): ThisHandler[Identity, Either[E, _], Any] = all(using Accum.instanceEq( plus))
 
 
 trait Error[E] extends ErrorEffect[E, E]:

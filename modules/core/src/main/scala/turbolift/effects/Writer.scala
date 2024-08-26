@@ -21,12 +21,14 @@ trait WriterEffect[W, W1] extends Effect[WriterSignature[W, W1]] with WriterSign
   final override def censor[A, U <: this.type](f: W => W)(body: A !! U): A !! U = perform(_.censor(f)(body))
   final override def pass[A, U <: this.type](body: (A, W => W) !! U): A !! U = perform(_.pass(body))
 
-  final def tell[K, V1](k: K, v: V1)(implicit ev: ((K, V1)) <:< W1): Unit !! this.type = tell(ev((k, v)))
+  final def tell[K, V1](k: K, v: V1)(using ev: ((K, V1)) <:< W1): Unit !! this.type = tell(ev((k, v)))
 
   /** Predefined handlers for this effect. */
   object handlers:
-    def local(implicit W: AccumZero[W, W1]): ThisHandler[Identity, (_, W), Any] = WriterEffect.this.writerHandler_local
-    def shared(implicit W: AccumZero[W, W1]): ThisHandler[Identity, (_, W), IO] = WriterEffect.this.writerHandler_shared
+    def local(using W: AccumZero[W, W1]): ThisHandler[Identity, (_, W), Any] = WriterEffect.this.writerHandler_local
+    def shared(using W: AccumZero[W, W1]): ThisHandler[Identity, (_, W), IO] = WriterEffect.this.writerHandler_shared
+    def localFold(using W =:= W1)(zero: W, plus: (W, W1) => W): ThisHandler[Identity, (_, W), Any] = local(using AccumZero.instanceEq(zero, plus))
+    def sharedFold(using W =:= W1)(zero: W, plus: (W, W1) => W): ThisHandler[Identity, (_, W), IO] = shared(using AccumZero.instanceEq(zero, plus))
 
 
 trait Writer[W] extends WriterEffect[W, W]:

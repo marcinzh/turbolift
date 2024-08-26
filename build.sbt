@@ -13,7 +13,6 @@ ThisBuild / scalacOptions ++= Seq(
 val Deps = {
   val specs2_v = "5.4.0"
   object deps {
-    val cats_core = "org.typelevel" %% "cats-core" % "2.12.0"
     val specs2_core = "org.specs2" %% "specs2-core" % specs2_v % "test"
     val specs2_extra = "org.specs2" %% "specs2-matcher-extra" % specs2_v % "test"
     val jol = "org.openjdk.jol" % "jol-core" % "0.17"
@@ -36,7 +35,6 @@ lazy val core = project
   .settings(Test / parallelExecution := false)
   .settings(Test / logBuffered := false)
   .settings(libraryDependencies ++= Seq(
-    Deps.cats_core,
     Deps.specs2_core,
     Deps.specs2_extra,
   ))

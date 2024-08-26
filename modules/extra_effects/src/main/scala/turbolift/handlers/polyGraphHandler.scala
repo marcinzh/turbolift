@@ -40,7 +40,7 @@ extension [K, V](fx: PolyGraph[K, V])
         froms.foreachEff(Propagate.tell(_, to))
 
     .toHandler
-    .provideWith(Propagate.handler ***! Compute.handler(AccumZero.collisionlessMap))
+    .provideWith(Propagate.handler ***! Compute.handler(using AccumZero.forCollisionlessMap))
     .mapState { case (prop, comp) =>
       solvePoly(
         bottom,
