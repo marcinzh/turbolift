@@ -1,11 +1,11 @@
 package turbolift.internals.engine.concurrent
-import java.util.concurrent.atomic.AtomicBoolean
+import turbolift.internals.engine.concurrent.atomic.AtomicBoolVH
 import scala.annotation.tailrec
 
 
 /** Either Fiber, Warp, Queque or OnceVar */
 
-private[engine] abstract class Waitee extends SpinLock:
+private[engine] abstract class Waitee extends AtomicBoolVH(false):
   protected var firstWaiter: FiberImpl | Null = null
   protected var varyingBits: Byte = 0
 
@@ -41,6 +41,10 @@ private[engine] abstract class Waitee extends SpinLock:
   //-------------------------------------------------------------------
   // atomically
   //-------------------------------------------------------------------
+
+
+  inline protected final def spinAcquire(): Boolean = casVH(false, true)
+  inline protected final def spinRelease(): Unit = setVH(false)
 
 
   inline final def atomically[A](inline body: => A): A =

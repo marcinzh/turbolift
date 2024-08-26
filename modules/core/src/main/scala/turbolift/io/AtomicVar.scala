@@ -1,8 +1,8 @@
 package turbolift.io
-import java.util.concurrent.atomic.{AtomicReference, AtomicInteger, AtomicLong, AtomicBoolean}
 import scala.annotation.tailrec
 import turbolift.!!
 import turbolift.effects.IO
+import turbolift.internals.engine.concurrent.atomic.{AtomicRefVH, AtomicIntVH, AtomicLongVH, AtomicBoolVH}
 
 
 sealed trait AtomicVar[@specialized(Int, Long, Boolean) S] extends AtomicVar.Get[S] with AtomicVar.Put[S]:
@@ -98,39 +98,35 @@ object AtomicVar:
 
   def freshInt(initial: Int): AtomicVar[Int] !! IO =
     !!.impure:
-      val underlying = new AtomicInteger(initial)
-      new AtomicVar[Int]:
-        override def unsafeGet: Int = underlying.get
-        override def unsafePut(s: Int): Unit = underlying.set(s)
-        override def unsafeSwap(s: Int): Int = underlying.getAndSet(s)
-        override def unsafeCompareAndSet(a: Int, b: Int): Boolean = underlying.compareAndSet(a, b)
+      new AtomicIntVH(initial) with AtomicVar[Int]:
+        override def unsafeGet: Int = getVH
+        override def unsafePut(s: Int): Unit = setVH(s)
+        override def unsafeSwap(s: Int): Int = gasVH(s)
+        override def unsafeCompareAndSet(a: Int, b: Int): Boolean = casVH(a, b)
 
 
   def freshLong(initial: Long): AtomicVar[Long] !! IO =
     !!.impure:
-      val underlying = new AtomicLong(initial)
-      new AtomicVar[Long]:
-        override def unsafeGet: Long = underlying.get
-        override def unsafePut(s: Long): Unit = underlying.set(s)
-        override def unsafeSwap(s: Long): Long = underlying.getAndSet(s)
-        override def unsafeCompareAndSet(a: Long, b: Long): Boolean = underlying.compareAndSet(a, b)
+      new AtomicLongVH(initial) with AtomicVar[Long]:
+        override def unsafeGet: Long = getVH
+        override def unsafePut(s: Long): Unit = setVH(s)
+        override def unsafeSwap(s: Long): Long = gasVH(s)
+        override def unsafeCompareAndSet(a: Long, b: Long): Boolean = casVH(a, b)
 
 
   def freshBoolean(initial: Boolean): AtomicVar[Boolean] !! IO =
     !!.impure:
-      val underlying = new AtomicBoolean(initial)
-      new AtomicVar[Boolean]:
-        override def unsafeGet: Boolean = underlying.get
-        override def unsafePut(s: Boolean): Unit = underlying.set(s)
-        override def unsafeSwap(s: Boolean): Boolean = underlying.getAndSet(s)
-        override def unsafeCompareAndSet(a: Boolean, b: Boolean): Boolean = underlying.compareAndSet(a, b)
+      new AtomicBoolVH(initial) with AtomicVar[Boolean]:
+        override def unsafeGet: Boolean = getVH
+        override def unsafePut(s: Boolean): Unit = setVH(s)
+        override def unsafeSwap(s: Boolean): Boolean = gasVH(s)
+        override def unsafeCompareAndSet(a: Boolean, b: Boolean): Boolean = casVH(a, b)
 
 
   def freshRef[S](initial: S): AtomicVar[S] !! IO =
     !!.impure:
-      val underlying = new AtomicReference(initial)
-      new AtomicVar[S]:
-        override def unsafeGet: S = underlying.get.asInstanceOf[S]
-        override def unsafePut(s: S): Unit = underlying.set(s)
-        override def unsafeSwap(s: S): S = underlying.getAndSet(s).asInstanceOf[S]
-        override def unsafeCompareAndSet(a: S, b: S): Boolean = underlying.compareAndSet(a, b)
+      new AtomicRefVH(initial) with AtomicVar[S]:
+        override def unsafeGet: S = getVH.asInstanceOf[S]
+        override def unsafePut(s: S): Unit = setVH(s)
+        override def unsafeSwap(s: S): S = gasVH(s).asInstanceOf[S]
+        override def unsafeCompareAndSet(a: S, b: S): Boolean = casVH(a, b)
