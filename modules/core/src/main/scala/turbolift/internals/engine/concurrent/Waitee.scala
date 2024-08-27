@@ -140,7 +140,8 @@ private[engine] abstract class Waitee extends SpinLock:
       waiter.resume()
 
 
-  final def notifyAllWaiters(): Unit =
+  //// Will need to redesign anyway
+  final def finallyNotifyAllWaiters(): Unit =
     val x = firstWaiter
     if x != null then
       firstWaiter = null
@@ -164,7 +165,8 @@ private[concurrent] object Waitee:
   def notifyRangeOfWaiters(first: FiberImpl, last: FiberImpl): Unit =
     //@#@OPTY use `executor.resumeMany`, but only when all waiters are on the same executor
     @tailrec def loop(waiter: FiberImpl): Unit =
+      val next = waiter.nextWaiter.nn.asFiber
       waiter.resume()
       if waiter != last then
-        loop(waiter.nextWaiter.nn.asFiber)
+        loop(next)
     loop(first)

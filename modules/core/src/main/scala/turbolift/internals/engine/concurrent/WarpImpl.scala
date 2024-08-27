@@ -212,7 +212,7 @@ private[turbolift] final class WarpImpl private (
 
 
   private def doFinalize(): Unit =
-    notifyAllWaiters()
+    finallyNotifyAllWaiters()
 
     theParent match
       case warp: WarpImpl => warp.removeWarp(this)

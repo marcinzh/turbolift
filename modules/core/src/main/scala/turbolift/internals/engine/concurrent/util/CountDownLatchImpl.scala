@@ -15,15 +15,16 @@ private[turbolift] final class CountDownLatchImpl(private var counter: Int) exte
 
 
   override def unsafeRelease(): Unit =
-    val willFinalize =
-      atomically {
-        val n = counter - 1
-        if n >= 0 then
-          counter = n
-          n == 0
-        else
-          false
-      }
+    var savedFirstWaiter: FiberImpl | Null = null
 
-    if willFinalize then
-      notifyAllWaiters()
+    atomically {
+      val n = counter - 1
+      if n >= 0 then
+        counter = n
+        if n == 0 then
+          savedFirstWaiter = firstWaiter
+          firstWaiter = null
+    }
+
+    if savedFirstWaiter != null then
+      Waitee.notifyAllWaiters(savedFirstWaiter.nn)

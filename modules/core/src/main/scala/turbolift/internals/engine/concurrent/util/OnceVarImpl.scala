@@ -30,7 +30,7 @@ private[turbolift] final class OnceVarImpl extends Waitee with OnceVar.Unsealed:
       }
 
     if willFinalize then
-      notifyAllWaiters()
+      finallyNotifyAllWaiters()
     willFinalize
 
 

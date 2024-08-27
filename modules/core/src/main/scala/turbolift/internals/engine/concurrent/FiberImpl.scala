@@ -57,7 +57,7 @@ private[turbolift] final class FiberImpl private (
     val isLastRacer = if isRacer then endRace() else false
 
     //// As a WAITEE:
-    notifyAllWaiters()
+    finallyNotifyAllWaiters()
 
     //// As a RACER or CHILD:
     theParent match
