@@ -14,8 +14,10 @@ private sealed trait AccumZeroLow:
     override def plus1(a: T, b: T): T = ev.plus(a, b)
 
 
-  given forNumeric[T](using ev: Numeric[T]): AccumZero[T, T] = new AccumZero.OneIdentity[T]:
+  given forNumeric[T](using ev: Numeric[T]): AccumZero[T, T] with
+    override def one(a: T): T = a
     override def zero: T = ev.zero
+    override def plus1(a: T, b: T): T = ev.plus(a, b)
     override def plus(a: T, b: T): T = ev.plus(a, b)
 
 
@@ -39,34 +41,35 @@ object AccumZero extends AccumZeroLow:
     instance(zero, plus.asInstanceOf[(T, T) => T]).asInstanceOf[AccumZero[T, O]]
 
 
-  trait OneIdentity[T] extends AccumZero[T, T]:
-    final override def one(a: T): T = a
-    final override def plus1(a: T, b: T): T = plus(a, b)
-
-
-  given forUnit: AccumZero[Unit, Unit] = new OneIdentity[Unit]:
+  given forUnit: AccumZero[Unit, Unit] with
     override def zero: Unit = ()
+    override def one(a: Unit): Unit = ()
+    override def plus1(a: Unit, b: Unit): Unit = ()
     override def plus(a: Unit, b: Unit): Unit = ()
 
 
-  given forInt: AccumZero[Int, Int] = new OneIdentity[Int]:
+  given forInt: AccumZero[Int, Int] with
     override def zero: Int = 0
+    override def one(a: Int): Int = a
+    override def plus1(a: Int, b: Int): Int = a + b
     override def plus(a: Int, b: Int): Int = a + b
 
 
-  given forLong: AccumZero[Long, Long] = new OneIdentity[Long]:
-    override def zero: Long = 0L
+  given forLong: AccumZero[Long, Long] with
+    override def zero: Long = 0
+    override def one(a: Long): Long = a
+    override def plus1(a: Long, b: Long): Long = a + b
     override def plus(a: Long, b: Long): Long = a + b
 
 
-  given forString: AccumZero[String, Char] = new:
+  given forString: AccumZero[String, Char] with
     override def zero: String = ""
     override def one(a: Char): String = a.toString
     override def plus1(a: String, b: Char): String = a :+ b
     override def plus(a: String, b: String): String = a ++ b
 
 
-  given forOption[T](using ev: Plus[T]): AccumZero[Option[T], T] = new:
+  given forOption[T](using ev: Plus[T]): AccumZero[Option[T], T] with
     override def zero: Option[T] = None
     override def one(a: T): Option[T] = Some(a)
 
@@ -83,49 +86,49 @@ object AccumZero extends AccumZeroLow:
           case Some(b) => Some(ev.plus(a, b))
 
 
-  given forIArray[T: ClassTag]: AccumZero[IArray[T], T] = new:
+  given forIArray[T: ClassTag]: AccumZero[IArray[T], T] with
     override def zero: IArray[T] = IArray.empty[T]
     override def one(a: T): IArray[T] = IArray(a)
     override def plus1(aa: IArray[T], b: T): IArray[T] = aa :+ b
     override def plus(aa: IArray[T], bb: IArray[T]): IArray[T] = aa ++ bb
 
 
-  given forList[T]: AccumZero[List[T], T] = new:
+  given forList[T]: AccumZero[List[T], T] with
     override def zero: List[T] = Nil
     override def one(a: T): List[T] = a :: Nil
     override def plus1(aa: List[T], b: T): List[T] = aa :+ b
     override def plus(aa: List[T], bb: List[T]): List[T] = aa ++ bb
 
 
-  given forVector[T]: AccumZero[Vector[T], T] = new:
+  given forVector[T]: AccumZero[Vector[T], T] with
     override def zero: Vector[T] = Vector.empty[T]
     override def one(a: T): Vector[T] = Vector(a)
     override def plus1(aa: Vector[T], b: T): Vector[T] = aa :+ b
     override def plus(aa: Vector[T], bb: Vector[T]): Vector[T] = aa ++ bb
 
 
-  given forQueue[T]: AccumZero[Queue[T], T] = new:
+  given forQueue[T]: AccumZero[Queue[T], T] with
     override def zero: Queue[T] = Queue.empty[T]
     override def one(a: T): Queue[T] = Queue(a)
     override def plus1(aa: Queue[T], b: T): Queue[T] = aa :+ b
     override def plus(aa: Queue[T], bb: Queue[T]): Queue[T] = aa ++ bb
 
 
-  given forSet[T]: AccumZero[Set[T], T] = new:
+  given forSet[T]: AccumZero[Set[T], T] with
     override def zero: Set[T] = Set.empty[T]
     override def one(a: T): Set[T] = Set(a)
     override def plus1(aa: Set[T], b: T): Set[T] = aa + b
     override def plus(aa: Set[T], bb: Set[T]): Set[T] = aa | bb
 
 
-  given forSortedSet[T: Ordering]: AccumZero[SortedSet[T], T] = new:
+  given forSortedSet[T: Ordering]: AccumZero[SortedSet[T], T] with
     override def zero: SortedSet[T] = SortedSet.empty[T]
     override def one(a: T): SortedSet[T] = SortedSet(a)
     override def plus1(aa: SortedSet[T], b: T): SortedSet[T] = aa + b
     override def plus(aa: SortedSet[T], bb: SortedSet[T]): SortedSet[T] = aa | bb
 
 
-  given forMap[K, T, O](using ev: Accum[T, O]): AccumZero[Map[K, T], (K, O)] = new:
+  given forMap[K, T, O](using ev: Accum[T, O]): AccumZero[Map[K, T], (K, O)] with
     override def zero: Map[K, T] = Map.empty[K, T]
     override def one(kv: (K, O)): Map[K, T] = Map((kv._1, ev.one(kv._2)))
 
@@ -142,7 +145,7 @@ object AccumZero extends AccumZeroLow:
           case None => Some(v)
 
 
-  given forSortedMap[K: Ordering, T, O](using ev: Accum[T, O]): AccumZero[SortedMap[K, T], (K, O)] = new:
+  given forSortedMap[K: Ordering, T, O](using ev: Accum[T, O]): AccumZero[SortedMap[K, T], (K, O)] with
     override def zero: SortedMap[K, T] = SortedMap.empty[K, T]
     override def one(kv: (K, O)): SortedMap[K, T] = SortedMap((kv._1, ev.one(kv._2)))
 
