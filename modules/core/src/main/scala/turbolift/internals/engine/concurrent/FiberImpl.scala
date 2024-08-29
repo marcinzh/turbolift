@@ -15,7 +15,7 @@ private[turbolift] final class FiberImpl private (
   private[engine] var theParent: WarpImpl | FiberImpl | Hook,
   private[engine] var theName: String,
 ) extends ChildLink with Fiber.Unsealed with Function1[Either[Throwable, Any], Unit]:
-  private[engine] var theWaitee: Waitee | Blocker | Null = null
+  private[engine] var theWaiteeOrBlocker: Waitee | Blocker | Null = null
   private[engine] var suspendedTag: Byte = 0
   private[engine] var suspendedPayload: Any = null
   private[engine] var suspendedStep: Step | Null = null
@@ -110,19 +110,8 @@ private[turbolift] final class FiberImpl private (
 
   private[engine] def tryGetBlocked(blocker: Blocker, isCancellable: Boolean): Boolean =
     atomicallyTry(isCancellable) {
-      setBlockerUnsync(blocker)
+      theWaiteeOrBlocker = blocker
     }
-
-
-  private[engine] def setBlockerUnsync(blocker: Blocker): Unit =
-    setOwnershipToBlocker()
-    theWaitee = blocker
-
-
-  private[engine] def getWaiteeAs[T <: Waitee | Blocker]: T =
-    val x = theWaitee.asInstanceOf[T]
-    theWaitee = null
-    x
 
 
   private[engine] def tryGetAwaitedBy(waiter: FiberImpl, isWaiterCancellable: Boolean): Int =
@@ -147,18 +136,6 @@ private[turbolift] final class FiberImpl private (
       false
 
 
-  private[engine] def cancellationCheckOnResumption(isCancellable: Boolean): Boolean =
-    atomically {
-      if isCancellable && isCancellationUnlatched then
-        setCancellationLatch()
-        clearOwnership()
-        true
-      else
-        clearOwnership()
-        false
-    }
-
-
   private[engine] def cancelBySelf(): Unit =
     atomically {
       varyingBits = (varyingBits | Bits.Cancellation_Signal | Bits.Cancellation_Latch).toByte
@@ -172,7 +149,7 @@ private[turbolift] final class FiberImpl private (
   private[engine] def tryGetCancelledBy(canceller: FiberImpl, isCancellerCancellable: Boolean): Int =
     var savedLeftRacer: WaiterLink | Null = null
     var savedRightRacer: WaiterLink | Null = null
-    var savedWaitee: Waitee | Blocker | Null = null
+    var savedWaiteeOrBlocker: Waitee | Blocker | Null = null
     var savedVaryingBits: Byte = 0
     var willDescend = false
 
@@ -184,7 +161,7 @@ private[turbolift] final class FiberImpl private (
             willDescend = true
             savedLeftRacer = prevWaiter
             savedRightRacer = nextWaiter
-            savedWaitee = theWaitee
+            savedWaiteeOrBlocker = theWaiteeOrBlocker
             savedVaryingBits = varyingBits
           subscribeWaiterUnsync(canceller)
           Bits.WaiterSubscribed
@@ -193,7 +170,7 @@ private[turbolift] final class FiberImpl private (
       }
 
     if willDescend then
-      val racer = doDescend(savedLeftRacer, savedRightRacer, savedWaitee, savedVaryingBits)
+      val racer = doDescend(savedLeftRacer, savedRightRacer, savedWaiteeOrBlocker, savedVaryingBits)
       if racer != null then
         racer.deepCancelLoop(this)
     result
@@ -207,7 +184,7 @@ private[turbolift] final class FiberImpl private (
   private[concurrent] override def deepCancelDown(): ChildLink | Null =
     var savedLeftRacer: WaiterLink | Null = null
     var savedRightRacer: WaiterLink | Null = null
-    var savedWaitee: Waitee | Blocker | Null = null
+    var savedWaiteeOrBlocker: Waitee | Blocker | Null = null
     var savedVaryingBits: Byte = 0
 
     val willDescend =
@@ -216,7 +193,7 @@ private[turbolift] final class FiberImpl private (
           varyingBits = (varyingBits | Bits.Cancellation_Signal).toByte
           savedLeftRacer = prevWaiter
           savedRightRacer = nextWaiter
-          savedWaitee = theWaitee
+          savedWaiteeOrBlocker = theWaiteeOrBlocker
           savedVaryingBits = varyingBits
           true
         else
@@ -224,7 +201,7 @@ private[turbolift] final class FiberImpl private (
       }
 
     if willDescend then
-      doDescend(savedLeftRacer, savedRightRacer, savedWaitee, savedVaryingBits)
+      doDescend(savedLeftRacer, savedRightRacer, savedWaiteeOrBlocker, savedVaryingBits)
     else
       null
 
@@ -256,23 +233,21 @@ private[turbolift] final class FiberImpl private (
   private def doDescend(
     savedLeftRacer: WaiterLink | Null,
     savedRightRacer: WaiterLink | Null,
-    savedWaitee: Waitee | Blocker | Null,
+    savedWaiteeOrBlocker: Waitee | Blocker | Null,
     savedVaryingBits: Byte,
   ): FiberImpl | Null =
-    Bits.getOwnership(savedVaryingBits) match
-      case Bits.Ownership_Self =>
+    savedWaiteeOrBlocker match
+      case null =>
         Bits.getArbiter(savedVaryingBits) match
           case Bits.Arbiter_None => null
           case Bits.Arbiter_Right => savedRightRacer.asInstanceOf[FiberImpl]
           case _ => savedLeftRacer.asInstanceOf[FiberImpl]
 
-      case Bits.Ownership_Waitee =>
-        val waitee = savedWaitee.asInstanceOf[Waitee]
+      case waitee: Waitee =>
         waitee.unsubscribeWaiter(this)
         null
 
-      case Bits.Ownership_Blocker =>
-        val blocker = savedWaitee.asInstanceOf[Blocker]
+      case blocker: Blocker =>
         blocker.unblock()
         null
 
@@ -419,13 +394,15 @@ private[turbolift] final class FiberImpl private (
 
 
   //-------------------------------------------------------------------
-  // Suspend & Resume
+  // Resume
   //-------------------------------------------------------------------
 
 
   //// `this` == callback for IO.async
-  override def apply(e: Either[Throwable, Any]): Unit =
-    suspendedPayload = e
+  override def apply(ee: Either[Throwable, Any]): Unit =
+    ee match
+      case Right(a) => suspendedPayload = a
+      case Left(e) => suspendAsFailure(e)
     resume()
 
 
@@ -433,6 +410,45 @@ private[turbolift] final class FiberImpl private (
     assert(isSuspended)
     val env = OpPush.findTopmostEnv(suspendedStack.nn, suspendedStore.nn)
     env.executor.resume(this)
+
+
+  private[engine] def standbyWaiter(value: Any): Unit =
+    theWaiteeOrBlocker = null
+    suspendedPayload = value
+
+
+  private[engine] def resumeWaiter(): Unit =
+    theWaiteeOrBlocker = null
+    resume()
+
+
+  private[engine] def resumeWaiterAsSuccess(value: Any): Unit =
+    theWaiteeOrBlocker = null
+    suspendedPayload = value
+    resume()
+
+
+  private[engine] def resumeWaiterAsCancelled(): Unit =
+    theWaiteeOrBlocker = null
+    suspendAsCancelled()
+    resume()
+
+
+  private[engine] def resumeWaiterAsFailure(cause: Cause): Unit =
+    theWaiteeOrBlocker = null
+    suspendAsFailure(cause)
+    resume()
+
+
+  private[engine] def resumeWaiterAsFailure(throwable: Throwable): Unit =
+    theWaiteeOrBlocker = null
+    suspendAsFailure(throwable)
+    resume()
+
+
+  //-------------------------------------------------------------------
+  // Suspend
+  //-------------------------------------------------------------------
 
 
   private def isSuspended: Boolean = suspendedStack != null
@@ -500,7 +516,7 @@ private[turbolift] final class FiberImpl private (
 
 
   private[engine] def suspendAsSuccessPure(value: Any): Unit =
-    suspendedTag = suspendedStep.nn.tag.toByte
+    suspendedTag = suspendedStep.nn.tag.toByte //@#@NNEC? call sites
     suspendedPayload = value
 
 
@@ -519,6 +535,10 @@ private[turbolift] final class FiberImpl private (
     suspendedTag = Step.Throw.tag.toByte
     suspendedStep = Step.Throw
     suspendedPayload = cause
+
+
+  private[engine] def suspendAsFailure(throwable: Throwable): Unit =
+    suspendAsFailure(Cause(throwable))
 
 
   //-------------------------------------------------------------------
@@ -548,13 +568,13 @@ private[turbolift] final class FiberImpl private (
   override def unsafeStatus(): Fiber.Status =
     var savedLeftLink: WaiterLink | Null = null
     var savedRightLink: WaiterLink | Null = null
-    var savedWaitee: Waitee | Blocker | Null = null
+    var savedWaiteeOrBlocker: Waitee | Blocker | Null = null
     var savedVaryingBits: Byte = 0
 
     atomically {
       savedLeftLink = prevWaiter
       savedRightLink = nextWaiter
-      savedWaitee = theWaitee
+      savedWaiteeOrBlocker = theWaiteeOrBlocker
       savedVaryingBits = varyingBits
     }
 
@@ -562,17 +582,17 @@ private[turbolift] final class FiberImpl private (
       val role =
         def l = savedLeftLink.nn.asFiber
         def r = savedRightLink.nn.asFiber
-        def w = savedWaitee.asInstanceOf[Fiber.Untyped | Warp | OnceVar.Untyped]
+        def w = savedWaiteeOrBlocker.asInstanceOf[Fiber.Untyped | Warp | OnceVar.Untyped]
         import Fiber.Role
-        Bits.getOwnership(savedVaryingBits) match
-          case Bits.Ownership_Self =>
+        savedWaiteeOrBlocker match
+          case null =>
             Bits.getArbiter(savedVaryingBits) match
               case Bits.Arbiter_None => if savedLeftLink == null then Role.Runner else Role.Standby
               case Bits.Arbiter_Left => Role.Arbiter(List(l))
               case Bits.Arbiter_Right => Role.Arbiter(List(r))
               case Bits.Arbiter_Both => Role.Arbiter(List(l, r))
-          case Bits.Ownership_Waitee => Role.Waiter(w)
-          case Bits.Ownership_Blocker => Role.Blocker
+          case _: Waitee => Role.Waiter(w)
+          case _: Blocker => Role.Blocker
       val isCancelled = Bits.isCancellationSignalled(savedVaryingBits)
       Fiber.Status.Pending(role, isCancelled = isCancelled, isRacer = isRacer)
     else
@@ -613,6 +633,9 @@ private[turbolift] final class FiberImpl private (
     nextWaiter = right
 
   def createChild(bits: Byte): FiberImpl = new FiberImpl(bits, this, "")
+
+  private[engine] def payloadAs[T]: T = suspendedPayload.asInstanceOf[T]
+  private[engine] def payloadAs_=[T](value: T): Unit = suspendedPayload = value
 
 
 private[turbolift] object FiberImpl:

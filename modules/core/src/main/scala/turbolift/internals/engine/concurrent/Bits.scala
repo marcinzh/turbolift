@@ -41,7 +41,6 @@ private[engine] object Bits:
   ////    arbiter      = 2 bits
   ////    completion   = 2 bits
   ////    cancellation = 2 bits
-  ////    ownership    = 2 bits (1 would be enough, but easier to refac with 2)
 
   inline val Arbiter_None  = Racer_None
   inline val Arbiter_Left  = Racer_Left
@@ -61,21 +60,12 @@ private[engine] object Bits:
   inline val Cancellation_Mask    = 0x3 << Cancellation_Shift
   inline val Cancellation_Shift   = 4
 
-  inline val Ownership_Self       =   0 << Ownership_Shift
-  inline val Ownership_Waitee     =   1 << Ownership_Shift
-  inline val Ownership_Blocker    =   2 << Ownership_Shift
-  inline val Ownership_Mask       = 0x3 << Ownership_Shift
-  inline val Ownership_Shift      = 6
-
   //@#@ temporary duplicates until compiler bug is fixed
+  final val Completion_Success_bug: Int = Completion_Success
   final val Cancellation_Latch_Bug: Int = Cancellation_Latch
-  final val Ownership_Waitee_Bug: Int = Ownership_Waitee
-  final val Ownership_Blocker_Bug: Int = Ownership_Blocker
-  final val Ownership_Mask_Bug: Int = Ownership_Mask
 
   def getCompletion(bits: Int): Int = bits & Completion_Mask
   def getArbiter(bits: Int): Int = bits & Arbiter_Mask
-  def getOwnership(bits: Int): Int = bits & Ownership_Mask
   def isPending(bits: Int): Boolean = getCompletion(bits) == Completion_Pending
   def isPendingAndNotCancelled(bits: Int): Boolean = (bits & (Completion_Mask | Cancellation_Signal)) == 0
   def isCancellationSignalled(bits: Int): Boolean = (bits & Cancellation_Signal) != 0

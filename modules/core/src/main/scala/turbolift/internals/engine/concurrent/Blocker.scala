@@ -8,11 +8,6 @@ import turbolift.internals.executor.{Pool, Scheduler}
 private[engine] sealed trait Blocker:
   def unblock(): Unit
 
-  def isEither: Boolean = false
-  def getCompletion: Byte = Bits.Completion_Success
-  def getResult: Any = ()
-  final def getThrowable: Throwable = getResult.asInstanceOf[Throwable]
-
 
 private[engine] object Blocker:
   trait Unsealed extends Blocker
@@ -21,7 +16,7 @@ private[engine] object Blocker:
 
 
   final class Zombie(fiber: FiberImpl) extends Blocker:
-    override def unblock(): Unit = fiber.resume()
+    override def unblock(): Unit = fiber.resumeWaiter()
 
 
   final class Sleeper(fiber: FiberImpl) extends AtomicReference[Future[?] | Done | Null] with Blocker with Runnable:
@@ -36,41 +31,41 @@ private[engine] object Blocker:
     override def run: Unit =
       getAndSet(Done) match
         case Done => ()
-        case _ => fiber.resume()
+        case _ => fiber.resumeWaiter()
 
 
     override def unblock(): Unit =
       compareAndExchange(null, Done) match
         case null => fiber.resume()
-        case future: Future[?] => future.cancel(true); fiber.resume()
+        case future: Future[?] => future.cancel(true); fiber.resumeWaiter()
         case Done => ()
 
 
-
-  final class Interruptible(fiber: FiberImpl, thunk: () => Any, override val isEither: Boolean) extends AtomicReference[Thread | Done | Null] with Blocker with Runnable:
-    private var result: Any = null
-    private var completion: Byte = Bits.Completion_Success
-    override def getCompletion: Byte = completion
-    override def getResult: Any = result
-
-
+  final class Interruptible(fiber: FiberImpl, thunk: () => Any, isEither: Boolean) extends AtomicReference[Thread | Done | Null] with Blocker with Runnable:
     def block(): Unit = Pool.instance.execute(this)
-
 
     override def run: Unit =
       val thread = Thread.currentThread.nn
       if compareAndSet(null, thread) then
+        var throwable: Throwable | Null = null
+        var value: Any = null
         try
-          result = thunk()
-        catch 
-          case _: InterruptedException =>
-            completion = Bits.Completion_Cancelled
-          case e =>
-            completion = Bits.Completion_Failure
-            result = e
+          value = thunk()
+        catch
+          case e => throwable = e
         finally
           set(Done)
-      fiber.resume()
+
+        if isEither then
+          val value2 = if throwable == null then Right(value) else Left(throwable.nn)
+          fiber.resumeWaiterAsSuccess(value2)
+        else
+          if throwable == null then
+            fiber.resumeWaiterAsSuccess(value)
+          else
+            fiber.resumeWaiterAsFailure(throwable.nn)
+      else
+        fiber.resumeWaiter()
 
 
     override def unblock(): Unit =

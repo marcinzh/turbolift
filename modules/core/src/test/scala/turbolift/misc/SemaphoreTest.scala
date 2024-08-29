@@ -102,4 +102,23 @@ class SemaphoreTest extends Specification:
       .runIO
       .===(Outcome.Success(123))
     }
+
+    "cancel first waiter" >>{
+      (for
+        v <- AtomicVar.fresh(0)
+        semaphore <- Semaphore.fresh(5)
+        _ <- Warp.shutdownOnExit:
+          for
+            fib1 <- (semaphore.acquire(10) &&! v.event(1)).fork
+            _ <- IO.sleep(10)
+            fib2 <- (semaphore.acquire(5) &&! v.event(2)).fork
+            _ <- IO.sleep(10) &&! v.event(3)
+            _ <- IO.sleep(10) &&! fib1.cancel
+            _ <- IO.sleep(10) &&! v.event(4)
+          yield ()
+        n <- v.get
+      yield n)
+      .runIO
+      .===(Outcome.Success(324))
+    }
   }

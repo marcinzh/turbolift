@@ -19,15 +19,17 @@ private[turbolift] final class MutexImpl extends Waitee with Mutex.Unsealed:
 
 
   override def unsafeRelease(): Unit =
-    var savedFirstWaiter: FiberImpl | Null = null
+    var savedWaiter: FiberImpl | Null = null
 
     atomically {
-      if firstWaiter == null then
+      val x = firstWaiter
+      if x == null then
         isLocked = false
       else
-        savedFirstWaiter = firstWaiter
+        savedWaiter = x
         removeFirstWaiter()
+        x.standbyWaiter(())
     }
 
-    if savedFirstWaiter != null then
-      savedFirstWaiter.nn.resume()
+    if savedWaiter != null then
+      savedWaiter.nn.resume()

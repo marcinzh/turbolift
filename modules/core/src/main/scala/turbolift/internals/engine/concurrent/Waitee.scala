@@ -21,21 +21,12 @@ private[engine] abstract class Waitee extends AtomicBoolVH(false):
   private[engine] final def isCancellationUnlatched: Boolean = Bits.isCancellationUnlatched(varyingBits)
 
 
-  //// {{ meaningful only in FiberImpl, but moved here for convenience
+  inline protected final def setCompletionToSuccess(): Unit =
+    varyingBits = (varyingBits | Bits.Completion_Success_bug).toByte
 
+  //// meaningful only in FiberImpl, but moved here for convenience
   inline protected final def setCancellationLatch(): Unit =
     varyingBits = (varyingBits | Bits.Cancellation_Latch_Bug).toByte
-
-  inline protected final def clearOwnership(): Unit =
-    varyingBits = (varyingBits & ~Bits.Ownership_Mask_Bug).toByte
-
-  inline protected final def setOwnershipToBlocker(): Unit =
-    varyingBits = (varyingBits | Bits.Ownership_Blocker_Bug).toByte
-
-  inline protected final def setOwnershipToWaitee(): Unit =
-    varyingBits = (varyingBits | Bits.Ownership_Waitee_Bug).toByte
-
-  //// }}
 
 
   //-------------------------------------------------------------------
@@ -110,32 +101,28 @@ private[engine] abstract class Waitee extends AtomicBoolVH(false):
       waiter.linkWaiterWithSelf()
     else
       x.insertWaiterBeforeSelf(waiter)
-    waiter.setOwnershipToWaitee()
-    waiter.theWaitee = this
+    waiter.theWaiteeOrBlocker = this
 
 
   //// Simpler `subscribeWaiterUnsync`, for when the caller knows that waiter list is empty
   final def subscribeFirstWaiterUnsync(waiter: FiberImpl): Unit =
     firstWaiter = waiter
     waiter.linkWaiterWithSelf()
-    waiter.setOwnershipToWaitee()
-    waiter.theWaitee = this
+    waiter.theWaiteeOrBlocker = this
 
 
   final def unsubscribeWaiter(waiter: FiberImpl): Unit =
     val willResume =
       atomically {
         if isPending then
-          if waiter.isWaiterLinkedWithSelf then
-            firstWaiter = null
+          if waiter.theWaiteeOrBlocker != null then
+            //// assert(waiter.theWaiteeOrBlocker == this)
+            removeWaiterAnywhere(waiter)
+            waiter.clearWaiterLink()
+            waiter.theWaiteeOrBlocker = null
+            true
           else
-            if waiter == firstWaiter then
-              firstWaiter = waiter.nextWaiter.nn.asFiber
-            waiter.removeWaiterAtSelf()
-          //// Not necessary but makes `status` more accurate
-          waiter.clearOwnership()
-          waiter.clearWaiterLink()
-          true
+            false
         else
           false
       }
@@ -143,8 +130,13 @@ private[engine] abstract class Waitee extends AtomicBoolVH(false):
     if willResume then
       waiter.resume()
 
+    afterUnsubscribe()
 
-  //// Will need to redesign anyway
+
+  //// Currently only needed by Semaphore
+  protected def afterUnsubscribe(): Unit = ()    
+
+
   final def finallyNotifyAllWaiters(): Unit =
     val x = firstWaiter
     if x != null then
@@ -162,15 +154,20 @@ private[engine] abstract class Waitee extends AtomicBoolVH(false):
     x.removeWaiterAtSelf()
 
 
+  private final def removeWaiterAnywhere(waiter: FiberImpl): Unit =
+    if waiter.isWaiterLinkedWithSelf then
+      firstWaiter = null
+    else
+      if waiter == firstWaiter then
+        firstWaiter = waiter.nextWaiter.nn.asFiber
+      waiter.removeWaiterAtSelf()
+
+
 private[concurrent] object Waitee:
-  def notifyAllWaiters(first: FiberImpl): Unit = notifyRangeOfWaiters(first, first.prevWaiter.nn.asFiber)
-
-
-  def notifyRangeOfWaiters(first: FiberImpl, last: FiberImpl): Unit =
-    //@#@OPTY use `executor.resumeMany`, but only when all waiters are on the same executor
+  private def notifyAllWaiters(first: FiberImpl): Unit =
     @tailrec def loop(waiter: FiberImpl): Unit =
       val next = waiter.nextWaiter.nn.asFiber
       waiter.resume()
-      if waiter != last then
+      if next != first then
         loop(next)
     loop(first)

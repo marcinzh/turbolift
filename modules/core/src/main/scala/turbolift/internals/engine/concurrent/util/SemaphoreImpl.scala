@@ -1,63 +1,50 @@
 package turbolift.internals.engine.concurrent.util
+import scala.annotation.tailrec
 import turbolift.io.Semaphore
 import turbolift.internals.engine.concurrent.{Bits, Waitee, FiberImpl}
 
 
 private[turbolift] final class SemaphoreImpl(private var permits: Long) extends Waitee with Semaphore.Unsealed:
-
   def tryGetAcquiredBy(waiter: FiberImpl, isWaiterCancellable: Boolean, count: Long): Int =
     atomicallyBoth(waiter, isWaiterCancellable) {
-      val n: Long = permits - count
-      if n < 0 then
-        permits = 0
-        waiter.suspendedPayload = -n
+      if firstWaiter == null then
+        val n = permits - count
+        if n >= 0 then
+          permits = n
+          Bits.WaiteeAlreadyCompleted
+        else
+          subscribeFirstWaiterUnsync(waiter)
+          Bits.WaiterSubscribed
+      else
         subscribeWaiterUnsync(waiter)
         Bits.WaiterSubscribed
-      else
-        permits = n
-        Bits.WaiteeAlreadyCompleted
     }
 
 
-  override def unsafeRelease(count: Long): Unit =
-    var savedFirstWaiter: FiberImpl | Null = null
-    var savedLastWaiter: FiberImpl | Null = null
+  @tailrec override def unsafeRelease(count: Long): Unit =
+    var savedWaiter: FiberImpl | Null = null
 
-    atomically {
-      if firstWaiter == null then
+    val keepGoing =
+      atomically {
         permits += count
-      else
-        @annotation.tailrec def loop(curr: FiberImpl, prev: FiberImpl | Null, remaining: Long): Unit =
-          val n = remaining - curr.suspendedPayload.asInstanceOf[Long]
+        val x = firstWaiter
+        if x != null then
+          val n = permits - x.payloadAs[Long]
           if n >= 0 then
-            savedLastWaiter = curr
-            val next = curr.nextWaiter.nn.asFiber
-            if next == firstWaiter then
-              //// all waiters are released
-              permits = n
-              savedFirstWaiter = firstWaiter
-              firstWaiter = null
-            else
-              loop(next, curr, n)
-          else
-            //// some or all waiters remain
-            permits = 0
-            curr.suspendedPayload = -n
-            if prev == null then
-              //// all waiters remain
-              ()
-            else
-              //// some waiters remain and some are released
-              savedFirstWaiter = firstWaiter
-              savedLastWaiter = prev
-              firstWaiter.nn.removeRangeOfWaitersAtSelf(prev)
-              firstWaiter = curr
+            permits = n
+            savedWaiter = x
+            removeFirstWaiter()
+            x.standbyWaiter(())
+          n > 0
+        else
+          false
+      }
 
-        loop(firstWaiter.nn, null, count)
-    }
+    if savedWaiter != null then
+      savedWaiter.nn.resume()
 
-    if savedFirstWaiter != null then
-      if savedLastWaiter != null then
-        Waitee.notifyRangeOfWaiters(savedFirstWaiter.nn, savedLastWaiter.nn)
-      else
-        Waitee.notifyAllWaiters(savedFirstWaiter.nn)
+    if keepGoing then
+      unsafeRelease(0)
+
+
+  protected override def afterUnsubscribe(): Unit = unsafeRelease(0)
