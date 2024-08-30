@@ -3,12 +3,14 @@ import java.util.concurrent.{Executor => JExecutor}
 import org.specs2.mutable._
 import turbolift.!!
 import turbolift.effects.{IO, Error}
-import turbolift.io.{Outcome, Cause}
+import turbolift.io.{AtomicVar, Outcome, Cause}
 import turbolift.internals.executor.Executor
-import turbolift.mode.ST
+import Auxx._
 
 
 class IOTest extends Specification:
+  sequential
+
   "Basic ops" >> {
     "raise" >>{
       val e = new Exception("e")
@@ -24,18 +26,20 @@ class IOTest extends Specification:
     }
 
     "yield order" >>{
-      var accum = ""
-      def append(s: String) = !!.impure { accum = accum ++ s }
-      val prog1 =
-        for
-          _ <- append("1")
-          _ <- IO.yeld
-          _ <- append("2")
-        yield ()
-      val prog2 = append("3")
-
-      (prog1 &! prog2).unsafeRun
-      accum === "132"
+      import turbolift.mode.ST
+      (for
+        v <- AtomicVar.fresh(0)
+        prog1 =
+          for
+            _ <- v.event(1)
+            _ <- IO.yeld
+            _ <- v.event(2)
+          yield ()
+        prog2 = v.event(3)
+        _ <- prog1 &! prog2
+        n <- v.get
+      yield n)
+      .runIO.===(Outcome.Success(132))
     }
   }
 
@@ -57,6 +61,17 @@ class IOTest extends Specification:
 
     "attempt failure" >>{
       IO.blockingAttempt(throw E).runIO === Outcome.Success(Left(E))
+    }
+
+    "fork & cancel " >>{
+      @volatile var x: Int = 42
+      (for
+        fib <- IO.blocking { Thread.sleep(1000); x = 1337 }.fork
+        _ <- IO.sleep(10)
+      yield x)
+      .warpCancelOnExit
+      .runIO
+      .===(Outcome.Success(42))
     }
   }
 
