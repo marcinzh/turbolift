@@ -122,6 +122,16 @@ private sealed abstract class Engine0 extends Runnable:
               val (prompt, location) = stack.findSignature(instr2.sig)
               val comp2 = instr2(prompt)
               (comp2.tag: @switch) match
+                case Tags.Pure =>
+                  val instr3 = comp2.asInstanceOf[CC.Pure[Any]]
+                  val payload2 = instr1(instr3.value)
+                  loopTag(tag, payload2, step, stack, store)
+
+                case Tags.Impure =>
+                  val instr3 = comp2.asInstanceOf[CC.Impure[Any]]
+                  val payload2 = instr1(instr3())
+                  loopTag(tag, payload2, step, stack, store)
+
                 case Tags.LocalGet =>
                   val local = store.getDeep(location)
                   val payload2 = instr1(local)
