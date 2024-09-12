@@ -4,15 +4,15 @@ import turbolift.interpreter.Prompt
 import StepCases._
 
 
-private[engine] sealed abstract class Step(val tag: Int):
+private[engine] sealed abstract class Step(val tag: Tag):
   val next: Step | Null
   final override def toString: String = Step.toStr(this)
 
 
 private[engine] object StepCases:
-  final class More(_tag: Int, val fun: Any => Any, override val next: Step) extends Step(_tag)
+  final class More(_tag: Tag, val fun: Any => Any, override val next: Step) extends Step(_tag)
 
-  final class Unwind(val kind: Step.UnwindKind, val prompt: Prompt | Null) extends Step(Tags.Step_Unwind):
+  final class Unwind(val kind: Step.UnwindKind, val prompt: Prompt | Null) extends Step(Tag.Unwind):
     override val next: Null = null
     def isPop = kind == Step.UnwindKind.Pop
     def isBridge = kind == Step.UnwindKind.Bridge

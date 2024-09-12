@@ -24,7 +24,7 @@ private sealed abstract class Engine0 extends Runnable:
 
 
 /*private[turbolift]*/ abstract class Engine extends Engine0:
-  protected var savedTag: Int = 0
+  protected var savedTag: Tag = 0
   protected var savedPayload: Any = null
   protected var savedStep: Step = null.asInstanceOf[Step]
   protected var savedStack: Stack = null.asInstanceOf[Stack]
@@ -93,138 +93,138 @@ private sealed abstract class Engine0 extends Runnable:
   //-------------------------------------------------------------------
 
 
-  @tailrec private final def innerLoop(tag: Int, payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop1st =
+  @tailrec private final def innerLoop(tag: Tag, payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop1st =
     inline def innerLoopStep(payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop1st =
       innerLoop(step.tag, payload, step, stack, store)
 
     inline def innerLoopComp(comp: Computation[?, ?], step: Step, stack: Stack, store: Store): Halt.Loop1st =
       innerLoop(comp.tag, comp, step, stack, store)
 
-    inline def loopTag(tag: Int, payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop1st =
-      val tag2 = if tag == Tags.MapFlat then payload.asInstanceOf[AnyComp].tag else step.tag
+    inline def loopTag(tag: Tag, payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop1st =
+      val tag2 = if tag == Tag.FlatMap then payload.asInstanceOf[AnyComp].tag else step.tag
       innerLoop(tag2, payload, step, stack, store)
 
     if currentTickLow > 0 then
       currentTickLow -= 1
       (tag: @switch) match
-        case Tags.MapFlat | Tags.MapPure =>
+        case Tag.FlatMap | Tag.PureMap =>
           val instr1 = payload.asInstanceOf[CC.Map[Any, Any, Any, Any]]
           val comp1 = instr1.comp
           (comp1.tag: @switch) match
-            case Tags.Pure =>
+            case Tag.Pure =>
               val instr2 = comp1.asInstanceOf[CC.Pure[Any]]
               val payload2 = instr1(instr2.value)
               loopTag(tag, payload2, step, stack, store)
 
-            case Tags.Impure =>
+            case Tag.Impure =>
               val instr2 = comp1.asInstanceOf[CC.Impure[Any]]
               val payload2 = instr1(instr2())
               loopTag(tag, payload2, step, stack, store)
 
-            case Tags.Perform =>
+            case Tag.Perform =>
               val instr2 = comp1.asInstanceOf[CC.Perform[Any, Any, Signature]]
               val (prompt, location) = stack.findSignature(instr2.sig)
               val comp2 = instr2(prompt)
               (comp2.tag: @switch) match
-                case Tags.Pure =>
+                case Tag.Pure =>
                   val instr3 = comp2.asInstanceOf[CC.Pure[Any]]
                   val payload2 = instr1(instr3.value)
                   loopTag(tag, payload2, step, stack, store)
 
-                case Tags.Impure =>
+                case Tag.Impure =>
                   val instr3 = comp2.asInstanceOf[CC.Impure[Any]]
                   val payload2 = instr1(instr3())
                   loopTag(tag, payload2, step, stack, store)
 
-                case Tags.LocalGet =>
+                case Tag.LocalGet =>
                   val local = store.getDeep(location)
                   val payload2 = instr1(local)
                   loopTag(tag, payload2, step, stack, store)
 
-                case Tags.LocalPut =>
+                case Tag.LocalPut =>
                   val instr3 = comp2.asInstanceOf[CC.LocalPut[Local]]
                   val store2 = store.setDeep(location, instr3.local)
                   val payload2 = instr1(())
                   loopTag(tag, payload2, step, stack, store2)
 
-                case Tags.LocalUpdate =>
+                case Tag.LocalUpdate =>
                   val instr3 = comp2.asInstanceOf[CC.LocalUpdate[Any, Local]]
                   val (value, store2) = store.updateDeep(location, instr3)
                   val payload2 = instr1(value)
                   loopTag(tag, payload2, step, stack, store2)
 
                 case _ =>
-                  val tag2 = tag + Tags.Step_MoreFlat - Tags.MapFlat
+                  val tag2 = tag + Tag.MoreFlat - Tag.FlatMap
                   val step2 = SC.More(tag2, instr1, step)
                   innerLoopComp(comp2, step2, stack, store)
 
             case _ =>
-              val tag2 = tag + Tags.Step_MoreFlat - Tags.MapFlat
+              val tag2 = tag + Tag.MoreFlat - Tag.FlatMap
               val step2 = SC.More(tag2, instr1, step)
               innerLoopComp(comp1, step2, stack, store)
 
-        case Tags.Step_MoreFlat =>
+        case Tag.MoreFlat =>
           val instr = step.asInstanceOf[SC.More]
           val step2 = instr.next
           val comp2 = instr.fun(payload).asInstanceOf[AnyComp]
           innerLoopComp(comp2, step2, stack, store)
 
-        case Tags.Step_MorePure =>
+        case Tag.MorePure =>
           val instr = step.asInstanceOf[SC.More]
           val step2 = instr.next
           val payload2 = instr.fun(payload)
           innerLoopStep(payload2, step2, stack, store)
 
-        case Tags.Perform =>
+        case Tag.Perform =>
           val instr = payload.asInstanceOf[CC.Perform[Any, Any, Signature]]
           val (prompt, location) = stack.findSignature(instr.sig)
           val comp2 = instr(prompt)
           (comp2.tag: @switch) match
-            case Tags.LocalGet =>
+            case Tag.LocalGet =>
               val local = store.getDeep(location)
               innerLoopStep(local, step, stack, store)
 
-            case Tags.LocalPut =>
+            case Tag.LocalPut =>
               val instr2 = comp2.asInstanceOf[CC.LocalPut[Local]]
               val store2 = store.setDeep(location, instr2.local)
               innerLoopStep((), step, stack, store2)
 
-            case Tags.LocalUpdate =>
+            case Tag.LocalUpdate =>
               val instr2 = comp2.asInstanceOf[CC.LocalUpdate[Any, Local]]
               val (value, store2) = store.updateDeep(location, instr2)
               innerLoopStep(value, step, stack, store2)
 
             case _ => innerLoopComp(comp2, step, stack, store)
 
-        case Tags.Pure =>
+        case Tag.Pure =>
           val instr = payload.asInstanceOf[CC.Pure[Any]]
           val payload2 = instr.value
           innerLoopStep(payload2, step, stack, store)
 
-        case Tags.Impure =>
+        case Tag.Impure =>
           val instr = payload.asInstanceOf[CC.Impure[Any]]
           val payload2 = instr()
           innerLoopStep(payload2, step, stack, store)
 
-        case Tags.LocalGet =>
+        case Tag.LocalGet =>
           val instr = payload.asInstanceOf[CC.LocalGet]
           val location = stack.locatePrompt(instr.prompt)
           val local = store.getDeep(location)
           innerLoopStep(local, step, stack, store)
 
-        case Tags.LocalPut =>
+        case Tag.LocalPut =>
           val instr = payload.asInstanceOf[CC.LocalPut[Local]]
           val location = stack.locatePrompt(instr.prompt)
           val store2 = store.setDeep(location, instr.local)
           innerLoopStep((), step, stack, store2)
 
-        case Tags.LocalUpdate =>
+        case Tag.LocalUpdate =>
           val instr = payload.asInstanceOf[CC.LocalUpdate[Any, Local]]
           val location = stack.locatePrompt(instr.prompt)
           val (value, store2) = store.updateDeep(location, instr)
           innerLoopStep(value, step, stack, store2)
 
-        case Tags.Sync =>
+        case Tag.Sync =>
           val instr = payload.asInstanceOf[CC.Sync[Any, Any]]
           var result: Any = null
           var throwable: Throwable | Null = null
@@ -242,7 +242,7 @@ private sealed abstract class Engine0 extends Runnable:
               innerLoopStep(Cause(throwable.nn), Step.Throw, stack, store)
 
 
-        case Tags.Intrinsic =>
+        case Tag.Intrinsic =>
           savedStep  = step
           savedStack = stack
           savedStore = store
@@ -261,7 +261,7 @@ private sealed abstract class Engine0 extends Runnable:
               innerLoop(tag2, payload2, step2, stack2, store2)
             case halt: Halt.Loop1st => halt
 
-        case Tags.Step_Unwind =>
+        case Tag.Unwind =>
           savedPayload = payload
           savedStep    = step
           savedStack   = stack
@@ -297,20 +297,20 @@ private sealed abstract class Engine0 extends Runnable:
   //-------------------------------------------------------------------
 
 
-  private final def dispatchNotify(tag: Int): Int =
+  private final def dispatchNotify(tag: Tag): Tag =
     val tag2 = savedStep.tag
     (tag: @switch) match
-      case Tags.NotifyOnceVar =>
+      case Tag.NotifyOnceVar =>
         val ovar = savedPayload.asInstanceOf[OnceVarImpl]
         this.savedPayload = ovar.theContent
         tag2
 
-      case Tags.NotifyZipper =>
+      case Tag.NotifyZipper =>
         val fiber = savedPayload.asInstanceOf[FiberImpl]
         this.savedPayload = fiber.getOrMakeZipper
         tag2
 
-      case Tags.NotifyUnit =>
+      case Tag.NotifyUnit =>
         this.savedPayload = ()
         tag2
 
@@ -673,7 +673,7 @@ private sealed abstract class Engine0 extends Runnable:
     //-------------------
     val waitee = fiber.asImpl
     if currentFiber != waitee then
-      val notifyTag = if isVoid then Tags.NotifyUnit else Tags.NotifyZipper
+      val notifyTag = if isVoid then Tag.NotifyUnit else Tag.NotifyZipper
       currentFiber.suspend(notifyTag, waitee, step, stack, store)
       val tried =
         if isCancel
@@ -833,7 +833,7 @@ private sealed abstract class Engine0 extends Runnable:
     if OnceVarImpl.Empty != value then
       loopStep(value, step, stack, store)
     else
-      currentFiber.suspend(Tags.NotifyOnceVar, ovar, step, stack, store)
+      currentFiber.suspend(Tag.NotifyOnceVar, ovar, step, stack, store)
       ovar.tryGetAwaitedBy(currentFiber, currentEnv.isCancellable) match
         case Bits.WaiterSubscribed => ThreadDisowned
         case Bits.WaiterAlreadyCancelled =>
@@ -898,7 +898,7 @@ private sealed abstract class Engine0 extends Runnable:
     val stack = savedStack
     val store = savedStore
     //-------------------
-    currentFiber.suspend(Tags.NotifyUnit, count, step, stack, store)
+    currentFiber.suspend(Tag.NotifyUnit, count, step, stack, store)
     semaphore.asImpl.tryGetAcquiredBy(currentFiber, currentEnv.isCancellable, count) match
       case Bits.WaiterSubscribed => ThreadDisowned
       case Bits.WaiterAlreadyCancelled =>
@@ -931,7 +931,7 @@ private sealed abstract class Engine0 extends Runnable:
     val stack = savedStack
     val store = savedStore
     //-------------------
-    currentFiber.suspend(Tags.NotifyUnit, value, step, stack, store)
+    currentFiber.suspend(Tag.NotifyUnit, value, step, stack, store)
     channel.asImpl.tryPutBy(currentFiber, currentEnv.isCancellable) match
       case Bits.WaiterSubscribed => ThreadDisowned
       case Bits.WaiterAlreadyCancelled =>

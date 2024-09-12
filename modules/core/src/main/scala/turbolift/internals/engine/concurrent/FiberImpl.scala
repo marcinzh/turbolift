@@ -3,7 +3,7 @@ import scala.annotation.{tailrec, switch}
 import turbolift.{Computation, Signature}
 import turbolift.io.{Fiber, Zipper, Warp, OnceVar, Snap, Outcome, Cause, Exceptions}
 import turbolift.internals.executor.Executor
-import turbolift.internals.engine.Env
+import turbolift.internals.engine.{Env, Tag}
 import turbolift.internals.engine.Misc._
 import turbolift.internals.engine.stacked.{StepCases, Step, Stack, Store, OpCascaded, OpPush}
 import Cause.{Cancelled => CancelPayload}
@@ -463,7 +463,7 @@ private[turbolift] final class FiberImpl private (
 
 
   private[engine] def suspend(
-    tag: Int,
+    tag: Tag,
     payload: Any,
     step: Step,
     stack: Stack,

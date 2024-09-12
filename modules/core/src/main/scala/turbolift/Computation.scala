@@ -4,7 +4,7 @@ import turbolift.internals.auxx.CanPartiallyHandle
 import turbolift.internals.effect.AnyChoice
 import turbolift.internals.executor.Executor
 import turbolift.interpreter.Prompt
-import turbolift.internals.engine.{Env, Engine, Tags}
+import turbolift.internals.engine.{Env, Engine, Tag}
 import turbolift.io.{Outcome, Fiber, Warp}
 import turbolift.mode.Mode
 import turbolift.{ComputationCases => CC}
@@ -31,17 +31,15 @@ def !! = Computation
  * @tparam U Type-level set of effects requested by this computation.
  */
 
-sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift] val tag: Int):
-  private final def map_bug[B](f: A => B): B !! U =
-    new CC.Map[A, B, B, U](Tags.MapPure, this):
-      override def apply(a: A): B = f(a)
+sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift] val tag: Tag):
+  private final def map_bug[B](f: A => B): B !! U = map(f)
 
   final inline def map[B](inline f: A => B): B !! U =
-    new CC.Map[A, B, B, U](Tags.MapPure, this):
+    new CC.Map[A, B, B, U](Tag.PureMap, this):
       override def apply(a: A): B = f(a)
 
   final inline def flatMap[B, U2 <: U](inline f: A => B !! U2): B !! U2 =
-    new CC.Map[A, B, B !! U2, U2](Tags.MapFlat, this):
+    new CC.Map[A, B, B !! U2, U2](Tag.FlatMap, this):
       override def apply(a: A): B !! U2 = f(a)
 
   final def flatten[B, U2 <: U](implicit ev: A <:< (B !! U2)): B !! U2 = flatMap(ev)
@@ -411,16 +409,16 @@ object Computation:
 //@#@TEMP public bcoz inline bug
 // private[turbolift] object ComputationCases:
 object ComputationCases:
-  private[turbolift] final class Pure[A](val value: A) extends Computation[A, Any](Tags.Pure)
-  private[turbolift] final class LocalGet(val prompt: Prompt) extends Computation[Any, Any](Tags.LocalGet)
-  private[turbolift] final class LocalPut[S](val prompt: Prompt, val local: S) extends Computation[Unit, Any](Tags.LocalPut)
+  private[turbolift] final class Pure[A](val value: A) extends Computation[A, Any](Tag.Pure)
+  private[turbolift] final class LocalGet(val prompt: Prompt) extends Computation[Any, Any](Tag.LocalGet)
+  private[turbolift] final class LocalPut[S](val prompt: Prompt, val local: S) extends Computation[Unit, Any](Tag.LocalPut)
   //@#@TEMP public bcoz inline bug
-  sealed abstract class Map[A, B, C, U](_tag: Int, val comp: A !! U) extends Computation[B, U](_tag) with Function1[A, C]
-  sealed abstract class Impure[A]() extends Computation[A, Any](Tags.Impure) with Function0[A]
-  sealed abstract class Sync[A, B](val isAttempt: Boolean) extends Computation[B, IO](Tags.Sync) with Function0[A]
-  sealed abstract class Intrinsic[A, U] extends Computation[A, U](Tags.Intrinsic) with Function[Engine, Engine.IntrinsicResult]
-  sealed abstract class Perform[A, U, Z <: Signature](val sig: Signature) extends Computation[A, U](Tags.Perform) with Function1[Z, A !! U]
-  sealed abstract class LocalUpdate[A, S](val prompt: Prompt) extends Computation[A, Any](Tags.LocalUpdate) with Function1[S, (A, S)]
+  sealed abstract class Map[A, B, C, U](_tag: Tag, val comp: A !! U) extends Computation[B, U](_tag) with Function1[A, C]
+  sealed abstract class Impure[A]() extends Computation[A, Any](Tag.Impure) with Function0[A]
+  sealed abstract class Sync[A, B](val isAttempt: Boolean) extends Computation[B, IO](Tag.Sync) with Function0[A]
+  sealed abstract class Intrinsic[A, U] extends Computation[A, U](Tag.Intrinsic) with Function[Engine, Engine.IntrinsicResult]
+  sealed abstract class Perform[A, U, Z <: Signature](val sig: Signature) extends Computation[A, U](Tag.Perform) with Function1[Z, A !! U]
+  sealed abstract class LocalUpdate[A, S](val prompt: Prompt) extends Computation[A, Any](Tag.LocalUpdate) with Function1[S, (A, S)]
 
   private[turbolift] inline def sync[A, B](isAttempt: Boolean, inline thunk: => A): B !! IO =
     new Sync[A, B](isAttempt):
