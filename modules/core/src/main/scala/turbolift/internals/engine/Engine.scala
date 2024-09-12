@@ -299,27 +299,82 @@ private sealed abstract class Engine0 extends Runnable:
       case _ => tag
 
 
+  private final def doUnwind(): Halt.Loop2nd =
+    val payload = savedPayload
+    val step    = savedStep
+    val stack   = savedStack
+    val store   = savedStore
+    //-------------------
+    val instr = step.asInstanceOf[SC.Unwind]
+    if stack.canPop then
+      if instr.isBridge then
+        val (stack2, store2, step2) = OpPush.drop(stack, store)
+        refreshEnv(stack2, store2)
+        intrinsicLoopStep(payload, step2, stack2, store2)
+      else
+        val (stack2, store2, step2, prompt, frame, local) = OpPush.pop(stack, store)
+        val fallthrough = if instr.isPop then step2 else step
+        if prompt.isIo then
+          (frame.kind.unwrap: @switch) match
+            case FrameKind.PLAIN =>
+              refreshEnv(stack2, store2)
+              intrinsicLoopStep(payload, fallthrough, stack2, store2)
+
+            case FrameKind.GUARD =>
+              val payload2 = instr.kind match
+                case Step.UnwindKind.Pop    => Snap.Success(payload)
+                case Step.UnwindKind.Abort  => Snap.Aborted(payload, instr.prompt.nn)
+                case Step.UnwindKind.Cancel => Snap.Cancelled
+                case Step.UnwindKind.Throw  => Snap.Failure(payload.asInstanceOf[Cause])
+                case Step.UnwindKind.Bridge => impossible
+              refreshEnv(stack2, store2)
+              intrinsicLoopStep(payload2, step2, stack2, store2)
+
+            case FrameKind.WARP =>
+              currentFiber.suspendStep(payload, fallthrough, stack2, store2)
+              val warp = currentEnv.currentWarp.nn
+              val tried = warp.exitMode match
+                case Bits.ExitMode_Cancel => warp.tryGetCancelledBy(currentFiber, currentEnv.isCancellable)
+                case Bits.ExitMode_Shutdown => warp.tryGetAwaitedBy(currentFiber, currentEnv.isCancellable)
+                case _ => impossible //// this is a scoped warp, so it must have ExitMode
+              tried match
+                case Bits.WaiterSubscribed => ThreadDisowned
+                case Bits.WaiterAlreadyCancelled => impossible //// Latch is set
+                case Bits.WaiteeAlreadyCompleted =>
+                  currentFiber.clearSuspension()
+                  refreshEnv(stack2, store2)
+                  intrinsicLoopStep(payload, fallthrough, stack2, store2)
+
+            case FrameKind.EXEC =>
+              currentFiber.suspendStep(payload, fallthrough, stack2, store2)
+              currentFiber.resume()
+              ThreadDisowned
+
+            case FrameKind.SUPPRESS =>
+              refreshEnv(stack2, store2)
+              if cancellationCheck() then
+                intrinsicLoopCancel(stack2, store2)
+              else
+                intrinsicLoopStep(payload, fallthrough, stack2, store2)
+          end match
+        else //// isIo
+          if instr.isPop then
+            val comp2 = prompt.onReturn(payload, local)
+            intrinsicLoopComp(comp2, step2, stack2, store2)
+          else
+            val step3 = if prompt == instr.prompt then step2 else step
+            intrinsicLoopStep(payload, step3, stack2, store2)
+      end if //// isBridge
+    else
+      val completion = instr.kind match
+        case Step.UnwindKind.Pop    => Bits.Completion_Success
+        case Step.UnwindKind.Cancel => Bits.Completion_Cancelled
+        case Step.UnwindKind.Throw  => Bits.Completion_Failure
+        case _                      => impossible
+      endOfLoop(completion, payload, stack)
+
+
   private final def loopMore(tag: Int, payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop2nd =
-    inline def innerLoop(tag: Int, payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop2nd =
-      savedTag     = tag
-      savedPayload = payload
-      savedStep    = step
-      savedStack   = stack
-      savedStore   = store
-      Halt.Bounce
-
-    inline def loopStep(payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop2nd =
-      innerLoop(step.tag, payload, step, stack, store)
-
-    inline def loopComp(comp: Computation[?, ?], step: Step, stack: Stack, store: Store): Halt.Loop2nd =
-      innerLoop(comp.tag, comp, step, stack, store)
-
-    inline def loopCancel(stack: Stack, store: Store): Halt.Loop2nd =
-      innerLoop(Tags.Step_Unwind, CancelPayload, Step.Cancel, stack, store)
-
-    inline def loopThrow(throwable: Throwable, stack: Stack, store: Store): Halt.Loop2nd =
-      innerLoop(Tags.Step_Unwind, Cause(throwable), Step.Throw, stack, store)
-
     (tag: @switch) match
       case Tags.Intrinsic =>
         savedTag     = tag
@@ -331,73 +386,12 @@ private sealed abstract class Engine0 extends Runnable:
         instr(this)
 
       case Tags.Step_Unwind =>
-        val instr = step.asInstanceOf[SC.Unwind]
-        if stack.canPop then
-          if instr.isBridge then
-            val (stack2, store2, step2) = OpPush.drop(stack, store)
-            refreshEnv(stack2, store2)
-            loopStep(payload, step2, stack2, store2)
-          else
-            val (stack2, store2, step2, prompt, frame, local) = OpPush.pop(stack, store)
-            val fallthrough = if instr.isPop then step2 else step
-            if prompt.isIo then
-              (frame.kind.unwrap: @switch) match
-                case FrameKind.PLAIN =>
-                  refreshEnv(stack2, store2)
-                  loopStep(payload, fallthrough, stack2, store2)
-
-                case FrameKind.GUARD =>
-                  val payload2 = instr.kind match
-                    case Step.UnwindKind.Pop    => Snap.Success(payload)
-                    case Step.UnwindKind.Abort  => Snap.Aborted(payload, instr.prompt.nn)
-                    case Step.UnwindKind.Cancel => Snap.Cancelled
-                    case Step.UnwindKind.Throw  => Snap.Failure(payload.asInstanceOf[Cause])
-                    case Step.UnwindKind.Bridge => impossible
-                  refreshEnv(stack2, store2)
-                  loopStep(payload2, step2, stack2, store2)
-
-                case FrameKind.WARP =>
-                  currentFiber.suspendStep(payload, fallthrough, stack2, store2)
-                  val warp = currentEnv.currentWarp.nn
-                  val tried = warp.exitMode match
-                    case Bits.ExitMode_Cancel => warp.tryGetCancelledBy(currentFiber, currentEnv.isCancellable)
-                    case Bits.ExitMode_Shutdown => warp.tryGetAwaitedBy(currentFiber, currentEnv.isCancellable)
-                    case _ => impossible //// this is a scoped warp, so it must have ExitMode
-                  tried match
-                    case Bits.WaiterSubscribed => ThreadDisowned
-                    case Bits.WaiterAlreadyCancelled => impossible //// Latch is set
-                    case Bits.WaiteeAlreadyCompleted =>
-                      currentFiber.clearSuspension()
-                      refreshEnv(stack2, store2)
-                      loopStep(payload, fallthrough, stack2, store2)
-
-                case FrameKind.EXEC =>
-                  currentFiber.suspendStep(payload, fallthrough, stack2, store2)
-                  currentFiber.resume()
-                  ThreadDisowned
-
-                case FrameKind.SUPPRESS =>
-                  refreshEnv(stack2, store2)
-                  if cancellationCheck() then
-                    loopCancel(stack2, store2)
-                  else
-                    loopStep(payload, fallthrough, stack2, store2)
-              end match
-            else //// isIo
-              if instr.isPop then
-                val comp2 = prompt.onReturn(payload, local)
-                loopComp(comp2, step2, stack2, store2)
-              else
-                val step3 = if prompt == instr.prompt then step2 else step
-                loopStep(payload, step3, stack2, store2)
-          end if //// isBridge
-        else
-          val completion = instr.kind match
-            case Step.UnwindKind.Pop    => Bits.Completion_Success
-            case Step.UnwindKind.Cancel => Bits.Completion_Cancelled
-            case Step.UnwindKind.Throw  => Bits.Completion_Failure
-            case _                      => impossible
-          endOfLoop(completion, payload, stack)
+        savedTag     = tag
+        savedPayload = payload
+        savedStep    = step
+        savedStack   = stack
+        savedStore   = store
+        doUnwind()
 
 
   //-------------------------------------------------------------------
