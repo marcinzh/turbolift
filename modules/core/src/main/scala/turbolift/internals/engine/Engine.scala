@@ -12,7 +12,6 @@ import turbolift.internals.engine.concurrent.{Bits, Blocker, Waitee, FiberImpl, 
 import turbolift.internals.engine.concurrent.util.{OnceVarImpl, CountDownLatchImpl, CyclicBarrierImpl, MutexImpl, SemaphoreImpl, ChannelImpl}
 import Halt.{Retire => ThreadDisowned}
 import Local.Syntax._
-import Prompt.Syntax._
 import Cause.{Cancelled => CancelPayload}
 import Misc._
 
@@ -424,7 +423,7 @@ private sealed abstract class Engine0 extends Runnable:
   //-------------------------------------------------------------------
 
 
-  final def intrinsicDelimitPut[S](prompt: Interpreter.Untyped, body: AnyComp, local: S): Halt.Loop2nd =
+  final def intrinsicDelimitPut[S](prompt: Prompt, body: AnyComp, local: S): Halt.Loop2nd =
     val step = savedStep
     val stack = savedStack
     val store = savedStore
@@ -434,7 +433,7 @@ private sealed abstract class Engine0 extends Runnable:
     intrinsicLoopComp(body, SC.Pop, stack2, store2)
 
 
-  final def intrinsicDelimitMod[S](prompt: Interpreter.Untyped, body: AnyComp, fun: S => S): Halt.Loop2nd =
+  final def intrinsicDelimitMod[S](prompt: Prompt, body: AnyComp, fun: S => S): Halt.Loop2nd =
     val step = savedStep
     val stack = savedStack
     val store = savedStore
@@ -445,12 +444,12 @@ private sealed abstract class Engine0 extends Runnable:
     intrinsicLoopComp(body, SC.Pop, stack2, store2)
 
 
-  final def intrinsicAbort(prompt: Interpreter.Untyped, value: Any): Halt.Loop2nd =
+  final def intrinsicAbort(prompt: Prompt, value: Any): Halt.Loop2nd =
     val step = savedStep
     val stack = savedStack
     val store = savedStore
     //-------------------
-    intrinsicLoopStep(value, prompt.unwind, stack, store)
+    intrinsicLoopStep(value, Step.abort(prompt), stack, store)
 
 
   final def intrinsicResume[A, B, S, U](cont0: Continuation[A, B, S, U], value: A): Halt.Loop2nd =
@@ -485,7 +484,7 @@ private sealed abstract class Engine0 extends Runnable:
     intrinsicLoopStepRefreshEnv(value, cont.step, stack2, store2)
 
 
-  final def intrinsicCapture[A, B, S, U](prompt: Interpreter.Untyped, fun: Continuation[A, B, S, U] => B !! U): Halt.Loop2nd =
+  final def intrinsicCapture[A, B, S, U](prompt: Prompt, fun: Continuation[A, B, S, U] => B !! U): Halt.Loop2nd =
     val step = savedStep
     val stack = savedStack
     val store = savedStore
@@ -499,7 +498,7 @@ private sealed abstract class Engine0 extends Runnable:
     intrinsicLoopCompRefreshEnv(comp2, stepMid, stackLo, storeLo)
 
 
-  final def intrinsicCaptureGet[A, B, S, U](prompt: Interpreter.Untyped, fun: (Continuation[A, B, S, U], S) => B !! U): Halt.Loop2nd =
+  final def intrinsicCaptureGet[A, B, S, U](prompt: Prompt, fun: (Continuation[A, B, S, U], S) => B !! U): Halt.Loop2nd =
     val step = savedStep
     val stack = savedStack
     val store = savedStore
@@ -585,12 +584,11 @@ private sealed abstract class Engine0 extends Runnable:
       intrinsicLoopCancel(stack, store)
 
 
-  final def intrinsicHandle(body: AnyComp, interp: Interpreter.Untyped): Halt.Loop2nd =
+  final def intrinsicHandle(body: AnyComp, prompt: Prompt): Halt.Loop2nd =
     val step = savedStep
     val stack = savedStack
     val store = savedStore
     //-------------------
-    val prompt = interp
     for sig <- prompt.signatures do
       if stack.containsSignature(sig) then
         panic(s"Unsupported feature: shadowing effect ${sig}.")
@@ -614,10 +612,10 @@ private sealed abstract class Engine0 extends Runnable:
     val store = savedStore
     //-------------------
     //@#@TODO forbid uncancelling, it wouldnt work correctly anyway
-    snap match
-      case Snap.Success(payload2) => intrinsicLoopStep(payload2, step, stack, store)
-      case Snap.Failure(payload2) => intrinsicLoopStep(payload2, Step.Throw, stack, store)
-      case theAborted: Snap.Aborted => intrinsicLoopStep(theAborted.value, theAborted.prompt.unwind, stack, store)
+    (snap: @unchecked) match
+      case Snap.Success(payload2)         => intrinsicLoopStep(payload2, step, stack, store)
+      case Snap.Failure(payload2)         => intrinsicLoopStep(payload2, Step.Throw, stack, store)
+      case Snap.Aborted(payload2, prompt) => intrinsicLoopStep(payload2, Step.abort(prompt), stack, store)
       case Snap.Cancelled =>
         //@#@THOV It should be harmless to self-cancel a fiber, even when it's uncancellable?
         currentFiber.cancelBySelf()

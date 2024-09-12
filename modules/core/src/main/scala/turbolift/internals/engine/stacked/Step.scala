@@ -25,6 +25,8 @@ private[engine] object Step:
   val Cancel = new StepCases.Unwind(UnwindKind.Cancel, null)
   val Throw = new StepCases.Unwind(UnwindKind.Throw, null)
 
+  def abort(prompt: Prompt): Step = new StepCases.Unwind(UnwindKind.Abort, prompt)
+
   enum UnwindKind:
     def isPop = this == UnwindKind.Pop
     case Pop

@@ -4,23 +4,23 @@ package turbolift.interpreter
 private[turbolift] opaque type Features = Byte
 
 private[turbolift] object Features extends Features_opaque:
-  inline def wrap(that: Byte): Features = that
+  private[interpreter] inline def wrap(that: Byte): Features = that
 
   private[interpreter] def cond(x: Features, y: Boolean): Features = if y then x else Empty
 
   extension (thiz: Features)
     inline def unwrap: Byte = thiz
 
-    def isStateful: Boolean     = (thiz & STATEFUL) != 0
-    def isChoice: Boolean       = (thiz & CHOICE) != 0
-    def isSequential: Boolean   = (thiz & SEQUENTIAL) != 0
-    def hasZip: Boolean         = (thiz & ZIP) != 0
-    def hasForkJoin: Boolean    = (thiz & FORKJOIN) != 0
-    def hasRestart: Boolean     = (thiz & RESTART) != 0
-    def isIo: Boolean           = (thiz & IO) != 0
+    inline def isStateful: Boolean     = (thiz & STATEFUL) != 0
+    inline def isChoice: Boolean       = (thiz & CHOICE) != 0
+    inline def isSequential: Boolean   = (thiz & SEQUENTIAL) != 0
+    inline def hasZip: Boolean         = (thiz & ZIP) != 0
+    inline def hasForkJoin: Boolean    = (thiz & FORKJOIN) != 0
+    inline def hasRestart: Boolean     = (thiz & RESTART) != 0
+    inline def isIo: Boolean           = (thiz & IO) != 0
 
-    def isParallel: Boolean = !isSequential
-    def isStateless: Boolean = !isStateful
+    inline def isParallel: Boolean = !isSequential
+    inline def isStateless: Boolean = !isStateful
 
   private inline val STATEFUL       = 0x1
   private inline val SEQUENTIAL     = 0x2
@@ -33,12 +33,12 @@ private[turbolift] object Features extends Features_opaque:
   private inline val IO             = 0x40
   //@#@TODO hints
 
-  def Empty: Features       = 0
-  def Stateful: Features    = STATEFUL
-  def Sequential: Features  = SEQUENTIAL
-  def Choice: Features      = CHOICE
-  def Zip: Features         = ZIP
-  def ForkJoin: Features    = FORKJOIN
-  def Restart: Features     = RESTART
-  def Io: Features          = IO
-  def Mask: Features        = MASK
+  def Empty: Features = 0
+  private[interpreter] def Stateful: Features    = STATEFUL
+  private[interpreter] def Sequential: Features  = SEQUENTIAL
+  private[interpreter] def Choice: Features      = CHOICE
+  private[interpreter] def Zip: Features         = ZIP
+  private[interpreter] def ForkJoin: Features    = FORKJOIN
+  private[interpreter] def Restart: Features     = RESTART
+  private[interpreter] def Io: Features          = IO
+  private[interpreter] def Mask: Features        = MASK

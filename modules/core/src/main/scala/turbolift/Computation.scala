@@ -3,7 +3,7 @@ import turbolift.effects.{ChoiceSignature, IO, Each, Finalizer}
 import turbolift.internals.auxx.CanPartiallyHandle
 import turbolift.internals.effect.AnyChoice
 import turbolift.internals.executor.Executor
-import turbolift.interpreter.Interpreter 
+import turbolift.interpreter.Prompt
 import turbolift.internals.engine.{Env, Engine, Tags}
 import turbolift.io.{Outcome, Fiber, Warp}
 import turbolift.mode.Mode
@@ -412,15 +412,15 @@ object Computation:
 // private[turbolift] object ComputationCases:
 object ComputationCases:
   private[turbolift] final class Pure[A](val value: A) extends Computation[A, Any](Tags.Pure)
-  private[turbolift] final class LocalGet(val prompt: Interpreter.Untyped) extends Computation[Any, Any](Tags.LocalGet)
-  private[turbolift] final class LocalPut[S](val prompt: Interpreter.Untyped, val local: S) extends Computation[Unit, Any](Tags.LocalPut)
+  private[turbolift] final class LocalGet(val prompt: Prompt) extends Computation[Any, Any](Tags.LocalGet)
+  private[turbolift] final class LocalPut[S](val prompt: Prompt, val local: S) extends Computation[Unit, Any](Tags.LocalPut)
   //@#@TEMP public bcoz inline bug
   sealed abstract class Map[A, B, C, U](_tag: Int, val comp: A !! U) extends Computation[B, U](_tag) with Function1[A, C]
   sealed abstract class Impure[A]() extends Computation[A, Any](Tags.Impure) with Function0[A]
   sealed abstract class Sync[A, B](val isAttempt: Boolean) extends Computation[B, IO](Tags.Sync) with Function0[A]
   sealed abstract class Intrinsic[A, U] extends Computation[A, U](Tags.Intrinsic) with Function[Engine, Engine.IntrinsicResult]
   sealed abstract class Perform[A, U, Z <: Signature](val sig: Signature) extends Computation[A, U](Tags.Perform) with Function1[Z, A !! U]
-  sealed abstract class LocalUpdate[A, S](val prompt: Interpreter.Untyped) extends Computation[A, Any](Tags.LocalUpdate) with Function1[S, (A, S)]
+  sealed abstract class LocalUpdate[A, S](val prompt: Prompt) extends Computation[A, Any](Tags.LocalUpdate) with Function1[S, (A, S)]
 
   private[turbolift] inline def sync[A, B](isAttempt: Boolean, inline thunk: => A): B !! IO =
     new Sync[A, B](isAttempt):
@@ -434,6 +434,6 @@ object ComputationCases:
     new Perform[A, U, Z](sig):
       override def apply(z: Z): A !! U = f(z)
 
-  private[turbolift] inline def localUpdate[A, S](interp: Interpreter.Untyped, inline f: S => (A, S)): A !! Any =
-    new LocalUpdate[A, S](interp):
+  private[turbolift] inline def localUpdate[A, S](prompt: Prompt, inline f: S => (A, S)): A !! Any =
+    new LocalUpdate[A, S](prompt):
       override def apply(s: S): (A, S) = f(s)

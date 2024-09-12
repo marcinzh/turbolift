@@ -1,5 +1,6 @@
 package turbolift.io
 import scala.util.control.ControlThrowable
+import turbolift.interpreter.Prompt
 
 
 object Exceptions:
@@ -7,7 +8,7 @@ object Exceptions:
 
   final class Pending extends RuntimeException("Fiber pending.")
   
-  final class Aborted(value: Any) extends ControlThrowable
+  final class Aborted(value: Any, prompt: Prompt) extends ControlThrowable
 
   final class Unhandled(throwable: Throwable) extends RuntimeException(throwable)
 

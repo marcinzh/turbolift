@@ -1,7 +1,6 @@
 package turbolift.internals.engine.stacked
 import scala.annotation.tailrec
 import turbolift.interpreter.Features
-import Prompt.Syntax._
 
 
 private[engine] object OpSplit:

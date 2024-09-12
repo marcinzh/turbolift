@@ -2,7 +2,6 @@ package turbolift.internals.engine.stacked
 import scala.annotation.tailrec
 import turbolift.!!
 import turbolift.internals.engine.Misc.AnyComp
-import Prompt.Syntax._
 import Local.Syntax._
 
 

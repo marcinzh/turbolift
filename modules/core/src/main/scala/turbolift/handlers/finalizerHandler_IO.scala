@@ -56,12 +56,12 @@ private object Trail:
   val accumPar = lift(_ & _)
   val accumSeq = lift(_ ++ _)
   def lift(op: (Cause, Cause) => Cause)(a: Snap[Unit], b: Snap[Unit]): Snap[Unit] =
-    (a, b) match
+    ((a, b): @unchecked) match
       case (Snap.Failure(c), Snap.Failure(d)) => Snap.Failure(op(c, d))
       case (Snap.Failure(_), _) => a
       case (_, Snap.Failure(_)) => b
       case (Snap.Cancelled, _) => a
       case (_, Snap.Cancelled) => b
-      case (Snap.Aborted(_), _) => a
-      case (_, Snap.Aborted(_)) => b
+      case (Snap.Aborted(_, _), _) => a
+      case (_, Snap.Aborted(_, _)) => b
       case _ => Snap.unit

@@ -48,10 +48,10 @@ sealed trait Interpreter extends Signature:
   final type ThisHandler = Handler[From, To, Elim, Intro]
 
   /** An instance of [[Local]] dedicated for this interpreter. */
-  val Local = new turbolift.interpreter.Local[Local, Elim](untyped)
+  val Local = new turbolift.interpreter.Local[Local, Elim](prompt)
 
   /** An instance of [[Control]] dedicated for this interpreter. */
-  val Control = new turbolift.interpreter.Control[Local, Unknown, To, Elim & Intro](untyped)
+  val Control = new turbolift.interpreter.Control[Local, Unknown, To, Elim & Intro](prompt)
 
   def onInitial: Local !! Intro
   def onReturn(aa: From[Unknown], s: Local): To[Unknown] !! ThisEffect
@@ -92,6 +92,15 @@ sealed trait Interpreter extends Signature:
 
   private[turbolift] final def untyped: Interpreter.Untyped = asInstanceOf[Interpreter.Untyped]
 
+  final inline def prompt: Prompt = asInstanceOf[Interpreter.Untyped]
+  final inline def localCount: Int = if features.isStateful then 1 else 0
+  final inline def isIo: Boolean = features.isIo
+  final inline def isStateful: Boolean = features.isStateful
+  final inline def isStateless: Boolean = features.isStateless
+  final inline def isParallel: Boolean = features.isParallel
+  final inline def hasRestart: Boolean = features.hasRestart
+  final inline def hasZip: Boolean = features.hasZip
+  final inline def hasForkJoin: Boolean = features.hasForkJoin
 
 
 object Interpreter:

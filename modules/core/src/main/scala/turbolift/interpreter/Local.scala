@@ -19,17 +19,17 @@ import turbolift.{ComputationCases => CC}
  * @tparam V effect set
 */
 
-final class Local[S, V] private[interpreter] (private val interp: Interpreter.Untyped):
-  private final val getAny = CC.LocalGet(interp)
+final class Local[S, V] private[interpreter] (private val prompt: Prompt):
+  private final val getAny = CC.LocalGet(prompt)
   def get: S !! V = getAny.asInstanceOf[S !! V]
   def gets[A](f: S => A): A !! V = get.map(f)
-  def put(s2: S): Unit !! V = CC.LocalPut(interp, s2)
+  def put(s2: S): Unit !! V = CC.LocalPut(prompt, s2)
   inline def swap(s2: S): S !! V = update(s => (s, s2))
   inline def modify(inline f: S => S): Unit !! V = update(s => ((), f(s)))
   inline def modifyGet(inline f: S => S): S !! V = update(s => { val s2 = f(s); (s2, s2) })
   inline def getModify(inline f: S => S): S !! V = update(s => { val s2 = f(s); (s, s2) })
   inline def getModifyGet(inline f: S => S): (S, S) !! V = update(s => { val s2 = f(s); ((s, s2), s2) })
-  inline def update[A](inline f: S => (A, S)): A !! V = CC.localUpdate(interp, f)
+  inline def update[A](inline f: S => (A, S)): A !! V = CC.localUpdate(prompt, f)
   inline def updateGet[A](inline f: S => (A, S)): (A, S) !! V = update(s => { val xs2 @ (_, s2) = f(s); (xs2, s2) })
   inline def getUpdate[A](inline f: S => (A, S)): (A, S) !! V = update(s => { val (x, s2) = f(s); ((x, s), s2) })
   inline def getUpdateGet[A](inline f: S => (A, S)): (A, S, S) !! V = update(s => { val (x, s2) = f(s); ((x, s, s2), s2) })

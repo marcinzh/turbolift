@@ -2,7 +2,6 @@ package turbolift.internals.engine.stacked
 import scala.annotation.tailrec
 import turbolift.Signature
 import turbolift.interpreter.{Features, Interpreter}
-import Prompt.Syntax._
 
 
 private[engine] final class Stack private (

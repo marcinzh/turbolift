@@ -20,7 +20,7 @@ import turbolift.interpreter.Void
  * @tparam V effect set
  */
 
-final class Control[S, Q, F[+_], V] private[interpreter] (private val interp: Interpreter.Untyped):
+final class Control[S, Q, F[+_], V] private[interpreter] (private val prompt: Prompt):
   type Cont[A, U] = Continuation[A, F[Q], S, U]
 
   /** Captures the continuation.
@@ -28,14 +28,14 @@ final class Control[S, Q, F[+_], V] private[interpreter] (private val interp: In
    * Unwinds the stack up to the end of the effect's scope.
    * The unwound part of the stack is reified as a [[Continuation]] object.
    */
-  def capture[A, U](f: Cont[A, U] => F[Q] !! U): A !! U = CC.intrinsic(_.intrinsicCapture(interp, f))
+  def capture[A, U](f: Cont[A, U] => F[Q] !! U): A !! U = CC.intrinsic(_.intrinsicCapture(prompt, f))
 
 
   /** Like [[capture]], except it also accesses the local state.
    *
    * Fusion of [[Local.get]] and [[capture]].
    */
-  def captureGet[A, U](f: (Cont[A, U], S) => F[Q] !! U): A !! U = CC.intrinsic(_.intrinsicCaptureGet(interp, f))
+  def captureGet[A, U](f: (Cont[A, U], S) => F[Q] !! U): A !! U = CC.intrinsic(_.intrinsicCaptureGet(prompt, f))
 
   /** Unwind the stack until the end of the effect's scope.
    *
@@ -44,7 +44,7 @@ final class Control[S, Q, F[+_], V] private[interpreter] (private val interp: In
    * 
    *  However, `abort(value)` also invokes finalization clauses during stack unwinding.
    */
-  def abort(value: F[Q]): Nothing !! V = CC.intrinsic(_.intrinsicAbort(interp, value))
+  def abort(value: F[Q]): Nothing !! V = CC.intrinsic(_.intrinsicAbort(prompt, value))
 
   /** Changes scope of the effect.
    *
@@ -58,8 +58,8 @@ final class Control[S, Q, F[+_], V] private[interpreter] (private val interp: In
    *
    * Upon exit of [[delimit]]'s body, the local state is restored to its original value.
    */
-  def delimitPut[A, U <: V](body: A !! U, s: S): F[A] !! U = CC.intrinsic(_.intrinsicDelimitPut(interp, body.untyped, s))
+  def delimitPut[A, U <: V](body: A !! U, s: S): F[A] !! U = CC.intrinsic(_.intrinsicDelimitPut(prompt, body.untyped, s))
   
   /** Like [[delimitPut]], but modifies the local state, instead of replacing it. */
-  def delimitModify[A, U <: V](body: A !! U, f: S => S): F[A] !! U = CC.intrinsic(_.intrinsicDelimitMod(interp, body.untyped, f))
+  def delimitModify[A, U <: V](body: A !! U, f: S => S): F[A] !! U = CC.intrinsic(_.intrinsicDelimitMod(prompt, body.untyped, f))
 
