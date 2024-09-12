@@ -6,8 +6,8 @@ import turbolift.io.{Fiber, Zipper, Warp, Snap, Outcome, Cause, Exceptions}
 import turbolift.io.{OnceVar, CountDownLatch, CyclicBarrier, Mutex, Semaphore, Channel}
 import turbolift.interpreter.{Interpreter, Continuation}
 import turbolift.internals.executor.Executor
-import turbolift.internals.engine.Tags
-import turbolift.internals.engine.stacked.{StepCases => SC, Step, Stack, Store, Local, Prompt, FrameKind, OpPush, OpSplit, OpCascaded}
+import turbolift.internals.engine.{StepCases => SC}
+import turbolift.internals.engine.stacked.{Stack, Store, Local, Prompt, FrameKind, OpPush, OpSplit, OpCascaded}
 import turbolift.internals.engine.concurrent.{Bits, Blocker, Waitee, FiberImpl, WarpImpl}
 import turbolift.internals.engine.concurrent.util.{OnceVarImpl, CountDownLatchImpl, CyclicBarrierImpl, MutexImpl, SemaphoreImpl, ChannelImpl}
 import Halt.{Retire => ThreadDisowned}
