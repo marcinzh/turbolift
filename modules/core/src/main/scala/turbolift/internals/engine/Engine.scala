@@ -247,8 +247,31 @@ private sealed abstract class Engine0 extends Runnable:
             else
               loopThrow(throwable.nn, stack, store)
 
-        case _ =>
-          loopMore(tag, payload, step, stack, store) match
+        case Tags.Intrinsic =>
+          savedStep  = step
+          savedStack = stack
+          savedStore = store
+          val instr = payload.asInstanceOf[CC.Intrinsic[Any, Any]]
+          instr(this) match
+            case Halt.Bounce =>
+              val tag2     = savedTag
+              val payload2 = savedPayload
+              val step2    = savedStep
+              val stack2   = savedStack
+              val store2   = savedStore
+              savedPayload = null
+              savedStep = null.asInstanceOf[Step]
+              savedStack = null.asInstanceOf[Stack]
+              savedStore = null.asInstanceOf[Store]
+              innerLoop(tag2, payload2, step2, stack2, store2)
+            case halt: Halt.Loop1st => halt
+
+        case Tags.Step_Unwind =>
+          savedPayload = payload
+          savedStep    = step
+          savedStack   = stack
+          savedStore   = store
+          doUnwind() match
             case Halt.Bounce =>
               val tag2     = savedTag
               val payload2 = savedPayload
@@ -372,26 +395,6 @@ private sealed abstract class Engine0 extends Runnable:
         case Step.UnwindKind.Throw  => Bits.Completion_Failure
         case _                      => impossible
       endOfLoop(completion, payload, stack)
-
-
-  private final def loopMore(tag: Int, payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop2nd =
-    (tag: @switch) match
-      case Tags.Intrinsic =>
-        savedTag     = tag
-        savedPayload = payload
-        savedStep    = step
-        savedStack   = stack
-        savedStore   = store
-        val instr = payload.asInstanceOf[CC.Intrinsic[Any, Any]]
-        instr(this)
-
-      case Tags.Step_Unwind =>
-        savedTag     = tag
-        savedPayload = payload
-        savedStep    = step
-        savedStack   = stack
-        savedStore   = store
-        doUnwind()
 
 
   //-------------------------------------------------------------------
