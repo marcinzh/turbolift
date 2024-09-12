@@ -1,7 +1,6 @@
 package turbolift.internals.engine
 import turbolift.!!
 import turbolift.interpreter.Prompt
-import Misc.AnyComp
 import StepCases._
 
 
@@ -12,7 +11,6 @@ private[engine] sealed abstract class Step(val tag: Int):
 
 private[engine] object StepCases:
   final class More(_tag: Int, val fun: Any => Any, override val next: Step) extends Step(_tag)
-  final class Push(val body: AnyComp, val prompt: Prompt, override val next: Step) extends Step(Tags.Step_Push)
   sealed abstract class HasNoNext(_tag: Int) extends Step(_tag) { override val next: Null = null }
   final class Unwind(val kind: Step.UnwindKind, val prompt: Prompt | Null) extends HasNoNext(Tags.Step_Unwind)
   case object Bridge extends HasNoNext(Tags.Step_Bridge)
@@ -38,7 +36,6 @@ private[engine] object Step:
     def loop(todo: Step, acc: Vector[String]): Vector[String] = 
       todo match
         case x: More => loop(x.next, acc :+ s">${##.toHexString.takeRight(4)}")
-        case x: Push => loop(x.next, acc :+ s"Push(${x.prompt})")
         case x: Unwind => x.kind.match
           case UnwindKind.Abort => acc :+ s"Abort(${x.prompt})"
           case k => acc :+ k.toString

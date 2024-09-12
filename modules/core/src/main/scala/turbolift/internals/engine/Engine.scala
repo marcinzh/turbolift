@@ -312,13 +312,6 @@ private sealed abstract class Engine0 extends Runnable:
       case Tags.NotifyUnit =>
         loopStep((), step, stack, store)
 
-      case Tags.Step_Push =>
-        val instr = step.asInstanceOf[SC.Push]
-        val step2 = instr.next
-        val (stack2, store2) = OpPush.pushBase(stack, store, step2, instr.prompt, payload.asLocal)
-        val comp2 = instr.body
-        loopComp(comp2, SC.Pop, stack2, store2)
-
       case Tags.Step_Bridge =>
         val (stack2, store2, step2) = OpPush.drop(stack, store)
         refreshEnv(stack2, store2)
@@ -584,7 +577,7 @@ private sealed abstract class Engine0 extends Runnable:
       intrinsicLoopCancel(stack, store)
 
 
-  final def intrinsicHandle(body: AnyComp, prompt: Prompt): Halt.Loop2nd =
+  final def intrinsicHandle(body: AnyComp, prompt: Prompt, initial: Any): Halt.Loop2nd =
     val step = savedStep
     val stack = savedStack
     val store = savedStore
@@ -592,9 +585,8 @@ private sealed abstract class Engine0 extends Runnable:
     for sig <- prompt.signatures do
       if stack.containsSignature(sig) then
         panic(s"Unsupported feature: shadowing effect ${sig}.")
-    val comp2 = prompt.onInitial
-    val step2 = new SC.Push(body, prompt, step)
-    intrinsicLoopComp(comp2, step2, stack, store)
+    val (stack2, store2) = OpPush.pushBase(stack, store, step, prompt, initial.asLocal)
+    intrinsicLoopComp(body, Step.Pop, stack2, store2)
 
 
   final def intrinsicSnap[A, U](body: A !! U): Halt.Loop2nd =
