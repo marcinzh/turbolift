@@ -82,25 +82,24 @@ class SemaphoreTest extends Specification:
     "partial releases" >>{
       (for
         v <- AtomicVar.fresh(0)
-        a <- AtomicVar.fresh(1)
         semaphore <- Semaphore.fresh(0)
         _ <- Warp.shutdownOnExit:
           for
-            _ <- (semaphore.acquire(10) &&! a.put(2)).fork
+            _ <- (semaphore.acquire(10) &&! v.event(1)).fork
             _ <- IO.sleep(10)
-            _ <- (semaphore.acquire(10) &&! a.put(3)).fork
+            _ <- (semaphore.acquire(10) &&! v.event(2)).fork
             _ <- IO.sleep(10)
             _ <- semaphore.release(5)
-            _ <- a.get.flatMap(v.event)
+            _ <- IO.sleep(10) &&! v.event(3)
             _ <- semaphore.release(10)
-            _ <- a.get.flatMap(v.event)
+            _ <- IO.sleep(10) &&! v.event(4)
             _ <- semaphore.release(10)
-            _ <- a.get.flatMap(v.event)
+            _ <- IO.sleep(10) &&! v.event(5)
           yield ()
         n <- v.get
       yield n)
       .runIO
-      .===(Outcome.Success(123))
+      .===(Outcome.Success(31425))
     }
 
     "cancel first waiter" >>{
