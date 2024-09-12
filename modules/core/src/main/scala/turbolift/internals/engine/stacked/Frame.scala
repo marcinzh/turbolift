@@ -50,7 +50,7 @@ private final class Frame private (
     new Frame(
       next = null,
       packed = packed.clearDelta,
-      step = StepCases.Bridge,
+      step = Step.Bridge,
       local = Local.nul,
     )
 

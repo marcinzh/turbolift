@@ -11,26 +11,28 @@ private[engine] sealed abstract class Step(val tag: Int):
 
 private[engine] object StepCases:
   final class More(_tag: Int, val fun: Any => Any, override val next: Step) extends Step(_tag)
-  sealed abstract class HasNoNext(_tag: Int) extends Step(_tag) { override val next: Null = null }
-  final class Unwind(val kind: Step.UnwindKind, val prompt: Prompt | Null) extends HasNoNext(Tags.Step_Unwind)
-  case object Bridge extends HasNoNext(Tags.Step_Bridge)
+
+  final class Unwind(val kind: Step.UnwindKind, val prompt: Prompt | Null) extends Step(Tags.Step_Unwind):
+    override val next: Null = null
+    def isPop = kind == Step.UnwindKind.Pop
+    def isBridge = kind == Step.UnwindKind.Bridge
 
   export Step.Pop
 
 
 private[engine] object Step:
-  val Pop = new StepCases.Unwind(UnwindKind.Pop, null)
-  val Cancel = new StepCases.Unwind(UnwindKind.Cancel, null)
-  val Throw = new StepCases.Unwind(UnwindKind.Throw, null)
-
+  val Pop: Step = new StepCases.Unwind(UnwindKind.Pop, null)
+  val Cancel: Step = new StepCases.Unwind(UnwindKind.Cancel, null)
+  val Throw: Step = new StepCases.Unwind(UnwindKind.Throw, null)
+  val Bridge: Step = new StepCases.Unwind(UnwindKind.Bridge, null)
   def abort(prompt: Prompt): Step = new StepCases.Unwind(UnwindKind.Abort, prompt)
 
   enum UnwindKind:
-    def isPop = this == UnwindKind.Pop
     case Pop
     case Abort
     case Cancel
     case Throw
+    case Bridge
 
   def toStr(step: Step): String =
     def loop(todo: Step, acc: Vector[String]): Vector[String] = 
@@ -39,5 +41,4 @@ private[engine] object Step:
         case x: Unwind => x.kind.match
           case UnwindKind.Abort => acc :+ s"Abort(${x.prompt})"
           case k => acc :+ k.toString
-        case Bridge => acc :+ "Bridge"
     loop(step, Vector()).mkString("{", ";", "}")

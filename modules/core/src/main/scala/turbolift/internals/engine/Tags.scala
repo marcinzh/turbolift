@@ -20,8 +20,7 @@ object Tags:
   inline val NotifyOnceVar         = 12
   inline val NotifyZipper          = 13
   inline val NotifyUnit            = 14
-  inline val Step_Bridge           = 15
-  inline val Step_Unwind           = 16
+  inline val Step_Unwind           = 15
 
   def toStr(tag: Int) =
     tag match
@@ -41,6 +40,5 @@ object Tags:
       case NotifyOnceVar         => "NotifyOnceVar"
       case NotifyZipper          => "NotifyZipper"
       case NotifyUnit            => "NotifyUnit"
-      case Step_Bridge           => "Step_Bridge"
       case Step_Unwind           => "Step_Unwind"
       case _                     => s"Tag($tag)"
