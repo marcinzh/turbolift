@@ -52,13 +52,24 @@ private sealed abstract class Engine0 extends Runnable:
 
   @tailrec private final def outerLoop(): Halt =
     val result =
-      val tag     = currentFiber.suspendedTag
-      val payload = currentFiber.suspendedPayload
-      val step    = currentFiber.suspendedStep.nn
-      val stack   = currentFiber.suspendedStack.nn
-      val store   = currentFiber.suspendedStore.nn
-      currentFiber.clearSuspension()
+      val tag =
+        val tag1          = currentFiber.suspendedTag
+        this.savedPayload = currentFiber.suspendedPayload
+        this.savedStep    = currentFiber.suspendedStep.nn
+        this.savedStack   = currentFiber.suspendedStack.nn
+        this.savedStore   = currentFiber.suspendedStore.nn
+        currentFiber.clearSuspension()
+        dispatchNotify(tag1)
+
       try
+        val payload = this.savedPayload
+        val step    = this.savedStep
+        val stack   = this.savedStack
+        val store   = this.savedStore
+        this.savedPayload = null
+        this.savedStep    = null.asInstanceOf[Step]
+        this.savedStack   = null.asInstanceOf[Stack]
+        this.savedStore   = null.asInstanceOf[Store]
         innerLoop(
           tag      = tag,
           payload  = payload,
@@ -268,6 +279,26 @@ private sealed abstract class Engine0 extends Runnable:
   //-------------------------------------------------------------------
 
 
+  private final def dispatchNotify(tag: Int): Int =
+    val tag2 = savedStep.tag
+    (tag: @switch) match
+      case Tags.NotifyOnceVar =>
+        val ovar = savedPayload.asInstanceOf[OnceVarImpl]
+        this.savedPayload = ovar.theContent
+        tag2
+
+      case Tags.NotifyZipper =>
+        val fiber = savedPayload.asInstanceOf[FiberImpl]
+        this.savedPayload = fiber.getOrMakeZipper
+        tag2
+
+      case Tags.NotifyUnit =>
+        this.savedPayload = ()
+        tag2
+
+      case _ => tag
+
+
   private final def loopMore(tag: Int, payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop2nd =
     inline def innerLoop(tag: Int, payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop2nd =
       savedTag     = tag
@@ -298,19 +329,6 @@ private sealed abstract class Engine0 extends Runnable:
         savedStore   = store
         val instr = payload.asInstanceOf[CC.Intrinsic[Any, Any]]
         instr(this)
-
-      case Tags.NotifyOnceVar =>
-        val ovar = payload.asInstanceOf[OnceVarImpl]
-        val value = ovar.theContent
-        loopStep(value, step, stack, store)
-
-      case Tags.NotifyZipper =>
-        val fiber = payload.asInstanceOf[FiberImpl]
-        val payload2 = fiber.getOrMakeZipper
-        loopStep(payload2, step, stack, store)
-
-      case Tags.NotifyUnit =>
-        loopStep((), step, stack, store)
 
       case Tags.Step_Unwind =>
         val instr = step.asInstanceOf[SC.Unwind]
