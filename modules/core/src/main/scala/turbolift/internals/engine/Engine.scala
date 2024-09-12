@@ -94,17 +94,11 @@ private sealed abstract class Engine0 extends Runnable:
 
 
   @tailrec private final def innerLoop(tag: Int, payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop1st =
-    inline def loopStep(payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop1st =
+    inline def innerLoopStep(payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop1st =
       innerLoop(step.tag, payload, step, stack, store)
 
-    inline def loopComp(comp: Computation[?, ?], step: Step, stack: Stack, store: Store): Halt.Loop1st =
+    inline def innerLoopComp(comp: Computation[?, ?], step: Step, stack: Stack, store: Store): Halt.Loop1st =
       innerLoop(comp.tag, comp, step, stack, store)
-
-    inline def loopCancel(stack: Stack, store: Store): Halt.Loop1st =
-      innerLoop(Tags.Step_Unwind, CancelPayload, Step.Cancel, stack, store)
-
-    inline def loopThrow(throwable: Throwable, stack: Stack, store: Store): Halt.Loop1st =
-      innerLoop(Tags.Step_Unwind, Cause(throwable), Step.Throw, stack, store)
 
     inline def loopTag(tag: Int, payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop1st =
       val tag2 = if tag == Tags.MapFlat then payload.asInstanceOf[AnyComp].tag else step.tag
@@ -162,24 +156,24 @@ private sealed abstract class Engine0 extends Runnable:
                 case _ =>
                   val tag2 = tag + Tags.Step_MoreFlat - Tags.MapFlat
                   val step2 = SC.More(tag2, instr1, step)
-                  loopComp(comp2, step2, stack, store)
+                  innerLoopComp(comp2, step2, stack, store)
 
             case _ =>
               val tag2 = tag + Tags.Step_MoreFlat - Tags.MapFlat
               val step2 = SC.More(tag2, instr1, step)
-              loopComp(comp1, step2, stack, store)
+              innerLoopComp(comp1, step2, stack, store)
 
         case Tags.Step_MoreFlat =>
           val instr = step.asInstanceOf[SC.More]
           val step2 = instr.next
           val comp2 = instr.fun(payload).asInstanceOf[AnyComp]
-          loopComp(comp2, step2, stack, store)
+          innerLoopComp(comp2, step2, stack, store)
 
         case Tags.Step_MorePure =>
           val instr = step.asInstanceOf[SC.More]
           val step2 = instr.next
           val payload2 = instr.fun(payload)
-          loopStep(payload2, step2, stack, store)
+          innerLoopStep(payload2, step2, stack, store)
 
         case Tags.Perform =>
           val instr = payload.asInstanceOf[CC.Perform[Any, Any, Signature]]
@@ -188,47 +182,47 @@ private sealed abstract class Engine0 extends Runnable:
           (comp2.tag: @switch) match
             case Tags.LocalGet =>
               val local = store.getDeep(location)
-              loopStep(local, step, stack, store)
+              innerLoopStep(local, step, stack, store)
 
             case Tags.LocalPut =>
               val instr2 = comp2.asInstanceOf[CC.LocalPut[Local]]
               val store2 = store.setDeep(location, instr2.local)
-              loopStep((), step, stack, store2)
+              innerLoopStep((), step, stack, store2)
 
             case Tags.LocalUpdate =>
               val instr2 = comp2.asInstanceOf[CC.LocalUpdate[Any, Local]]
               val (value, store2) = store.updateDeep(location, instr2)
-              loopStep(value, step, stack, store2)
+              innerLoopStep(value, step, stack, store2)
 
-            case _ => loopComp(comp2, step, stack, store)
+            case _ => innerLoopComp(comp2, step, stack, store)
 
         case Tags.Pure =>
           val instr = payload.asInstanceOf[CC.Pure[Any]]
           val payload2 = instr.value
-          loopStep(payload2, step, stack, store)
+          innerLoopStep(payload2, step, stack, store)
 
         case Tags.Impure =>
           val instr = payload.asInstanceOf[CC.Impure[Any]]
           val payload2 = instr()
-          loopStep(payload2, step, stack, store)
+          innerLoopStep(payload2, step, stack, store)
 
         case Tags.LocalGet =>
           val instr = payload.asInstanceOf[CC.LocalGet]
           val location = stack.locatePrompt(instr.prompt)
           val local = store.getDeep(location)
-          loopStep(local, step, stack, store)
+          innerLoopStep(local, step, stack, store)
 
         case Tags.LocalPut =>
           val instr = payload.asInstanceOf[CC.LocalPut[Local]]
           val location = stack.locatePrompt(instr.prompt)
           val store2 = store.setDeep(location, instr.local)
-          loopStep((), step, stack, store2)
+          innerLoopStep((), step, stack, store2)
 
         case Tags.LocalUpdate =>
           val instr = payload.asInstanceOf[CC.LocalUpdate[Any, Local]]
           val location = stack.locatePrompt(instr.prompt)
           val (value, store2) = store.updateDeep(location, instr)
-          loopStep(value, step, stack, store2)
+          innerLoopStep(value, step, stack, store2)
 
         case Tags.Sync =>
           val instr = payload.asInstanceOf[CC.Sync[Any, Any]]
@@ -240,12 +234,13 @@ private sealed abstract class Engine0 extends Runnable:
             case e => throwable = e
           if throwable == null then
             val payload2 = if instr.isAttempt then Right(result) else result
-            loopStep(payload2, step, stack, store)
+            innerLoopStep(payload2, step, stack, store)
           else
             if instr.isAttempt then
-              loopStep(Left(throwable), step, stack, store)
+              innerLoopStep(Left(throwable), step, stack, store)
             else
-              loopThrow(throwable.nn, stack, store)
+              innerLoopStep(Cause(throwable.nn), Step.Throw, stack, store)
+
 
         case Tags.Intrinsic =>
           savedStep  = step
@@ -289,7 +284,7 @@ private sealed abstract class Engine0 extends Runnable:
         currentTickHigh -= 1
         currentTickLow = currentEnv.tickLow
         if cancellationCheck() then
-          loopCancel(stack, store)
+          innerLoopStep(CancelPayload, Step.Cancel, stack, store)
         else
           innerLoop(tag, payload, step, stack, store)
       else
@@ -298,7 +293,7 @@ private sealed abstract class Engine0 extends Runnable:
 
 
   //-------------------------------------------------------------------
-  // Inner Loop / 2nd Stage
+  // _
   //-------------------------------------------------------------------
 
 
@@ -333,15 +328,14 @@ private sealed abstract class Engine0 extends Runnable:
       if instr.isBridge then
         val (stack2, store2, step2) = OpPush.drop(stack, store)
         refreshEnv(stack2, store2)
-        intrinsicLoopStep(payload, step2, stack2, store2)
+        loopStep(payload, step2, stack2, store2)
       else
         val (stack2, store2, step2, prompt, frame, local) = OpPush.pop(stack, store)
         val fallthrough = if instr.isPop then step2 else step
         if prompt.isIo then
           (frame.kind.unwrap: @switch) match
             case FrameKind.PLAIN =>
-              refreshEnv(stack2, store2)
-              intrinsicLoopStep(payload, fallthrough, stack2, store2)
+              loopStepRefreshEnv(payload, fallthrough, stack2, store2)
 
             case FrameKind.GUARD =>
               val payload2 = instr.kind match
@@ -350,8 +344,7 @@ private sealed abstract class Engine0 extends Runnable:
                 case Step.UnwindKind.Cancel => Snap.Cancelled
                 case Step.UnwindKind.Throw  => Snap.Failure(payload.asInstanceOf[Cause])
                 case Step.UnwindKind.Bridge => impossible
-              refreshEnv(stack2, store2)
-              intrinsicLoopStep(payload2, step2, stack2, store2)
+              loopStepRefreshEnv(payload2, step2, stack2, store2)
 
             case FrameKind.WARP =>
               currentFiber.suspendStep(payload, fallthrough, stack2, store2)
@@ -365,8 +358,7 @@ private sealed abstract class Engine0 extends Runnable:
                 case Bits.WaiterAlreadyCancelled => impossible //// Latch is set
                 case Bits.WaiteeAlreadyCompleted =>
                   currentFiber.clearSuspension()
-                  refreshEnv(stack2, store2)
-                  intrinsicLoopStep(payload, fallthrough, stack2, store2)
+                  loopStepRefreshEnv(payload, fallthrough, stack2, store2)
 
             case FrameKind.EXEC =>
               currentFiber.suspendStep(payload, fallthrough, stack2, store2)
@@ -376,17 +368,17 @@ private sealed abstract class Engine0 extends Runnable:
             case FrameKind.SUPPRESS =>
               refreshEnv(stack2, store2)
               if cancellationCheck() then
-                intrinsicLoopCancel(stack2, store2)
+                loopCancel(stack2, store2)
               else
-                intrinsicLoopStep(payload, fallthrough, stack2, store2)
+                loopStep(payload, fallthrough, stack2, store2)
           end match
         else //// isIo
           if instr.isPop then
             val comp2 = prompt.onReturn(payload, local)
-            intrinsicLoopComp(comp2, step2, stack2, store2)
+            loopComp(comp2, step2, stack2, store2)
           else
             val step3 = if prompt == instr.prompt then step2 else step
-            intrinsicLoopStep(payload, step3, stack2, store2)
+            loopStep(payload, step3, stack2, store2)
       end if //// isBridge
     else
       val completion = instr.kind match
@@ -402,30 +394,32 @@ private sealed abstract class Engine0 extends Runnable:
   //-------------------------------------------------------------------
 
 
-  private final def intrinsicLoop(tag: Int, payload: Any, step: Step, stack: Stack, store: Store): Halt.Loop2nd =
-    savedPayload = payload
-    savedTag = tag
+  private final def loopStep(value: Any, step: Step, stack: Stack, store: Store): Halt.Loop2nd =
+    savedPayload = value
+    savedTag = step.tag
     savedStep = step
     savedStack = stack
     savedStore = store
     Halt.Bounce
 
-  private final def intrinsicLoopStep(value: Any, step: Step, stack: Stack, store: Store): Halt.Loop2nd =
-    intrinsicLoop(step.tag, value, step, stack, store)
+  private final def loopComp(comp: !![?, ?], step: Step, stack: Stack, store: Store): Halt.Loop2nd =
+    savedPayload = comp
+    savedTag = comp.tag
+    savedStep = step
+    savedStack = stack
+    savedStore = store
+    Halt.Bounce
 
-  private final def intrinsicLoopComp(comp: !![?, ?], step: Step, stack: Stack, store: Store): Halt.Loop2nd =
-    intrinsicLoop(comp.tag, comp, step, stack, store)
-
-  private final def intrinsicLoopStepRefreshEnv(value: Any, step: Step, stack: Stack, store: Store): Halt.Loop2nd =
+  private final def loopStepRefreshEnv(value: Any, step: Step, stack: Stack, store: Store): Halt.Loop2nd =
     refreshEnv(stack, store)
-    intrinsicLoopStep(value, step, stack, store)
+    loopStep(value, step, stack, store)
 
-  private final def intrinsicLoopCompRefreshEnv(comp: !![?, ?], step: Step, stack: Stack, store: Store): Halt.Loop2nd =
+  private final def loopCompRefreshEnv(comp: !![?, ?], step: Step, stack: Stack, store: Store): Halt.Loop2nd =
     refreshEnv(stack, store)
-    intrinsicLoopComp(comp, step, stack, store)
+    loopComp(comp, step, stack, store)
 
-  private final def intrinsicLoopCancel(stack: Stack, store: Store): Halt.Loop2nd =
-    intrinsicLoop(Tags.Step_Unwind, CancelPayload, Step.Cancel, stack, store)
+  private final def loopCancel(stack: Stack, store: Store): Halt.Loop2nd =
+    loopStep(CancelPayload, Step.Cancel, stack, store)
 
 
   //-------------------------------------------------------------------
@@ -440,7 +434,7 @@ private sealed abstract class Engine0 extends Runnable:
     //-------------------
     val location = stack.locatePrompt(prompt)
     val (stack2, store2) = OpPush.pushNested(stack, store, step, prompt, location, local.asLocal, FrameKind.plain)
-    intrinsicLoopComp(body, SC.Pop, stack2, store2)
+    loopComp(body, SC.Pop, stack2, store2)
 
 
   final def intrinsicDelimitMod[S](prompt: Prompt, body: AnyComp, fun: S => S): Halt.Loop2nd =
@@ -451,7 +445,7 @@ private sealed abstract class Engine0 extends Runnable:
     val location = stack.locatePrompt(prompt)
     val local2 = fun.asInstanceOf[Local => Local](store.getDeep(location))
     val (stack2, store2) = OpPush.pushNested(stack, store, step, prompt, location, local2, FrameKind.plain)
-    intrinsicLoopComp(body, SC.Pop, stack2, store2)
+    loopComp(body, SC.Pop, stack2, store2)
 
 
   final def intrinsicAbort(prompt: Prompt, value: Any): Halt.Loop2nd =
@@ -459,7 +453,7 @@ private sealed abstract class Engine0 extends Runnable:
     val stack = savedStack
     val store = savedStore
     //-------------------
-    intrinsicLoopStep(value, Step.abort(prompt), stack, store)
+    loopStep(value, Step.abort(prompt), stack, store)
 
 
   final def intrinsicResume[A, B, S, U](cont0: Continuation[A, B, S, U], value: A): Halt.Loop2nd =
@@ -475,7 +469,7 @@ private sealed abstract class Engine0 extends Runnable:
       stackLo = stack,
       storeLo = store,
     )
-    intrinsicLoopStepRefreshEnv(value, cont.step, stack2, store2)
+    loopStepRefreshEnv(value, cont.step, stack2, store2)
 
 
   final def intrinsicResumePut[A, B, S, U](cont0: Continuation[A, B, S, U], value: A, local: S): Halt.Loop2nd =
@@ -491,7 +485,7 @@ private sealed abstract class Engine0 extends Runnable:
       stackLo = stack,
       storeLo = store,
     )
-    intrinsicLoopStepRefreshEnv(value, cont.step, stack2, store2)
+    loopStepRefreshEnv(value, cont.step, stack2, store2)
 
 
   final def intrinsicCapture[A, B, S, U](prompt: Prompt, fun: Continuation[A, B, S, U] => B !! U): Halt.Loop2nd =
@@ -505,7 +499,7 @@ private sealed abstract class Engine0 extends Runnable:
     val location2 = stackHi.locatePrompt(prompt)
     val cont = new ContImpl(stackHi, storeHi, step, location2)
     val comp2 = fun(cont.cast[A, B, S, U])
-    intrinsicLoopCompRefreshEnv(comp2, stepMid, stackLo, storeLo)
+    loopCompRefreshEnv(comp2, stepMid, stackLo, storeLo)
 
 
   final def intrinsicCaptureGet[A, B, S, U](prompt: Prompt, fun: (Continuation[A, B, S, U], S) => B !! U): Halt.Loop2nd =
@@ -521,7 +515,7 @@ private sealed abstract class Engine0 extends Runnable:
     val comp2 =
       val local = storeHi.getDeep(location2)
       fun(cont.cast[A, B, S, U], local.asInstanceOf[S])
-    intrinsicLoopCompRefreshEnv(comp2, stepMid, stackLo, storeLo)
+    loopCompRefreshEnv(comp2, stepMid, stackLo, storeLo)
 
 
   final def intrinsicZipPar[A, B, C, U](lhs: A !! U, rhs: B !! U, fun: (A, B) => C): Halt.Loop2nd =
@@ -541,14 +535,14 @@ private sealed abstract class Engine0 extends Runnable:
         fiberRight.suspend(rhs.tag, rhs, SC.Pop, stack2, storeRight)
         fiberRight.resume()
         becomeWithSameEnv(fiberLeft)
-        intrinsicLoopComp(lhs, SC.Pop, stack2, storeLeft)
+        loopComp(lhs, SC.Pop, stack2, storeLeft)
       else
         //// Must have been cancelled meanwhile
-        intrinsicLoopCancel(stack, store)
+        loopCancel(stack, store)
     else
       //// Fallback to sequential
       val comp2 = lhs.zipWith(rhs)(fun)
-      intrinsicLoopComp(comp2, step, stack, store)
+      loopComp(comp2, step, stack, store)
 
 
   final def intrinsicOrPar[A, U](lhs: A !! U, rhs: A !! U): Halt.Loop2nd =
@@ -567,14 +561,14 @@ private sealed abstract class Engine0 extends Runnable:
         fiberRight.suspend(rhs.tag, rhs, SC.Pop, stack2, storeRight)
         fiberRight.resume()
         becomeWithSameEnv(fiberLeft)
-        intrinsicLoopComp(lhs, SC.Pop, stack2, storeLeft)
+        loopComp(lhs, SC.Pop, stack2, storeLeft)
       else
         //// Must have been cancelled meanwhile
-        intrinsicLoopCancel(stack, store)
+        loopCancel(stack, store)
     else
       //// Fallback to sequential
       val comp2 = lhs ||! rhs
-      intrinsicLoopComp(comp2, step, stack, store)
+      loopComp(comp2, step, stack, store)
 
 
   final def intrinsicOrSeq[A, U](lhs: A !! U, rhsFun: () => A !! U): Halt.Loop2nd =
@@ -588,10 +582,10 @@ private sealed abstract class Engine0 extends Runnable:
       currentFiber.suspendForRace(rhsFun, step, stack, storeDown)
       val stack2 = stack.makeFork
       becomeWithSameEnv(fiberLeft)
-      intrinsicLoopComp(lhs, SC.Pop, stack2, storeLeft)
+      loopComp(lhs, SC.Pop, stack2, storeLeft)
     else
       //// Must have been cancelled meanwhile
-      intrinsicLoopCancel(stack, store)
+      loopCancel(stack, store)
 
 
   final def intrinsicHandle(body: AnyComp, prompt: Prompt, initial: Any): Halt.Loop2nd =
@@ -603,7 +597,7 @@ private sealed abstract class Engine0 extends Runnable:
       if stack.containsSignature(sig) then
         panic(s"Unsupported feature: shadowing effect ${sig}.")
     val (stack2, store2) = OpPush.pushBase(stack, store, step, prompt, initial.asLocal)
-    intrinsicLoopComp(body, Step.Pop, stack2, store2)
+    loopComp(body, Step.Pop, stack2, store2)
 
 
   final def intrinsicSnap[A, U](body: A !! U): Halt.Loop2nd =
@@ -612,7 +606,7 @@ private sealed abstract class Engine0 extends Runnable:
     val store = savedStore
     //-------------------
     val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, Local.void, FrameKind.guard)
-    intrinsicLoopComp(body, SC.Pop, stack2, store2)
+    loopComp(body, SC.Pop, stack2, store2)
 
 
   final def intrinsicUnsnap[A, U](snap: Snap[A]): Halt.Loop2nd =
@@ -622,13 +616,13 @@ private sealed abstract class Engine0 extends Runnable:
     //-------------------
     //@#@TODO forbid uncancelling, it wouldnt work correctly anyway
     (snap: @unchecked) match
-      case Snap.Success(payload2)         => intrinsicLoopStep(payload2, step, stack, store)
-      case Snap.Failure(payload2)         => intrinsicLoopStep(payload2, Step.Throw, stack, store)
-      case Snap.Aborted(payload2, prompt) => intrinsicLoopStep(payload2, Step.abort(prompt), stack, store)
+      case Snap.Success(payload2)         => loopStep(payload2, step, stack, store)
+      case Snap.Failure(payload2)         => loopStep(payload2, Step.Throw, stack, store)
+      case Snap.Aborted(payload2, prompt) => loopStep(payload2, Step.abort(prompt), stack, store)
       case Snap.Cancelled =>
         //@#@THOV It should be harmless to self-cancel a fiber, even when it's uncancellable?
         currentFiber.cancelBySelf()
-        intrinsicLoopCancel(stack, store)
+        loopCancel(stack, store)
 
 
   final def intrinsicEnvAsk[A](fun: Env => A): Halt.Loop2nd =
@@ -637,7 +631,7 @@ private sealed abstract class Engine0 extends Runnable:
     val store = savedStore
     //-------------------
     val value = fun(currentEnv)
-    intrinsicLoopStep(value, step, stack, store)
+    loopStep(value, step, stack, store)
 
 
   final def intrinsicEnvMod[A, U](fun: Env => Env, body: A !! U): Halt.Loop2nd =
@@ -647,11 +641,11 @@ private sealed abstract class Engine0 extends Runnable:
     //-------------------
     val env2 = fun(currentEnv)
     if currentEnv == env2 then
-      intrinsicLoopComp(body, step, stack, store)
+      loopComp(body, step, stack, store)
     else
       val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, env2.asLocal, FrameKind.plain)
       this.currentEnv = env2
-      intrinsicLoopComp(body, SC.Pop, stack2, store2)
+      loopComp(body, SC.Pop, stack2, store2)
 
 
   final def intrinsicForkFiber[A, U](warp0: Warp | Null, comp: A !! U, name: String, callback: (Zipper.Untyped => Unit) | Null = null): Halt.Loop2nd =
@@ -666,10 +660,10 @@ private sealed abstract class Engine0 extends Runnable:
     child.suspend(comp.tag, comp, SC.Pop, stackFork, storeFork)
     if warp.tryAddFiber(child) then
       child.resume()
-      intrinsicLoopStep(child, step, stack, storeDown)
+      loopStep(child, step, stack, storeDown)
     else
       child.suspendAsCancelled()
-      intrinsicLoopStep(child, step, stack, store)
+      loopStep(child, step, stack, store)
 
 
   final def intrinsicAwaitFiber[A, U](fiber: Fiber.Untyped, isCancel: Boolean, isVoid: Boolean): Halt.Loop2nd =
@@ -689,16 +683,16 @@ private sealed abstract class Engine0 extends Runnable:
         case Bits.WaiterSubscribed => ThreadDisowned
         case Bits.WaiterAlreadyCancelled =>
           currentFiber.clearSuspension()
-          intrinsicLoopCancel(stack, store)
+          loopCancel(stack, store)
         case Bits.WaiteeAlreadyCompleted =>
           currentFiber.clearSuspension()
           val payload2 = if isVoid then () else waitee.getOrMakeZipper
-          intrinsicLoopStep(payload2, step, stack, store)
+          loopStep(payload2, step, stack, store)
     else
       //// Ignoring `isCancellable` bcoz cancelling is by-self
       if isCancel then
         currentFiber.cancelBySelf()
-        intrinsicLoopCancel(stack, store)
+        loopCancel(stack, store)
       else
         val zombie = new Blocker.Zombie(currentFiber)
         currentFiber.suspendStep(null, step, stack, store)
@@ -706,7 +700,7 @@ private sealed abstract class Engine0 extends Runnable:
           ThreadDisowned
         else
           currentFiber.clearSuspension()
-          intrinsicLoopCancel(stack, store)
+          loopCancel(stack, store)
 
 
   final def intrinsicCurrentFiber(): Halt.Loop2nd =
@@ -714,7 +708,7 @@ private sealed abstract class Engine0 extends Runnable:
     val stack = savedStack
     val store = savedStore
     //-------------------
-    intrinsicLoopStep(currentFiber, step, stack, store)
+    loopStep(currentFiber, step, stack, store)
 
 
   final def intrinsicSpawnWarp[A, U](exitMode: Warp.ExitMode, body: A !! (U & Warp), name: String): Halt.Loop2nd =
@@ -726,7 +720,7 @@ private sealed abstract class Engine0 extends Runnable:
     val env2 = currentEnv.copy(currentWarp = warp)
     val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, env2.asLocal, FrameKind.warp)
     this.currentEnv = env2
-    intrinsicLoopComp(body, SC.Pop, stack2, store2)
+    loopComp(body, SC.Pop, stack2, store2)
 
 
   final def intrinsicAwaitWarp(warp0: Warp, isCancel: Boolean): Halt.Loop2nd =
@@ -744,10 +738,10 @@ private sealed abstract class Engine0 extends Runnable:
       case Bits.WaiterSubscribed => ThreadDisowned
       case Bits.WaiterAlreadyCancelled =>
         currentFiber.clearSuspension()
-        intrinsicLoopCancel(stack, store)
+        loopCancel(stack, store)
       case Bits.WaiteeAlreadyCompleted =>
         currentFiber.clearSuspension()
-        intrinsicLoopStep((), step, stack, store)
+        loopStep((), step, stack, store)
 
 
   final def intrinsicAsync[A](callback: (Either[Throwable, A] => Unit) => Unit): Halt.Loop2nd =
@@ -768,7 +762,7 @@ private sealed abstract class Engine0 extends Runnable:
       ThreadDisowned
     else
       currentFiber.clearSuspension()
-      intrinsicLoopCancel(stack, store)
+      loopCancel(stack, store)
 
 
   final def intrinsicSleep(length: Long, unit: TimeUnit = TimeUnit.MILLISECONDS): Halt.Loop2nd =
@@ -783,7 +777,7 @@ private sealed abstract class Engine0 extends Runnable:
       ThreadDisowned
     else
       currentFiber.clearSuspension()
-      intrinsicLoopCancel(stack, store)
+      loopCancel(stack, store)
 
 
   final def intrinsicSuppress[A, U](body: A !! U, delta: Int): Halt.Loop2nd =
@@ -794,15 +788,15 @@ private sealed abstract class Engine0 extends Runnable:
     val n1 = currentEnv.suppressions
     val n2 = 0.max(n1 + delta)
     if n1 == n2 then
-      intrinsicLoopComp(body, step, stack, store)
+      loopComp(body, step, stack, store)
     else
       val env2 = currentEnv.copy(suppressions = n2)
       val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, env2.asLocal, FrameKind.suppress)
       this.currentEnv = env2
       if cancellationCheck() then
-        intrinsicLoopCancel(stack2, store2)
+        loopCancel(stack2, store2)
       else
-        intrinsicLoopComp(body, SC.Pop, stack2, store2)
+        loopComp(body, SC.Pop, stack2, store2)
 
 
   final def intrinsicExecOn[A, U](exec: Executor, body: A !! U): Halt.Loop2nd =
@@ -811,7 +805,7 @@ private sealed abstract class Engine0 extends Runnable:
     val store = savedStore
     //-------------------
     if currentEnv.executor == exec then
-      intrinsicLoopComp(body, step, stack, store)
+      loopComp(body, step, stack, store)
     else
       val env2 = currentEnv.copy(executor = exec)
       val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, env2.asLocal, FrameKind.exec)
@@ -837,18 +831,18 @@ private sealed abstract class Engine0 extends Runnable:
     val ovar = ovar0.asImpl
     val value = ovar.theContent
     if OnceVarImpl.Empty != value then
-      intrinsicLoopStep(value, step, stack, store)
+      loopStep(value, step, stack, store)
     else
       currentFiber.suspend(Tags.NotifyOnceVar, ovar, step, stack, store)
       ovar.tryGetAwaitedBy(currentFiber, currentEnv.isCancellable) match
         case Bits.WaiterSubscribed => ThreadDisowned
         case Bits.WaiterAlreadyCancelled =>
           currentFiber.clearSuspension()
-          intrinsicLoopCancel(stack, store)
+          loopCancel(stack, store)
         case Bits.WaiteeAlreadyCompleted =>
           currentFiber.clearSuspension()
           val value = ovar.theContent
-          intrinsicLoopStep(value, step, stack, store)
+          loopStep(value, step, stack, store)
 
 
   final def intrinsicAwaitCountDownLatch(latch: CountDownLatch): Halt.Loop2nd =
@@ -861,10 +855,10 @@ private sealed abstract class Engine0 extends Runnable:
       case Bits.WaiterSubscribed => ThreadDisowned
       case Bits.WaiterAlreadyCancelled =>
         currentFiber.clearSuspension()
-        intrinsicLoopCancel(stack, store)
+        loopCancel(stack, store)
       case Bits.WaiteeAlreadyCompleted =>
         currentFiber.clearSuspension()
-        intrinsicLoopStep((), step, stack, store)
+        loopStep((), step, stack, store)
 
 
   final def intrinsicAwaitCyclicBarrier(barrier: CyclicBarrier): Halt.Loop2nd =
@@ -877,10 +871,10 @@ private sealed abstract class Engine0 extends Runnable:
       case Bits.WaiterSubscribed => ThreadDisowned
       case Bits.WaiterAlreadyCancelled =>
         currentFiber.clearSuspension()
-        intrinsicLoopCancel(stack, store)
+        loopCancel(stack, store)
       case Bits.WaiteeAlreadyCompleted =>
         currentFiber.clearSuspension()
-        intrinsicLoopStep((), step, stack, store)
+        loopStep((), step, stack, store)
 
 
   final def intrinsicAcquireMutex(mutex: Mutex): Halt.Loop2nd =
@@ -893,10 +887,10 @@ private sealed abstract class Engine0 extends Runnable:
       case Bits.WaiterSubscribed => ThreadDisowned
       case Bits.WaiterAlreadyCancelled =>
         currentFiber.clearSuspension()
-        intrinsicLoopCancel(stack, store)
+        loopCancel(stack, store)
       case Bits.WaiteeAlreadyCompleted =>
         currentFiber.clearSuspension()
-        intrinsicLoopStep((), step, stack, store)
+        loopStep((), step, stack, store)
 
 
   final def intrinsicAcquireSemaphore(semaphore: Semaphore, count: Long): Halt.Loop2nd =
@@ -909,10 +903,10 @@ private sealed abstract class Engine0 extends Runnable:
       case Bits.WaiterSubscribed => ThreadDisowned
       case Bits.WaiterAlreadyCancelled =>
         currentFiber.clearSuspension()
-        intrinsicLoopCancel(stack, store)
+        loopCancel(stack, store)
       case Bits.WaiteeAlreadyCompleted =>
         currentFiber.clearSuspension()
-        intrinsicLoopStep((), step, stack, store)
+        loopStep((), step, stack, store)
 
 
   final def intrinsicGetChannel[A](channel: Channel.Get[A]): Halt.Loop2nd =
@@ -926,10 +920,10 @@ private sealed abstract class Engine0 extends Runnable:
       case Bits.WaiterSubscribed => ThreadDisowned
       case Bits.WaiterAlreadyCancelled =>
         currentFiber.clearSuspension()
-        intrinsicLoopCancel(stack, store)
+        loopCancel(stack, store)
       case Bits.WaiteeAlreadyCompleted =>
         currentFiber.clearSuspension()
-        intrinsicLoopStep(value, step, stack, store)
+        loopStep(value, step, stack, store)
 
 
   final def intrinsicPutChannel[A](channel: Channel.Put[A], value: A): Halt.Loop2nd =
@@ -942,10 +936,10 @@ private sealed abstract class Engine0 extends Runnable:
       case Bits.WaiterSubscribed => ThreadDisowned
       case Bits.WaiterAlreadyCancelled =>
         currentFiber.clearSuspension()
-        intrinsicLoopCancel(stack, store)
+        loopCancel(stack, store)
       case Bits.WaiteeAlreadyCompleted =>
         currentFiber.clearSuspension()
-        intrinsicLoopStep((), step, stack, store)
+        loopStep((), step, stack, store)
 
 
   //-------------------------------------------------------------------
