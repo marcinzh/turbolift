@@ -416,7 +416,7 @@ object ComputationCases:
   sealed abstract class Map[A, B, C, U](_tag: Tag, val comp: A !! U) extends Computation[B, U](_tag) with Function1[A, C]
   sealed abstract class Impure[A]() extends Computation[A, Any](Tag.Impure) with Function0[A]
   sealed abstract class Sync[A, B](val isAttempt: Boolean) extends Computation[B, IO](Tag.Sync) with Function0[A]
-  sealed abstract class Intrinsic[A, U] extends Computation[A, U](Tag.Intrinsic) with Function[Engine, Engine.IntrinsicResult]
+  sealed abstract class Intrinsic[A, U] extends Computation[A, U](Tag.Intrinsic) with Function[Engine, Tag]
   sealed abstract class Perform[A, U, Z <: Signature](val sig: Signature) extends Computation[A, U](Tag.Perform) with Function1[Z, A !! U]
   sealed abstract class LocalUpdate[A, S](val prompt: Prompt) extends Computation[A, Any](Tag.LocalUpdate) with Function1[S, (A, S)]
 
@@ -424,9 +424,9 @@ object ComputationCases:
     new Sync[A, B](isAttempt):
       override def apply(): A = thunk
 
-  private[turbolift] inline def intrinsic[A, U](f: Engine => Engine.IntrinsicResult): A !! U =
+  private[turbolift] inline def intrinsic[A, U](f: Engine => Tag): A !! U =
     new CC.Intrinsic[A, U]:
-      override def apply(engine: Engine): Engine.IntrinsicResult = f(engine)
+      override def apply(engine: Engine): Tag = f(engine)
 
   private[turbolift] inline def perform[A, U, Z <: Signature](sig: Signature, inline f: Z => A !! U): A !! U =
     new Perform[A, U, Z](sig):
