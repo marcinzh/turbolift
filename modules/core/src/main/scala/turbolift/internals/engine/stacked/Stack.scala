@@ -65,31 +65,25 @@ private[engine] final class Stack private (
         tail.containsSignature(sig)
 
 
-
-  @tailrec def locateSignature(sig: Signature, depth: Int = 0): Location.Deep =
+  @tailrec def findEntryBySignature(sig: Signature, depth: Int = 0): Entry =
     val entry = lookup.findBySignature(sig)
     if entry != null then
-      entry.deepLocation(depth)
+      entry.copyWithDepth(depth)
     else
       if isTailless then
         Lookup.sigNotFound(sig)
       else
-        tail.locateSignature(sig, depth + 1)
+        tail.findEntryBySignature(sig, depth + 1)
+
+  
+  def findEntryByPrompt(prompt: Prompt): Entry = findEntryBySignature(prompt.signatures.head)
 
 
-  @tailrec def findSignature(sig: Signature, depth: Int = 0): (Prompt, Location.Deep) =
-    val entry = lookup.findBySignature(sig)
-    if entry != null then
-      (entry.prompt, entry.deepLocation(depth))
-    else
-      if isTailless then
-        Lookup.sigNotFound(sig)
-      else
-        tail.findSignature(sig, depth + 1)
-
-
+  //@#@TODO update callers
+  //// {{ old interface
   def locateIO: Location.Deep = locatePrompt(Prompt.IO)
-  def locatePrompt(prompt: Prompt): Location.Deep = locateSignature(prompt.signatures.head)
+  def locatePrompt(prompt: Prompt): Location.Deep = findEntryByPrompt(prompt).location
+  //// }} old interface
 
 
   def locateHighestPile: Location.Shallow =

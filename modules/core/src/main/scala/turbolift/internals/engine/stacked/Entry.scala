@@ -21,13 +21,17 @@ private final class Entry(
     else
       Location.Deep(copyWithDepth(depth))
 
-  private def copyWithDepth(n: Int): Entry =
+  def copyWithDepth(n: Int): Entry =
     new Entry(
       prompt = prompt,
       promptIndex = promptIndex,
       storeIndex = storeIndex,
       segmentDepth = n,
     )
+
+  //@#@TEMP
+  inline def location: Location.Deep = Location.Deep(this)
+
 
 private object Entry:
   val initial: Entry = Entry(Prompt.IO, promptIndex = 0, storeIndex = 0, segmentDepth = 0)

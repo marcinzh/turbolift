@@ -162,8 +162,8 @@ private sealed abstract class Engine0 extends Runnable:
 
             case Tag.Perform =>
               val instr2 = comp1.asInstanceOf[CC.Perform[Any, Any, Signature]]
-              val (prompt, location) = stack.findSignature(instr2.sig)
-              val comp2 = instr2(prompt)
+              val entry = stack.findEntryBySignature(instr2.sig)
+              val comp2 = instr2(entry.prompt)
               (comp2.tag: @switch) match
                 case Tag.Pure =>
                   val instr3 = comp2.asInstanceOf[CC.Pure[Any]]
@@ -176,19 +176,19 @@ private sealed abstract class Engine0 extends Runnable:
                   loopTag(tag, payload2, step, stack, store)
 
                 case Tag.LocalGet =>
-                  val local = store.getDeep(location)
+                  val local = store.getDeep(entry.location)
                   val payload2 = instr1(local)
                   loopTag(tag, payload2, step, stack, store)
 
                 case Tag.LocalPut =>
                   val instr3 = comp2.asInstanceOf[CC.LocalPut[Local]]
-                  val store2 = store.setDeep(location, instr3.local)
+                  val store2 = store.setDeep(entry.location, instr3.local)
                   val payload2 = instr1(())
                   loopTag(tag, payload2, step, stack, store2)
 
                 case Tag.LocalUpdate =>
                   val instr3 = comp2.asInstanceOf[CC.LocalUpdate[Any, Local]]
-                  val (value, store2) = store.updateDeep(location, instr3)
+                  val (value, store2) = store.updateDeep(entry.location, instr3)
                   val payload2 = instr1(value)
                   loopTag(tag, payload2, step, stack, store2)
 
@@ -216,21 +216,21 @@ private sealed abstract class Engine0 extends Runnable:
 
         case Tag.Perform =>
           val instr = payload.asInstanceOf[CC.Perform[Any, Any, Signature]]
-          val (prompt, location) = stack.findSignature(instr.sig)
-          val comp2 = instr(prompt)
+          val entry = stack.findEntryBySignature(instr.sig)
+          val comp2 = instr(entry.prompt)
           (comp2.tag: @switch) match
             case Tag.LocalGet =>
-              val local = store.getDeep(location)
+              val local = store.getDeep(entry.location)
               innerLoopStep(local, step, stack, store)
 
             case Tag.LocalPut =>
               val instr2 = comp2.asInstanceOf[CC.LocalPut[Local]]
-              val store2 = store.setDeep(location, instr2.local)
+              val store2 = store.setDeep(entry.location, instr2.local)
               innerLoopStep((), step, stack, store2)
 
             case Tag.LocalUpdate =>
               val instr2 = comp2.asInstanceOf[CC.LocalUpdate[Any, Local]]
-              val (value, store2) = store.updateDeep(location, instr2)
+              val (value, store2) = store.updateDeep(entry.location, instr2)
               innerLoopStep(value, step, stack, store2)
 
             case _ => innerLoopComp(comp2, step, stack, store)
@@ -247,20 +247,20 @@ private sealed abstract class Engine0 extends Runnable:
 
         case Tag.LocalGet =>
           val instr = payload.asInstanceOf[CC.LocalGet]
-          val location = stack.locatePrompt(instr.prompt)
-          val local = store.getDeep(location)
+          val entry = stack.findEntryByPrompt(instr.prompt)
+          val local = store.getDeep(entry.location)
           innerLoopStep(local, step, stack, store)
 
         case Tag.LocalPut =>
           val instr = payload.asInstanceOf[CC.LocalPut[Local]]
-          val location = stack.locatePrompt(instr.prompt)
-          val store2 = store.setDeep(location, instr.local)
+          val entry = stack.findEntryByPrompt(instr.prompt)
+          val store2 = store.setDeep(entry.location, instr.local)
           innerLoopStep((), step, stack, store2)
 
         case Tag.LocalUpdate =>
           val instr = payload.asInstanceOf[CC.LocalUpdate[Any, Local]]
-          val location = stack.locatePrompt(instr.prompt)
-          val (value, store2) = store.updateDeep(location, instr)
+          val entry = stack.findEntryByPrompt(instr.prompt)
+          val (value, store2) = store.updateDeep(entry.location, instr)
           innerLoopStep(value, step, stack, store2)
 
         case Tag.Sync =>
