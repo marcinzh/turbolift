@@ -4,6 +4,8 @@ package turbolift.internals.engine
 type Tag = Int
 
 object Tag:
+  inline val TickReset      = 0x40
+
   //// Handled at innerLoop:
   inline val FlatMap        = 0
   inline val PureMap        = 1
@@ -16,16 +18,21 @@ object Tag:
   inline val LocalPut       = 8
   inline val LocalUpdate    = 9
   inline val Sync           = 10
+
+  //// Handled at middleLoop:
   inline val Intrinsic      = 11
   inline val Unwind         = 12
 
-  inline val NotifyOnceVar  = 13
-  inline val NotifyZipper   = 14
-  inline val NotifyUnit     = 15
+  //// Handled at outerLoop: (`Become` MUST be first in this group)
+  inline val Become         = 13
+  inline val Yield          = 14
+  inline val Retire         = 15
 
-  inline val Become         = 16
-  inline val Yield          = 17
-  inline val Retire         = 18
+  //// Handled at outerLoop once, after fiber switch:
+  inline val NotifyOnceVar  = 16
+  inline val NotifyZipper   = 17
+  inline val NotifyUnit     = 18
+
 
   def toStr(tag: Tag) =
     tag match
@@ -40,14 +47,15 @@ object Tag:
       case LocalPut       => "LocalPut"
       case LocalUpdate    => "LocalUpdate"
       case Sync           => "Sync"
+
       case Intrinsic      => "Intrinsic"
       case Unwind         => "Unwind"
-
-      case NotifyOnceVar  => "NotifyOnceVar"
-      case NotifyZipper   => "NotifyZipper"
-      case NotifyUnit     => "NotifyUnit"
 
       case Become         => "Become"
       case Yield          => "Yield"
       case Retire         => "Retire"
+
+      case NotifyOnceVar  => "NotifyOnceVar"
+      case NotifyZipper   => "NotifyZipper"
+      case NotifyUnit     => "NotifyUnit"
       case _              => s"Tag($tag)"

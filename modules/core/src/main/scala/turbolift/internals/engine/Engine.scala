@@ -61,18 +61,7 @@ private sealed abstract class Engine0 extends Runnable:
         dispatchNotify(tag1)
 
       try
-        val payload = this.savedPayload
-        val step    = this.savedStep
-        val stack   = this.savedStack
-        val store   = this.savedStore
-        clearSaved()
-        innerLoop(
-          tag      = tag,
-          payload  = payload,
-          step     = step,
-          stack    = stack,
-          store    = store,
-        )
+        middleLoop(tag)
       catch e =>
         // e.printStackTrace()
         val e2 = if e.isInstanceOf[Exceptions.Panic] then e else new Exceptions.Unhandled(e)
@@ -83,6 +72,59 @@ private sealed abstract class Engine0 extends Runnable:
       case Tag.Become => outerLoop()
       case Tag.Yield => Halt.Yield
       case Tag.Retire => Halt.Retire
+
+
+  //-------------------------------------------------------------------
+  // Middle Loop
+  //-------------------------------------------------------------------
+
+
+  @tailrec private final def middleLoop(tag: Tag): Tag =
+    val tag2 =
+      (tag: @switch) match
+        case (
+          Tag.FlatMap | Tag.PureMap | Tag.MoreFlat | Tag.MorePure |
+          Tag.Perform | Tag.Pure | Tag.Impure |
+          Tag.LocalGet | Tag.LocalPut | Tag.LocalUpdate | Tag.Sync
+        ) =>
+          val payload = savedPayload
+          val step    = savedStep
+          val stack   = savedStack
+          val store   = savedStore
+          clearSaved()
+          innerLoop(tag, payload, step, stack, store)
+
+        case Tag.Intrinsic =>
+          val instr = savedPayload.asInstanceOf[CC.Intrinsic[Any, Any]]
+          instr(this)
+
+        case Tag.Unwind => doUnwind()
+
+        case Tag.Become | Tag.Yield | Tag.Retire => tag
+
+    if tag2 < Tag.Become then
+      middleLoop(tag2)
+    else
+      if tag2 < Tag.TickReset then
+        tag2
+      else
+        val tag3 = tag2 - Tag.TickReset
+        assert(tag3 < Tag.Become)
+        if currentTickHigh > 0 then
+          currentTickHigh -= 1
+          currentTickLow = currentEnv.tickLow
+          val tag4 =
+            if cancellationCheck() then
+              this.savedPayload = CancelPayload
+              this.savedStep = Step.Cancel
+              Tag.Unwind
+            else
+              tag3
+          middleLoop(tag4)
+        else
+          currentFiber.suspend(tag3, savedPayload, savedStep, savedStack, savedStore)
+          clearSaved()
+          Tag.Yield
 
 
   //-------------------------------------------------------------------
@@ -238,53 +280,18 @@ private sealed abstract class Engine0 extends Runnable:
             else
               innerLoopStep(Cause(throwable.nn), Step.Throw, stack, store)
 
-        case Tag.Intrinsic =>
-          savedStep    = step
-          savedStore   = store
-          savedStack   = stack
-          //-------------------
-          val instr = payload.asInstanceOf[CC.Intrinsic[Any, Any]]
-          val tag2 = instr(this)
-          //-------------------
-          val payload2 = savedPayload
-          val step2    = savedStep
-          val stack2   = savedStack
-          val store2   = savedStore
-          clearSaved()
-          innerLoop(tag2, payload2, step2, stack2, store2)
-
-        case Tag.Unwind =>
-          savedPayload = payload
-          savedStep    = step
-          savedStack   = stack
-          savedStore   = store
-          //-------------------
-          val tag2 = doUnwind()
-          //-------------------
-          val payload2 = savedPayload
-          val step2    = savedStep
-          val stack2   = savedStack
-          val store2   = savedStore
-          clearSaved()
-          innerLoop(tag2, payload2, step2, stack2, store2)
-
-        case _ =>
-          savedPayload = payload
-          savedStep    = step
-          savedStack   = stack
-          savedStore   = store
+        case Tag.Intrinsic | Tag.Unwind =>
+          this.savedPayload = payload
+          this.savedStep    = step
+          this.savedStack   = stack
+          this.savedStore   = store
           tag
     else
-      if currentTickHigh > 0 then
-        currentTickHigh -= 1
-        currentTickLow = currentEnv.tickLow
-        if cancellationCheck() then
-          innerLoopStep(CancelPayload, Step.Cancel, stack, store)
-        else
-          innerLoop(tag, payload, step, stack, store)
-      else
-        currentFiber.suspend(tag, payload, step, stack, store)
-        Tag.Yield
+      this.savedPayload = payload
+      this.savedStep    = step
+      this.savedStack   = stack
+      this.savedStore   = store
+      Tag.TickReset + tag
 
 
   //-------------------------------------------------------------------
