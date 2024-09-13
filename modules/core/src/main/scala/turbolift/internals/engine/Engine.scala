@@ -24,13 +24,12 @@ private sealed abstract class Engine0 extends Runnable:
 
 
 /*private[turbolift]*/ abstract class Engine extends Engine0:
-  protected var savedTag: Tag = 0
   protected var savedPayload: Any = null
   protected var savedStep: Step = null.asInstanceOf[Step]
   protected var savedStack: Stack = null.asInstanceOf[Stack]
   protected var savedStore: Store = null.asInstanceOf[Store]
   protected val pad1 = 0L
-  protected val pad2 = 0
+  protected val pad2 = 0L
 
 
   def this(fiber: FiberImpl) = { this(); become(fiber) }
@@ -66,10 +65,7 @@ private sealed abstract class Engine0 extends Runnable:
         val step    = this.savedStep
         val stack   = this.savedStack
         val store   = this.savedStore
-        this.savedPayload = null
-        this.savedStep    = null.asInstanceOf[Step]
-        this.savedStack   = null.asInstanceOf[Stack]
-        this.savedStore   = null.asInstanceOf[Store]
+        clearSaved()
         innerLoop(
           tag      = tag,
           payload  = payload,
@@ -242,44 +238,42 @@ private sealed abstract class Engine0 extends Runnable:
             else
               innerLoopStep(Cause(throwable.nn), Step.Throw, stack, store)
 
-
         case Tag.Intrinsic =>
-          savedStep  = step
-          savedStack = stack
-          savedStore = store
+          savedStep    = step
+          savedStore   = store
+          savedStack   = stack
+          //-------------------
           val instr = payload.asInstanceOf[CC.Intrinsic[Any, Any]]
-          instr(this) match
-            case Tag.Bounce =>
-              val tag2     = savedTag
-              val payload2 = savedPayload
-              val step2    = savedStep
-              val stack2   = savedStack
-              val store2   = savedStore
-              savedPayload = null
-              savedStep = null.asInstanceOf[Step]
-              savedStack = null.asInstanceOf[Stack]
-              savedStore = null.asInstanceOf[Store]
-              innerLoop(tag2, payload2, step2, stack2, store2)
-            case halt: Tag => halt
+          val tag2 = instr(this)
+          //-------------------
+          val payload2 = savedPayload
+          val step2    = savedStep
+          val stack2   = savedStack
+          val store2   = savedStore
+          clearSaved()
+          innerLoop(tag2, payload2, step2, stack2, store2)
 
         case Tag.Unwind =>
           savedPayload = payload
           savedStep    = step
           savedStack   = stack
           savedStore   = store
-          doUnwind() match
-            case Tag.Bounce =>
-              val tag2     = savedTag
-              val payload2 = savedPayload
-              val step2    = savedStep
-              val stack2   = savedStack
-              val store2   = savedStore
-              savedPayload = null
-              savedStep = null.asInstanceOf[Step]
-              savedStack = null.asInstanceOf[Stack]
-              savedStore = null.asInstanceOf[Store]
-              innerLoop(tag2, payload2, step2, stack2, store2)
-            case halt: Tag => halt
+          //-------------------
+          val tag2 = doUnwind()
+          //-------------------
+          val payload2 = savedPayload
+          val step2    = savedStep
+          val stack2   = savedStack
+          val store2   = savedStore
+          clearSaved()
+          innerLoop(tag2, payload2, step2, stack2, store2)
+
+        case _ =>
+          savedPayload = payload
+          savedStep    = step
+          savedStack   = stack
+          savedStore   = store
+          tag
     else
       if currentTickHigh > 0 then
         currentTickHigh -= 1
@@ -403,19 +397,17 @@ private sealed abstract class Engine0 extends Runnable:
 
   private final def loopStep(value: Any, step: Step, stack: Stack, store: Store): Tag =
     savedPayload = value
-    savedTag = step.tag
     savedStep = step
     savedStack = stack
     savedStore = store
-    Tag.Bounce
+    step.tag
 
   private final def loopComp(comp: !![?, ?], step: Step, stack: Stack, store: Store): Tag =
     savedPayload = comp
-    savedTag = comp.tag
     savedStep = step
     savedStack = stack
     savedStore = store
-    Tag.Bounce
+    comp.tag
 
   private final def loopStepRefreshEnv(value: Any, step: Step, stack: Stack, store: Store): Tag =
     refreshEnv(stack, store)
@@ -978,3 +970,9 @@ private sealed abstract class Engine0 extends Runnable:
   private final def cancellationCheck(): Boolean =
     currentFiber.cancellationCheck(currentEnv.isCancellable)
 
+
+  private final def clearSaved(): Unit =
+    this.savedPayload = null
+    this.savedStep = null.asInstanceOf[Step]
+    this.savedStack = null.asInstanceOf[Stack]
+    this.savedStore = null.asInstanceOf[Store]

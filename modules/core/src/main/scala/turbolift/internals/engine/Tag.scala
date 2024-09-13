@@ -18,15 +18,14 @@ object Tag:
   inline val Sync           = 10
   inline val Intrinsic      = 11
   inline val Unwind         = 12
-  inline val Bounce         = 13
 
-  inline val NotifyOnceVar  = 14
-  inline val NotifyZipper   = 15
-  inline val NotifyUnit     = 16
+  inline val NotifyOnceVar  = 13
+  inline val NotifyZipper   = 14
+  inline val NotifyUnit     = 15
 
-  inline val Become         = 17
-  inline val Yield          = 18
-  inline val Retire         = 19
+  inline val Become         = 16
+  inline val Yield          = 17
+  inline val Retire         = 18
 
   def toStr(tag: Tag) =
     tag match
@@ -43,7 +42,6 @@ object Tag:
       case Sync           => "Sync"
       case Intrinsic      => "Intrinsic"
       case Unwind         => "Unwind"
-      case Bounce         => "Bounce"
 
       case NotifyOnceVar  => "NotifyOnceVar"
       case NotifyZipper   => "NotifyZipper"
