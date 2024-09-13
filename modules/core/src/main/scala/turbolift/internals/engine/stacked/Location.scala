@@ -6,14 +6,20 @@ private[engine] object Location:
 
 
   final case class Shallow(promptIndex: Int, storeIndex: Int):
-    def deep(segmentDepth: Int): Deep = Deep(promptIndex, storeIndex, segmentDepth)
-
     def toStr: String =
       s"loc{pi=$promptIndex si=$storeIndex}"
 
 
-  final case class Deep(promptIndex: Int, storeIndex: Int, segmentDepth: Int):
-    def shallow: Shallow = Shallow(promptIndex, storeIndex)
+  opaque type Deep = Entry
 
-    def toStr: String =
-      s"loc{pi=$promptIndex si=$storeIndex d=${segmentDepth}"
+  object Deep:
+    inline def apply(that: Entry): Deep = that
+    extension (thiz: Deep)
+      inline def promptIndex: Int = thiz.promptIndex
+      inline def storeIndex: Int = thiz.storeIndex
+      inline def segmentDepth: Int = thiz.segmentDepth
+
+      def shallow: Shallow = Shallow(thiz.promptIndex, thiz.storeIndex)
+
+      def toStr: String =
+        s"loc{pi=$promptIndex si=$storeIndex d=${segmentDepth}"
