@@ -176,19 +176,20 @@ private sealed abstract class Engine0 extends Runnable:
                   loopTag(tag, payload2, step, stack, store)
 
                 case Tag.LocalGet =>
-                  val local = store.getDeep(entry.location)
+                  val local = store.deepGet(entry.storeIndex, entry.segmentDepth)
                   val payload2 = instr1(local)
                   loopTag(tag, payload2, step, stack, store)
 
                 case Tag.LocalPut =>
                   val instr3 = comp2.asInstanceOf[CC.LocalPut[Local]]
-                  val store2 = store.setDeep(entry.location, instr3.local)
+                  val store2 = store.deepPut(entry.storeIndex, entry.segmentDepth, instr3.local)
                   val payload2 = instr1(())
                   loopTag(tag, payload2, step, stack, store2)
 
                 case Tag.LocalUpdate =>
                   val instr3 = comp2.asInstanceOf[CC.LocalUpdate[Any, Local]]
-                  val (value, store2) = store.updateDeep(entry.location, instr3)
+                  val store2 = store.deepClone(entry.segmentDepth)
+                  val value = store2.deepUpdateInPlace(entry.storeIndex, entry.segmentDepth, instr3)
                   val payload2 = instr1(value)
                   loopTag(tag, payload2, step, stack, store2)
 
@@ -220,17 +221,18 @@ private sealed abstract class Engine0 extends Runnable:
           val comp2 = instr(entry.prompt)
           (comp2.tag: @switch) match
             case Tag.LocalGet =>
-              val local = store.getDeep(entry.location)
+              val local = store.deepGet(entry.storeIndex, entry.segmentDepth)
               innerLoopStep(local, step, stack, store)
 
             case Tag.LocalPut =>
               val instr2 = comp2.asInstanceOf[CC.LocalPut[Local]]
-              val store2 = store.setDeep(entry.location, instr2.local)
+              val store2 = store.deepPut(entry.storeIndex, entry.segmentDepth, instr2.local)
               innerLoopStep((), step, stack, store2)
 
             case Tag.LocalUpdate =>
               val instr2 = comp2.asInstanceOf[CC.LocalUpdate[Any, Local]]
-              val (value, store2) = store.updateDeep(entry.location, instr2)
+              val store2 = store.deepClone(entry.segmentDepth)
+              val value = store2.deepUpdateInPlace(entry.storeIndex, entry.segmentDepth, instr2)
               innerLoopStep(value, step, stack, store2)
 
             case _ => innerLoopComp(comp2, step, stack, store)
@@ -248,19 +250,20 @@ private sealed abstract class Engine0 extends Runnable:
         case Tag.LocalGet =>
           val instr = payload.asInstanceOf[CC.LocalGet]
           val entry = stack.findEntryByPrompt(instr.prompt)
-          val local = store.getDeep(entry.location)
+          val local = store.deepGet(entry.storeIndex, entry.segmentDepth)
           innerLoopStep(local, step, stack, store)
 
         case Tag.LocalPut =>
           val instr = payload.asInstanceOf[CC.LocalPut[Local]]
           val entry = stack.findEntryByPrompt(instr.prompt)
-          val store2 = store.setDeep(entry.location, instr.local)
+          val store2 = store.deepPut(entry.storeIndex, entry.segmentDepth, instr.local)
           innerLoopStep((), step, stack, store2)
 
         case Tag.LocalUpdate =>
           val instr = payload.asInstanceOf[CC.LocalUpdate[Any, Local]]
           val entry = stack.findEntryByPrompt(instr.prompt)
-          val (value, store2) = store.updateDeep(entry.location, instr)
+          val store2 = store.deepClone(entry.segmentDepth)
+          val value = store2.deepUpdateInPlace(entry.storeIndex, entry.segmentDepth, instr)
           innerLoopStep(value, step, stack, store2)
 
         case Tag.Sync =>
@@ -449,7 +452,7 @@ private sealed abstract class Engine0 extends Runnable:
     val store = savedStore
     //-------------------
     val location = stack.locatePrompt(prompt)
-    val local2 = fun.asInstanceOf[Local => Local](store.getDeep(location))
+    val local2 = fun.asInstanceOf[Local => Local](store.deepGet(location))
     val (stack2, store2) = OpPush.pushNested(stack, store, step, prompt, location, local2, FrameKind.plain)
     loopComp(body, SC.Pop, stack2, store2)
 
@@ -486,7 +489,7 @@ private sealed abstract class Engine0 extends Runnable:
     val cont = cont0.asImpl
     val (stack2, store2) = OpSplit.merge(
       stackHi = cont.stack,
-      storeHi = cont.store.setDeepIfNotVoid(cont.location, local.asLocal),
+      storeHi = cont.store.deepPutIfNotVoid(cont.location, local.asLocal),
       stepMid = step,
       stackLo = stack,
       storeLo = store,
@@ -519,7 +522,7 @@ private sealed abstract class Engine0 extends Runnable:
     val location2 = stackHi.locatePrompt(prompt)
     val cont = new ContImpl(stackHi, storeHi, step, location2)
     val comp2 =
-      val local = storeHi.getDeep(location2)
+      val local = storeHi.deepGet(location2)
       fun(cont.cast[A, B, S, U], local.asInstanceOf[S])
     loopCompRefreshEnv(comp2, stepMid, stackLo, storeLo)
 

@@ -18,65 +18,69 @@ private trait Store_opaque:
     final def nextStoreIndex: Int = localCount
 
 
-    final def getDeep(l: Location.Deep): Local =
-      @tailrec def loop(todo: Store, depth: Int): Local =
-        if depth == 0 then
-          todo.geti(l.storeIndex)
-        else
-          if !todo.isTailless then
-            loop(todo.tail, depth - 1)
-          else
-            notFound(l)
-      loop(thiz, l.segmentDepth)
+    @tailrec final def deepGet(storeIndex: Int, segmentDepth: Int): Local =
+      if segmentDepth == 0 then
+        geti(storeIndex)
+      else
+        //// YOLO, NPE if not found
+        tail.deepGet(storeIndex, segmentDepth - 1)
 
 
-    final def setDeep(l: Location.Deep, s: Local): Store =
-      def loop(todo: Store, depth: Int): Store =
-        if depth == 0 then
-          todo.seti(l.storeIndex, s)
-        else
-          if !todo.isTailless then
-            todo ::? loop(todo.tail, depth - 1)
-          else
-            notFound(l)
-      loop(thiz, l.segmentDepth)
+    final def deepPut(storeIndex: Int, segmentDepth: Int, s: Local): Store =
+      if segmentDepth == 0 then
+        seti(storeIndex, s)
+      else
+        // YOLO, NPE if not found
+        thiz ::? tail.deepPut(storeIndex, segmentDepth - 1, s)
 
 
-    final def updateDeep[A](l: Location.Deep, f: Local => (A, Local)): (A, Store) =
-      var a: A = null.asInstanceOf[A]
-      def loop(todo: Store, depth: Int): Store =
-        if depth == 0 then
-          val s1 = todo.geti(l.storeIndex)
-          val a_s2 = f(s1)
-          a = a_s2._1
-          todo.seti(l.storeIndex, a_s2._2)
-        else
-          if !todo.isTailless then
-            todo ::? loop(todo.tail, depth - 1)
-          else
-            notFound(l)
-      val that = loop(thiz, l.segmentDepth)
-      (a, that)
+    final def deepClone(segmentDepth: Int): Store =
+      if segmentDepth == 0 then
+        thiz ::? tail
+      else
+        // YOLO, NPE if not found
+        thiz ::? tail.deepClone(segmentDepth - 1)
 
 
-    final def setDeepIfNotVoid(l: Location.Deep, s: Local): Store =
+    @tailrec final def deepUpdateInPlace[A, S](storeIndex: Int, segmentDepth: Int, f: S => (A, S)): A =
+      if segmentDepth == 0 then
+        val s1 = geti(storeIndex)
+        val a_s2 = f(s1.asInstanceOf[S])
+        setInPlace(storeIndex, a_s2._2.asLocal)
+        a_s2._1
+      else
+        //// YOLO, NPE if not found
+        tail.deepUpdateInPlace(storeIndex, segmentDepth - 1, f)
+
+
+    //@#@TODO update
+    //// {{ old interface
+    final def deepGet(l: Location.Deep): Local = deepGet(l.storeIndex, l.segmentDepth)
+
+    final def deepPut(l: Location.Deep, s: Local): Store = deepPut(l.storeIndex, l.segmentDepth, s)
+
+    final def deepPutIfNotVoid(l: Location.Deep, s: Local): Store =
       if s.isVoid then
         thiz
       else
-        setDeep(l, s)
+        deepPut(l, s)
+    //// }} old interface
 
 
-    final def geti(i: Int): Local = thiz.unwrap(i).asLocal
-    final def seti(i: Int, s: Local): Store = Store.wrap(thiz.unwrap.updated(i, s))
-    final def setInPlace(i: Int, s: Local): Unit = thiz.unwrap(i) = s
-    final def getShallow(l: Location.Shallow): Local = geti(l.storeIndex)
-    final def setShallow(l: Location.Shallow, s: Local): Store = seti(l.storeIndex, s)
+    final inline def geti(i: Int): Local = thiz.unwrap(i).asLocal
+    final inline def seti(i: Int, s: Local): Store =
+      val arr = thiz.unwrap.clone()
+      arr(i) = s
+      Store.wrap(arr)
+    final inline def setInPlace(i: Int, s: Local): Unit = thiz.unwrap(i) = s
+    final inline def getShallow(l: Location.Shallow): Local = geti(l.storeIndex)
+    final inline def setShallow(l: Location.Shallow, s: Local): Store = seti(l.storeIndex, s)
 
-    final def head: Local = thiz.unwrap(0).asLocal
-    final def isTailless: Boolean = thiz.unwrap.last.asInstanceOf[Any] == null
-    final def tail: Store = thiz.unwrap.last.asInstanceOf[Store]
-    final def tailOrNull: Store | Null = thiz.unwrap.last.asInstanceOf[Store | Null]
-    inline final def tailIndex: Int = thiz.unwrap.size - 1
+    final inline def head: Local = thiz.unwrap(0).asLocal
+    final inline def isTailless: Boolean = thiz.unwrap.last.asInstanceOf[Any] == null
+    final inline def tail: Store = thiz.unwrap.last.asInstanceOf[Store]
+    final inline def tailOrNull: Store | Null = thiz.unwrap.last.asInstanceOf[Store | Null]
+    final inline def tailIndex: Int = thiz.unwrap.size - 1
 
 
     final def push(s: Local): Store =
@@ -109,24 +113,21 @@ private trait Store_opaque:
       Store.wrap(arr)
 
 
-    final def ::?(that: Store | Null): Store =
-      Store.wrap(thiz.unwrap.updated(thiz.tailIndex, that))
+    final inline def ::?(that: Store | Null): Store =
+      val arr = thiz.unwrap.clone()
+      arr(thiz.tailIndex) = that
+      Store.wrap(arr)
 
 
-    final def setTailInPlace(tailOrNull: Store | Null): Unit =
+    final inline def setTailInPlace(tailOrNull: Store | Null): Unit =
       thiz.unwrap(thiz.tailIndex) = tailOrNull
 
 
     //@#@TODO use
-    final def copyTailless: Store =
-      val arr1 = thiz.unwrap
-      val arr2 = new Array[Any](localCount + RESERVED)
-      val n = localCount
-      var i = 0
-      while i < n do
-        arr2(i) = arr1(i)
-        i += 1
-      Store.wrap(arr2)
+    final inline def copyTailless: Store =
+      val arr = thiz.unwrap.clone()
+      arr(thiz.tailIndex) = null
+      Store.wrap(arr)
 
 
     final def toStr: String = s"Store(${toStrAux})"
