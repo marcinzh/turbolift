@@ -12,7 +12,7 @@ class MutexTest extends Specification:
   "basic" >> {
     "success" >>{
       (for
-        mutex <- Mutex.fresh
+        mutex <- Mutex.create
         a <- mutex.lock(!!.pure(42))
       yield a)
       .runIO
@@ -21,7 +21,7 @@ class MutexTest extends Specification:
 
     "cancel" >>{
       (for
-        mutex <- Mutex.fresh
+        mutex <- Mutex.create
         _ <- mutex.lock(IO.cancel)
       yield ())
       .runIO
@@ -32,11 +32,11 @@ class MutexTest extends Specification:
   "with fibers" >> {
     "sequential access ; success" >>{
       (for
-        v <- AtomicVar.fresh(0)
+        v <- AtomicVar(0)
         g1 <- Gate(1)
         g2 <- Gate(1)
-        mutex <- Mutex.fresh
-        _ <- Warp.shutdownOnExit:
+        mutex <- Mutex.create
+        _ <- Warp.awaiting:
           for
             _ <- (g1.enter &&! v.event(1) &&! mutex.lock(v.event(2) &&! g2.open &&! v.event(3))).fork
             _ <- (g1.open &&! g2.enter &&! mutex.lock(v.event(4))).fork
@@ -49,10 +49,10 @@ class MutexTest extends Specification:
 
     "sequential access ; cancelled" >>{
       (for
-        v <- AtomicVar.fresh(0)
+        v <- AtomicVar(0)
         g <- Gate(1)
-        mutex <- Mutex.fresh
-        _ <- Warp.shutdownOnExit:
+        mutex <- Mutex.create
+        _ <- Warp.awaiting:
           for
             _ <- (mutex.lock(v.event(1) &&! g.open &&! IO.sleep(100) &&! IO.cancel) &&! v.event(2)).fork
             _ <- g.enter &&! (mutex.lock(v.event(3))).fork
@@ -65,13 +65,13 @@ class MutexTest extends Specification:
 
     "very sequential access" >>{
       (for
-        v <- AtomicVar.fresh(0)
+        v <- AtomicVar(0)
         g0 <- Gate(3)
         g1 <- Gate(1)
         g2 <- Gate(1)
         g3 <- Gate(1)
-        mutex <- Mutex.fresh
-        _ <- Warp.shutdownOnExit:
+        mutex <- Mutex.create
+        _ <- Warp.awaiting:
           for
             _ <- g0.open &&!               mutex.lock(g1.open &&! v.event(1) &&! g3.enter).fork
             _ <- g0.open &&! (g1.enter &&! mutex.lock(g2.open &&! v.event(2))).fork

@@ -17,4 +17,5 @@ sealed trait CountDownLatch:
 object CountDownLatch:
   private[turbolift] trait Unsealed extends CountDownLatch
 
-  def fresh(initial: Int): CountDownLatch !! IO = !!.impure(new CountDownLatchImpl(initial))
+  def apply(initial: Int): CountDownLatch !! IO = create(initial)
+  def create(initial: Int): CountDownLatch !! IO = !!.impure(new CountDownLatchImpl(initial))

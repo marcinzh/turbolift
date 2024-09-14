@@ -7,7 +7,7 @@ import turbolift.Extensions._
 
 extension [S](fx: StateEffect[S])
   def stateHandler_shared(initial: S): fx.ThisHandler[Identity, (_, S), IO] =
-    AtomicVar.fresh(initial) >>=! { avar =>
+    AtomicVar(initial) >>=! { avar =>
       new fx.impl.Proxy[IO] with StateSignature[S]:
         override def get: S !! ThisEffect = avar.get
 

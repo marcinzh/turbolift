@@ -90,13 +90,14 @@ object AtomicVar:
     def unsafePut(s: S): Unit
 
 
-  def fresh(initial: Int): AtomicVar[Int] !! IO = freshInt(initial)
-  def fresh(initial: Long): AtomicVar[Long] !! IO = freshLong(initial)
-  def fresh(initial: Boolean): AtomicVar[Boolean] !! IO = freshBoolean(initial)
-  def fresh[S](initial: S): AtomicVar[S] !! IO = freshRef(initial)
+  def apply[S](initial: S): AtomicVar[S] !! IO = create(initial)
+  def create[S](initial: S): AtomicVar[S] !! IO = createRef(initial)
+  def create(initial: Int): AtomicVar[Int] !! IO = createInt(initial)
+  def create(initial: Long): AtomicVar[Long] !! IO = createLong(initial)
+  def create(initial: Boolean): AtomicVar[Boolean] !! IO = createBoolean(initial)
 
 
-  def freshInt(initial: Int): AtomicVar[Int] !! IO =
+  def createInt(initial: Int): AtomicVar[Int] !! IO =
     !!.impure:
       new AtomicIntVH(initial) with AtomicVar[Int]:
         override def unsafeGet: Int = getVH
@@ -105,7 +106,7 @@ object AtomicVar:
         override def unsafeCompareAndSet(a: Int, b: Int): Boolean = casVH(a, b)
 
 
-  def freshLong(initial: Long): AtomicVar[Long] !! IO =
+  def createLong(initial: Long): AtomicVar[Long] !! IO =
     !!.impure:
       new AtomicLongVH(initial) with AtomicVar[Long]:
         override def unsafeGet: Long = getVH
@@ -114,7 +115,7 @@ object AtomicVar:
         override def unsafeCompareAndSet(a: Long, b: Long): Boolean = casVH(a, b)
 
 
-  def freshBoolean(initial: Boolean): AtomicVar[Boolean] !! IO =
+  def createBoolean(initial: Boolean): AtomicVar[Boolean] !! IO =
     !!.impure:
       new AtomicBoolVH(initial) with AtomicVar[Boolean]:
         override def unsafeGet: Boolean = getVH
@@ -123,7 +124,7 @@ object AtomicVar:
         override def unsafeCompareAndSet(a: Boolean, b: Boolean): Boolean = casVH(a, b)
 
 
-  def freshRef[S](initial: S): AtomicVar[S] !! IO =
+  def createRef[S](initial: S): AtomicVar[S] !! IO =
     !!.impure:
       new AtomicRefVH(initial) with AtomicVar[S]:
         override def unsafeGet: S = getVH.asInstanceOf[S]

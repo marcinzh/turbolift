@@ -11,7 +11,7 @@ class OnceVarTest extends Specification:
   "Basic ops" >> {
     "tryGet" >>{
       (for
-        ovar <- OnceVar.fresh
+        ovar <- OnceVar[Int]
         a <- ovar.tryGet
       yield a)
       .runIO
@@ -20,7 +20,7 @@ class OnceVarTest extends Specification:
 
     "put" >>{
       (for
-        ovar <- OnceVar.fresh
+        ovar <- OnceVar[Int]
         _ <- ovar.put(42)
       yield ())
       .runIO
@@ -29,7 +29,7 @@ class OnceVarTest extends Specification:
 
     "tryPut" >>{
       (for
-        ovar <- OnceVar.fresh
+        ovar <- OnceVar[Int]
         a <- ovar.tryPut(42)
       yield a)
       .runIO
@@ -41,7 +41,7 @@ class OnceVarTest extends Specification:
   "Combined ops" >> {
     "put & get" >>{
       (for
-        ovar <- OnceVar.fresh
+        ovar <- OnceVar[Int]
         _ <- ovar.put(42)
         a <- ovar.get
       yield a)
@@ -51,7 +51,7 @@ class OnceVarTest extends Specification:
 
     "put & tryGet" >>{
       (for
-        ovar <- OnceVar.fresh
+        ovar <- OnceVar[Int]
         _ <- ovar.put(42)
         a <- ovar.tryGet
       yield a)
@@ -61,7 +61,7 @@ class OnceVarTest extends Specification:
 
     "put & tryPut" >>{
       (for
-        ovar <- OnceVar.fresh
+        ovar <- OnceVar[Int]
         _ <- ovar.put(42)
         a <- ovar.tryPut(1337)
       yield a)
@@ -71,7 +71,7 @@ class OnceVarTest extends Specification:
 
     "put & put & get" >>{
       (for
-        ovar <- OnceVar.fresh
+        ovar <- OnceVar[Int]
         _ <- ovar.put(42)
         _ <- ovar.put(1337)
         a <- ovar.get
@@ -82,7 +82,7 @@ class OnceVarTest extends Specification:
 
     "get & fork(put)" >>{
       (for
-        ovar <- OnceVar.fresh
+        ovar <- OnceVar[Int]
         _ <- (IO.sleep(100) &&! ovar.put(42)).fork
         a <- ovar.get
       yield a)
@@ -93,7 +93,7 @@ class OnceVarTest extends Specification:
 
     "fork & get & cancel" >>{
       (for
-        ovar <- OnceVar.fresh
+        ovar <- OnceVar[Int]
         fib <- ovar.get.fork
         _ <- fib.cancel
       yield ())

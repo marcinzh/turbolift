@@ -3,29 +3,14 @@ import scala.annotation.tailrec
 import turbolift.io.{Fiber, Warp}
 
 
-private[turbolift] final class WarpImpl private (
+private[turbolift] final class WarpImpl private[engine] (
   private val theParent: WarpImpl | FiberImpl | Null,
   private val theOuter: WarpImpl | Null,
   private var theName: String,
-  val exitMode: Short,
+  val exitMode: Warp.ExitMode | Null,
 ) extends ChildLink with Warp.Unsealed:
   private var packedChildCount: Long = 0
   private var firstChild: ChildLink | Null = null
-
-  def this(
-    parent: WarpImpl | FiberImpl | Null,
-    outer: WarpImpl | Null,
-    name: String,
-    exitMode: Warp.ExitMode | Null,
-  ) =
-    this(parent, outer, name, {
-      (exitMode match
-        case null => Bits.ExitMode_None
-        case Warp.ExitMode.Cancel => Bits.ExitMode_Cancel
-        case Warp.ExitMode.Shutdown => Bits.ExitMode_Shutdown
-      ).toShort
-    })
-
 
   private def isChildless: Boolean = packedChildCount == 0L
   private def isShutdown: Boolean = Bits.isShutdown(varyingBits)

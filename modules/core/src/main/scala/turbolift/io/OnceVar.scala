@@ -29,4 +29,5 @@ object OnceVar:
     def unsafeTryPut(value: A): Boolean
 
 
-  def fresh[A]: OnceVar[A] !! IO = !!.impure((new OnceVarImpl).asInstanceOf[OnceVar[A]])
+  def apply[A]: OnceVar[A] !! IO = create[A]
+  def create[A]: OnceVar[A] !! IO = !!.impure((new OnceVarImpl).asInstanceOf[OnceVar[A]])

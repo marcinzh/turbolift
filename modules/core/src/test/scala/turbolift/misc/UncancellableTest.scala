@@ -23,7 +23,7 @@ class UncancellableTest extends Specification:
   "combined" >> {
     "cancel uncancellable" >>{
       (for
-        v <- AtomicVar.fresh(1)
+        v <- AtomicVar(1)
         g <- Gate(1)
         fib <- Fiber.fork:
           IO.uncancellable:
@@ -39,7 +39,7 @@ class UncancellableTest extends Specification:
 
     "cancel uncancellable(cancellable(_))" >>{
       (for
-        v <- AtomicVar.fresh(1)
+        v <- AtomicVar(1)
         g <- Gate(1)
         fib <- Fiber.fork:
           IO.uncancellable:
@@ -56,7 +56,7 @@ class UncancellableTest extends Specification:
 
     "cancel after uncancellable" >>{
       (for
-        v <- AtomicVar.fresh(1)
+        v <- AtomicVar(1)
         g <- Gate(1)
         fib <- Fiber.fork:
           IO.uncancellable(!!.unit) &&! g.open &&! IO.sleep(100) &&! v.event(2)
@@ -71,7 +71,7 @@ class UncancellableTest extends Specification:
 
     "cancel after cancellable" >>{
       (for
-        v <- AtomicVar.fresh(1)
+        v <- AtomicVar(1)
         g <- Gate(1)
         fib <- Fiber.fork:
           IO.uncancellable:

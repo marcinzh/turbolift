@@ -360,8 +360,8 @@ private sealed abstract class Engine0 extends Runnable:
               currentFiber.suspendStep(payload, fallthrough, stack2, store2)
               val warp = currentEnv.currentWarp.nn
               val tried = warp.exitMode match
-                case Bits.ExitMode_Cancel => warp.tryGetCancelledBy(currentFiber, currentEnv.isCancellable)
-                case Bits.ExitMode_Shutdown => warp.tryGetAwaitedBy(currentFiber, currentEnv.isCancellable)
+                case Warp.ExitMode.Cancel => warp.tryGetCancelledBy(currentFiber, currentEnv.isCancellable)
+                case Warp.ExitMode.Await => warp.tryGetAwaitedBy(currentFiber, currentEnv.isCancellable)
                 case _ => impossible //// this is a scoped warp, so it must have ExitMode
               tried match
                 case Bits.WaiterSubscribed => ThreadDisowned

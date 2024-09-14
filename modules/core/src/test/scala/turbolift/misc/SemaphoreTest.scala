@@ -12,7 +12,7 @@ class SemaphoreTest extends Specification:
   "basic" >> {
     "acquire" >>{
       (for
-        semaphore <- Semaphore.fresh(1)
+        semaphore <- Semaphore(1)
         _ <- semaphore.acquire(1)
       yield ())
       .runIO
@@ -21,7 +21,7 @@ class SemaphoreTest extends Specification:
 
     "release" >>{
       (for
-        semaphore <- Semaphore.fresh(0)
+        semaphore <- Semaphore(0)
         _ <- semaphore.release(1)
         _ <- semaphore.acquire(1)
       yield ())
@@ -31,7 +31,7 @@ class SemaphoreTest extends Specification:
 
     "use" >>{
       (for
-        semaphore <- Semaphore.fresh(1)
+        semaphore <- Semaphore(1)
         a <- semaphore.use(1)(!!.pure(42))
       yield a)
       .runIO
@@ -43,9 +43,9 @@ class SemaphoreTest extends Specification:
   "with fibers" >> {
     "waiting" >>{
       (for
-        v <- AtomicVar.fresh(0)
-        semaphore <- Semaphore.fresh(1)
-        _ <- Warp.shutdownOnExit:
+        v <- AtomicVar(0)
+        semaphore <- Semaphore(1)
+        _ <- Warp.awaiting:
           for
             _ <- semaphore.use(1)(IO.sleep(200) &&! v.event(1)).fork
             _ <- (IO.sleep(100) &&! semaphore.use(1)(v.event(2))).fork
@@ -58,9 +58,9 @@ class SemaphoreTest extends Specification:
 
     "order" >>{
       (for
-        v <- AtomicVar.fresh(0)
-        semaphore <- Semaphore.fresh(0)
-        _ <- Warp.shutdownOnExit:
+        v <- AtomicVar(0)
+        semaphore <- Semaphore(0)
+        _ <- Warp.awaiting:
           for
             _ <- (semaphore.acquire(1) &&! v.modify(_ + 10)).fork
             _ <- (semaphore.acquire(1) &&! v.modify(_ + 02)).fork
@@ -81,9 +81,9 @@ class SemaphoreTest extends Specification:
 
     "partial releases" >>{
       (for
-        v <- AtomicVar.fresh(0)
-        semaphore <- Semaphore.fresh(0)
-        _ <- Warp.shutdownOnExit:
+        v <- AtomicVar(0)
+        semaphore <- Semaphore(0)
+        _ <- Warp.awaiting:
           for
             _ <- (semaphore.acquire(10) &&! v.event(1)).fork
             _ <- IO.sleep(10)
@@ -104,9 +104,9 @@ class SemaphoreTest extends Specification:
 
     "cancel first waiter" >>{
       (for
-        v <- AtomicVar.fresh(0)
-        semaphore <- Semaphore.fresh(5)
-        _ <- Warp.shutdownOnExit:
+        v <- AtomicVar(0)
+        semaphore <- Semaphore(5)
+        _ <- Warp.awaiting:
           for
             fib1 <- (semaphore.acquire(10) &&! v.event(1)).fork
             _ <- IO.sleep(10)

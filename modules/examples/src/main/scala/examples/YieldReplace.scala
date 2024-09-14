@@ -33,7 +33,7 @@ case object YieldReplace extends Example:
       case Nil => Nil.pure_!!
       case a :: as =>
         for
-          head <- AtomicVar.fresh(a)
+          head <- AtomicVar(a)
           handler =
             new R.impl.Proxy[IO] with ReplaceSignature[A]:
               override def replace(x: A) = head.put(x)

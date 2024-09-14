@@ -190,8 +190,8 @@ class FiberTest extends Specification:
     "fork & (join x2) pending" >>{
       (for
         g <- Gate(1)
-        v1 <- AtomicVar.fresh(42)
-        v2 <- AtomicVar.fresh("a")
+        v1 <- AtomicVar(42)
+        v2 <- AtomicVar("a")
         fib0 <- (g.enter).fork
         fib1 <- (fib0.join &&! v1.put(1337)).fork
         fib2 <- (fib0.join &&! v2.put("b")).fork
@@ -223,7 +223,7 @@ class FiberTest extends Specification:
   "cancel" >> {
     "pending" >>{
       (for
-        v <- AtomicVar.fresh(42)
+        v <- AtomicVar(42)
         fib <- (IO.sleep(100) &&! v.put(1337)).fork
         _ <- fib.cancel
         a <- v.get
@@ -235,7 +235,7 @@ class FiberTest extends Specification:
 
     "completed" >>{
       (for
-        v <- AtomicVar.fresh(1337)
+        v <- AtomicVar(1337)
         fib <- v.put(42).fork
         _ <- IO.sleep(100)
         _ <- fib.cancel
@@ -248,8 +248,8 @@ class FiberTest extends Specification:
 
     "guarantee" >>{
       (for
-        v1 <- AtomicVar.fresh(1337)
-        v2 <- AtomicVar.fresh("a")
+        v1 <- AtomicVar(1337)
+        v2 <- AtomicVar("a")
         g <- Gate(1)
         fib <- (g.open &&! IO.sleep(100) &&! v2.put("b")).guarantee(v1.put(42)).fork
         _ <- g.enter
@@ -436,7 +436,7 @@ class FiberTest extends Specification:
       (for
         _ <- !!.unit.fork
       yield 42)
-      .warpShutdownOnExit
+      .warpAwait
       .runIO
       .===(Outcome.Success(42))
     }

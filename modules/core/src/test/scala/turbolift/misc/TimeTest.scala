@@ -24,7 +24,7 @@ class TimeTest extends Specification:
 
     "fork & sleep & cancel" >>{
       (for
-        v <- AtomicVar.fresh(42)
+        v <- AtomicVar(42)
         fib <- (IO.sleep(200) &&! v.put(1337)).fork
         _ <- fib.cancel
         a <- v.get

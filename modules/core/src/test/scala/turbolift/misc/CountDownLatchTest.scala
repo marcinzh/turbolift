@@ -12,7 +12,7 @@ class CountDownLatchTest extends Specification:
   "basic" >> {
     "empty" >>{
       (for
-        latch <- CountDownLatch.fresh(0)
+        latch <- CountDownLatch(0)
         _ <- latch.await
       yield ())
       .runIO
@@ -21,7 +21,7 @@ class CountDownLatchTest extends Specification:
 
     "one" >>{
       (for
-        latch <- CountDownLatch.fresh(1)
+        latch <- CountDownLatch(1)
         _ <- latch.release
         _ <- latch.await
       yield ())
@@ -31,7 +31,7 @@ class CountDownLatchTest extends Specification:
 
     "one too many" >>{
       (for
-        latch <- CountDownLatch.fresh(1)
+        latch <- CountDownLatch(1)
         _ <- latch.release
         _ <- latch.release
         _ <- latch.await
@@ -44,10 +44,10 @@ class CountDownLatchTest extends Specification:
   "with fibers" >> {
     "2 await 1 release" >>{
       (for
-        v <- AtomicVar.fresh(300)
+        v <- AtomicVar(300)
         g <- Gate(2)
-        latch <- CountDownLatch.fresh(1)
-        _ <- Warp.shutdownOnExit:
+        latch <- CountDownLatch(1)
+        _ <- Warp.awaiting:
           for
             _ <- (g.open &&! latch.await &&! v.modify(_ + 10)).fork
             _ <- (g.open &&! latch.await &&! v.modify(_ + 02)).fork
@@ -63,10 +63,10 @@ class CountDownLatchTest extends Specification:
 
     "1 await 2 release" >>{
       (for
-        v <- AtomicVar.fresh(0)
+        v <- AtomicVar(0)
         g <- Gate(1)
-        latch <- CountDownLatch.fresh(2)
-        _ <- Warp.shutdownOnExit:
+        latch <- CountDownLatch(2)
+        _ <- Warp.awaiting:
           for
             _ <- (g.enter &&! v.modify(_ + 10) &&! latch.release).fork
             _ <- (g.enter &&! v.modify(_ + 02) &&! latch.release).fork
@@ -80,10 +80,10 @@ class CountDownLatchTest extends Specification:
 
     "1 cancel 0 release" >>{
       (for
-        v <- AtomicVar.fresh(0)
+        v <- AtomicVar(0)
         g <- Gate(1)
-        latch <- CountDownLatch.fresh(1)
-        _ <- Warp.cancelOnExit:
+        latch <- CountDownLatch(1)
+        _ <- Warp.cancelling:
           for
             _ <- (g.open &&! latch.await &&! v.event(1)).guarantee(v.event(2)).fork
             _ <- g.enter

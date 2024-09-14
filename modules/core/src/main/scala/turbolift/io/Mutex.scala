@@ -19,4 +19,4 @@ sealed trait Mutex:
 object Mutex:
   private[turbolift] trait Unsealed extends Mutex
 
-  def fresh: Mutex !! IO = !!.impure(new MutexImpl)
+  def create: Mutex !! IO = !!.impure(new MutexImpl)

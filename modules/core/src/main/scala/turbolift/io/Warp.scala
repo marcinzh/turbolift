@@ -40,11 +40,11 @@ sealed trait Warp:
   final def cancelAndForget: Unit !! IO = IO(unsafeCancelAndForget())
 
   /** Complete this warp, by waiting until it becomes childless. */
-  final def shutdown: Unit !! IO = CC.intrinsic(_.intrinsicAwaitWarp(this, isCancel = false))
+  final def await: Unit !! IO = CC.intrinsic(_.intrinsicAwaitWarp(this, isCancel = false))
 
   /** Trigger completion of this warp as soon it becomes childless.
     *
-    * Like [[shutdown]], but without waiting for the completion.
+    * Like [[await]], but without waiting for the completion.
     */
   final def shutdownAndForget: Unit !! IO = IO(unsafeShutdownAndForget())
 
@@ -78,7 +78,7 @@ object Warp:
 
   enum ExitMode:
     case Cancel
-    case Shutdown
+    case Await
 
   /** Scoped Warp constructor lifted to a [[turbolift.Handler Handler]] value. */
   def handler(exitMode: ExitMode, name: String = ""): Handler[Identity, Identity, Warp, IO] =
@@ -87,10 +87,10 @@ object Warp:
 
   /** Scoped Warp constructors lifted to [[turbolift.Handler Handler]] values. */
   object handlers:
-    def cancelOnExit: Handler[Identity, Identity, Warp, IO] = handler(ExitMode.Cancel)
-    def shutdownOnExit: Handler[Identity, Identity, Warp, IO] = handler(ExitMode.Shutdown)
-    def cancelOnExit(name: String): Handler[Identity, Identity, Warp, IO] = handler(ExitMode.Cancel, name)
-    def shutdownOnExit(name: String): Handler[Identity, Identity, Warp, IO] = handler(ExitMode.Shutdown, name)
+    def cancell: Handler[Identity, Identity, Warp, IO] = handler(ExitMode.Cancel)
+    def await: Handler[Identity, Identity, Warp, IO] = handler(ExitMode.Await)
+    def cancel(name: String): Handler[Identity, Identity, Warp, IO] = handler(ExitMode.Cancel, name)
+    def await(name: String): Handler[Identity, Identity, Warp, IO] = handler(ExitMode.Await, name)
 
   /** The global warp. */
   def root: Warp = WarpImpl.root
@@ -98,23 +98,29 @@ object Warp:
   /** The innermost scoped warp. */
   def current: Warp !! (IO & Warp) = CC.intrinsic(_.intrinsicEnvAsk(_.currentWarp.nn))
 
-  /** Creates a new unscoped warp. */
+  /** Creates a new unscoped warp, as a child of the current scoped warp. */
   def unscoped: Warp !! (IO & Warp) = unscoped("")
 
-  /** Creates a new unscoped warp. */
+  /** Creates a new unscoped warp, as a child of the current scoped warp. */
   def unscoped(name: String): Warp !! (IO & Warp) = current.flatMap(_.spawn(name))
 
   /** Creates a new scoped warp. */
   def scoped[A, U <: IO](exitMode: ExitMode, name: String = "")(body: A !! (U & Warp)): A !! U = CC.intrinsic(_.intrinsicSpawnWarp(exitMode, body, name))
 
-  /** Creates a new scoped warp. */
-  def cancelOnExit[A, U <: IO](body: A !! (U & Warp)): A !! U = cancelOnExit("")(body)
+  /** Creates a new scoped warp that cancels its children on exit. */
+  def cancelling[A, U <: IO](body: A !! (U & Warp)): A !! U = cancelling("")(body)
 
-  /** Creates a new scoped warp. */
-  def cancelOnExit[A, U <: IO](name: String)(body: A !! (U & Warp)): A !! U = scoped(ExitMode.Cancel, name)(body)
+  /** Creates a new scoped warp that cancels its children on exit. */
+  def cancelling[A, U <: IO](name: String)(body: A !! (U & Warp)): A !! U = scoped(ExitMode.Cancel, name)(body)
 
-  /** Creates a new scoped warp. */
-  def shutdownOnExit[A, U <: IO](body: A !! (U & Warp)): A !! U = shutdownOnExit("")(body)
+  /** Creates a new scoped warp that awaits its children on exit. */
+  def awaiting[A, U <: IO](body: A !! (U & Warp)): A !! U = awaiting("")(body)
 
-  /** Creates a new scoped warp. */
-  def shutdownOnExit[A, U <: IO](name: String)(body: A !! (U & Warp)): A !! U = scoped(ExitMode.Shutdown, name)(body)
+  /** Creates a new scoped warp that awaits its children on exit. */
+  def awaiting[A, U <: IO](name: String)(body: A !! (U & Warp)): A !! U = scoped(ExitMode.Await, name)(body)
+
+  /** Same as [[cancelling]]. */ 
+  def apply[A, U <: IO](body: A !! (U & Warp)): A !! U = apply("")(body)
+
+  /** Same as [[cancelling]]. */ 
+  def apply[A, U <: IO](name: String)(body: A !! (U & Warp)): A !! U = cancelling(name)(body)

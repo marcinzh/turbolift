@@ -79,14 +79,14 @@ class WarpTest extends Specification:
   "awaiting & cancelling" >> {
     "scoped warp & automatic cancel" >>{
       (for
-        v <- AtomicVar.fresh(1)
+        v <- AtomicVar(1)
         g <- Gate(1)
         _ <-
           (for
             fib <- (g.open &&! IO.sleep(100) &&! v.event(2)).guarantee(v.event(5)).fork
             _ <- g.enter
           yield ())
-          .warpCancelOnExit
+          .warpCancel
         _ <- v.event(3)
         a <- v.get
       yield a)
@@ -96,8 +96,8 @@ class WarpTest extends Specification:
 
     "scoped warp & automatic shutdown" >>{
       (for
-        v <- AtomicVar.fresh(1)
-        _ <- (IO.sleep(100) &&! v.event(2)).fork.warpShutdownOnExit
+        v <- AtomicVar(1)
+        _ <- (IO.sleep(100) &&! v.event(2)).fork.warpAwait
         _ <- v.event(3)
         a <- v.get
       yield a)
@@ -107,7 +107,7 @@ class WarpTest extends Specification:
 
     "unscoped warp & manual cancel" >>{
       (for
-        v <- AtomicVar.fresh(1)
+        v <- AtomicVar(1)
         g <- Gate(1)
         warp <- Warp.unscoped
         _ <- warp.fork:
@@ -130,13 +130,13 @@ class WarpTest extends Specification:
     "unscoped warp & manual shutdown" >>{
       (for
         g <- Gate(1)
-        v1 <- AtomicVar.fresh(1)
-        v2 <- AtomicVar.fresh("a")
+        v1 <- AtomicVar(1)
+        v2 <- AtomicVar("a")
         warp <- Warp.unscoped
         _ <- (g.enter &&! v1.put(2)).forkAt(warp)
         _ <- (g.enter &&! v2.put("b")).forkAt(warp)
         _ <- g.open
-        _ <- warp.shutdown
+        _ <- warp.await
         a <- v1.get
         b <- v2.get
       yield (a, b))
@@ -167,7 +167,7 @@ class WarpTest extends Specification:
     "Error effect & paused fiber" >>{
       case object E extends Error[String]
       (for
-        v <- AtomicVar.fresh(42)
+        v <- AtomicVar(42)
         e <- 
           (for
             _ <- (IO.sleep(1000) &&! v.put(1337)).fork
@@ -184,8 +184,8 @@ class WarpTest extends Specification:
     "Error effect & paused fiber with guarantee" >>{
       case object E extends Error[String]
       (for
-        v1 <- AtomicVar.fresh(42)
-        v2 <- AtomicVar.fresh("a")
+        v1 <- AtomicVar(42)
+        v2 <- AtomicVar("a")
         g <- Gate(1)
         e <- 
           (for

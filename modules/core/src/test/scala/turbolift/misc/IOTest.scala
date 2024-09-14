@@ -28,7 +28,7 @@ class IOTest extends Specification:
     "yield order" >>{
       import turbolift.mode.ST
       (for
-        v <- AtomicVar.fresh(0)
+        v <- AtomicVar(0)
         prog1 =
           for
             _ <- v.event(1)
@@ -69,7 +69,7 @@ class IOTest extends Specification:
         fib <- IO.blocking { Thread.sleep(1000); x = 1337 }.fork
         _ <- IO.sleep(10)
       yield x)
-      .warpCancelOnExit
+      .warpCancel
       .runIO
       .===(Outcome.Success(42))
     }

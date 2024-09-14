@@ -15,7 +15,7 @@ class ResourceTest extends Specification:
   "basic" >> {
     "one res" >>{
       (for
-        v <- AtomicVar.fresh(1)
+        v <- AtomicVar(1)
         rf = basicRF(v, 2, 3)
         _ <-
           (for
@@ -33,7 +33,7 @@ class ResourceTest extends Specification:
 
     "two res" >>{
       (for
-        v <- AtomicVar.fresh(1)
+        v <- AtomicVar(1)
         rf1 = basicRF(v, 2, 3)
         rf2 = basicRF(v, 4, 5)
         _ <-
@@ -59,7 +59,7 @@ class ResourceTest extends Specification:
 
     "in acquire" >>{
       (for
-        v <- AtomicVar.fresh(1)
+        v <- AtomicVar(1)
         e <- IO.toEither:
           (for
             _ <- Finalizer.use(IO(throw ex1), _ => v.event(2))
@@ -74,7 +74,7 @@ class ResourceTest extends Specification:
 
     "in release" >>{
       (for
-        v <- AtomicVar.fresh(1)
+        v <- AtomicVar(1)
         e <- IO.toEither:
           (for
             _ <- Finalizer.use(v.event(2), _ => IO(throw ex1))
@@ -90,7 +90,7 @@ class ResourceTest extends Specification:
 
     "in release x2" >>{
       (for
-        v <- AtomicVar.fresh(1)
+        v <- AtomicVar(1)
         e <- IO.snap:
           (for
             _ <- Finalizer.use(v.event(2), _ => IO(throw ex1))
@@ -121,7 +121,7 @@ class ResourceTest extends Specification:
 
     "x2 par" >>{
       (for
-        v <- AtomicVar.fresh(0L)
+        v <- AtomicVar(0L)
         g1 <- Gate(1)
         g2 <- Gate(1)
         rf = parRF(v, g1, g2, 1, 3)
@@ -142,7 +142,7 @@ class ResourceTest extends Specification:
 
     "par + seq" >>{
       (for
-        v <- AtomicVar.fresh(0L)
+        v <- AtomicVar(0L)
         g1 <- Gate(1)
         g2 <- Gate(1)
         rf1 = seqRF(v, 1, 2)

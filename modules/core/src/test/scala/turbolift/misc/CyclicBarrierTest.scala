@@ -12,7 +12,7 @@ class CyclicBarrierTest extends Specification:
   "basic" >> {
     "empty" >>{
       (for
-        barrier <- CyclicBarrier.fresh(0)
+        barrier <- CyclicBarrier(0)
         _ <- barrier.await
       yield ())
       .runIO
@@ -21,7 +21,7 @@ class CyclicBarrierTest extends Specification:
 
     "one" >>{
       (for
-        barrier <- CyclicBarrier.fresh(1)
+        barrier <- CyclicBarrier(1)
         _ <- barrier.await
       yield ())
       .runIO
@@ -30,7 +30,7 @@ class CyclicBarrierTest extends Specification:
 
     "one x2" >>{
       (for
-        barrier <- CyclicBarrier.fresh(1)
+        barrier <- CyclicBarrier(1)
         _ <- barrier.await
         _ <- barrier.await
       yield ())
@@ -43,9 +43,9 @@ class CyclicBarrierTest extends Specification:
   "with fibers" >> {
     "2 rounds" >>{
       (for
-        v <- AtomicVar.fresh(0)
-        barrier <- CyclicBarrier.fresh(3)
-        _ <- Warp.shutdownOnExit:
+        v <- AtomicVar(0)
+        barrier <- CyclicBarrier(3)
+        _ <- Warp.awaiting:
           for
             _ <- (v.modify(_ + 100) &&! barrier.await &&! v.modify(_ * 10) &&! barrier.await &&! v.modify(_ + 400)).fork
             _ <- (v.modify(_ + 020) &&! barrier.await &&! v.modify(_ * 10) &&! barrier.await &&! v.modify(_ + 050)).fork
@@ -60,9 +60,9 @@ class CyclicBarrierTest extends Specification:
 
     "not enough participants" >>{
       (for
-        v <- AtomicVar.fresh(0)
-        barrier <- CyclicBarrier.fresh(3)
-        _ <- Warp.cancelOnExit:
+        v <- AtomicVar(0)
+        barrier <- CyclicBarrier(3)
+        _ <- Warp.cancelling:
           for
             _ <- (v.modify(_ + 10) &&! barrier.await &&! v.modify(_ + 3000)).fork
             _ <- (v.modify(_ + 02) &&! barrier.await &&! v.modify(_ + 0400)).fork

@@ -138,7 +138,7 @@ class ChannelTest extends Specification:
     "bounded" >> {
       "block on put" >>{
         (for
-          v <- AtomicVar.fresh(0)
+          v <- AtomicVar(0)
           channel <- Channel.bounded[Int](1)
           _ <- channel.put(1)
           fib <- (channel.put(2) &&! v.event(1)).fork
@@ -148,14 +148,14 @@ class ChannelTest extends Specification:
           b <- channel.get
           n <- v.get
         yield (a, b, n))
-        .warpShutdownOnExit
+        .warpAwait
         .runIO
         .===(Outcome.Success((1, 2, 213)))
       }
 
       "block on get" >>{
         (for
-          v <- AtomicVar.fresh(0)
+          v <- AtomicVar(0)
           channel <- Channel.bounded[Int](1)
           fib1 <- (channel.get &&<! v.event(1)).fork
           _ <- IO.sleep(10) &&! v.event(2)
@@ -168,7 +168,7 @@ class ChannelTest extends Specification:
           b <- fib2.join
           n <- v.get
         yield (a, b, n))
-        .warpShutdownOnExit
+        .warpAwait
         .runIO
         .===(Outcome.Success((1, 2, 24153)))
       }
@@ -177,7 +177,7 @@ class ChannelTest extends Specification:
     "synchronous" >> {
       "block on put" >>{
         (for
-          v <- AtomicVar.fresh(0)
+          v <- AtomicVar(0)
           channel <- Channel.synchronous[Int]
           _ <- (channel.put(1) &&! v.event(1)).fork
           _ <- IO.sleep(10) &&! v.event(2)
@@ -187,14 +187,14 @@ class ChannelTest extends Specification:
           b <- channel.get &&<! IO.sleep(10)
           n <- v.get
         yield (a, b, n))
-        .warpShutdownOnExit
+        .warpAwait
         .runIO
         .===(Outcome.Success((1, 2, 2413)))
       }
 
       "block on get" >>{
         (for
-          v <- AtomicVar.fresh(0)
+          v <- AtomicVar(0)
           channel <- Channel.synchronous[Int]
           fib1 <- (channel.get &&<! v.event(1)).fork
           _ <- IO.sleep(10) &&! v.event(2)
@@ -207,7 +207,7 @@ class ChannelTest extends Specification:
           _ <- IO.sleep(10)
           n <- v.get
         yield (a, b, n))
-        .warpShutdownOnExit
+        .warpAwait
         .runIO
         .===(Outcome.Success((1, 2, 2413)))
       }
