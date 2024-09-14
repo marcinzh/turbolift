@@ -16,7 +16,6 @@ object OnceVar:
 
 
   sealed trait Get[A]:
-    @annotation.targetName("get_OnceVar")
     final def get: A !! IO = CC.intrinsic(_.intrinsicAwaitOnceVar(this))
     final def tryGet: Option[A] !! IO = !!.impure(unsafeTryGet)
     def unsafeTryGet: Option[A]

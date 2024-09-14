@@ -42,7 +42,6 @@ object Channel:
 
 
   sealed trait Get[A] extends Base:
-    @annotation.targetName("get_Channel")
     final def get: A !! IO = CC.intrinsic(_.intrinsicGetChannel(this))
     final def tryGet: Option[A] !! IO = !!.impure(unsafeTryGet())
 

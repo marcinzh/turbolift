@@ -540,7 +540,7 @@ private sealed abstract class Engine0 extends Runnable:
         val (storeDown, storeRight) = OpCascaded.fork(stack, storeTmp)
         currentFiber.suspendForRace(fun, step, stack, storeDown)
         val stack2 = stack.makeFork
-        fiberRight.suspend(rhs.tag, rhs, Step.Pop, stack2, storeRight)
+        fiberRight.suspendComp(rhs, Step.Pop, stack2, storeRight)
         fiberRight.resume()
         becomeWithSameEnv(fiberLeft)
         loopComp(lhs, Step.Pop, stack2, storeLeft)
@@ -566,7 +566,7 @@ private sealed abstract class Engine0 extends Runnable:
         val (storeDown, storeRight) = OpCascaded.fork(stack, storeTmp)
         currentFiber.suspendForRace(null, step, stack, storeDown)
         val stack2 = stack.makeFork
-        fiberRight.suspend(rhs.tag, rhs, Step.Pop, stack2, storeRight)
+        fiberRight.suspendComp(rhs, Step.Pop, stack2, storeRight)
         fiberRight.resume()
         becomeWithSameEnv(fiberLeft)
         loopComp(lhs, Step.Pop, stack2, storeLeft)
@@ -665,7 +665,7 @@ private sealed abstract class Engine0 extends Runnable:
     val (storeDown, storeFork) = OpCascaded.fork(stack, store)
     val stackFork = stack.makeFork
     val child = FiberImpl.createExplicit(warp, name, callback)
-    child.suspend(comp.tag, comp, Step.Pop, stackFork, storeFork)
+    child.suspendComp(comp, Step.Pop, stackFork, storeFork)
     if warp.tryAddFiber(child) then
       child.resume()
       loopStep(child, step, stack, storeDown)
@@ -827,7 +827,7 @@ private sealed abstract class Engine0 extends Runnable:
     val stack = savedStack
     val store = savedStore
     //-------------------
-    currentFiber.suspend(step.tag, (), step, stack, store)
+    currentFiber.suspendStep((), step, stack, store)
     Tag.Yield
 
 
