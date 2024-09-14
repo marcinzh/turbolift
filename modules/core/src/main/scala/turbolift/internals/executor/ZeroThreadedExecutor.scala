@@ -8,6 +8,7 @@ import turbolift.internals.engine.concurrent.{FiberImpl, WaiterLink}
 
 private[internals] final class ZeroThreadedExecutor extends WaiterLink.Queue with Executor:
   private var isDone: Boolean = false
+  private var isIdle: Boolean = false
   private val engine = new Engine { override def run() = () } //// `run` is not used by this executor
 
   override def toString = s"ZeroThreadedExecutor@${hashCode.toHexString}"
@@ -29,10 +30,9 @@ private[internals] final class ZeroThreadedExecutor extends WaiterLink.Queue wit
 
   private[turbolift] override def resume(fiber: FiberImpl): Unit =
     synchronized {
-      val wasEmpty = isEmpty
       enqueue(fiber)
-      if wasEmpty then
-        engine.become(fiber)
+      if isIdle then
+        isIdle = false
         notify()
     }
 
@@ -59,6 +59,7 @@ private[internals] final class ZeroThreadedExecutor extends WaiterLink.Queue wit
             synchronized {
               if isEmpty then
                 if !isDone then
+                  isIdle = true
                   wait()
                   dequeue()
                 else

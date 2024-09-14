@@ -428,3 +428,16 @@ class FiberTest extends Specification:
       .===(Outcome.Success(("c", "adbe")))
     }
   }
+
+  "ZeroThreadedExecutor" >> {
+    import turbolift.mode.ST
+
+    "fork" >>{
+      (for
+        _ <- !!.unit.fork
+      yield 42)
+      .warpShutdownOnExit
+      .runIO
+      .===(Outcome.Success(42))
+    }
+  }
