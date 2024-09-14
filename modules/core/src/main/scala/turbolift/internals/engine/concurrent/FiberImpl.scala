@@ -3,9 +3,9 @@ import scala.annotation.{tailrec, switch}
 import turbolift.{Computation, Signature}
 import turbolift.io.{Fiber, Zipper, Warp, OnceVar, Snap, Outcome, Cause, Exceptions}
 import turbolift.internals.executor.Executor
-import turbolift.internals.engine.{Env, Tag}
+import turbolift.internals.engine.{Env, Tag, Step}
 import turbolift.internals.engine.Misc._
-import turbolift.internals.engine.stacked.{StepCases, Step, Stack, Store, OpCascaded, OpPush}
+import turbolift.internals.engine.stacked.{Stack, Store, OpCascaded, OpPush}
 import Cause.{Cancelled => CancelPayload}
 import FiberImpl.Hook
 
@@ -457,7 +457,7 @@ private[turbolift] final class FiberImpl private (
   private def suspendInitial(comp: AnyComp, env: Env): Unit =
     suspendedTag     = comp.tag.toByte
     suspendedPayload = comp
-    suspendedStep    = StepCases.Pop
+    suspendedStep    = Step.Pop
     suspendedStack   = Stack.initial
     suspendedStore   = Store.initial(env)
 

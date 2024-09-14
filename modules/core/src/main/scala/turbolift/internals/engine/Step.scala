@@ -1,31 +1,27 @@
 package turbolift.internals.engine
 import turbolift.!!
 import turbolift.interpreter.Prompt
-import StepCases._
+import turbolift.{ComputationCases => CC}
 
 
 private[engine] sealed abstract class Step(val tag: Tag):
-  val next: Step | Null
   final override def toString: String = Step.toStr(this)
-
-
-private[engine] object StepCases:
-  final class More(_tag: Tag, val fun: Any => Any, override val next: Step) extends Step(_tag)
-
-  final class Unwind(val kind: Step.UnwindKind, val prompt: Prompt | Null) extends Step(Tag.Unwind):
-    override val next: Null = null
-    def isPop = kind == Step.UnwindKind.Pop
-    def isBridge = kind == Step.UnwindKind.Bridge
-
-  export Step.Pop
+  // final inline def push(comp: CC.Map[Any, Any, Any, Any]): Step =
+  //   Step.More(comp.tag + Tag.MoreFlat - Tag.FlatMap, comp, this)
 
 
 private[engine] object Step:
-  val Pop: Step = new StepCases.Unwind(UnwindKind.Pop, null)
-  val Cancel: Step = new StepCases.Unwind(UnwindKind.Cancel, null)
-  val Throw: Step = new StepCases.Unwind(UnwindKind.Throw, null)
-  val Bridge: Step = new StepCases.Unwind(UnwindKind.Bridge, null)
-  def abort(prompt: Prompt): Step = new StepCases.Unwind(UnwindKind.Abort, prompt)
+  final class More(_tag: Tag, val fun: Any => Any, val next: Step) extends Step(_tag)
+
+  final class Unwind(val kind: Step.UnwindKind, val prompt: Prompt | Null) extends Step(Tag.Unwind):
+    def isPop = kind == Step.UnwindKind.Pop
+    def isBridge = kind == Step.UnwindKind.Bridge
+
+  val Pop: Step = new Unwind(UnwindKind.Pop, null)
+  val Cancel: Step = new Unwind(UnwindKind.Cancel, null)
+  val Throw: Step = new Unwind(UnwindKind.Throw, null)
+  val Bridge: Step = new Unwind(UnwindKind.Bridge, null)
+  def abort(prompt: Prompt): Step = new Unwind(UnwindKind.Abort, prompt)
 
   enum UnwindKind:
     case Pop

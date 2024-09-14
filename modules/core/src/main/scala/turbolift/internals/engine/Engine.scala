@@ -6,7 +6,6 @@ import turbolift.io.{Fiber, Zipper, Warp, Snap, Outcome, Cause, Exceptions}
 import turbolift.io.{OnceVar, CountDownLatch, CyclicBarrier, Mutex, Semaphore, Channel}
 import turbolift.interpreter.{Interpreter, Continuation}
 import turbolift.internals.executor.Executor
-import turbolift.internals.engine.{StepCases => SC}
 import turbolift.internals.engine.stacked.{Stack, Store, Local, Prompt, FrameKind, OpPush, OpSplit, OpCascaded}
 import turbolift.internals.engine.concurrent.{Bits, Blocker, Waitee, FiberImpl, WarpImpl}
 import turbolift.internals.engine.concurrent.util.{OnceVarImpl, CountDownLatchImpl, CyclicBarrierImpl, MutexImpl, SemaphoreImpl, ChannelImpl}
@@ -195,22 +194,22 @@ private sealed abstract class Engine0 extends Runnable:
 
                 case _ =>
                   val tag2 = tag + Tag.MoreFlat - Tag.FlatMap
-                  val step2 = SC.More(tag2, instr1, step)
+                  val step2 = Step.More(tag2, instr1, step)
                   innerLoopComp(comp2, step2, stack, store)
 
             case _ =>
               val tag2 = tag + Tag.MoreFlat - Tag.FlatMap
-              val step2 = SC.More(tag2, instr1, step)
+              val step2 = Step.More(tag2, instr1, step)
               innerLoopComp(comp1, step2, stack, store)
 
         case Tag.MoreFlat =>
-          val instr = step.asInstanceOf[SC.More]
+          val instr = step.asInstanceOf[Step.More]
           val step2 = instr.next
           val comp2 = instr.fun(payload).asInstanceOf[AnyComp]
           innerLoopComp(comp2, step2, stack, store)
 
         case Tag.MorePure =>
-          val instr = step.asInstanceOf[SC.More]
+          val instr = step.asInstanceOf[Step.More]
           val step2 = instr.next
           val payload2 = instr.fun(payload)
           innerLoopStep(payload2, step2, stack, store)
@@ -334,7 +333,7 @@ private sealed abstract class Engine0 extends Runnable:
     val stack   = savedStack
     val store   = savedStore
     //-------------------
-    val instr = step.asInstanceOf[SC.Unwind]
+    val instr = step.asInstanceOf[Step.Unwind]
     if stack.canPop then
       if instr.isBridge then
         val (stack2, store2, step2) = OpPush.drop(stack, store)
@@ -443,7 +442,7 @@ private sealed abstract class Engine0 extends Runnable:
     //-------------------
     val location = stack.locatePrompt(prompt)
     val (stack2, store2) = OpPush.pushNested(stack, store, step, prompt, location, local.asLocal, FrameKind.plain)
-    loopComp(body, SC.Pop, stack2, store2)
+    loopComp(body, Step.Pop, stack2, store2)
 
 
   final def intrinsicDelimitMod[S](prompt: Prompt, body: AnyComp, fun: S => S): Tag =
@@ -454,7 +453,7 @@ private sealed abstract class Engine0 extends Runnable:
     val location = stack.locatePrompt(prompt)
     val local2 = fun.asInstanceOf[Local => Local](store.deepGet(location))
     val (stack2, store2) = OpPush.pushNested(stack, store, step, prompt, location, local2, FrameKind.plain)
-    loopComp(body, SC.Pop, stack2, store2)
+    loopComp(body, Step.Pop, stack2, store2)
 
 
   final def intrinsicAbort(prompt: Prompt, value: Any): Tag =
@@ -541,10 +540,10 @@ private sealed abstract class Engine0 extends Runnable:
         val (storeDown, storeRight) = OpCascaded.fork(stack, storeTmp)
         currentFiber.suspendForRace(fun, step, stack, storeDown)
         val stack2 = stack.makeFork
-        fiberRight.suspend(rhs.tag, rhs, SC.Pop, stack2, storeRight)
+        fiberRight.suspend(rhs.tag, rhs, Step.Pop, stack2, storeRight)
         fiberRight.resume()
         becomeWithSameEnv(fiberLeft)
-        loopComp(lhs, SC.Pop, stack2, storeLeft)
+        loopComp(lhs, Step.Pop, stack2, storeLeft)
       else
         //// Must have been cancelled meanwhile
         loopCancel(stack, store)
@@ -567,10 +566,10 @@ private sealed abstract class Engine0 extends Runnable:
         val (storeDown, storeRight) = OpCascaded.fork(stack, storeTmp)
         currentFiber.suspendForRace(null, step, stack, storeDown)
         val stack2 = stack.makeFork
-        fiberRight.suspend(rhs.tag, rhs, SC.Pop, stack2, storeRight)
+        fiberRight.suspend(rhs.tag, rhs, Step.Pop, stack2, storeRight)
         fiberRight.resume()
         becomeWithSameEnv(fiberLeft)
-        loopComp(lhs, SC.Pop, stack2, storeLeft)
+        loopComp(lhs, Step.Pop, stack2, storeLeft)
       else
         //// Must have been cancelled meanwhile
         loopCancel(stack, store)
@@ -591,7 +590,7 @@ private sealed abstract class Engine0 extends Runnable:
       currentFiber.suspendForRace(rhsFun, step, stack, storeDown)
       val stack2 = stack.makeFork
       becomeWithSameEnv(fiberLeft)
-      loopComp(lhs, SC.Pop, stack2, storeLeft)
+      loopComp(lhs, Step.Pop, stack2, storeLeft)
     else
       //// Must have been cancelled meanwhile
       loopCancel(stack, store)
@@ -615,7 +614,7 @@ private sealed abstract class Engine0 extends Runnable:
     val store = savedStore
     //-------------------
     val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, Local.void, FrameKind.guard)
-    loopComp(body, SC.Pop, stack2, store2)
+    loopComp(body, Step.Pop, stack2, store2)
 
 
   final def intrinsicUnsnap[A, U](snap: Snap[A]): Tag =
@@ -654,7 +653,7 @@ private sealed abstract class Engine0 extends Runnable:
     else
       val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, env2.asLocal, FrameKind.plain)
       this.currentEnv = env2
-      loopComp(body, SC.Pop, stack2, store2)
+      loopComp(body, Step.Pop, stack2, store2)
 
 
   final def intrinsicForkFiber[A, U](warp0: Warp | Null, comp: A !! U, name: String, callback: (Zipper.Untyped => Unit) | Null = null): Tag =
@@ -666,7 +665,7 @@ private sealed abstract class Engine0 extends Runnable:
     val (storeDown, storeFork) = OpCascaded.fork(stack, store)
     val stackFork = stack.makeFork
     val child = FiberImpl.createExplicit(warp, name, callback)
-    child.suspend(comp.tag, comp, SC.Pop, stackFork, storeFork)
+    child.suspend(comp.tag, comp, Step.Pop, stackFork, storeFork)
     if warp.tryAddFiber(child) then
       child.resume()
       loopStep(child, step, stack, storeDown)
@@ -729,7 +728,7 @@ private sealed abstract class Engine0 extends Runnable:
     val env2 = currentEnv.copy(currentWarp = warp)
     val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, env2.asLocal, FrameKind.warp)
     this.currentEnv = env2
-    loopComp(body, SC.Pop, stack2, store2)
+    loopComp(body, Step.Pop, stack2, store2)
 
 
   final def intrinsicAwaitWarp(warp0: Warp, isCancel: Boolean): Tag =
@@ -805,7 +804,7 @@ private sealed abstract class Engine0 extends Runnable:
       if cancellationCheck() then
         loopCancel(stack2, store2)
       else
-        loopComp(body, SC.Pop, stack2, store2)
+        loopComp(body, Step.Pop, stack2, store2)
 
 
   final def intrinsicExecOn[A, U](exec: Executor, body: A !! U): Tag =
@@ -818,7 +817,7 @@ private sealed abstract class Engine0 extends Runnable:
     else
       val env2 = currentEnv.copy(executor = exec)
       val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, env2.asLocal, FrameKind.exec)
-      currentFiber.suspendComp(body, SC.Pop, stack2, store2)
+      currentFiber.suspendComp(body, Step.Pop, stack2, store2)
       currentFiber.resume()
       ThreadDisowned
 

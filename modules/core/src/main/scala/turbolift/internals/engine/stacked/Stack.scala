@@ -211,7 +211,7 @@ private[engine] final class Stack private (
     if isTailless then
       fork
     else
-      fork.copyWithTail(tail = tail.makeForkDeep, aside = StepCases.Pop)
+      fork.copyWithTail(tail = tail.makeForkDeep, aside = Step.Pop)
 
 
   def hasSamePromptsAs(that: Stack): Boolean =
@@ -300,7 +300,7 @@ private[engine] object Stack:
     aside: Step | Null,
   ): Stack =
     val lookup = Lookup.empty.push(Entry(prompt, Location.Shallow(0, 0)))
-    val piles = Array(Pile.pushFirst(prompt, StepCases.Pop, 0, isNested, kind))
+    val piles = Array(Pile.pushFirst(prompt, Step.Pop, 0, isNested, kind))
     val headFeatures = prompt.features.mask
     val fork =
       if isNested then

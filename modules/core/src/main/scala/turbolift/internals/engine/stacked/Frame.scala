@@ -97,7 +97,7 @@ private final class Frame private (
 
 
 private object Frame:
-  val base: Frame = pushFirst(StepCases.Pop, isNested = false, FrameKind.plain)
+  val base: Frame = pushFirst(Step.Pop, isNested = false, FrameKind.plain)
 
   def pushFirst(step: Step, isNested: Boolean, kind: FrameKind): Frame =
     new Frame(
