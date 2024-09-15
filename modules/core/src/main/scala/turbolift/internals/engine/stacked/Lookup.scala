@@ -1,7 +1,6 @@
 package turbolift.internals.engine.stacked
 import scala.annotation.tailrec
 import turbolift.Signature
-import turbolift.internals.engine.Misc._
 
 
 private opaque type Lookup <: AnyRef = Array[Lookup.Element]

@@ -1,7 +1,6 @@
 package turbolift.internals.engine.stacked
 import scala.annotation.tailrec
 import turbolift.internals.engine.Env
-import turbolift.internals.engine.Misc._
 import Local.Syntax._
 
 

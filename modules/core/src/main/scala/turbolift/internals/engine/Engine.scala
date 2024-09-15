@@ -132,13 +132,13 @@ private sealed abstract class Engine0 extends Runnable:
 
 
   @tailrec private final def innerLoop(tag: Tag, payload: Any, step: Step, stack: Stack, store: Store): Tag =
-    inline def innerLoopStep(payload: Any, step: Step, stack: Stack, store: Store): Tag =
+    inline def innerLoopStep(payload: Any, step: Step, store: Store): Tag =
       innerLoop(step.tag, payload, step, stack, store)
 
-    inline def innerLoopComp(comp: Computation[?, ?], step: Step, stack: Stack, store: Store): Tag =
+    inline def innerLoopComp(comp: Computation[?, ?], step: Step, store: Store): Tag =
       innerLoop(comp.tag, comp, step, stack, store)
 
-    inline def loopTag(tag: Tag, payload: Any, step: Step, stack: Stack, store: Store): Tag =
+    inline def loopTag(tag: Tag, payload: Any, step: Step, store: Store): Tag =
       val tag2 = if tag == Tag.FlatMap then payload.asInstanceOf[AnyComp].tag else step.tag
       innerLoop(tag2, payload, step, stack, store)
 
@@ -152,12 +152,12 @@ private sealed abstract class Engine0 extends Runnable:
             case Tag.Pure =>
               val instr2 = comp1.asInstanceOf[CC.Pure[Any]]
               val payload2 = instr1(instr2.value)
-              loopTag(tag, payload2, step, stack, store)
+              loopTag(tag, payload2, step, store)
 
             case Tag.Impure =>
               val instr2 = comp1.asInstanceOf[CC.Impure[Any]]
               val payload2 = instr1(instr2())
-              loopTag(tag, payload2, step, stack, store)
+              loopTag(tag, payload2, step, store)
 
             case Tag.Perform =>
               val instr2 = comp1.asInstanceOf[CC.Perform[Any, Any, Signature]]
@@ -167,52 +167,52 @@ private sealed abstract class Engine0 extends Runnable:
                 case Tag.Pure =>
                   val instr3 = comp2.asInstanceOf[CC.Pure[Any]]
                   val payload2 = instr1(instr3.value)
-                  loopTag(tag, payload2, step, stack, store)
+                  loopTag(tag, payload2, step, store)
 
                 case Tag.Impure =>
                   val instr3 = comp2.asInstanceOf[CC.Impure[Any]]
                   val payload2 = instr1(instr3())
-                  loopTag(tag, payload2, step, stack, store)
+                  loopTag(tag, payload2, step, store)
 
                 case Tag.LocalGet =>
                   val local = store.deepGet(entry.storeIndex, entry.segmentDepth)
                   val payload2 = instr1(local)
-                  loopTag(tag, payload2, step, stack, store)
+                  loopTag(tag, payload2, step, store)
 
                 case Tag.LocalPut =>
                   val instr3 = comp2.asInstanceOf[CC.LocalPut[Local]]
                   val store2 = store.deepPut(entry.storeIndex, entry.segmentDepth, instr3.local)
                   val payload2 = instr1(())
-                  loopTag(tag, payload2, step, stack, store2)
+                  loopTag(tag, payload2, step, store2)
 
                 case Tag.LocalUpdate =>
                   val instr3 = comp2.asInstanceOf[CC.LocalUpdate[Any, Local]]
                   val store2 = store.deepClone(entry.segmentDepth)
                   val value = store2.deepUpdateInPlace(entry.storeIndex, entry.segmentDepth, instr3)
                   val payload2 = instr1(value)
-                  loopTag(tag, payload2, step, stack, store2)
+                  loopTag(tag, payload2, step, store2)
 
                 case _ =>
                   val tag2 = tag + Tag.MoreFlat - Tag.FlatMap
                   val step2 = Step.More(tag2, instr1, step)
-                  innerLoopComp(comp2, step2, stack, store)
+                  innerLoopComp(comp2, step2, store)
 
             case _ =>
               val tag2 = tag + Tag.MoreFlat - Tag.FlatMap
               val step2 = Step.More(tag2, instr1, step)
-              innerLoopComp(comp1, step2, stack, store)
+              innerLoopComp(comp1, step2, store)
 
         case Tag.MoreFlat =>
           val instr = step.asInstanceOf[Step.More]
           val step2 = instr.next
           val comp2 = instr.fun(payload).asInstanceOf[AnyComp]
-          innerLoopComp(comp2, step2, stack, store)
+          innerLoopComp(comp2, step2, store)
 
         case Tag.MorePure =>
           val instr = step.asInstanceOf[Step.More]
           val step2 = instr.next
           val payload2 = instr.fun(payload)
-          innerLoopStep(payload2, step2, stack, store)
+          innerLoopStep(payload2, step2, store)
 
         case Tag.Perform =>
           val instr = payload.asInstanceOf[CC.Perform[Any, Any, Signature]]
@@ -221,49 +221,49 @@ private sealed abstract class Engine0 extends Runnable:
           (comp2.tag: @switch) match
             case Tag.LocalGet =>
               val local = store.deepGet(entry.storeIndex, entry.segmentDepth)
-              innerLoopStep(local, step, stack, store)
+              innerLoopStep(local, step, store)
 
             case Tag.LocalPut =>
               val instr2 = comp2.asInstanceOf[CC.LocalPut[Local]]
               val store2 = store.deepPut(entry.storeIndex, entry.segmentDepth, instr2.local)
-              innerLoopStep((), step, stack, store2)
+              innerLoopStep((), step, store2)
 
             case Tag.LocalUpdate =>
               val instr2 = comp2.asInstanceOf[CC.LocalUpdate[Any, Local]]
               val store2 = store.deepClone(entry.segmentDepth)
               val value = store2.deepUpdateInPlace(entry.storeIndex, entry.segmentDepth, instr2)
-              innerLoopStep(value, step, stack, store2)
+              innerLoopStep(value, step, store2)
 
-            case _ => innerLoopComp(comp2, step, stack, store)
+            case _ => innerLoopComp(comp2, step, store)
 
         case Tag.Pure =>
           val instr = payload.asInstanceOf[CC.Pure[Any]]
           val payload2 = instr.value
-          innerLoopStep(payload2, step, stack, store)
+          innerLoopStep(payload2, step, store)
 
         case Tag.Impure =>
           val instr = payload.asInstanceOf[CC.Impure[Any]]
           val payload2 = instr()
-          innerLoopStep(payload2, step, stack, store)
+          innerLoopStep(payload2, step, store)
 
         case Tag.LocalGet =>
           val instr = payload.asInstanceOf[CC.LocalGet]
           val entry = stack.findEntryByPrompt(instr.prompt)
           val local = store.deepGet(entry.storeIndex, entry.segmentDepth)
-          innerLoopStep(local, step, stack, store)
+          innerLoopStep(local, step, store)
 
         case Tag.LocalPut =>
           val instr = payload.asInstanceOf[CC.LocalPut[Local]]
           val entry = stack.findEntryByPrompt(instr.prompt)
           val store2 = store.deepPut(entry.storeIndex, entry.segmentDepth, instr.local)
-          innerLoopStep((), step, stack, store2)
+          innerLoopStep((), step, store2)
 
         case Tag.LocalUpdate =>
           val instr = payload.asInstanceOf[CC.LocalUpdate[Any, Local]]
           val entry = stack.findEntryByPrompt(instr.prompt)
           val store2 = store.deepClone(entry.segmentDepth)
           val value = store2.deepUpdateInPlace(entry.storeIndex, entry.segmentDepth, instr)
-          innerLoopStep(value, step, stack, store2)
+          innerLoopStep(value, step, store2)
 
         case Tag.Sync =>
           val instr = payload.asInstanceOf[CC.Sync[Any, Any]]
@@ -275,12 +275,12 @@ private sealed abstract class Engine0 extends Runnable:
             case e => throwable = e
           if throwable == null then
             val payload2 = if instr.isAttempt then Right(result) else result
-            innerLoopStep(payload2, step, stack, store)
+            innerLoopStep(payload2, step, store)
           else
             if instr.isAttempt then
-              innerLoopStep(Left(throwable), step, stack, store)
+              innerLoopStep(Left(throwable), step, store)
             else
-              innerLoopStep(Cause(throwable.nn), Step.Throw, stack, store)
+              innerLoopStep(Cause(throwable.nn), Step.Throw, store)
 
         case Tag.Intrinsic | Tag.Unwind =>
           this.savedPayload = payload
