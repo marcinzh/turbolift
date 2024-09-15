@@ -93,14 +93,14 @@ private[turbolift] final class FiberImpl private (
     if isExplicit then
       suspendedPayload.asInstanceOf[ZipperImpl]
     else
-      ZipperImpl.make(Stack.initial, suspendedPayload, getCompletion)
+      ZipperImpl.make(null, suspendedPayload, getCompletion)
 
 
   private def getOrMakeZipper(payload: Any, completion: Int): ZipperImpl =
     if isExplicit then
       suspendedPayload.asInstanceOf[ZipperImpl]
     else
-      ZipperImpl.make(Stack.initial, payload, completion)
+      ZipperImpl.make(null, payload, completion)
 
 
   //-------------------------------------------------------------------

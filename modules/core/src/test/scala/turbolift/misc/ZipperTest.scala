@@ -4,7 +4,7 @@ import org.specs2.execute.Typecheck
 import org.specs2.matcher.TypecheckMatchers._
 import turbolift.!!
 import turbolift.effects._
-import turbolift.io.{Warp, Outcome}
+import turbolift.io.{Fiber, Warp, OnceVar, Outcome}
 
 
 class ZipperTest extends Specification:
@@ -57,6 +57,34 @@ class ZipperTest extends Specification:
       }
     }
   }
+
+
+  "Other" >> {
+    "already cancelled" >>{
+      (for
+        fib <- IO.cancel.fork
+        _ <- IO.sleep(10)
+        zip <- fib.await
+      yield zip.outcome)
+      .warp
+      .runIO
+      .===(Outcome.Success(Outcome.Cancelled))
+    }
+
+    "implicit fiber" >>{
+      (for
+        ovar <- OnceVar[Fiber.Untyped]
+        _ <- (IO.sleep(10) *! Fiber.current.flatMap(ovar.put)).fork
+        fib <- ovar.get
+        zip <- fib.await
+      yield zip.outcome)
+      .warp
+      .runIO
+      .===(Outcome.Success(Outcome.Success(())))
+    }
+  }
+
+
 
   "effectful" >> {
     "with Error" >>{
