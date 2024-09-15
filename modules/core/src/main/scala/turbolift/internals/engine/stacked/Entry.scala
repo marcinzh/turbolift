@@ -1,7 +1,7 @@
 package turbolift.internals.engine.stacked
 
 
-private final class Entry(
+private[engine] final class Entry(
   val prompt: Prompt,
   val promptIndex: Short,
   val storeIndex: Short,

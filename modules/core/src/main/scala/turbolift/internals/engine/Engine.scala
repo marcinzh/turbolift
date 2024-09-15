@@ -4,9 +4,9 @@ import scala.annotation.{tailrec, switch}
 import turbolift.{!!, Computation, Signature, ComputationCases => CC}
 import turbolift.io.{Fiber, Zipper, Warp, Snap, Outcome, Cause, Exceptions}
 import turbolift.io.{OnceVar, CountDownLatch, CyclicBarrier, Mutex, Semaphore, Channel}
-import turbolift.interpreter.{Interpreter, Continuation}
+import turbolift.interpreter.{Interpreter, Continuation, Prompt}
 import turbolift.internals.executor.Executor
-import turbolift.internals.engine.stacked.{Stack, Store, Local, Prompt, FrameKind, OpPush, OpSplit, OpCascaded}
+import turbolift.internals.engine.stacked.{Stack, Store, Entry, Local, FrameKind, OpPush, OpSplit, OpCascaded}
 import turbolift.internals.engine.concurrent.{Bits, Blocker, Waitee, FiberImpl, WarpImpl}
 import turbolift.internals.engine.concurrent.util.{OnceVarImpl, CountDownLatchImpl, CyclicBarrierImpl, MutexImpl, SemaphoreImpl, ChannelImpl}
 import Tag.{Retire => ThreadDisowned}
@@ -91,7 +91,7 @@ private sealed abstract class Engine0 extends Runnable:
           val stack   = savedStack
           val store   = savedStore
           clearSaved()
-          innerLoop(tag, payload, step, stack, store)
+          innerLoop(tag, payload, step, stack, store, !currentEnv.shadowMap.isEmpty)
 
         case Tag.Intrinsic =>
           val instr = savedPayload.asInstanceOf[CC.Intrinsic[Any, Any]]
@@ -131,12 +131,12 @@ private sealed abstract class Engine0 extends Runnable:
   //-------------------------------------------------------------------
 
 
-  @tailrec private final def innerLoop(tag: Tag, payload: Any, step: Step, stack: Stack, store: Store): Tag =
+  @tailrec private final def innerLoop(tag: Tag, payload: Any, step: Step, stack: Stack, store: Store, hasShadow: Boolean): Tag =
     inline def innerLoopStep(payload: Any, step: Step, store: Store): Tag =
-      innerLoop(step.tag, payload, step, stack, store)
+      innerLoop(step.tag, payload, step, stack, store, hasShadow)
 
     inline def innerLoopComp(comp: Computation[?, ?], step: Step, store: Store): Tag =
-      innerLoop(comp.tag, comp, step, stack, store)
+      innerLoop(comp.tag, comp, step, stack, store, hasShadow)
 
     if currentTickLow > 0 then
       currentTickLow -= 1
@@ -157,7 +157,7 @@ private sealed abstract class Engine0 extends Runnable:
 
             case Tag.Perform =>
               val instr2 = comp1.asInstanceOf[CC.Perform[Any, Any, Signature]]
-              val entry = stack.findEntryBySignature(instr2.sig)
+              val entry = findEntryBySignature(instr2.sig, stack, hasShadow)
               val comp2 = instr2(entry.prompt)
               (comp2.tag: @switch) match
                 case Tag.Pure =>
@@ -208,7 +208,7 @@ private sealed abstract class Engine0 extends Runnable:
 
             case Tag.Perform =>
               val instr2 = comp1.asInstanceOf[CC.Perform[Any, Any, Signature]]
-              val entry = stack.findEntryBySignature(instr2.sig)
+              val entry = findEntryBySignature(instr2.sig, stack, hasShadow)
               val comp2 = instr2(entry.prompt)
               (comp2.tag: @switch) match
                 case Tag.Pure =>
@@ -257,7 +257,7 @@ private sealed abstract class Engine0 extends Runnable:
 
         case Tag.Perform =>
           val instr = payload.asInstanceOf[CC.Perform[Any, Any, Signature]]
-          val entry = stack.findEntryBySignature(instr.sig)
+          val entry = findEntryBySignature(instr.sig, stack, hasShadow)
           val comp2 = instr(entry.prompt)
           (comp2.tag: @switch) match
             case Tag.LocalGet =>
@@ -289,19 +289,19 @@ private sealed abstract class Engine0 extends Runnable:
 
         case Tag.LocalGet =>
           val instr = payload.asInstanceOf[CC.LocalGet]
-          val entry = stack.findEntryByPrompt(instr.prompt)
+          val entry = findEntryByPrompt(instr.prompt, stack, hasShadow)
           val local = store.deepGet(entry.storeIndex, entry.segmentDepth)
           innerLoopStep(local, step, store)
 
         case Tag.LocalPut =>
           val instr = payload.asInstanceOf[CC.LocalPut[Local]]
-          val entry = stack.findEntryByPrompt(instr.prompt)
+          val entry = findEntryByPrompt(instr.prompt, stack, hasShadow)
           val store2 = store.deepPut(entry.storeIndex, entry.segmentDepth, instr.local)
           innerLoopStep((), step, store2)
 
         case Tag.LocalUpdate =>
           val instr = payload.asInstanceOf[CC.LocalUpdate[Any, Local]]
-          val entry = stack.findEntryByPrompt(instr.prompt)
+          val entry = findEntryByPrompt(instr.prompt, stack, hasShadow)
           val store2 = store.deepClone(entry.segmentDepth)
           val value = store2.deepUpdateInPlace(entry.storeIndex, entry.segmentDepth, instr)
           innerLoopStep(value, step, store2)
@@ -505,6 +505,17 @@ private sealed abstract class Engine0 extends Runnable:
     loopStep(value, Step.abort(prompt), stack, store)
 
 
+  final def intrinsicShadow[A, U](prompt: Prompt, body: A !! U): Tag =
+    val step = savedStep
+    val stack = savedStack
+    val store = savedStore
+    //-------------------
+    val env2 = currentEnv.copy(shadowMap = currentEnv.shadowMap.push(prompt))
+    val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, env2.asLocal, FrameKind.plain)
+    this.currentEnv = env2
+    loopComp(body, Step.Pop, stack2, store2)
+
+
   final def intrinsicResume[A, B, S, U](cont0: Continuation[A, B, S, U], value: A): Tag =
     val step = savedStep
     val stack = savedStack
@@ -651,9 +662,9 @@ private sealed abstract class Engine0 extends Runnable:
     val stack = savedStack
     val store = savedStore
     //-------------------
-    for sig <- prompt.signatures do
-      if stack.containsSignature(sig) then
-        panic(s"Unsupported feature: shadowing effect ${sig}.")
+    // for sig <- prompt.signatures do
+    //   if stack.containsSignature(sig) then
+    //     panic(s"Unsupported feature: shadowing effect ${sig}.")
     val (stack2, store2) = OpPush.pushBase(stack, store, step, prompt, initial.asLocal)
     loopComp(body, Step.Pop, stack2, store2)
 
@@ -1035,3 +1046,17 @@ private sealed abstract class Engine0 extends Runnable:
     this.savedStep = null.asInstanceOf[Step]
     this.savedStack = null.asInstanceOf[Stack]
     this.savedStore = null.asInstanceOf[Store]
+
+
+  private final def findEntryBySignature(sig: Signature, stack: Stack, hasShadow: Boolean): Entry =
+    if !hasShadow then
+      stack.findEntryBySignature(sig)
+    else
+      stack.findEntryBySignatureWithShadow(sig, currentEnv.shadowMap.get(sig))
+
+
+  private final def findEntryByPrompt(prompt: Prompt, stack: Stack, hasShadow: Boolean): Entry =
+    if !hasShadow then
+      stack.findEntryByPrompt(prompt)
+    else
+      stack.findEntryByPromptWithShadow(prompt, currentEnv.shadowMap.get(prompt))

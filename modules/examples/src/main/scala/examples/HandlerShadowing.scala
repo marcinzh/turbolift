@@ -6,10 +6,6 @@ import turbolift.effects.State
 
 case object HandlerShadowing extends Example:
   override def description: String = s"""
-    -------------------------------------------------------------------------------
-    The feature required for running this example is currently disabled,
-    because it turned out to be conflicting with new ones, which were more important.
-    -------------------------------------------------------------------------------
     Handler can eliminate an effect, and at the same time re-introduce it, so that
     it can be handled again by a different handler.
     This allows chaining handlers for given effect, in a pipeline-like fashion.
@@ -63,7 +59,7 @@ case object HandlerShadowing extends Example:
               else
                 (acc :+ char, flip)
           }
-          Konsole.log(text2)
+          Control.shadow(Konsole.log(text2))
       .toHandler
 
 
@@ -74,7 +70,7 @@ case object HandlerShadowing extends Example:
           for
             i <- S.getModify(n => (n + 1) % palette.size)
             color = palette(i)
-            _ <- Konsole.log(s"${color}$text${Console.RESET}")
+            _ <- Control.shadow(Konsole.log(s"${color}$text${Console.RESET}"))
           yield ()
       .toHandler
       .partiallyProvideWith[Konsole](S.handler(0).dropState)

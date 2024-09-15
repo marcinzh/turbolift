@@ -59,10 +59,10 @@ private[engine] final class Stack private (
     if lookup.containsSignature(sig) then
       true
     else
-      if isTailless then
-        false
-      else
+      if !isTailless then
         tail.containsSignature(sig)
+      else
+        false
 
 
   @tailrec def findEntryBySignature(sig: Signature, depth: Int = 0): Entry =
@@ -70,13 +70,41 @@ private[engine] final class Stack private (
     if entry != null then
       entry.copyWithDepth(depth)
     else
-      if isTailless then
-        Lookup.sigNotFound(sig)
-      else
+      if !isTailless then
         tail.findEntryBySignature(sig, depth + 1)
+      else
+        Stack.sigNotFound(sig)
 
-  
-  def findEntryByPrompt(prompt: Prompt): Entry = findEntryBySignature(prompt.signatures.head)
+
+  @tailrec def findEntryByPrompt(prompt: Prompt, depth: Int = 0): Entry =
+    val entry = lookup.findByPrompt(prompt)
+    if entry != null then
+      entry.copyWithDepth(depth)
+    else
+      if !isTailless then
+        tail.findEntryByPrompt(prompt, depth + 1)
+      else
+        Stack.promptNotFound(prompt)
+
+
+  @tailrec def findEntryBySignatureWithShadow(sig: Signature, shadowCount: Int, depth: Int = 0): Entry =
+    lookup.findBySignatureWithShadow(sig, shadowCount) match
+      case entry: Entry => entry.copyWithDepth(depth)
+      case remainingShadow: Int =>
+        if isTailless then
+          Stack.sigNotFound(sig)
+        else
+          tail.findEntryBySignatureWithShadow(sig, shadowCount = remainingShadow, depth + 1)
+
+
+  @tailrec def findEntryByPromptWithShadow(prompt: Prompt, shadowCount: Int, depth: Int = 0): Entry =
+    lookup.findByPromptWithShadow(prompt, shadowCount) match
+      case entry: Entry => entry.copyWithDepth(depth)
+      case remainingShadow: Int =>
+        if isTailless then
+          Stack.promptNotFound(prompt)
+        else
+          tail.findEntryByPromptWithShadow(prompt, shadowCount = remainingShadow, depth + 1)
 
 
   //@#@TODO update callers
@@ -361,3 +389,7 @@ private[engine] object Stack:
       headFeatures = headFeatures,
     )
     main.fixForkSegment(fork)
+
+
+  def sigNotFound(s: Signature): Nothing = panic(s"Signature ${s} not found")
+  def promptNotFound(p: Prompt): Nothing = panic(s"Prompt ${p} not found")

@@ -7,10 +7,6 @@ import turbolift.io.AtomicVar
 
 case object YieldReplace extends Example:
   override def description: String = s"""
-    -------------------------------------------------------------------------------
-    The feature required for running this example is currently disabled,
-    because it turned out to be conflicting with new ones, which were more important.
-    -------------------------------------------------------------------------------
     Another example adapted from "Handling Bidirectional Control Flow" paper.
     In addition to its original meaning,
     our implementation demonstrates that in Turbolift we can abstract over effect instances.

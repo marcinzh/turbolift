@@ -71,6 +71,9 @@ final class Control[S, Q, F[+_], L, N, M] private[interpreter] (private val prom
    */
   def reinterpret[A, U <: M & N](body: A !! (L & U)): A !! U = CC.intrinsic(_.intrinsicReinterpret(body))
 
+  /** Bypass current interpreter. */
+  def shadow[A, U](using N <:< L)(body: A !! U): A !! U = CC.intrinsic(_.intrinsicShadow(prompt, body))
+
   /** Strips away the `Ambient` effect.
    *
    * Useful when we need a continuation to outlive the interpreter that captured it.

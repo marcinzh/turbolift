@@ -1,6 +1,7 @@
 package turbolift.internals.engine.stacked
 
 
+//@#@TODO Redesign. Mostly obsolete, Entry is used instead of Deep
 private[engine] object Location:
   final val MAX_SEGMENT_SIZE = 12
 

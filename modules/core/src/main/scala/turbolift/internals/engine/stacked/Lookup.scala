@@ -15,6 +15,19 @@ private object Lookup:
 
 
   extension (thiz: Lookup)
+    def containsSignature(sig: Signature): Boolean =
+      val n = thiz.size
+      @tailrec def loop(i: Int): Boolean =
+        if i < n then
+          if thiz(i) eq sig then
+            true
+          else
+            loop(i + 2)
+        else
+          false
+      loop(0)
+
+
     def findBySignature(sig: Signature): Entry | Null =
       val n = thiz.size
       @tailrec def loop(i: Int): Entry | Null =
@@ -28,17 +41,59 @@ private object Lookup:
       loop(0)
 
 
-    def containsSignature(sig: Signature): Boolean =
+    def findBySignatureWithShadow(sig: Signature, shadowCount: Int): Entry | Int =
       val n = thiz.size
-      @tailrec def loop(i: Int): Boolean =
+      @tailrec def loop(i: Int, c: Int): Entry | Int =
         if i < n then
           if thiz(i) eq sig then
-            true
+            if c == 0 then
+              thiz(i + 1).asInstanceOf[Entry]
+            else
+              loop(i + 2, c - 1)
+          else
+            loop(i + 2, c)
+        else
+          c
+      loop(0, shadowCount)
+
+
+    def findByPrompt(prompt: Prompt): Entry | Null =
+      val n = thiz.size
+      val sig = prompt.signatures.head
+      @tailrec def loop(i: Int): Entry | Null =
+        if i < n then
+          if thiz(i) eq sig then
+            val entry = thiz(i + 1).asInstanceOf[Entry]
+            if entry.prompt eq prompt then
+              entry
+            else
+              loop(i + 2)
           else
             loop(i + 2)
         else
-          false
+          null
       loop(0)
+
+
+    def findByPromptWithShadow(prompt: Prompt, shadowCount: Int): Entry | Int =
+      val n = thiz.size
+      val sig = prompt.signatures.head
+      @tailrec def loop(i: Int, c: Int): Entry | Int =
+        if i < n then
+          if thiz(i) eq sig then
+            if c == 0 then
+              val entry = thiz(i + 1).asInstanceOf[Entry]
+              if entry.prompt eq prompt then
+                entry
+              else
+                loop(i + 2, 0)
+            else
+              loop(i + 2, c - 1)
+          else
+            loop(i + 2, c)
+        else
+          c
+      loop(0, shadowCount)
 
 
     def push(e: Entry): Lookup =
@@ -75,6 +130,3 @@ private object Lookup:
     def toStr =
       val ps = thiz.iterator.zipWithIndex.collect { case (e, i) if i % 2 == 1 => e.asInstanceOf[Entry].prompt }
       s"Lookup[${ps.mkString(", ")}]"
-
-
-  def sigNotFound(s: Signature): Nothing = panic(s"Signature ${s} not found")
