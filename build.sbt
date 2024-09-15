@@ -1,5 +1,5 @@
 ThisBuild / organization := "io.github.marcinzh"
-ThisBuild / version := "0.96.0"
+ThisBuild / version := "0.96.1"
 ThisBuild / scalaVersion := "3.3.3"
 ThisBuild / scalacOptions ++= Seq(
   "-deprecation",
@@ -9,6 +9,7 @@ ThisBuild / scalacOptions ++= Seq(
   "-Xfatal-warnings",
   "-release", "11",
 )
+ThisBuild / javacOptions ++= Seq("--release", "11")
 
 val Deps = {
   val specs2_v = "5.4.0"
