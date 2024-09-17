@@ -9,14 +9,14 @@ import QueV.Cont
 extension [Fx <: ChoiceEffect](fx: Fx)
   def choiceHandler_allBreadthFirst: fx.ThisHandler[Identity, Vector, Any] =
     new fx.impl.Stateful[Identity, Vector, Any] with fx.impl.Parallel with ChoiceSignature:
-      override type Local = QueV[Unknown, Fx]
+      override type Local = QueV[Unknown, ThisEffect]
 
       override def onInitial = QueV.empty.pure_!!
 
-      override def onReturn(a: Unknown, q: Local): Vector[Unknown] !! Fx =
+      override def onReturn(a: Unknown, q: Local): Vector[Unknown] !! ThisEffect =
         q.addDone(a).drain
 
-      override def onRestart(as: Vector[Unknown]): Unknown !! ThisEffect =
+      override def onRestart(as: Vector[Unknown]): Unknown !! fx.type =
         fx.choose(as)
 
       override def onZip[A, B, C](as: Vector[A], bs: Vector[B], k: (A, B) => C): Vector[C] =

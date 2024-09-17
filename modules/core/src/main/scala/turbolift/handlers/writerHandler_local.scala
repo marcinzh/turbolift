@@ -15,7 +15,7 @@ extension [W, W1](fx: WriterEffect[W, W1])
 
       override def onReturn(a: Unknown, w: W): (Unknown, W) !! Any = !!.pure((a, w))
 
-      override def onRestart(a_w: (Unknown, W)): Unknown !! ThisEffect = fx.tells(a_w._2) &&! !!.pure(a_w._1)
+      override def onRestart(a_w: (Unknown, W)): Unknown !! fx.type = fx.tells(a_w._2) &&! !!.pure(a_w._1)
 
       override def onZip[A, B, C](a_w: (A, W), b_w: (B, W), k: (A, B) => C): (C, W) = (k(a_w._1, b_w._1), a_w._2 |+| b_w._2)
 

@@ -9,7 +9,7 @@ extension [Fx <: ChoiceEffect](fx: Fx)
     new fx.impl.Stateless[Identity, Vector, Any] with fx.impl.Parallel with ChoiceSignature:
       override def onReturn(a: Unknown): Vector[Unknown] !! Any = !!.pure(Vector(a))
 
-      override def onRestart(as: Vector[Unknown]): Unknown !! ThisEffect = fx.choose(as)
+      override def onRestart(as: Vector[Unknown]): Unknown !! fx.type = fx.choose(as)
 
       override def onZip[A, B, C](as: Vector[A], bs: Vector[B], k: (A, B) => C): Vector[C] =
         as.flatMap(a => bs.map(b => k(a, b)))

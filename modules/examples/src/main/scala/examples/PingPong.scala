@@ -35,7 +35,7 @@ case object PingPong extends Example:
       new fx.impl.Proxy[Console] with PingSignature:
         override def ping: Unit !! (ThisEffect & Pong) =
           Console.println(s"${Console.CYAN}ping${Console.RESET}") &&!
-          Pong.pong
+          Control.reinterpret(Pong.pong)
       .toHandler
 
   extension (fx: Pong)
@@ -46,7 +46,7 @@ case object PingPong extends Example:
           for
             i <- S.modifyGet(_ + 1)
             _ <- Console.println(s"${Console.MAGENTA}pong $i${Console.RESET}")
-            _ <- !!.when(i < limit)(Ping.ping)
+            _ <- !!.when(i < limit)(Control.reinterpret(Ping.ping))
           yield ()
       .toHandler
       .partiallyProvideWith[Console](S.handler(0).dropState)

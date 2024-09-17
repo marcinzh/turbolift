@@ -13,7 +13,7 @@ object Mixins:
   private[interpreter] def unimplemented: Nothing = sys.error("Intentionally unimplemented")
 
   private[interpreter] sealed trait HasNotRestart extends Interpreter.Unsealed:
-    final override def onRestart(aa: To[Unknown]): Unknown !! ThisEffect = unimplemented
+    final override def onRestart(aa: To[Unknown]): Unknown !! Elim = unimplemented
 
   private[interpreter] sealed trait HasNotForkJoin extends Interpreter.Unsealed:
     final override def onFork(s: Local): (Local, Local) = unimplemented

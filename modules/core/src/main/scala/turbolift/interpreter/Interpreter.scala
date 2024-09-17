@@ -33,29 +33,42 @@ sealed trait Interpreter extends Signature:
   /** Local state of this interpreter. */
   type Local
 
-  /** Phantom type meaning the unknown part of the continuation's answer type.
+  /** Phantom type, representing universally quantified type of the corresponding handler.
     *
-    * Full answer type is `To[Unknown] !! Intro`.
-    * The `To[+_]` part is known to this interpreter.
-    * The `Unknown` part however, is not.
-    * It's specific to place(s) where the handler (obtained from this interpreter) would be applied.
+    * A [[turbolift.Handler Handler]] acts as a higher-rank function of type:
+    * {{{
+    * [A, U] => (From[A] !! (Elim & U)) => To[A] !! (Intro & U)
+    * }}}
+    *
+    * The [[Unknown]] type of this interpreter corresponds to the `A` type parameter above.
+    * See also [[Ambient]].
     */
   type Unknown
 
-  final override type ThisEffect = Elim & Intro
+  /** Phantom type, representing universally quantified type of the corresponding handler.
+    *
+    * A [[turbolift.Handler Handler]] acts as a higher-rank function of type:
+    * {{{
+    * [A, U] => (From[A] !! (Elim & U)) => To[A] !! (Intro & U)
+    * }}}
+    *
+    * The [[Ambient]] type of this interpreter corresponds to the `U` type parameter above.
+    * See also [[Unknown]].
+    */
+  type Ambient
 
-  /** Alias for [[turbolift.Handler Handler]], specialized for this interperter. */
-  final type ThisHandler = Handler[From, To, Elim, Intro]
+  final type ThisEffect = Intro & Ambient
+
 
   /** An instance of [[Local]] dedicated for this interpreter. */
-  val Local = new turbolift.interpreter.Local[Local, Elim](prompt)
+  val Local = new turbolift.interpreter.Local[Local, ThisEffect](prompt)
 
   /** An instance of [[Control]] dedicated for this interpreter. */
-  val Control = new turbolift.interpreter.Control[Local, Unknown, To, Elim & Intro](prompt)
+  val Control = new turbolift.interpreter.Control[Local, Unknown, To, Elim, Intro, Ambient](prompt)
 
   def onInitial: Local !! Intro
   def onReturn(aa: From[Unknown], s: Local): To[Unknown] !! ThisEffect
-  def onRestart(aa: To[Unknown]): Unknown !! ThisEffect
+  def onRestart(aa: To[Unknown]): Unknown !! (Elim & ThisEffect)
   def onZip[A, B, C](aa: To[A], bb: To[B], k: (A, B) => C): To[C]
   def onFork(s: Local): (Local, Local)
   def onJoin(s1: Local, s2: Local): Local
@@ -64,7 +77,7 @@ sealed trait Interpreter extends Signature:
   private def resurceUnsafeHint: Boolean = false
 
   /** Creates a [[turbolift.Handler Handler]] from this interpreter. */
-  final def toHandler: ThisHandler = HC.Primitive[From, To, Elim, Intro](this)
+  final def toHandler: Handler[From, To, Elim, Intro] = HC.Primitive[From, To, Elim, Intro](this)
 
   private[turbolift] final val features: Features =
     val primary = Seq(
@@ -118,6 +131,7 @@ object Interpreter:
     type Intro = Any
     type Local = Any
     type Unknown = Any
+    type Ambient = Any
   }
 
 
@@ -158,7 +172,7 @@ object Interpreter:
 
     final override def onInitial: Local !! Intro = Void.pure
     final override def onReturn(aa: From[Unknown], s: Void): To[Unknown] !! ThisEffect = onReturn(aa)
-    def onReturn(aa: From[Unknown]): To[Unknown] !! Intro
+    def onReturn(aa: From[Unknown]): To[Unknown] !! ThisEffect
 
 
   /** Base class for any user-defined [[Interpreter]] Interpreter, that has local state.

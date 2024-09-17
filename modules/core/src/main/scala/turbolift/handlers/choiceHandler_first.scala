@@ -9,7 +9,7 @@ extension [Fx <: ChoiceEffect](fx: Fx)
     new fx.impl.Stateless[Identity, Option, Any] with fx.impl.Parallel with ChoiceSignature:
       override def onReturn(a: Unknown): Option[Unknown] !! Any = !!.pure(Some(a))
 
-      override def onRestart(as: Option[Unknown]): Unknown !! ThisEffect =
+      override def onRestart(as: Option[Unknown]): Unknown !! fx.type =
         as match
           case Some(a) => !!.pure(a)
           case None => fx.empty
@@ -22,7 +22,7 @@ extension [Fx <: ChoiceEffect](fx: Fx)
       override def choose[A](as: Iterable[A]): A !! ThisEffect =
         Control.capture: k =>
           val it = as.iterator
-          def loop(): Option[Unknown] !! Fx =
+          def loop(): Option[Unknown] !! ThisEffect =
             if it.hasNext then
               k(it.next()).flatMap {
                 case None => loop()

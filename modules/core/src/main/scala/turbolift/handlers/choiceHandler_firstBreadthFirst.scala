@@ -9,14 +9,14 @@ import QueO.Cont
 extension [Fx <: ChoiceEffect](fx: Fx)
   def choiceHandler_firstBreadthFirst: fx.ThisHandler[Identity, Option, Any] =
     new fx.impl.Stateful[Identity, Option, Any] with fx.impl.Parallel with ChoiceSignature:
-      override type Local = QueO[Unknown, Fx]
+      override type Local = QueO[Unknown, ThisEffect]
 
       override def onInitial = QueO.empty.pure_!!
 
-      override def onReturn(a: Unknown, q: Local): Option[Unknown] !! Any =
+      override def onReturn(a: Unknown, q: Local): Option[Unknown] !! ThisEffect =
         !!.pure(Some(a))
 
-      override def onRestart(as: Option[Unknown]): Unknown !! ThisEffect =
+      override def onRestart(as: Option[Unknown]): Unknown !! fx.type =
         fx.fromOption(as)
 
       override def onZip[A, B, C](as: Option[A], bs: Option[B], k: (A, B) => C): Option[C] =

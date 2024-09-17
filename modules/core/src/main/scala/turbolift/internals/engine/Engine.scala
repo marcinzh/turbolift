@@ -567,6 +567,15 @@ private sealed abstract class Engine0 extends Runnable:
     loopCompRefreshEnv(comp2, stepMid, stackLo, storeLo)
 
 
+  final def intrinsicReinterpret[A, U, V](body: A !! (U & V)): Tag =
+    val step = savedStep
+    val stack = savedStack
+    val store = savedStore
+    //-------------------
+    //@#@TODO shadow map
+    loopComp(body, step, stack, store)
+
+
   final def intrinsicZipPar[A, B, C, U](lhs: A !! U, rhs: B !! U, fun: (A, B) => C): Tag =
     val step = savedStep
     val stack = savedStack

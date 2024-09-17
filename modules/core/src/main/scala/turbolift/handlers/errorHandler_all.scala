@@ -11,7 +11,7 @@ extension [E, E1](fx: ErrorEffect[E, E1])
     new fx.impl.Stateless[Identity, Either[E, _], Any] with fx.impl.Parallel with ErrorSignature[E, E1]:
       override def onReturn(a: Unknown): Either[E, Unknown] !! Any = !!.pure(Right(a))
 
-      override def onRestart(aa: Either[E, Unknown]): Unknown !! ThisEffect =
+      override def onRestart(aa: Either[E, Unknown]): Unknown !! fx.type =
         aa match
           case Right(a) => !!.pure(a)
           case Left(e) => fx.raises(e)

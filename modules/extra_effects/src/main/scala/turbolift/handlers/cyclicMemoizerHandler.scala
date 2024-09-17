@@ -21,7 +21,7 @@ extension [K, V](fx: CyclicMemoizerEffect[K, V])
               val thunk = new Thunk[V]
               for
                 _ <- Storage.put(m.updated(k, thunk))
-                v <- f(k)
+                v <- Control.reinterpret(f(k))
                 _ = { thunk := v }
               yield thunk
 

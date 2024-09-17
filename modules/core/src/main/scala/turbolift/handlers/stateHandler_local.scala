@@ -13,7 +13,7 @@ extension [S](fx: StateEffect[S])
 
       override def onReturn(a: Unknown, s: S): (Unknown, S) !! Any = !!.pure((a, s))
 
-      override def onRestart(a_s: (Unknown, S)): Unknown !! ThisEffect = fx.put(a_s._2) &&! !!.pure(a_s._1)
+      override def onRestart(a_s: (Unknown, S)): Unknown !! fx.type = fx.put(a_s._2) &&! !!.pure(a_s._1)
 
       override val get: S !! ThisEffect = Local.get
 
