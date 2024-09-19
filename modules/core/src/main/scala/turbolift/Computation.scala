@@ -34,13 +34,13 @@ def !! = Computation
 sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift] val tag: Tag):
   private final def map_bug[B](f: A => B): B !! U = map(f)
 
-  final inline def map[B](inline f: A => B): B !! U =
-    new CC.Map[A, B, B, U](Tag.PureMap, this):
-      override def apply(a: A): B = f(a)
-
   final inline def flatMap[B, U2 <: U](inline f: A => B !! U2): B !! U2 =
-    new CC.Map[A, B, B !! U2, U2](Tag.FlatMap, this):
+    new CC.FlatMap[A, B, U2](this):
       override def apply(a: A): B !! U2 = f(a)
+
+  final inline def map[B](inline f: A => B): B !! U =
+    new CC.PureMap[A, B, U](this):
+      override def apply(a: A): B = f(a)
 
   final def flatten[B, U2 <: U](implicit ev: A <:< (B !! U2)): B !! U2 = flatMap(ev)
   @deprecated final def flatTap[B, U2 <: U](f: A => B !! U2): A !! U2 = tapEff(f)
@@ -413,7 +413,8 @@ object ComputationCases:
   private[turbolift] final class LocalGet(val prompt: Prompt) extends Computation[Any, Any](Tag.LocalGet)
   private[turbolift] final class LocalPut[S](val prompt: Prompt, val local: S) extends Computation[Unit, Any](Tag.LocalPut)
   //@#@TEMP public bcoz inline bug
-  sealed abstract class Map[A, B, C, U](_tag: Tag, val comp: A !! U) extends Computation[B, U](_tag) with Function1[A, C]
+  sealed abstract class FlatMap[A, B, U](val comp: A !! U) extends Computation[B, U](Tag.FlatMap) with Function1[A, B !! U]
+  sealed abstract class PureMap[A, B, U](val comp: A !! U) extends Computation[B, U](Tag.PureMap) with Function1[A, B]
   sealed abstract class Impure[A]() extends Computation[A, Any](Tag.Impure) with Function0[A]
   sealed abstract class Sync[A, B](val isAttempt: Boolean) extends Computation[B, IO](Tag.Sync) with Function0[A]
   sealed abstract class Intrinsic[A, U] extends Computation[A, U](Tag.Intrinsic) with Function[Engine, Tag]
