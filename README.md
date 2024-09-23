@@ -6,7 +6,7 @@ Visit the [microsite](https://marcinzh.github.io/turbolift) for description.
 
 # Example
 
-Runnable with `scala-cli`. Turbolift requires ⚠️**Java 11**⚠️ or newer.
+Runnable with [`scala-cli`](https://scala-cli.virtuslab.org/). Turbolift requires ⚠️**Java 11**⚠️ or newer.
 
 ```scala
 //> using scala "3.3.3"
