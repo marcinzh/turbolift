@@ -3,8 +3,34 @@
 
 Provided by [dotty-cps-async](https://github.com/rssh/dotty-cps-async).
 
-- Instead of `async` use `\`do\``.
+- Instead of `async` use ``` `do` ```.
 - Instead of `await` use **postfix** `!` operator.
+
+### Example:
+
+Using Scala's `for` comprehension:
+
+```scala
+for
+  a <- foo
+  b <- bar
+yield a + b
+```
+
+Using the original `dotty-cps-async` syntax, it could be rewritten as:
+
+```scala
+async:
+  await(foo) + await(bar)
+```
+
+In Turbolift's `bindless` syntax though, it should be rewritten as:
+
+```scala
+`do`:
+  foo.! + bar.!
+```
+
 
 # Attribution
 
