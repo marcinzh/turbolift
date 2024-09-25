@@ -4,6 +4,15 @@
 
 Visit the [microsite](https://marcinzh.github.io/turbolift) for description.
 
+
+See also:
+| Project | Description |
+|---|---|
+| [DaaE](https://github.com/marcinzh/daae) | Demo: a debugger implemented as an effect |
+| [Spot](https://github.com/marcinzh/spot) | Cats-Effect instances for Turbolift's `IO` effect |
+| [Enterprise](https://github.com/marcinzh/enterprise) | HTTP server implemented using Turbolift's effects |
+| [Effect Zoo](https://github.com/marcinzh/effect-zoo) | Microbenchmark suite for several effect systems, including Turbolift |
+
 ## Example
 
 Runnable with [`scala-cli`](https://scala-cli.virtuslab.org/). Turbolift requires ⚠️**Java 11**⚠️ or newer.
@@ -76,6 +85,12 @@ import turbolift.bindless._
 
   println(result) // Right(((),33))
 ```
+
+See also [examples](tree/master/modules/examples/src/main/scala/examples/) folder. Runnable with `sbt`:
+```sh
+sbt examples/run
+```
+
 
 ## Usage in SBT
 
