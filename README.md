@@ -15,7 +15,7 @@ See also:
 
 ## Example
 
-Runnable with [`scala-cli`](https://scala-cli.virtuslab.org/). Turbolift requires ⚠️**Java 11**⚠️ or newer.
+
 
 ```scala
 //> using scala "3.3.3"
@@ -85,8 +85,7 @@ import turbolift.bindless._
 
   println(result) // Right(((),33))
 ```
-
-See also [examples](tree/master/modules/examples/src/main/scala/examples/) folder. Runnable with `sbt`:
+See also [examples](modules/examples/src/main/scala/examples/) folder. Runnable with `sbt`:
 ```sh
 sbt examples/run
 ```
