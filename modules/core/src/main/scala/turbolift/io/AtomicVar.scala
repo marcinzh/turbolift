@@ -19,6 +19,7 @@ sealed trait AtomicVar[@specialized(Int, Long, Boolean) S] extends AtomicVar.Get
   final def getUpdate[A](f: S => (A, S)): (A, S) !! IO = op(f, _._2, (s, as) => (as._1, s))
   final def getUpdateGet[A](f: S => (A, S)): (A, S, S) !! IO = op(f, _._2, (s, as) => (as._1, s, as._2))
 
+  final def swapEff[U <: IO](ss: S !! U): S !! U = opEff(_ => ss, s => s, (s, _) => s)
   final def modifyEff[U <: IO](f: S => S !! U): Unit !! U = opEff(f, s => s, (_, _) => ())
   final def modifyGetEff[U <: IO](f: S => S !! U): S !! U = opEff(f, s => s, (_, s) => s)
   final def getModifyEff[U <: IO](f: S => S !! U): S !! U = opEff(f, s => s, (s, _) => s)
@@ -28,7 +29,7 @@ sealed trait AtomicVar[@specialized(Int, Long, Boolean) S] extends AtomicVar.Get
   final def getUpdateEff[A, U <: IO](f: S => (A, S) !! U): (A, S) !! U = opEff(f, _._2, (s, as) => (as._1, s))
   final def getUpdateGetEff[A, U <: IO](f: S => (A, S) !! U): (A, S, S) !! U = opEff(f, _._2, (s, as) => (as._1, s, as._2))
 
-  final def trySwap(s: S): (S, Boolean) !! IO = tryOp(s => s, _ => s, (s, _, k) => (s, k))
+  final def trySwap(s0: S): (S, Boolean) !! IO = tryOp(_ => s0, s => s, (s, _, k) => (s, k))
   final def tryModify(f: S => S): Boolean !! IO = tryOp(f, s => s, (_, _, k) => k)
   final def tryModifyGet(f: S => S): (S, Boolean) !! IO = tryOp(f, s => s, (_, s, k) => (s, k))
   final def tryGetModify(f: S => S): (S, Boolean) !! IO = tryOp(f, s => s, (s, _, k) => (s, k))
