@@ -1,4 +1,5 @@
 package turbolift
+import scala.annotation.nowarn
 import turbolift.effects.{ChoiceSignature, IO, Each, Finalizer}
 import turbolift.internals.auxx.CanPartiallyHandle
 import turbolift.internals.effect.AnyChoice
@@ -34,10 +35,12 @@ def !! = Computation
 sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift] val tag: Tag):
   private final def map_bug[B](f: A => B): B !! U = map(f)
 
+  @nowarn("msg=anonymous class definition")
   final inline def flatMap[B, U2 <: U](inline f: A => B !! U2): B !! U2 =
     new CC.FlatMap[A, B, U2](this):
       override def apply(a: A): B !! U2 = f(a)
 
+  @nowarn("msg=anonymous class definition")
   final inline def map[B](inline f: A => B): B !! U =
     new CC.PureMap[A, B, U](this):
       override def apply(a: A): B = f(a)
@@ -188,6 +191,7 @@ object Computation:
 
   def pure[A](a: A): A !! Any = new CC.Pure(a)
 
+  @nowarn("msg=anonymous class definition")
   inline def impure[A](inline a: => A): A !! Any =
     new CC.Impure[A]:
       override def apply(): A = a
@@ -421,18 +425,22 @@ object ComputationCases:
   sealed abstract class Perform[A, U, Z <: Signature](val sig: Signature) extends Computation[A, U](Tag.Perform) with Function1[Z, A !! U]
   sealed abstract class LocalUpdate[A, S](val prompt: Prompt) extends Computation[A, Any](Tag.LocalUpdate) with Function1[S, (A, S)]
 
+  @nowarn("msg=anonymous class definition")
   private[turbolift] inline def sync[A, B](isAttempt: Boolean, inline thunk: => A): B !! IO =
     new Sync[A, B](isAttempt):
       override def apply(): A = thunk
 
+  @nowarn("msg=anonymous class definition")
   private[turbolift] inline def intrinsic[A, U](f: Engine => Tag): A !! U =
     new CC.Intrinsic[A, U]:
       override def apply(engine: Engine): Tag = f(engine)
 
+  @nowarn("msg=anonymous class definition")
   private[turbolift] inline def perform[A, U, Z <: Signature](sig: Signature, inline f: Z => A !! U): A !! U =
     new Perform[A, U, Z](sig):
       override def apply(z: Z): A !! U = f(z)
 
+  @nowarn("msg=anonymous class definition")
   private[turbolift] inline def localUpdate[A, S](prompt: Prompt, inline f: S => (A, S)): A !! Any =
     new LocalUpdate[A, S](prompt):
       override def apply(s: S): (A, S) = f(s)
