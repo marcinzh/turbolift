@@ -2,13 +2,14 @@ package turbolift.internals.engine
 import java.util.concurrent.TimeUnit
 import scala.annotation.{tailrec, switch}
 import turbolift.{!!, Computation, Signature, ComputationCases => CC}
+import turbolift.effects.IO
 import turbolift.io.{Fiber, Zipper, Warp, Snap, Outcome, Cause, Exceptions}
-import turbolift.io.{OnceVar, CountDownLatch, CyclicBarrier, Mutex, Semaphore, Channel}
+import turbolift.io.{OnceVar, EffectfulVar, CountDownLatch, CyclicBarrier, Mutex, Semaphore, Channel}
 import turbolift.interpreter.{Interpreter, Continuation, Prompt}
 import turbolift.internals.executor.Executor
 import turbolift.internals.engine.stacked.{Stack, Store, Entry, Local, FrameKind, OpPush, OpSplit, OpCascaded}
 import turbolift.internals.engine.concurrent.{Bits, Blocker, Waitee, FiberImpl, WarpImpl}
-import turbolift.internals.engine.concurrent.util.{OnceVarImpl, CountDownLatchImpl, CyclicBarrierImpl, MutexImpl, SemaphoreImpl, ChannelImpl}
+import turbolift.internals.engine.concurrent.util.{OnceVarImpl, EffectfulVarImpl, CountDownLatchImpl, CyclicBarrierImpl, MutexImpl, SemaphoreImpl, ChannelImpl}
 import Tag.{Retire => ThreadDisowned}
 import Local.Syntax._
 import Cause.{Cancelled => CancelPayload}
@@ -355,6 +356,12 @@ private sealed abstract class Engine0 extends Runnable:
         val ovar = savedPayload.asInstanceOf[OnceVarImpl]
         this.savedPayload = ovar.theContent
         tag2
+
+      case Tag.NotifyEffectfulVar =>
+        val evar = savedPayload.asInstanceOf[EffectfulVarImpl]
+        val comp = evar.getComp.nn
+        this.savedPayload = comp
+        comp.tag
 
       case Tag.NotifyZipper =>
         val fiber = savedPayload.asInstanceOf[FiberImpl]
@@ -912,6 +919,27 @@ private sealed abstract class Engine0 extends Runnable:
           currentFiber.clearSuspension()
           val value = ovar.theContent
           loopStep(value, step, stack, store)
+
+
+  final def intrinsicAwaitEffectfulVar[A, U <: IO](evar0: EffectfulVar.Get[A, U]): Tag =
+    val step = savedStep
+    val stack = savedStack
+    val store = savedStore
+    //-------------------
+    val evar = evar0.asImpl
+    if evar.isReady then
+      loopComp(evar.getComp, step, stack, store)
+    else
+      currentFiber.suspend(Tag.NotifyEffectfulVar, evar, step, stack, store)
+      val (code, comp2) = evar.tryGetAwaitedBy(currentFiber, currentEnv.isCancellable)
+      code match
+        case Bits.WaiterSubscribed => ThreadDisowned
+        case Bits.WaiterAlreadyCancelled =>
+          currentFiber.clearSuspension()
+          loopCancel(stack, store)
+        case Bits.WaiteeAlreadyCompleted =>
+          currentFiber.clearSuspension()
+          loopComp(comp2.nn, step, stack, store)
 
 
   final def intrinsicAwaitCountDownLatch(latch: CountDownLatch): Tag =

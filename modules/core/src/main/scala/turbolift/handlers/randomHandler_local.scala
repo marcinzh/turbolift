@@ -18,6 +18,8 @@ extension (fx: RandomEffect)
         val (a, s) = aa
         fx.setSeed(s.value) &&! !!.pure(a)
 
+      override def onUnknown(aa: (Unknown, Splitmix64)): Option[Unknown] = Some(aa._1)
+
       override def onFork(s: Local): (Local, Local) =
         val s2 = s.next
         val s3 = s.jump

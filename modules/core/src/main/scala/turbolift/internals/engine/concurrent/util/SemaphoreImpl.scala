@@ -34,7 +34,7 @@ private[turbolift] final class SemaphoreImpl(private var permits: Long) extends 
             permits = n
             savedWaiter = x
             removeFirstWaiter()
-            x.standbyWaiter(())
+            x.standbyWaiterPure(())
           n > 0
         else
           false

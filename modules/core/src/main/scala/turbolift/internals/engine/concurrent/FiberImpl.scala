@@ -412,9 +412,15 @@ private[turbolift] final class FiberImpl private (
     env.executor.resume(this)
 
 
-  private[engine] def standbyWaiter(value: Any): Unit =
+  private[engine] def standbyWaiterPure(value: Any): Unit =
     theWaiteeOrBlocker = null
     suspendedPayload = value
+
+
+  private[engine] def standbyWaiterComp(comp: AnyComp): Unit =
+    theWaiteeOrBlocker = null
+    suspendedPayload = comp
+    suspendedTag = comp.tag.toByte
 
 
   private[engine] def resumeWaiter(): Unit =

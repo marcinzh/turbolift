@@ -31,7 +31,7 @@ private[turbolift] final class ChannelImpl(val currCapacity: Int) extends Waitee
             savedValue = insertLastAndRemoveFirst(x.suspendedPayload.asElement)
             savedWaiter = x
             removeFirstWaiter()
-            x.standbyWaiter(())
+            x.standbyWaiterPure(())
             Bits.WaiteeAlreadyCompleted
           else
             subscribeWaiterUnsync(waiter)
@@ -63,7 +63,7 @@ private[turbolift] final class ChannelImpl(val currCapacity: Int) extends Waitee
             savedValue = insertLastAndRemoveFirst(x.suspendedPayload.asElement)
             savedWaiter = x
             removeFirstWaiter()
-            x.standbyWaiter(())
+            x.standbyWaiterPure(())
             true
           else
             false
@@ -93,7 +93,7 @@ private[turbolift] final class ChannelImpl(val currCapacity: Int) extends Waitee
           if kindOfWaiters == UNDERFLOW then
             savedWaiter = x
             removeFirstWaiter()
-            x.standbyWaiter(waiter.suspendedPayload)
+            x.standbyWaiterPure(waiter.suspendedPayload)
             Bits.WaiteeAlreadyCompleted
           else
             subscribeWaiterUnsync(waiter)
@@ -123,7 +123,7 @@ private[turbolift] final class ChannelImpl(val currCapacity: Int) extends Waitee
           if kindOfWaiters == UNDERFLOW then
             savedWaiter = x
             removeFirstWaiter()
-            x.standbyWaiter(value)
+            x.standbyWaiterPure(value)
             true
           else
             false

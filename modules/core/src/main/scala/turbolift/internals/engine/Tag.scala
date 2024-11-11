@@ -29,33 +29,35 @@ object Tag:
   inline val Retire         = 15
 
   //// Handled at outerLoop once, after fiber switch:
-  inline val NotifyOnceVar  = 16
-  inline val NotifyZipper   = 17
-  inline val NotifyUnit     = 18
+  inline val NotifyOnceVar      = 16
+  inline val NotifyEffectfulVar = 17
+  inline val NotifyZipper       = 18
+  inline val NotifyUnit         = 19
 
 
   def toStr(tag: Tag) =
     tag match
-      case FlatMap        => "FlatMap"
-      case PureMap        => "PureMap"
-      case MoreFlat       => "MoreFlat"
-      case MorePure       => "MorePure"
-      case Perform        => "Perform"
-      case Pure           => "Pure"
-      case Impure         => "Impure"
-      case LocalGet       => "LocalGet"
-      case LocalPut       => "LocalPut"
-      case LocalUpdate    => "LocalUpdate"
-      case Sync           => "Sync"
+      case FlatMap            => "FlatMap"
+      case PureMap            => "PureMap"
+      case MoreFlat           => "MoreFlat"
+      case MorePure           => "MorePure"
+      case Perform            => "Perform"
+      case Pure               => "Pure"
+      case Impure             => "Impure"
+      case LocalGet           => "LocalGet"
+      case LocalPut           => "LocalPut"
+      case LocalUpdate        => "LocalUpdate"
+      case Sync               => "Sync"
 
-      case Intrinsic      => "Intrinsic"
-      case Unwind         => "Unwind"
+      case Intrinsic          => "Intrinsic"
+      case Unwind             => "Unwind"
 
-      case Become         => "Become"
-      case Yield          => "Yield"
-      case Retire         => "Retire"
+      case Become             => "Become"
+      case Yield              => "Yield"
+      case Retire             => "Retire"
 
-      case NotifyOnceVar  => "NotifyOnceVar"
-      case NotifyZipper   => "NotifyZipper"
-      case NotifyUnit     => "NotifyUnit"
-      case _              => s"Tag($tag)"
+      case NotifyOnceVar      => "NotifyOnceVar"
+      case NotifyEffectfulVar => "NotifyEffectfulVar"
+      case NotifyZipper       => "NotifyZipper"
+      case NotifyUnit         => "NotifyUnit"
+      case _                  => s"Tag($tag)"

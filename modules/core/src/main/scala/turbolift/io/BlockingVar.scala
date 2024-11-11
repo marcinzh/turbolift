@@ -4,6 +4,11 @@ import turbolift.effects.IO
 import turbolift.internals.engine.concurrent.util.MutexImpl
 
 
+/** Concurrent mutable variable.
+ *
+ * Like [[AtomicVar]], but blocks on contention instead spinning.
+ */
+
 final class BlockingVar[S](_initial: S) extends BlockingVar.Get[S] with BlockingVar.Put[S]:
   @volatile private var currentValue: S = _initial
   private val mutex: Mutex = new MutexImpl

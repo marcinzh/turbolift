@@ -14,6 +14,8 @@ extension [Fx <: ChoiceEffect](fx: Fx)
           case Some(a) => !!.pure(a)
           case None => fx.empty
 
+      override def onUnknown(aa: Option[Unknown]): Option[Unknown] = aa
+
       override def onZip[A, B, C](as: Option[A], bs: Option[B], k: (A, B) => C): Option[C] =
         as.flatMap(a => bs.map(b => k(a, b)))
 

@@ -28,7 +28,7 @@ private[turbolift] final class MutexImpl extends Waitee with Mutex.Unsealed:
       else
         savedWaiter = x
         removeFirstWaiter()
-        x.standbyWaiter(())
+        x.standbyWaiterPure(())
     }
 
     if savedWaiter != null then

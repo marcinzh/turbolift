@@ -23,6 +23,13 @@ sealed trait Zipper[+A, -U]:
   /** Convert to pure value, provided the effect set is empty. */
   def get(using Any <:< U): A
 
+  /** Try to convert to a single pure value.
+    *
+    * If the effect set includes nondeterminism (e.g. `Choice`),
+    * then at most one branch is taken.
+    */
+  def toOption: Option[A]
+
   /** Like [[get]], provided the effect set is a singleton of `IO`. */
   def getIO(using IO <:< U): Outcome[A]
 

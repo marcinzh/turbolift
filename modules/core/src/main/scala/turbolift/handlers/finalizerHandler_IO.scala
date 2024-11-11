@@ -20,6 +20,8 @@ extension [U <: IO](fx: FinalizerEffect[U])
         val (a, s) = a_s
         Local.modify(Trail.Then(s, _)).as(a)
 
+      override def onUnknown(aa: (Unknown, Local)): Option[Unknown] = Some(aa._1)
+
       override def onZip[A, B, C](a_s: (A, Local), b_s: (B, Local), k: (A, B) => C): (C, Local) =
         val (a, s1) = a_s
         val (b, s2) = b_s

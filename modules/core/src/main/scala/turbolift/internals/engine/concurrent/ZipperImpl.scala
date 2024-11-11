@@ -16,6 +16,12 @@ private[engine] sealed abstract class ZipperImpl extends Zipper.Unsealed:
       case Failure(c) => IO.fail(c)
 
 
+  final override def toOption: Option[Any] =
+    this match
+      case Functor(payload, stack) => OpCascaded.unknown(stack, payload)
+      case _ => None
+
+
   final override def outcome: Outcome[Unit] =
     this match
       case Cancelled => Outcome.Cancelled

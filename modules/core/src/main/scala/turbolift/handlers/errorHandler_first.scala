@@ -15,6 +15,8 @@ extension [E, E1](fx: ErrorEffect[E, E1])
           case Right(a) => !!.pure(a)
           case Left(e) => fx.raises(e)
 
+      override def onUnknown(aa: Either[E, Unknown]): Option[Unknown] = aa.toOption
+
       override def raise(e: E1): Nothing !! ThisEffect = raises(E.one(e))
 
       override def raises(e: E): Nothing !! ThisEffect = Control.abort(Left(e))

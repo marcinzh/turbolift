@@ -16,6 +16,15 @@ private[engine] object OpCascaded:
     loop(stack)
 
 
+  def unknown(stack: Stack, ftor: Any): Option[Any] =
+    def loop(todo: Stack): Option[Any] =
+      if todo.isTailless then
+        unknownSegment(todo, ftor)
+      else
+        loop(todo.tail).flatMap(unknownSegment(todo, _))
+    loop(stack)
+
+
   def zip(stack: Stack, ftorLeft: Any, ftorRight: Any, fun: (Any, Any) => Any): Any =
     def loop(todo: Stack, a: Any, b: Any, f: (Any, Any) => Any): Any =
       if todo.isTailless then
@@ -72,6 +81,23 @@ private[engine] object OpCascaded:
       else
         accum
     loop(0, comp)
+
+
+  private def unknownSegment(seg: Stack, ftor: Any): Option[Any] =
+    val n = seg.promptCount
+    @tailrec def loop(i: Int, accum: Any): Option[Any] =
+      if i >= 0 then
+        val p = seg.piles(i).prompt
+        val i2 = i - 1
+        if p.hasRestart then
+          p.onUnknown(accum) match
+            case Some(ftor2) => loop(i2, ftor2)
+            case None => None
+        else
+          loop(i2, accum)
+      else
+        Some(accum)
+    loop(n - 1, ftor)
 
 
   private def zipSegment(seg: Stack, ftorLeft: Any, ftorRight: Any, fun: (Any, Any) => Any): Any =

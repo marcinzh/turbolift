@@ -8,7 +8,7 @@ import turbolift.internals.engine.concurrent.{FiberImpl, WarpImpl}
 // export Misc._
 
 private[engine] object Misc:
-  type AnyComp = Any !! Any
+  type AnyComp = Any !! Nothing
   type Owner = FiberImpl | WarpImpl | AnyCallback
   type AnyCallback = Outcome[Any] => Unit
 

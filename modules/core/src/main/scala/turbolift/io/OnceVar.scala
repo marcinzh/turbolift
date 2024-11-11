@@ -4,6 +4,12 @@ import turbolift.effects.IO
 import turbolift.internals.engine.concurrent.util.OnceVarImpl
 
 
+/** Variable writable once.
+  *
+  * Starts as empty. Any `get` operation blocks until `put` happens.
+  */
+
+
 sealed trait OnceVar[A] extends OnceVar.Get[A] with OnceVar.Put[A]:
   final def asGet: OnceVar.Get[A] = this
   final def asPut: OnceVar.Put[A] = this
@@ -30,4 +36,5 @@ object OnceVar:
 
 
   def apply[A]: OnceVar[A] !! IO = create[A]
-  def create[A]: OnceVar[A] !! IO = !!.impure((new OnceVarImpl).asInstanceOf[OnceVar[A]])
+  def create[A]: OnceVar[A] !! IO = !!.impure(unsafeCreate())
+  def unsafeCreate[A](): OnceVar[A] = (new OnceVarImpl).asInstanceOf[OnceVar[A]]
