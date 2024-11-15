@@ -511,7 +511,7 @@ private sealed abstract class Engine0 extends Runnable:
     val store = savedStore
     //-------------------
     val env2 = currentEnv.copy(shadowMap = currentEnv.shadowMap.push(prompt))
-    val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, env2.asLocal, FrameKind.plain)
+    val (stack2, store2) = OpPush.pushEnv(stack, store, step, env2)
     this.currentEnv = env2
     loopComp(body, Step.Pop, stack2, store2)
 
@@ -674,7 +674,7 @@ private sealed abstract class Engine0 extends Runnable:
     val stack = savedStack
     val store = savedStore
     //-------------------
-    val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, Local.void, FrameKind.guard)
+    val (stack2, store2) = OpPush.pushGuard(stack, store, step)
     loopComp(body, Step.Pop, stack2, store2)
 
 
@@ -712,7 +712,7 @@ private sealed abstract class Engine0 extends Runnable:
     if currentEnv == env2 then
       loopComp(body, step, stack, store)
     else
-      val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, env2.asLocal, FrameKind.plain)
+      val (stack2, store2) = OpPush.pushEnv(stack, store, step, env2)
       this.currentEnv = env2
       loopComp(body, Step.Pop, stack2, store2)
 

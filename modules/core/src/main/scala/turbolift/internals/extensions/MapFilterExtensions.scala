@@ -49,7 +49,7 @@ private[turbolift] trait MapFilterExtensions extends AuxExtensions:
       thiz.flatMapParEff(a => f(a).map(if _ then Some(a) else None))
 
     /** Like `flatMap` from the standard library, but specialized for `Option`. */
-    def mapFilter[B, U](f: A => Option[B]): Iterator[B] = thiz.flatMap(f)
+    def mapFilter[B](f: A => Option[B]): Iterator[B] = thiz.flatMap(f)
 
     /** Like [[mapFilter]], but using effectful function. */
     def mapFilterEff[B, U](f: A => Option[B] !! U): Vector[B] !! U =

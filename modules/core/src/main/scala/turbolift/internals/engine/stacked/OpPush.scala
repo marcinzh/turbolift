@@ -1,6 +1,7 @@
 package turbolift.internals.engine.stacked
 import scala.annotation.tailrec
 import turbolift.internals.engine.Env
+import Local.Syntax._
 
 
 private[engine] object OpPush:
@@ -38,6 +39,14 @@ private[engine] object OpPush:
   def pushNestedIO(stack: Stack, store: Store, step: Step, local: Local, kind: FrameKind): (Stack, Store) =
     val location = stack.locateIO
     pushNested(stack, store, step, Prompt.IO, location, local, kind)
+
+
+  def pushGuard(stack: Stack, store: Store, step: Step): (Stack, Store) =
+    pushNestedIO(stack, store, step, Local.void, FrameKind.guard)
+
+
+  def pushEnv(stack: Stack, store: Store, step: Step, env: Env): (Stack, Store) =
+    pushNestedIO(stack, store, step, env.asLocal, FrameKind.plain)
 
 
   private def newTopSegment(stack: Stack, store: Store, step: Step, prompt: Prompt, local: Local, isNested: Boolean, kind: FrameKind): (Stack, Store) =
