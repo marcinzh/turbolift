@@ -49,10 +49,10 @@ sealed trait Warp:
   final def shutdownAndForget: Unit !! IO = IO(unsafeShutdownAndForget())
 
   /** Create a child [[Fiber]]. */
-  final def fork[A, U](comp: A !! U): Fiber[A, U] !! IO = fork(name)(comp)
+  final def fork[A, U](comp: A !! U): Fiber[A, U] !! (U & IO) = Fiber.forkAt(this)(comp)
 
   /** Create a child [[Fiber]]. */
-  final def fork[A, U](name: String)(comp: A !! U): Fiber[A, U] !! IO = CC.intrinsic(_.intrinsicForkFiber(this, comp, name))
+  final def fork[A, U](name: String)(comp: A !! U): Fiber[A, U] !! (U & IO) = Fiber.named(name).forkAt(this)(comp)
 
   /** Create a child [[Warp]]. */
   final def spawn: Warp !! IO = spawn("")

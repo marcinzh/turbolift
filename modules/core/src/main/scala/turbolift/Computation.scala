@@ -142,10 +142,10 @@ sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift]
   //---------- IO operations in postfix syntax ----------
 
   /** Run this computation in a new fiber. */
-  final def fork: Fiber[A, U] !! (IO & Warp) = Fiber.fork(this)
+  final def fork: Fiber[A, U] !! (U & IO & Warp) = Fiber.fork(this)
 
   /** Like [[fork]], but the fiber is created as a child of specific warp, rather than the current warp. */
-  final def forkAt(warp: Warp): Fiber[A, U] !! IO = Fiber.forkAt(warp)(this)
+  final def forkAt(warp: Warp): Fiber[A, U] !! (U & IO) = Fiber.forkAt(warp)(this)
 
   final def onFailure[U2 <: U & IO](f: Throwable => Unit !! U2): A !! U2 = IO.onFailure(this)(f)
 
@@ -400,8 +400,8 @@ object Computation:
 
 
   final class NamedSyntax[A, U](val comp: Computation[A, U], val name: String):
-    def fork: Fiber[A, U] !! (IO & Warp) = Fiber.named(name).fork(comp)
-    def forkAt(warp: Warp): Fiber[A, U] !! IO = Fiber.named(name).forkAt(warp)(comp)
+    def fork: Fiber[A, U] !! (U & IO & Warp) = Fiber.named(name).fork(comp)
+    def forkAt(warp: Warp): Fiber[A, U] !! (U & IO) = Fiber.named(name).forkAt(warp)(comp)
     def run(using mode: Mode = Mode.default, ev: Any <:< U): Outcome[A] = Executor.pick(mode).runSync(comp, name)
 
   object NamedSyntax:

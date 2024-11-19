@@ -1,5 +1,7 @@
 package turbolift.misc
 import org.specs2.mutable._
+import org.specs2.execute.Typecheck
+import org.specs2.matcher.TypecheckMatchers._
 import turbolift.!!
 import turbolift.effects._
 import turbolift.io.{Fiber, Outcome, Cause, AtomicVar}
@@ -439,5 +441,46 @@ class FiberTest extends Specification:
       .warpAwait
       .runIO
       .===(Outcome.Success(42))
+    }
+  }
+
+  "type safety" >> {
+    "effectful fiber must inherit its handlers from the environment at fork" >> {
+      "wrong" >>{
+        Typecheck {"""
+          case object W extends Writer[String]
+          (for
+            fib <- W.tell("a").as(42).fork
+            aw <- fib.join.handleWith(W.handler)
+          yield aw)
+          .warp
+          .runIO
+          .===(Outcome.Success((42, "a")))
+        """} must succeed.not
+      }
+
+      "correct" >>{
+        case object W extends Writer[String]
+        (for
+          fib <- W.tell("a").as(42).fork
+          a <- fib.join
+        yield a)
+        .handleWith(W.handler)
+        .warp
+        .runIO
+        .===(Outcome.Success((42, "a")))
+      }
+
+      "also correct" >>{
+        case object W extends Writer[String]
+        (for
+          workaround <- W.tell("a").as(42).fork.handleWith(W.handler)
+          (fib, w) = workaround
+          aw <- fib.join.handleWith(W.handler)
+        yield (aw, w))
+        .warp
+        .runIO
+        .===(Outcome.Success(((42, "a"), "")))
+      }
     }
   }

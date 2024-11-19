@@ -64,22 +64,21 @@ object Fiber:
   def currentTypeunsafe[A, U]: Fiber[A, U] !! IO = current.cast[Fiber[A, U], IO]
 
   /** Create a new fiber in the current [[Warp]]. */
-  def fork[A, U](comp: A !! U): Fiber[A, U] !! (IO & Warp) = CC.intrinsic(_.intrinsicForkFiber(null, comp, ""))
+  def fork[A, U](comp: A !! U): Fiber[A, U] !! (U & IO & Warp) = CC.intrinsic(_.intrinsicForkFiber(null, comp, ""))
 
   /** Create a new fiber in specified [[Warp]]. */
-  def forkAt[A, U](warp: Warp)(comp: A !! U): Fiber[A, U] !! IO = CC.intrinsic(_.intrinsicForkFiber(warp, comp, ""))
+  def forkAt[A, U](warp: Warp)(comp: A !! U): Fiber[A, U] !! (U & IO) = CC.intrinsic(_.intrinsicForkFiber(warp, comp, ""))
 
   /** Experimental */
   def forkWithCallback[A, U](
-    warp: Warp,
     comp: A !! U,
     callback: Zipper[A, U] => Unit,
     name: String = "",
-  ): Fiber[A, U] !! (IO & Warp) = CC.intrinsic(_.intrinsicForkFiber(null, comp, name, callback.asInstanceOf[Zipper.Untyped => Unit]))
+  ): Fiber[A, U] !! (U & IO & Warp) = CC.intrinsic(_.intrinsicForkFiber(null, comp, name, callback.asInstanceOf[Zipper.Untyped => Unit]))
 
   /** Syntax for creating new [[Fiber]] with a name. */
   def named(name: String) = new NamedSyntax(name)
 
   final class NamedSyntax(name: String):
-    def fork[A, U](comp: A !! U): Fiber[A, U] !! (IO & Warp) = CC.intrinsic(_.intrinsicForkFiber(null, comp, name))
-    def forkAt[A, U](warp: Warp)(comp: A !! U): Fiber[A, U] !! IO = CC.intrinsic(_.intrinsicForkFiber(warp, comp, name))
+    def fork[A, U](comp: A !! U): Fiber[A, U] !! (U & IO & Warp) = CC.intrinsic(_.intrinsicForkFiber(null, comp, name))
+    def forkAt[A, U](warp: Warp)(comp: A !! U): Fiber[A, U] !! (U & IO) = CC.intrinsic(_.intrinsicForkFiber(warp, comp, name))
