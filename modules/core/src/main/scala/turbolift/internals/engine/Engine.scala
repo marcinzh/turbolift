@@ -4,12 +4,12 @@ import scala.annotation.{tailrec, switch}
 import turbolift.{!!, Computation, Signature, ComputationCases => CC}
 import turbolift.effects.IO
 import turbolift.io.{Fiber, Zipper, Warp, Snap, Outcome, Cause, Exceptions}
-import turbolift.io.{OnceVar, EffectfulVar, CountDownLatch, CyclicBarrier, Mutex, Semaphore, Channel}
+import turbolift.io.{OnceVar, EffectfulVar, CountDownLatch, CyclicBarrier, ReentrantLock, Semaphore, Channel}
 import turbolift.interpreter.{Interpreter, Continuation, Prompt}
 import turbolift.internals.executor.Executor
 import turbolift.internals.engine.stacked.{Stack, Store, Entry, Local, FrameKind, OpPush, OpSplit, OpCascaded}
 import turbolift.internals.engine.concurrent.{Bits, Blocker, Waitee, FiberImpl, WarpImpl}
-import turbolift.internals.engine.concurrent.util.{OnceVarImpl, EffectfulVarImpl, CountDownLatchImpl, CyclicBarrierImpl, MutexImpl, SemaphoreImpl, ChannelImpl}
+import turbolift.internals.engine.concurrent.util.{OnceVarImpl, EffectfulVarImpl, CountDownLatchImpl, CyclicBarrierImpl, ReentrantLockImpl, SemaphoreImpl, ChannelImpl}
 import Tag.{Retire => ThreadDisowned}
 import Local.Syntax._
 import Cause.{Cancelled => CancelPayload}
@@ -974,13 +974,13 @@ private sealed abstract class Engine0 extends Runnable:
         loopStep((), step, stack, store)
 
 
-  final def intrinsicAcquireMutex(mutex: Mutex): Tag =
+  final def intrinsicAcquireReentrantLock(lock: ReentrantLock): Tag =
     val step = savedStep
     val stack = savedStack
     val store = savedStore
     //-------------------
     currentFiber.suspendStep((), step, stack, store)
-    mutex.asImpl.tryGetAcquiredBy(currentFiber, currentEnv.isCancellable) match
+    lock.asImpl.tryGetAcquiredBy(currentFiber, currentEnv.isCancellable) match
       case Bits.WaiterSubscribed => ThreadDisowned
       case Bits.WaiterAlreadyCancelled =>
         currentFiber.clearSuspension()

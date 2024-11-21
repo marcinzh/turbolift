@@ -1,7 +1,7 @@
 package turbolift.io
 import turbolift.!!
 import turbolift.effects.IO
-import turbolift.internals.engine.concurrent.util.MutexImpl
+import turbolift.internals.engine.concurrent.util.ReentrantLockImpl
 
 
 /** Concurrent mutable variable.
@@ -11,7 +11,7 @@ import turbolift.internals.engine.concurrent.util.MutexImpl
 
 final class BlockingVar[S](_initial: S) extends BlockingVar.Get[S] with BlockingVar.Put[S]:
   @volatile private var currentValue: S = _initial
-  private val mutex: Mutex = new MutexImpl
+  private val lock: ReentrantLock = new ReentrantLockImpl
 
   def asGet: BlockingVar.Get[S] = this
   def asPut: BlockingVar.Put[S] = this
@@ -42,7 +42,7 @@ final class BlockingVar[S](_initial: S) extends BlockingVar.Get[S] with Blocking
 
 
   private inline def op[A, B](inline f: S => A, inline g: A => S, inline h: (S, A) => B): B !! IO =
-    mutex.lock:
+    lock.use:
       !!.impure:
         val s = currentValue
         val a = f(s)
@@ -50,7 +50,7 @@ final class BlockingVar[S](_initial: S) extends BlockingVar.Get[S] with Blocking
         h(s, a)
 
   private inline def opEff[A, B, U <: IO](inline f: S => A !! U, inline g: A => S, inline h: (S, A) => B): B !! U =
-    mutex.lock:
+    lock.use:
       for
         s <- !!.impure(currentValue)
         a <- f(s)
