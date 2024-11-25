@@ -39,7 +39,7 @@ class EffectfulVarTest extends Specification:
         evar <- EffectfulVar[Int, IO]
         zipp <- makeZipper(42)
         _ <- evar.put(zipp)
-        a <- evar.get
+        a <- evar.getOrCancel
       yield a)
       .runIO
       .===(Outcome.Success(42))
@@ -64,7 +64,7 @@ class EffectfulVarTest extends Specification:
         zipp2 <- makeZipper(1337)
         _ <- evar.put(zipp1)
         _ <- evar.put(zipp2)
-        a <- evar.get
+        a <- evar.getOrCancel
       yield a)
       .runIO
       .===(Outcome.Success(42))
@@ -75,7 +75,7 @@ class EffectfulVarTest extends Specification:
         evar <- EffectfulVar[Int, IO]
         zipp <- makeZipper(42)
         _ <- (IO.sleep(100) &&! evar.put(zipp)).fork
-        a <- evar.get
+        a <- evar.getOrCancel
       yield a)
       .warp
       .runIO
@@ -85,7 +85,8 @@ class EffectfulVarTest extends Specification:
     "fork & get & cancel" >>{
       (for
         evar <- EffectfulVar[Int, IO]
-        fib <- evar.get.fork
+        fib <- evar.getOption.fork
+        _ <- IO.sleep(100)
         _ <- fib.cancel
       yield ())
       .warp
@@ -110,35 +111,32 @@ class EffectfulVarTest extends Specification:
         a <- fib1.join
         b <- fib2.join
       yield (a, b))
+      .handleWith(Broken.toOption)
       .handleWith(W.handler)
       .warp
       .runIO
-      .===(Outcome.Success(((42, 42), "a")))
+      .===(Outcome.Success((Some((42, 42)), "a")))
     }
 
     "memoize with Writer" >>{
       (for
         evar <- EffectfulVar.memoize(IO.sleep(100) &&! W.tell("a").as(42))
-        ab <- evar.get *! evar.get
+        ab <- (evar.get *! evar.get &<! W.tell("b")).handleWith(Broken.toOption)
       yield ab)
       .handleWith(W.handler)
       .warp
       .runIO
-      .===(Outcome.Success(((42, 42), "a")))
+      .===(Outcome.Success((Some((42, 42)), "ab")))
     }
 
     "memoize with Error" >>{
       (for
         evar <- EffectfulVar.memoize(IO.sleep(100) &&! E.raise("a").as(42))
-        fib1 <- evar.get.fork
-        fib2 <- evar.get.fork
-        a <- E.toEither(fib1.join)
-        b <- E.toEither(IO.snap(fib2.join))
-      yield (a, b))
+        x <- (evar.get *! evar.get &<! E.raise("b")).handleWith(Broken.toOption)
+      yield x)
       .handleWith(E.handlers.all)
-      .map(_.getOrElse(???))
       .warp
       .runIO
-      .===(Outcome.Success((Left("a"), Right(Snap.Cancelled))))
+      .===(Outcome.Success(Left("ab")))
     }
   }

@@ -86,9 +86,9 @@ private[engine] object OpCascaded:
   private def unknownSegment(seg: Stack, ftor: Any): Option[Any] =
     val n = seg.promptCount
     @tailrec def loop(i: Int, accum: Any): Option[Any] =
-      if i >= 0 then
+      if i < n then
         val p = seg.piles(i).prompt
-        val i2 = i - 1
+        val i2 = i + 1
         if p.hasRestart then
           p.onUnknown(accum) match
             case Some(ftor2) => loop(i2, ftor2)
@@ -97,7 +97,7 @@ private[engine] object OpCascaded:
           loop(i2, accum)
       else
         Some(accum)
-    loop(n - 1, ftor)
+    loop(0, ftor)
 
 
   private def zipSegment(seg: Stack, ftorLeft: Any, ftorRight: Any, fun: (Any, Any) => Any): Any =

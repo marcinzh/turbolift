@@ -14,3 +14,5 @@ private[engine] object Misc:
 
   def panic(msg: String): Nothing = throw new Exceptions.Panic(msg)
   def impossible: Nothing = panic("impossible happened")
+
+  def nullableToOption[T](x: T | Null): Option[T] = if x != null then Some(x) else None

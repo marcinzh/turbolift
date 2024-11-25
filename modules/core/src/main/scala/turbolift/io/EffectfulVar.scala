@@ -1,6 +1,6 @@
 package turbolift.io
 import turbolift.{!!, ComputationCases => CC}
-import turbolift.effects.IO
+import turbolift.effects.{IO, Broken}
 import turbolift.internals.engine.concurrent.util.EffectfulVarImpl
 
 
@@ -11,7 +11,7 @@ import turbolift.internals.engine.concurrent.util.EffectfulVarImpl
   * Unlike [[OnceVar]], [[EffectfulVar]] stores **effectful** value: see [[Zipper]].
   *
   * Stored effects `U` are absorbed by **the first** fiber that performs `get` operation.
-  * Subsequent fibers that perform `get`s only receive pure `A` value, or get cancelled if none exists.
+  * Subsequent fibers that perform `get`s only receive pure `A` value, or `Broken` effect if none exists.
   */
 
 sealed trait EffectfulVar[A, U <: IO] extends EffectfulVar.Get[A, U] with EffectfulVar.Put[A, U]:
@@ -25,7 +25,19 @@ object EffectfulVar:
 
 
   sealed trait Get[A, U <: IO]:
-    final def get: A !! U = CC.intrinsic(_.intrinsicAwaitEffectfulVar(this))
+    final def get: A !! (U & Broken) =
+      getOption.flatMap:
+        case Some(a) => !!.pure(a)
+        case None => Broken.empty
+
+    final def getOption: Option[A] !! U = CC.intrinsic(_.intrinsicAwaitEffectfulVar(this))
+
+    final def getOrElse(e: => Nothing): A !! U = getOption.map(_.getOrElse(e))
+
+    final def getOrCancel: A !! U = get.handleWith(Broken.handlers.orCancel)
+      getOption.flatMap:
+        case Some(a) => !!.pure(a)
+        case None => Broken.empty
 
     private[turbolift] def asImpl: EffectfulVarImpl = asInstanceOf[EffectfulVarImpl]
 

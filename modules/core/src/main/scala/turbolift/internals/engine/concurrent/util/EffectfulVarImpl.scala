@@ -1,7 +1,7 @@
 package turbolift.internals.engine.concurrent.util
 import turbolift.!!
 import turbolift.io.{EffectfulVar, Zipper}
-import turbolift.effects.IO
+import turbolift.effects.Broken
 import turbolift.internals.engine.concurrent.{Bits, Waitee, FiberImpl}
 import turbolift.internals.engine.Misc.AnyComp
 
@@ -12,7 +12,7 @@ private[turbolift] final class EffectfulVarImpl extends Waitee with EffectfulVar
   private var theNextShot: AnyComp | Null = null
 
 
-  def getComp: AnyComp = theNextShot.nn
+  def getNextShot: AnyComp = theNextShot.nn
 
 
   def tryGetAwaitedBy(waiter: FiberImpl, isWaiterCancellable: Boolean): (Int, AnyComp | Null) =
@@ -37,10 +37,8 @@ private[turbolift] final class EffectfulVarImpl extends Waitee with EffectfulVar
 
 
   override def unsafeTryPut(zipper: Zipper.Untyped): Boolean =
-    val firstShot: AnyComp = zipper.run
-    val nextShot: AnyComp = zipper.toOption match
-      case Some(x) => !!.pure(x)
-      case None => IO.cancel
+    val firstShot: AnyComp = zipper.run.map(Some(_))
+    val nextShot: AnyComp = !!.pure(zipper.toOption)
 
     val willFinalize =
       atomically {

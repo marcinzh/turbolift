@@ -359,7 +359,7 @@ private sealed abstract class Engine0 extends Runnable:
 
       case Tag.NotifyEffectfulVar =>
         val evar = savedPayload.asInstanceOf[EffectfulVarImpl]
-        val comp = evar.getComp.nn
+        val comp = evar.getNextShot
         this.savedPayload = comp
         comp.tag
 
@@ -928,7 +928,7 @@ private sealed abstract class Engine0 extends Runnable:
     //-------------------
     val evar = evar0.asImpl
     if evar.isReady then
-      loopComp(evar.getComp, step, stack, store)
+      loopComp(evar.getNextShot, step, stack, store)
     else
       currentFiber.suspend(Tag.NotifyEffectfulVar, evar, step, stack, store)
       val (code, comp2) = evar.tryGetAwaitedBy(currentFiber, currentEnv.isCancellable)

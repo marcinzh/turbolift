@@ -23,6 +23,7 @@ trait MaybeEffect extends Effect[MaybeSignature] with MaybeSignature:
     def toOption: ThisHandler[Identity, Option, Any] = MaybeEffect.this.maybeHandler
     def orElse(e: => Nothing): ThisHandler[Identity, Identity, Any] = default.mapK([X] => (xx: Option[X]) => xx.fold(e)(x => x))
     def orCancel: ThisHandler[Identity, Identity, IO] = default.mapEffK([X] => (xx: Option[X]) => xx.fold(IO.cancel)(!!.pure))
+    def orElseCancel: ThisHandler[Identity, Identity, IO] = default.mapEffK([X] => (xx: Option[X]) => xx.fold(IO.cancel)(!!.pure))
 
 
 trait Maybe extends MaybeEffect:
@@ -32,7 +33,7 @@ trait Maybe extends MaybeEffect:
 case object Maybe extends Maybe
 
 
-/** Predefined instance of this effect, used by `io.Promise`. */
+/** Predefined instance of this effect, used by `io.EffectfulVar`. */
 case object Broken extends Maybe:
   export handlers.{toOption, orElse => getOrElse, orCancel => getOrCancel}
 

@@ -29,10 +29,10 @@ object Tag:
   inline val Retire         = 15
 
   //// Handled at outerLoop once, after fiber switch:
-  inline val NotifyOnceVar      = 16
-  inline val NotifyEffectfulVar = 17
-  inline val NotifyZipper       = 18
-  inline val NotifyUnit         = 19
+  inline val NotifyOnceVar       = 16
+  inline val NotifyEffectfulVar  = 17
+  inline val NotifyZipper        = 18
+  inline val NotifyUnit          = 19
 
 
   def toStr(tag: Tag) =
