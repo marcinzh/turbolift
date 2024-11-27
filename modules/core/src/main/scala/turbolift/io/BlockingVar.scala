@@ -1,7 +1,6 @@
 package turbolift.io
 import turbolift.!!
 import turbolift.effects.IO
-import turbolift.internals.engine.concurrent.util.ReentrantLockImpl
 
 
 /** Concurrent mutable variable.
@@ -11,7 +10,7 @@ import turbolift.internals.engine.concurrent.util.ReentrantLockImpl
 
 final class BlockingVar[S](_initial: S) extends BlockingVar.Get[S] with BlockingVar.Put[S]:
   @volatile private var currentValue: S = _initial
-  private val lock: ReentrantLock = new ReentrantLockImpl
+  private val lock: ReentrantLock = ReentrantLock.unsafeCreate()
 
   def asGet: BlockingVar.Get[S] = this
   def asPut: BlockingVar.Put[S] = this
@@ -69,4 +68,5 @@ object BlockingVar:
 
 
   def apply[S](initial: S): BlockingVar[S] !! IO = create(initial)
-  def create[S](initial: S): BlockingVar[S] !! IO = !!.impure(new BlockingVar(initial))
+  def create[S](initial: S): BlockingVar[S] !! IO = !!.impure(unsafeCreate(initial))
+  def unsafeCreate[S](initial: S): BlockingVar[S] = new BlockingVar(initial)

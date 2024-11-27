@@ -15,9 +15,10 @@ object Channel:
   private[turbolift] trait Unsealed extends Channel[Any]
 
 
-  def bounded[A](capacity: Int): Channel[A] !! IO = !!.impure(new ChannelImpl(capacity.max(0)).asInstanceOf[Channel[A]])
+  def bounded[A](capacity: Int): Channel[A] !! IO = !!.impure(unsafeCreate(capacity))
   def synchronous[A]: Channel[A] !! IO = bounded(0)
   def unbounded[A]: Channel[A] !! IO = bounded(Int.MaxValue)
+  def unsafeCreate[A](capacity: Int): Channel[A] = new ChannelImpl(capacity.max(0)).asInstanceOf[Channel[A]]
 
 
   final case class Status(size: Int, capacity: Int, isBlocking: Boolean):

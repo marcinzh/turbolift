@@ -20,4 +20,5 @@ object Semaphore:
   private[turbolift] trait Unsealed extends Semaphore
 
   def apply(initial: Int): Semaphore !! IO = create(initial)
-  def create(initial: Int): Semaphore !! IO = !!.impure(new SemaphoreImpl(initial))
+  def create(initial: Int): Semaphore !! IO = !!.impure(unsafeCreate(initial))
+  def unsafeCreate(initial: Int): Semaphore = new SemaphoreImpl(initial)

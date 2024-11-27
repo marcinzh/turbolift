@@ -49,4 +49,5 @@ object ReentrantLock:
     case Locked(owner: Fiber.Untyped, holdCount: Int)
     case Unlocked
 
-  def create: ReentrantLock !! IO = !!.impure(new ReentrantLockImpl)
+  def create: ReentrantLock !! IO = !!.impure(unsafeCreate())
+  def unsafeCreate(): ReentrantLock = new ReentrantLockImpl
