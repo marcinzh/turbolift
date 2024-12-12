@@ -121,6 +121,10 @@ case object IO extends IO:
 
   def sleep(duration: FiniteDuration): Unit !! IO = CC.intrinsic(_.intrinsicSleep(duration.length, duration.unit))
 
+  def delay[A, U <: IO](millis: Long)(comp: A !! U): A !! U = sleep(millis) &&! comp
+
+  def delay[A, U <: IO](duration: FiniteDuration)(comp: A !! U): A !! U = sleep(duration) &&! comp
+
   val nowRaw: Long !! IO = !!.impure(System.currentTimeMillis())
 
   val now: FiniteDuration !! IO = !!.impure(new FiniteDuration(System.currentTimeMillis(), MILLISECONDS))

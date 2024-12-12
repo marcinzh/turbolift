@@ -19,6 +19,7 @@ object Channel:
   def synchronous[A]: Channel[A] !! IO = bounded(0)
   def unbounded[A]: Channel[A] !! IO = bounded(Int.MaxValue)
   def unsafeCreate[A](capacity: Int): Channel[A] = new ChannelImpl(capacity.max(0)).asInstanceOf[Channel[A]]
+  def unsafeUnbounded[A]: Channel[A] = unsafeCreate(Int.MaxValue)
 
 
   final case class Status(size: Int, capacity: Int, isBlocking: Boolean):

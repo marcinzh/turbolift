@@ -60,6 +60,13 @@ sealed trait Warp:
   /** Create a child [[Warp]]. */
   final def spawn(name: String): Warp !! IO = IO(unsafeSpawn(name))
 
+  /** Create a [[Loom]] with this warp as a parent. */
+  final def loom[A, U <: IO]: Loom[A, U] !! IO = loom("")
+
+  /** Create a [[Loom]] with this warp as a parent. */
+  final def loom[A, U <: IO](name: String): Loom[A, U] !! IO = Loom.createAt(this)
+
+
   def unsafeStatus(): Warp.Status
   def unsafeChildren(): Iterable[Fiber.Untyped | Warp]
   def unsafeFibers(): Iterable[Fiber.Untyped]
@@ -87,7 +94,7 @@ object Warp:
 
   /** Scoped Warp constructors lifted to [[turbolift.Handler Handler]] values. */
   object handlers:
-    def cancell: Handler[Identity, Identity, Warp, IO] = handler(ExitMode.Cancel)
+    def cancel: Handler[Identity, Identity, Warp, IO] = handler(ExitMode.Cancel)
     def await: Handler[Identity, Identity, Warp, IO] = handler(ExitMode.Await)
     def cancel(name: String): Handler[Identity, Identity, Warp, IO] = handler(ExitMode.Cancel, name)
     def await(name: String): Handler[Identity, Identity, Warp, IO] = handler(ExitMode.Await, name)

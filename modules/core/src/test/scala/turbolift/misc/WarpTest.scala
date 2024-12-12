@@ -1,5 +1,4 @@
 package turbolift.misc
-import java.util.concurrent.CountDownLatch
 import org.specs2.mutable._
 import turbolift.!!
 import turbolift.effects.{IO, Error}

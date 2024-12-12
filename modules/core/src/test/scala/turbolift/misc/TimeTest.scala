@@ -3,6 +3,7 @@ import org.specs2.mutable._
 import turbolift.!!
 import turbolift.io.{Warp, Outcome, AtomicVar}
 import turbolift.effects.IO
+import turbolift.misc.Auxx._
 
 
 class TimeTest extends Specification:
@@ -31,5 +32,19 @@ class TimeTest extends Specification:
       yield a)
       .warp
       .runIO === Outcome.Success(42)
+    }
+
+    "delay" >>{
+      (for
+        v <- AtomicVar(0)
+        _ <- Warp.awaiting:
+          for
+            _ <- v.event(3).delay(30).fork
+            _ <- v.event(2).delay(20).fork
+            _ <- v.event(1).delay(10).fork
+          yield ()
+        x <- v.get
+      yield x)
+      .runIO === Outcome.Success(123)
     }
   }

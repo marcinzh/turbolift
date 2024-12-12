@@ -76,6 +76,13 @@ object Fiber:
     name: String = "",
   ): Fiber[A, U] !! (U & IO & Warp) = CC.intrinsic(_.intrinsicForkFiber(null, comp, name, callback.asInstanceOf[Zipper.Untyped => Unit]))
 
+  def forkWithCallbackAt[A, U](
+    warp: Warp,
+    comp: A !! U,
+    callback: Zipper[A, U] => Unit,
+    name: String = "",
+  ): Fiber[A, U] !! (U & IO) = CC.intrinsic(_.intrinsicForkFiber(warp, comp, name, callback.asInstanceOf[Zipper.Untyped => Unit]))
+
   /** Syntax for creating new [[Fiber]] with a name. */
   def named(name: String) = new NamedSyntax(name)
 

@@ -1,5 +1,6 @@
 package turbolift
 import scala.annotation.nowarn
+import scala.concurrent.duration.FiniteDuration
 import turbolift.effects.{ChoiceSignature, IO, Each, Finalizer}
 import turbolift.internals.auxx.CanPartiallyHandle
 import turbolift.internals.effect.AnyChoice
@@ -154,6 +155,10 @@ sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift]
   final def guarantee[U2 <: U & IO](release: Unit !! U2): A !! U2 = IO.guarantee(release)(this)
 
   final def executeOn[U2 <: U & IO](exec: Executor): A !! U2 = IO.executeOn(exec)(this)
+
+  final def delay[U2 <: U & IO](millis: Long): A !! U2 = IO.delay(millis)(this)
+
+  final def delay[U2 <: U & IO](duration: FiniteDuration): A !! U2 = IO.delay(duration)(this)
 
   /** Syntax for giving names to fibers. */
   final def named[A2 >: A, U2 <: U](name: String) = new Computation.NamedSyntax[A2, U2](this, name)
