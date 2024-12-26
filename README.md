@@ -17,8 +17,8 @@ See also:
 
 Runnable with [`scala-cli`](https://scala-cli.virtuslab.org/).
 
-[!IMPORTANT]
-Turbolift requires **Java 11** or newer.
+> [!IMPORTANT]
+> Turbolift requires **Java 11** or newer.
 
 ```scala
 //> using scala "3.3.3"
