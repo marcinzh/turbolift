@@ -8,26 +8,28 @@ import turbolift.effects.AcyclicMemoizer
 import turbolift.mode.ST
 
 
-class AcyclicMemoizerTest2 extends Specification with CanLaunchTheMissiles:
+class AcyclicMemoizerTest extends Specification with CanLaunchTheMissiles:
   "Memoizing recursive function" >> {
     def prog(n: Int) =
       val missiles = Missile.make(n + 1)
 
-      val fib = AcyclicMemoizer.fix[Int, Int, Any] { recur => i =>
+      case object M extends AcyclicMemoizer[Int, Int]
+      type M = M.type
+
+      def fib(i: Int) =
         missiles(i).launch_! &&! (
           if i <= 1 then
             !!.pure(i)
           else
-            (recur(i - 1) *! recur(i - 2)).map(_ + _)
+            (M.memo(i - 1) *! M.memo(i - 2)).map(_ + _)
         )
-      }
 
       (for
-        a <- fib(n)
-        b <- fib(n - 1)
-        c <- fib(n - 2)
+        a <- M.memo(n)
+        b <- M.memo(n - 1)
+        c <- M.memo(n - 2)
       yield ((c, b, a), missiles))
-      .handleWith(fib.handler)
+      .handleWith(M.handler(fib))
 
     val (results, missiles) = prog(10).run
     results === ((21, 34, 55))
@@ -56,23 +58,25 @@ class AcyclicMemoizerTest2 extends Specification with CanLaunchTheMissiles:
     val prog =
       val missiles = Missile.make(outgoings.size)
 
-      val visit = AcyclicMemoizer.fix[Int, Vertex, W] { recur => n =>
+      case object M extends AcyclicMemoizer[Int, Vertex]
+      type M = M.type
+
+      def visit(n: Int) =
         for
           _ <- missiles(n).launch_!
           _ <- W.tell(n)
           edges <- (
             for i <- outgoings(n) yield
-              for to <- recur(i) yield
+              for to <- M.memo(i) yield
                 Edge(to)
           ).traverse
         yield Vertex(n, edges)
-      }
 
       (for
-        v0 <- visit(0)
-        v1 <- visit(5)
+        v0 <- M.memo(0)
+        v1 <- M.memo(5)
       yield (v0.serno, v1.serno))
-      .handleWith(visit.handler)
+      .handleWith(M.handler(visit))
       .handleWith(W.handler.mapState(_.sorted))
       .map((_, missiles))
 

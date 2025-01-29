@@ -11,7 +11,7 @@ import turbolift.internals.engine.concurrent.{FiberImpl, WaiterLink}
 private[turbolift] final class ReentrantExecutor(maxBusyThreads: Int) extends WaiterLink.Queue with Executor:
   enclosing =>
   private var idleCounter: Int = maxBusyThreads
-  protected[this] val pad1, pad2, pad3 = 0L
+  protected val pad1, pad2, pad3 = 0L
 
 
   override def runSync[A](comp: Computation[A, ?], name: String): Outcome[A] =
@@ -90,4 +90,4 @@ private[turbolift] object ReentrantExecutor:
 
   lazy val default: ReentrantExecutor = apply(n => n)
 
-  private[this] val currentVar: ThreadLocal[ReentrantExecutor] = new ThreadLocal[ReentrantExecutor]
+  private val currentVar: ThreadLocal[ReentrantExecutor] = new ThreadLocal[ReentrantExecutor]

@@ -1,15 +1,22 @@
+val ScalaLTS = "3.3.5"
+val ScalaNext = "3.6.3"
 ThisBuild / organization := "io.github.marcinzh"
-ThisBuild / version := "0.104.0"
-ThisBuild / scalaVersion := "3.3.4"
+ThisBuild / version := "0.105.0-SNAPSHOT"
+ThisBuild / scalaVersion := ScalaLTS
+ThisBuild / crossScalaVersions := Seq(ScalaLTS, ScalaNext)
 ThisBuild / scalacOptions ++= Seq(
   "-deprecation",
   "-feature",
   "-unchecked",
-  "-Ykind-projector:underscores",
   "-Xfatal-warnings",
   "-release", "11",
 )
 ThisBuild / javacOptions ++= Seq("--release", "11")
+ThisBuild / scalacOptions += (scalaVersion.value match {
+  case ScalaLTS => "-Ykind-projector:underscores"
+  case ScalaNext => "-Xkind-projector:underscores"
+})
+ThisBuild / publish / skip := (scalaVersion.value != ScalaLTS)
 
 val Deps = {
   val specs2_v = "5.4.0"
@@ -17,7 +24,8 @@ val Deps = {
     val specs2_core = "org.specs2" %% "specs2-core" % specs2_v % "test"
     val specs2_extra = "org.specs2" %% "specs2-matcher-extra" % specs2_v % "test"
     val jol = "org.openjdk.jol" % "jol-core" % "0.17"
-    val cps = "com.github.rssh" %% "dotty-cps-async" % "0.9.21"
+    val cps = "io.github.dotty-cps-async" %% "dotty-cps-async" % "1.0.0"
+    val cps_next = "io.github.dotty-cps-async" %% "dotty-cps-async-next" % "1.0.0"
   }
   deps
 }
@@ -64,12 +72,19 @@ lazy val devel = project
 lazy val bindless = project
   .in(file("modules/bindless"))
   .settings(name := "turbolift-bindless")
-  .settings(libraryDependencies ++= Seq(
-    Deps.cps,
-    Deps.specs2_core,
-  ))
+  .settings(publish / skip := false)
+  .settings(libraryDependencies += (scalaVersion.value match {
+    case ScalaLTS => Deps.cps
+    case ScalaNext => Deps.cps_next
+  }))
+  .settings(moduleName := (scalaVersion.value match {
+    case ScalaLTS => "turbolift-bindless"
+    case ScalaNext => "turbolift-bindless-next"
+  }))
+  .settings(libraryDependencies += Deps.specs2_core)
   .settings(licenses += ("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")))
   .dependsOn(core)
+
 
 lazy val site = (project in file("docs"))
   .settings(publish / skip := true)
@@ -127,7 +142,7 @@ ThisBuild / description := "Algebraic Effects for Scala 3"
 ThisBuild / organizationName := "marcinzh"
 ThisBuild / homepage := Some(url("https://github.com/marcinzh/turbolift"))
 ThisBuild / scmInfo := Some(ScmInfo(url("https://github.com/marcinzh/turbolift"), "scm:git@github.com:marcinzh/turbolift.git"))
-ThisBuild / licenses := List("MIT" -> new URL("http://www.opensource.org/licenses/MIT"))
+ThisBuild / licenses := List("MIT" -> url("http://www.opensource.org/licenses/MIT"))
 ThisBuild / versionScheme := Some("semver-spec")
 ThisBuild / pomIncludeRepository := { _ => false }
 ThisBuild / publishMavenStyle := true

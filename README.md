@@ -21,7 +21,7 @@ Runnable with [`scala-cli`](https://scala-cli.virtuslab.org/).
 > Turbolift requires **Java 11** or newer.
 
 ```scala
-//> using scala "3.3.3"
+//> using scala "3.3.5"
 //> using dep "io.github.marcinzh::turbolift-core:0.104.0"
 import turbolift.!!
 import turbolift.effects.{Reader, State, Error}
@@ -57,7 +57,7 @@ import turbolift.effects.{Reader, State, Error}
 Same, but with [bindless](modules/bindless) syntax extension:
 
 ```scala
-//> using scala "3.3.3"
+//> using scala "3.3.5"
 //> using dep "io.github.marcinzh::turbolift-core:0.104.0"
 //> using dep "io.github.marcinzh::turbolift-bindless:0.104.0"
 import turbolift.!!

@@ -8,7 +8,7 @@ import turbolift.effects.CyclicMemoizer
 import turbolift.mode.ST
 
 
-class CyclicMemoizerTest2 extends Specification with CanLaunchTheMissiles:
+class CyclicMemoizerTest extends Specification with CanLaunchTheMissiles:
   "Memoizing cyclic graph" >> {
     case object W extends WriterK[Vector, Int]
     type W = W.type
@@ -30,24 +30,26 @@ class CyclicMemoizerTest2 extends Specification with CanLaunchTheMissiles:
     val prog =
       val missiles = Missile.make(outgoings.size)
 
-      val visit = CyclicMemoizer.fix[Int, Vertex, W] { recur => n =>
+      case object M extends CyclicMemoizer[Int, Vertex]
+      type M = M.type
+
+      def visit(n: Int) =
         for
           _ <- missiles(n).launch_!
           _ <- W.tell(n)
-          from <- recur(n)
+          from <- M.memo(n)
           edges <- (
             for i <- outgoings(n) yield
-              for to <- recur(i) yield
+              for to <- M.memo(i) yield
                 Edge(from, to)
           ).traverse
         yield Vertex(n, edges)
-      }
 
       (for
-        v0 <- visit(0)
-        v1 <- visit(5)
+        v0 <- M.memo(0)
+        v1 <- M.memo(5)
       yield (v0().serno, v1().serno))
-      .handleWith(visit.handler)
+      .handleWith(M.handler(visit))
       .handleWith(W.handler.mapState(_.sorted))
       .map((_, missiles))
 

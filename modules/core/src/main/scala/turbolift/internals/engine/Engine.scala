@@ -410,7 +410,7 @@ private sealed abstract class Engine0 extends Runnable:
               val tried = warp.exitMode match
                 case Warp.ExitMode.Cancel => warp.tryGetCancelledBy(currentFiber, currentEnv.isCancellable)
                 case Warp.ExitMode.Await => warp.tryGetAwaitedBy(currentFiber, currentEnv.isCancellable)
-                case _ => impossible //// this is a scoped warp, so it must have ExitMode
+                case null => impossible //// this is a scoped warp, so it must have ExitMode
               tried match
                 case Bits.WaiterSubscribed => ThreadDisowned
                 case Bits.WaiterAlreadyCancelled => impossible //// Latch is set

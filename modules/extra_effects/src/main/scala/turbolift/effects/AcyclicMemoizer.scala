@@ -26,9 +26,12 @@ trait AcyclicMemoizer[K, V] extends AcyclicMemoizerEffect[K, V]:
   export handlers.{default => handler}
 
 
+//@#@TODO `fix` syntax doesn't work in Scala 3.6.3
+/*
 object AcyclicMemoizer:
   trait Fix[K, V, U] extends AcyclicMemoizerEffect[K, V]:
     val handler: ThisHandler[Identity, Identity, U]
 
   def fix[K, V, U](f: (fx: Fix[K, V, U]) => K => V !! (U & fx.type)): Fix[K, V, U] = new:
     override val handler: ThisHandler[Identity, Identity, U] = handlers.default[U](f(this))
+*/
