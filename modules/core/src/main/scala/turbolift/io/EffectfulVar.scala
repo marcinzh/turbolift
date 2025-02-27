@@ -35,9 +35,6 @@ object EffectfulVar:
     final def getOrElse(e: => Nothing): A !! U = getOption.map(_.getOrElse(e))
 
     final def getOrCancel: A !! U = get.handleWith(Broken.handlers.orCancel)
-      getOption.flatMap:
-        case Some(a) => !!.pure(a)
-        case None => Broken.empty
 
     private[turbolift] def asImpl: EffectfulVarImpl = asInstanceOf[EffectfulVarImpl]
 
