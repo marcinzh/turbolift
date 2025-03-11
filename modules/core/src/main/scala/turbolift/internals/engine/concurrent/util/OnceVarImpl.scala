@@ -1,11 +1,18 @@
 package turbolift.internals.engine.concurrent.util
-import turbolift.io.OnceVar
+import turbolift.io.{OnceVar, Exceptions}
 import turbolift.internals.engine.concurrent.{Bits, Waitee, FiberImpl}
 import OnceVarImpl.Empty
 
 
-private[turbolift] final class OnceVarImpl extends Waitee with OnceVar.Unsealed:
+private[turbolift] final class OnceVarImpl extends Waitee with OnceVar.Unsealed with Function0[Any]:
   @volatile var theContent: Any = Empty
+
+
+  override def unsafeAsThunk: () => Any = this
+
+  override def apply(): Any =
+    val x = theContent
+    if Empty != theContent then x else throw new Exceptions.TieTheKnot
 
 
   def tryGetAwaitedBy(waiter: FiberImpl, isWaiterCancellable: Boolean): Int =

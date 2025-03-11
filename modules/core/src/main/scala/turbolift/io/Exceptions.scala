@@ -12,4 +12,6 @@ object Exceptions:
 
   final class Unhandled(throwable: Throwable) extends RuntimeException(throwable)
 
+  final class TieTheKnot extends RuntimeException
+
   final class Panic(msg: String) extends RuntimeException(msg)

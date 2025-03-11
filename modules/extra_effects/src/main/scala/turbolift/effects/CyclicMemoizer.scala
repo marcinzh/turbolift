@@ -1,6 +1,6 @@
 package turbolift.effects
 import turbolift.{!!, Effect, Signature}
-import turbolift.handlers.cyclicMemoizerHandler
+import turbolift.handlers.{cyclicMemoizer_local, cyclicMemoizer_shared}
 
 
 trait CyclicMemoizerSignature[K, V] extends Signature:
@@ -19,11 +19,12 @@ trait CyclicMemoizerEffect[K, V] extends Effect[CyclicMemoizerSignature[K, V]] w
 
   /** Predefined handlers for this effect. */
   object handlers:
-    def default[U](f: K => V !! (U & enclosing.type)): ThisHandler[Identity, Identity, U] = enclosing.cyclicMemoizerHandler[U](f)
+    def local[U](f: K => V !! (U & enclosing.type)): ThisHandler[Identity, Identity, U] = enclosing.cyclicMemoizer_local[U](f)
+    def shared[U <: IO](f: K => V !! (U & enclosing.type)): ThisHandler[Identity, Identity, U] = enclosing.cyclicMemoizer_shared[U](f)
 
 
 trait CyclicMemoizer[K, V] extends CyclicMemoizerEffect[K, V]:
-  export handlers.{default => handler}
+  export handlers.{local => handler}
 
 
 //@#@TODO `fix` syntax doesn't work in Scala 3.6.3
