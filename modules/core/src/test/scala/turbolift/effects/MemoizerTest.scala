@@ -1,19 +1,19 @@
-package turbolift.extra_effects
+package turbolift.effects
 import org.specs2.mutable._
 import org.specs2.specification.core.Fragment
 import turbolift.!!
 import turbolift.Extensions._
-import turbolift.effects.{AcyclicMemoizer, AcyclicMemoizerEffect, WriterK, IO}
+import turbolift.effects.{Memoizer, MemoizerEffect, WriterK, IO}
 
 
-class AcyclicMemoizerTest extends Specification with CanLaunchTheMissiles:
+class MemoizerTest extends Specification with CanLaunchTheMissiles:
   sequential
 
   private class Picker(round: Boolean):
     def apply[T](a: => T, b: => T): T = if round then a else b
     def name = apply("local", "shared")
     def header = s"With handler = ${name}"
-    def handler[K, V, U <: IO, Fx <: AcyclicMemoizerEffect[K, V]](fx: Fx)(f: K => V !! (U & fx.type)): fx.ThisHandler[Identity, Identity, U] =
+    def handler[K, V, U <: IO, Fx <: MemoizerEffect[K, V]](fx: Fx)(f: K => V !! (U & fx.type)): fx.ThisHandler[Identity, Identity, U] =
       apply(
         fx.handlers.local(f),
         fx.handlers.shared(f),
@@ -28,7 +28,7 @@ class AcyclicMemoizerTest extends Specification with CanLaunchTheMissiles:
         def prog(n: Int) =
           val missiles = Missile.make(n + 1)
 
-          case object M extends AcyclicMemoizer[Int, Int]
+          case object M extends Memoizer[Int, Int]
           type M = M.type
 
           def fib(i: Int) =
@@ -77,7 +77,7 @@ class AcyclicMemoizerTest extends Specification with CanLaunchTheMissiles:
         val prog =
           val missiles = Missile.make(outgoings.size)
 
-          case object M extends AcyclicMemoizer[Int, Vertex]
+          case object M extends Memoizer[Int, Vertex]
           type M = M.type
 
           def visit(n: Int) =

@@ -3,31 +3,31 @@ import java.util.concurrent.ConcurrentHashMap
 import scala.jdk.CollectionConverters._
 import turbolift.{!!, Handler}
 import turbolift.io.OnceVar
-import turbolift.effects.{CyclicMemoizerEffect, CyclicMemoizerSignature, IO}
+import turbolift.effects.{LazyMemoizerEffect, LazyMemoizerSignature, IO}
 import turbolift.Extensions._
 
 
-extension [K, V](fx: CyclicMemoizerEffect[K, V])
-  def cyclicMemoizer_shared[U <: IO](f: K => V !! (U & fx.type)): fx.ThisHandler[Identity, Identity, U] =
+extension [K, V](fx: LazyMemoizerEffect[K, V])
+  def lazyMemoizerHandler_shared[U <: IO](f: K => V !! (U & fx.type)): fx.ThisHandler[Identity, Identity, U] =
     Handler.flatHandle:
       IO(new ConcurrentHashMap[K, OnceVar[V]]).map: storage =>
-        new fx.impl.Proxy[U] with CyclicMemoizerSignature[K, V]:
+        new fx.impl.Proxy[U] with LazyMemoizerSignature[K, V]:
           override def domain: Set[K] !! ThisEffect =
-            IO(storage.keySet().asScala.toSet)
+            IO(storage.keySet().nn.asScala.toSet)
 
           override def toMap: Map[K, V] !! ThisEffect =
             for
-              entries <- IO(storage.entrySet().iterator().asScala)
+              entries <- IO(storage.entrySet().nn.iterator().nn.asScala)
               m <- entries.foldLeftEff(Map[K, V]()): (m, entry) =>
-                val k = entry.getKey
-                val ovar = entry.getValue
+                val k = entry.getKey.nn
+                val ovar = entry.getValue.nn
                 ovar.get.map(v => m + ((k, v)))
             yield m
 
           override def memo(k: K): (() => V) !! ThisEffect =
             IO:
               var wasFirst = false
-              val ovar = storage.computeIfAbsent(k, _ => { wasFirst = true; OnceVar.unsafeCreate[V]() })
+              val ovar = storage.computeIfAbsent(k, _ => { wasFirst = true; OnceVar.unsafeCreate[V]() }).nn
               !!.when(wasFirst):
                 Control.reinterpret(f(k)).flatMap(ovar.put)
               .as(ovar.unsafeAsThunk)

@@ -1,12 +1,12 @@
 package turbolift.handlers
 import turbolift.!!
-import turbolift.effects.{CyclicMemoizerEffect, CyclicMemoizerSignature, State}
+import turbolift.effects.{LazyMemoizerEffect, LazyMemoizerSignature, State}
 import turbolift.Extensions._
 
 
-extension [K, V](fx: CyclicMemoizerEffect[K, V])
-  def cyclicMemoizer_local[U](f: K => V !! (U & fx.type)): fx.ThisHandler[Identity, Identity, U] =
-    new fx.impl.Stateful[Identity, Identity, U] with fx.impl.Sequential with CyclicMemoizerSignature[K, V]:
+extension [K, V](fx: LazyMemoizerEffect[K, V])
+  def lazyMemoizerHandler_local[U](f: K => V !! (U & fx.type)): fx.ThisHandler[Identity, Identity, U] =
+    new fx.impl.Stateful[Identity, Identity, U] with fx.impl.Sequential with LazyMemoizerSignature[K, V]:
       override type Local = Map[K, Thunk[V]]
 
       override def onInitial = Map().pure_!!

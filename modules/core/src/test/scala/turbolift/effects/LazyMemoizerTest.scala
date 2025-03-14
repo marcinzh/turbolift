@@ -1,17 +1,17 @@
-package turbolift.extra_effects
+package turbolift.effects
 import org.specs2.mutable._
 import org.specs2.specification.core.Fragment
 import turbolift.!!
 import turbolift.Extensions._
-import turbolift.effects.{CyclicMemoizer, CyclicMemoizerEffect, WriterK, IO}
+import turbolift.effects.{LazyMemoizer, LazyMemoizerEffect, WriterK, IO}
 
 
-class CyclicMemoizerTest extends Specification with CanLaunchTheMissiles:
+class LazyMemoizerTest extends Specification with CanLaunchTheMissiles:
   private class Picker(round: Boolean):
     def apply[T](a: => T, b: => T): T = if round then a else b
     def name = apply("local", "shared")
     def header = s"With handler = ${name}"
-    def handler[K, V, U <: IO, Fx <: CyclicMemoizerEffect[K, V]](fx: Fx)(f: K => V !! (U & fx.type)): fx.ThisHandler[Identity, Identity, U] =
+    def handler[K, V, U <: IO, Fx <: LazyMemoizerEffect[K, V]](fx: Fx)(f: K => V !! (U & fx.type)): fx.ThisHandler[Identity, Identity, U] =
       apply(
         fx.handlers.local(f),
         fx.handlers.shared(f),
@@ -43,7 +43,7 @@ class CyclicMemoizerTest extends Specification with CanLaunchTheMissiles:
         val prog =
           val missiles = Missile.make(outgoings.size)
 
-          case object M extends CyclicMemoizer[Int, Vertex]
+          case object M extends LazyMemoizer[Int, Vertex]
           type M = M.type
 
           def visit(n: Int) =
