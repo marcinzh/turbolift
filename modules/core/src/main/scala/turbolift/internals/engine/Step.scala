@@ -20,12 +20,10 @@ private[engine] sealed abstract class Step(val tag: Tag):
 
   private[engine] final class Unwind(val kind: Step.UnwindKind, val prompt: Prompt | Null) extends Step(Tag.Unwind):
     def isPop = kind == Step.UnwindKind.Pop
-    def isBridge = kind == Step.UnwindKind.Bridge
 
   private[engine] val Pop: Step = new Unwind(UnwindKind.Pop, null)
   private[engine] val Cancel: Step = new Unwind(UnwindKind.Cancel, null)
   private[engine] val Throw: Step = new Unwind(UnwindKind.Throw, null)
-  private[engine] val Bridge: Step = new Unwind(UnwindKind.Bridge, null)
   private[engine] def abort(prompt: Prompt): Step = new Unwind(UnwindKind.Abort, prompt)
 
   private[engine] enum UnwindKind:
@@ -33,13 +31,12 @@ private[engine] sealed abstract class Step(val tag: Tag):
     case Abort
     case Cancel
     case Throw
-    case Bridge
 
   private[engine] def toStr(step: Step): String =
     def loop(todo: Step, acc: Vector[String]): Vector[String] = 
       todo match
-        case x: MoreFlat => loop(x.next, acc :+ s">>${##.toHexString.takeRight(4)}")
-        case x: MorePure => loop(x.next, acc :+ s">${##.toHexString.takeRight(4)}")
+        case x: MoreFlat => loop(x.next, acc :+ s">>${todo.##.toHexString.takeRight(4)}")
+        case x: MorePure => loop(x.next, acc :+ s">${todo.##.toHexString.takeRight(4)}")
         case x: Unwind => x.kind.match
           case UnwindKind.Abort => acc :+ s"Abort(${x.prompt})"
           case k => acc :+ k.toString

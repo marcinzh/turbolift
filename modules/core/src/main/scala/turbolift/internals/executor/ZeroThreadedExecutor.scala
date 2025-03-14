@@ -19,7 +19,7 @@ private[internals] final class ZeroThreadedExecutor extends WaiterLink.Queue wit
     def callback(o: Outcome[A]): Unit =
       outcome = o
       isDone = true
-    engine.become(FiberImpl.create(comp, this, name, isReentry = false, callback))
+    engine.become(FiberImpl.createRoot(comp, this, name, isReentry = false, callback))
     drain()
     outcome
 

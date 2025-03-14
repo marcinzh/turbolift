@@ -38,7 +38,7 @@ private[turbolift] final class Env(
     else
       copy(isParallelismRequested = x)
 
-  override def toString = s"Env#%04X(s=$suppressions)".format(hashCode & 0xFFFF)
+  override def toString = s"Env#%04X".format(hashCode & 0xFFFF)
 
   def isCancellable: Boolean = suppressions <= 0
 

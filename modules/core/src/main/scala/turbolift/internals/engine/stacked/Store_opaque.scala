@@ -11,6 +11,12 @@ private trait Store_opaque:
 
   final def initial(env: Env): Store = Store.wrap(Array(env, null))
 
+  final def blank(localCount: Int): Store =
+    val n = localCount + RESERVED
+    val arr = new Array[Any](n)
+    Store.wrap(arr)
+
+
   extension (thiz: Store)
     final def isEmpty: Boolean = thiz.unwrap.size == RESERVED
     final def localCount: Int = thiz.unwrap.size - RESERVED
@@ -39,6 +45,14 @@ private trait Store_opaque:
       else
         // YOLO, NPE if not found
         thiz ::? tail.deepClone(segmentDepth - 1)
+
+
+    @tailrec final def deepPutInPlace[A, S](storeIndex: Int, segmentDepth: Int, s: Local): Unit =
+      if segmentDepth == 0 then
+        setInPlace(storeIndex, s)
+      else
+        //// YOLO, NPE if not found
+        tail.deepPutInPlace(storeIndex, segmentDepth - 1, s)
 
 
     @tailrec final def deepUpdateInPlace[A, S](storeIndex: Int, segmentDepth: Int, f: S => (A, S)): A =
@@ -109,6 +123,13 @@ private trait Store_opaque:
       val n = newLocalCount + RESERVED
       val arr = new Array[Any](n)
       arr(n - 1) = thiz.unwrap.last //// clone keeps the tail of the original
+      Store.wrap(arr)
+
+
+    final def deepClone(): Store =
+      val arr = thiz.unwrap.clone()
+      if !thiz.isTailless then
+        arr(thiz.tailIndex) = thiz.tail.deepClone()
       Store.wrap(arr)
 
 

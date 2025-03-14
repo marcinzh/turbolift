@@ -13,7 +13,7 @@ private[engine] object OpPush:
 
 
   def pushBase(stack: Stack, store: Store, step: Step, prompt: Prompt, local: Local): (Stack, Store) =
-    if stack.promptCount <= Location.MAX_SEGMENT_SIZE then
+    if stack.promptCount <= Location.MAX_SEGMENT_SIZE && !prompt.captureHint then
       val newStack = stack.pushBase(prompt, step, localIndex = store.nextStoreIndex)
       val newStore = if prompt.isStateful then store.push(local) else store
       (newStack, newStore)
@@ -55,17 +55,13 @@ private[engine] object OpPush:
     (newStack, newStore)
 
 
-  def drop(stack: Stack, store: Store): (Stack, Store, Step) =
-    (stack.tail, store.tail, stack.aside.nn)
-
-
   def pop(stack: Stack, store: Store): (Stack, Store, Step, Prompt, Frame, Local) =
     if stack.frameCount == 1 then
       //// Fast path: this is the last frame in top segment, so pop entire segment
       val topPile = stack.piles.head
       val topPrompt = topPile.prompt
       val lastLocal = if topPrompt.isStateless then Local.void else store.head
-      (stack.tail, store.tail, stack.aside.nn, topPrompt, topPile.topFrame, lastLocal)
+      (stack.tail, store.tail, stack.aside, topPrompt, topPile.topFrame, lastLocal)
     else
       //// Slow path: shrink top segment by 1 pile
       val location = stack.locateHighestPile

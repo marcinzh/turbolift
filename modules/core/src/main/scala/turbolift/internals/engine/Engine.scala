@@ -66,7 +66,7 @@ private sealed abstract class Engine0 extends Runnable:
         // e.printStackTrace()
         val e2 = if e.isInstanceOf[Exceptions.Panic] then e else new Exceptions.Unhandled(e)
         val c = Cause(e2)
-        endOfLoop(Bits.Completion_Failure, c, null)
+        endOfLoop(Bits.Completion_Failure, c)
 
     result match
       case Tag.Become => outerLoop()
@@ -98,7 +98,8 @@ private sealed abstract class Engine0 extends Runnable:
           val instr = savedPayload.asInstanceOf[CC.Intrinsic[Any, Any]]
           instr(this)
 
-        case Tag.Unwind => doUnwind()
+        case Tag.Unwind =>
+          doUnwind()
 
         case Tag.Become | Tag.Yield | Tag.Retire => tag
 
@@ -343,8 +344,8 @@ private sealed abstract class Engine0 extends Runnable:
   //-------------------------------------------------------------------
 
 
-  private final def endOfLoop(completion: Int, payload: Any, stack: Stack | Null): Tag =
-    currentFiber.doFinalize(completion, payload, stack) match
+  private final def endOfLoop(completion: Int, payload: Any): Tag =
+    currentFiber.doFinalize(completion, payload) match
       case null => Tag.Retire
       case fiber2 => become(fiber2.nn); Tag.Become
 
@@ -383,68 +384,61 @@ private sealed abstract class Engine0 extends Runnable:
     //-------------------
     val instr = step.asInstanceOf[Step.Unwind]
     if stack.canPop then
-      if instr.isBridge then
-        val (stack2, store2, step2) = OpPush.drop(stack, store)
-        refreshEnv(stack2, store2)
-        loopStep(payload, step2, stack2, store2)
-      else
-        val (stack2, store2, step2, prompt, frame, local) = OpPush.pop(stack, store)
-        val fallthrough = if instr.isPop then step2 else step
-        if prompt.isIo then
-          (frame.kind.unwrap: @switch) match
-            case FrameKind.PLAIN =>
-              loopStepRefreshEnv(payload, fallthrough, stack2, store2)
+      val (stack2, store2, step2, prompt, frame, local) = OpPush.pop(stack, store)
+      val fallthrough = if instr.isPop then step2 else step
+      if prompt.isIo then
+        (frame.kind.unwrap: @switch) match
+          case FrameKind.PLAIN =>
+            loopStepRefreshEnv(payload, fallthrough, stack2, store2)
 
-            case FrameKind.GUARD =>
-              val payload2 = instr.kind match
-                case Step.UnwindKind.Pop    => Snap.Success(payload)
-                case Step.UnwindKind.Abort  => Snap.Aborted(payload, instr.prompt.nn)
-                case Step.UnwindKind.Cancel => Snap.Cancelled
-                case Step.UnwindKind.Throw  => Snap.Failure(payload.asInstanceOf[Cause])
-                case Step.UnwindKind.Bridge => impossible
-              loopStepRefreshEnv(payload2, step2, stack2, store2)
+          case FrameKind.GUARD =>
+            val payload2 = instr.kind match
+              case Step.UnwindKind.Pop    => Snap.Success(payload)
+              case Step.UnwindKind.Abort  => Snap.Aborted(payload, instr.prompt.nn)
+              case Step.UnwindKind.Cancel => Snap.Cancelled
+              case Step.UnwindKind.Throw  => Snap.Failure(payload.asInstanceOf[Cause])
+            loopStepRefreshEnv(payload2, step2, stack2, store2)
 
-            case FrameKind.WARP =>
-              currentFiber.suspendStep(payload, fallthrough, stack2, store2)
-              val warp = currentEnv.currentWarp.nn
-              val tried = warp.exitMode match
-                case Warp.ExitMode.Cancel => warp.tryGetCancelledBy(currentFiber, currentEnv.isCancellable)
-                case Warp.ExitMode.Await => warp.tryGetAwaitedBy(currentFiber, currentEnv.isCancellable)
-                case null => impossible //// this is a scoped warp, so it must have ExitMode
-              tried match
-                case Bits.WaiterSubscribed => ThreadDisowned
-                case Bits.WaiterAlreadyCancelled => impossible //// Latch is set
-                case Bits.WaiteeAlreadyCompleted =>
-                  currentFiber.clearSuspension()
-                  loopStepRefreshEnv(payload, fallthrough, stack2, store2)
+          case FrameKind.WARP =>
+            currentFiber.suspendStep(payload, fallthrough, stack2, store2)
+            val warp = currentEnv.currentWarp.nn
+            val tried = warp.exitMode match
+              case Warp.ExitMode.Cancel => warp.tryGetCancelledBy(currentFiber, currentEnv.isCancellable)
+              case Warp.ExitMode.Await => warp.tryGetAwaitedBy(currentFiber, currentEnv.isCancellable)
+              case null => impossible //// this is a scoped warp, so it must have ExitMode
+            tried match
+              case Bits.WaiterSubscribed => ThreadDisowned
+              case Bits.WaiterAlreadyCancelled => impossible //// Latch is set
+              case Bits.WaiteeAlreadyCompleted =>
+                currentFiber.clearSuspension()
+                loopStepRefreshEnv(payload, fallthrough, stack2, store2)
 
-            case FrameKind.EXEC =>
-              currentFiber.suspendStep(payload, fallthrough, stack2, store2)
-              currentFiber.resume()
-              ThreadDisowned
+          case FrameKind.EXEC =>
+            currentFiber.suspendStep(payload, fallthrough, stack2, store2)
+            currentFiber.resume()
+            ThreadDisowned
 
-            case FrameKind.SUPPRESS =>
-              refreshEnv(stack2, store2)
-              if cancellationCheck() then
-                loopCancel(stack2, store2)
-              else
-                loopStep(payload, fallthrough, stack2, store2)
-          end match
-        else //// isIo
-          if instr.isPop then
-            val comp2 = prompt.onReturn(payload, local)
-            loopComp(comp2, step2, stack2, store2)
-          else
-            val step3 = if prompt == instr.prompt then step2 else step
-            loopStep(payload, step3, stack2, store2)
-      end if //// isBridge
-    else
+          case FrameKind.SUPPRESS =>
+            refreshEnv(stack2, store2)
+            if cancellationCheck() then
+              loopCancel(stack2, store2)
+            else
+              loopStep(payload, fallthrough, stack2, store2)
+        end match
+      else //// isIo
+        if instr.isPop then
+          val comp2 = prompt.onReturn(payload, local)
+          loopComp(comp2, step2, stack2, store2)
+        else
+          val step3 = if prompt == instr.prompt then step2 else step
+          loopStep(payload, step3, stack2, store2)
+    else //// canPop
       val completion = instr.kind match
         case Step.UnwindKind.Pop    => Bits.Completion_Success
         case Step.UnwindKind.Cancel => Bits.Completion_Cancelled
         case Step.UnwindKind.Throw  => Bits.Completion_Failure
         case _                      => impossible
-      endOfLoop(completion, payload, stack)
+      endOfLoop(completion, payload)
 
 
   //-------------------------------------------------------------------
@@ -604,10 +598,9 @@ private sealed abstract class Engine0 extends Runnable:
       val fiberLeft = currentFiber.createChild(Bits.ZipPar_Left)
       val fiberRight = currentFiber.createChild(Bits.ZipPar_Right)
       if currentFiber.tryStartRace(fiberLeft, fiberRight, currentEnv.isCancellable) then
-        val (storeTmp, storeLeft) = OpCascaded.fork(stack, store)
-        val (storeDown, storeRight) = OpCascaded.fork(stack, storeTmp)
+        val stack2 = stack.lazyFork
+        val (storeDown, storeLeft, storeRight) = OpCascaded.fork2(stack, store, stack2)
         currentFiber.suspendForRace(fun, step, stack, storeDown)
-        val stack2 = stack.makeFork
         fiberRight.suspendComp(rhs, Step.Pop, stack2, storeRight)
         fiberRight.resume()
         becomeWithSameEnv(fiberLeft)
@@ -630,10 +623,9 @@ private sealed abstract class Engine0 extends Runnable:
       val fiberLeft = currentFiber.createChild(Bits.OrPar_Left)
       val fiberRight = currentFiber.createChild(Bits.OrPar_Right)
       if currentFiber.tryStartRace(fiberLeft, fiberRight, currentEnv.isCancellable) then
-        val (storeTmp, storeLeft) = OpCascaded.fork(stack, store)
-        val (storeDown, storeRight) = OpCascaded.fork(stack, storeTmp)
+        val stack2 = stack.lazyFork
+        val (storeDown, storeLeft, storeRight) = OpCascaded.fork2(stack, store, stack2)
         currentFiber.suspendForRace(null, step, stack, storeDown)
-        val stack2 = stack.makeFork
         fiberRight.suspendComp(rhs, Step.Pop, stack2, storeRight)
         fiberRight.resume()
         becomeWithSameEnv(fiberLeft)
@@ -654,11 +646,11 @@ private sealed abstract class Engine0 extends Runnable:
     //-------------------
     val fiberLeft = currentFiber.createChild(Bits.OrSeq)
     if currentFiber.tryStartRaceOfOne(fiberLeft, currentEnv.isCancellable) then
-      val (storeDown, storeLeft) = OpCascaded.fork(stack, store)
+      val stack2 = stack.lazyFork
+      val (storeDown, storeFork) = OpCascaded.fork1(stack, store, stack2)
       currentFiber.suspendForRace(rhsFun, step, stack, storeDown)
-      val stack2 = stack.makeFork
       becomeWithSameEnv(fiberLeft)
-      loopComp(lhs, Step.Pop, stack2, storeLeft)
+      loopComp(lhs, Step.Pop, stack2, storeFork)
     else
       //// Must have been cancelled meanwhile
       loopCancel(stack, store)
@@ -730,9 +722,9 @@ private sealed abstract class Engine0 extends Runnable:
     val store = savedStore
     //-------------------
     val warp = if warp0 != null then warp0.nn.asImpl else currentEnv.currentWarp.nn
-    val (storeDown, storeFork) = OpCascaded.fork(stack, store)
-    val stackFork = stack.makeFork
-    val child = FiberImpl.createExplicit(warp, name, callback)
+    val stackFork = stack.lazyFork
+    val (storeDown, storeFork) = OpCascaded.fork1(stack, store, stackFork)
+    val child = FiberImpl.createExplicit(stackFork, warp, name, callback)
     child.suspendComp(comp, Step.Pop, stackFork, storeFork)
     if warp.tryAddFiber(child) then
       child.resume()

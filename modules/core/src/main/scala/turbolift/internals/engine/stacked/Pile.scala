@@ -1,6 +1,10 @@
 package turbolift.internals.engine.stacked
+import Pile.{Split1, Split2}
 
 
+//@#@TODO reconsider misleading naming convention
+//// Caution: any `height` variable (`maxHeight`, `divHeight`, etc.)
+//// is actually a 0-based index (into `Stack.piles` array)
 private final class Pile private (
   val prompt: Prompt,
   val topFrame: Frame,
@@ -42,77 +46,57 @@ private final class Pile private (
       maxHeight = maxHeight - topFrame.delta,
     )
 
-  //------------------------------------------------------------------------------
-  //@#@TODO separate `splitHi` & `splitLo` no longer needed. Make single `split`
-  //------------------------------------------------------------------------------
 
-  //// `splitHi` doesn't use `Local` param. It's here only to make `splitHi` have the same type as `splitLo`
-  def splitHi(divHeight: Int, oldLocal: Local): (Pile | Null, Local) =
-    (splitHiForReal(divHeight), oldLocal)
-
-
-  private def splitHiForReal(divHeight: Int): Pile | Null =
+  def split(divHeight: Int, oldLocal: Local): Split2 =
     if divHeight < minHeight then
-      //// all frames are ABOVE div ==> result := full
-      copy(
-        minHeight = minHeight - divHeight,
-        maxHeight = maxHeight - divHeight,
-      )
+      //// Fast path: all frames are ABOVE div
+      val hi =
+        val newPile = copy(
+          minHeight = minHeight - divHeight,
+          maxHeight = maxHeight - divHeight,
+        )
+        Split1(newPile, oldLocal)
+      (hi, null)
     else if maxHeight < divHeight then
-      //// all frames are BELOW div ==> result := empty
-      null
-    else if maxHeight == divHeight then
-      //// exactly AT div ==> result := single frame
-      copy(
-        topFrame = topFrame.bridge,
-        minHeight = 0,
-        maxHeight = 0,
-        hasBase = topFrame.isBase,
-      )
-    else
-      //// div is in the middle ==> drop suffix
-      val (newFrame, newHeight, newHasBase) = topFrame.splitHi(initialHeight = maxHeight, divHeight = divHeight)
-      copy(
-        topFrame = newFrame,
-        minHeight = newHeight - divHeight,
-        maxHeight = maxHeight - divHeight,
-        hasBase = newHasBase,
-      )
-
-
-  def splitLo(divHeight: Int, oldLocal: Local): (Pile | Null, Local) =
-    if divHeight <= minHeight then
-      //// all frames are AT or ABOVE div ==> result := empty
-      (null, oldLocal)
-    else if maxHeight < divHeight then
-      //// all frames are BELOW div ==> result := full
-      (this, oldLocal)
-    else
-      //// div is in the middle ==> drop prefix
-      val (newFrame, newHeight, newLocal) = topFrame.splitLo(initialHeight = maxHeight, divHeight = divHeight, oldLocal)
-      val newPile = copy(
-        topFrame = newFrame,
-        maxHeight = newHeight,
-      )
-      (newPile, newLocal)
+      //// Fast path: all frames are BELOW div
+      val lo = Split1(this, oldLocal)
+      (null, lo)
+    else 
+      //// div is in range `minHeight`..`maxHeight`
+      if minHeight == maxHeight then
+        //// Fast path: single frame pile
+        val hi =
+          val newPile = if maxHeight == 0 then this else copy(minHeight = 0, maxHeight = 0)
+          Split1(newPile, oldLocal)
+        (hi, null)
+      else 
+        //// Slow path: must split frames
+        val split = topFrame.split(initialHeight = maxHeight, divHeight = divHeight)
+        val hi =
+          val newPile = copy(
+            topFrame = split.frameHi,
+            minHeight = split.heightHi - divHeight,
+            maxHeight = maxHeight - divHeight,
+            hasBase = false,
+          )
+          Split1(newPile, oldLocal)
+        val lo =
+          val newPile = copy(
+            topFrame = split.frameLo,
+            maxHeight = split.heightLo,
+          )
+          Split1(newPile, split.local)
+        (hi, lo)
 
 
   override def toString =
     val a = if hasBase then "" else "%"
     val b = topFrame.toString
-    s"$b$a"
+    val c = if maxHeight == minHeight then s"$maxHeight" else s"$maxHeight-$minHeight"
+    s"[$c]$b$a"
 
 
 private object Pile:
-  def pushFirst(prompt: Prompt, step: Step, height: Int, isNested: Boolean, kind: FrameKind): Pile =
-    new Pile(
-      prompt = prompt,
-      topFrame = Frame.pushFirst(step, isNested, kind),
-      minHeight = height,
-      maxHeight = height,
-      hasBase = !isNested,
-    )
-
   def initial(prompt: Prompt): Pile = base(prompt, 1)
 
   def base(prompt: Prompt, i: Int): Pile = 
@@ -123,3 +107,18 @@ private object Pile:
       maxHeight = i,
       hasBase = true,
     )
+
+  def pushFirst(prompt: Prompt, step: Step, height: Int, isNested: Boolean, kind: FrameKind): Pile =
+    new Pile(
+      prompt = prompt,
+      topFrame = Frame.pushFirst(step, isNested, kind),
+      minHeight = height,
+      maxHeight = height,
+      hasBase = !isNested,
+    )
+
+
+  final case class Split1(pile: Pile, local: Local):
+    def ord: Int = pile.minHeight
+
+  type Split2 = (Split1 | Null, Split1 | Null)

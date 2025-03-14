@@ -34,23 +34,56 @@ private[engine] object OpCascaded:
     loop(stack, ftorLeft, ftorRight, fun)
 
 
-  def fork(stack: Stack, store: Store): (Store, Store) =
-    def loop(todoStack: Stack, todoStore: Store): (Store, Store) =
-      if !todoStack.accumFeatures.hasForkJoin then
-        (todoStore, todoStore)
-      else
-        val pairOfSegs = forkSegment(todoStack, todoStore)
-        if !todoStack.isTailless then
-          val (newStoreTail1, newStoreTail2) = loop(todoStack.tail, todoStore.tail)
-          val (newStoreHead1, newStoreHead2) = pairOfSegs
-          //@#@OPTY {{ eliminate 1 needless copy, consider `head.appendInPlace(tail)`
-          val newStore1 = newStoreHead1 ::? newStoreTail1
-          val newStore2 = newStoreHead2 ::? newStoreTail2
-          //@#@OPTY }}
-          (newStore1, newStore2)
-        else
-          pairOfSegs
-    loop(stack, store)
+  def fork1(fromStack: Stack, fromStore0: Store, toStack: Stack): (Store, Store) =
+    val fromStore = fromStore0.deepClone()
+    def loop(stackSeg: Stack): Store =
+      val tail = if stackSeg.hasTail then loop(stackSeg.tail) else null
+      val storeSeg = Store.blank(stackSeg.localCount)
+      val n = stackSeg.promptCount
+      var i = 0
+      while i < n do
+        val prompt = stackSeg.piles(i).prompt
+        if prompt.isStateful then
+          val entry = fromStack.findEntryByPrompt(prompt)
+          val s0 = fromStore.deepGet(entry.storeIndex, entry.segmentDepth)
+          if prompt.hasForkJoin then
+            val (s1, s2) = prompt.onFork(s0)
+            fromStore.deepPutInPlace(entry.storeIndex, entry.segmentDepth, s1.asLocal)
+            storeSeg.setInPlace(i, s2.asLocal)
+          else
+            storeSeg.setInPlace(i, s0.asLocal)
+        i += 1
+      storeSeg ::? tail
+    val toStore = loop(toStack)
+    (fromStore, toStore)
+
+
+  def fork2(fromStack: Stack, fromStore0: Store, toStack: Stack): (Store, Store, Store) =
+    val fromStore = fromStore0.deepClone()
+    def loop(stackSeg: Stack): (Store, Store) =
+      val (tail1, tail2) = if stackSeg.hasTail then loop(stackSeg.tail) else (null, null)
+      val storeSeg1 = Store.blank(stackSeg.localCount)
+      val storeSeg2 = Store.blank(stackSeg.localCount)
+      val n = stackSeg.promptCount
+      var i = 0
+      while i < n do
+        val prompt = stackSeg.piles(i).prompt
+        if prompt.isStateful then
+          val entry = fromStack.findEntryByPrompt(prompt)
+          val s0 = fromStore.deepGet(entry.storeIndex, entry.segmentDepth)
+          if prompt.hasForkJoin then
+            val (s1, s2) = prompt.onFork(s0)
+            val (s3, s4) = prompt.onFork(s1)
+            fromStore.deepPutInPlace(entry.storeIndex, entry.segmentDepth, s3.asLocal)
+            storeSeg1.setInPlace(i, s2.asLocal)
+            storeSeg2.setInPlace(i, s4.asLocal)
+          else
+            storeSeg1.setInPlace(i, s0.asLocal)
+            storeSeg2.setInPlace(i, s0.asLocal)
+        i += 1
+      (storeSeg1 ::? tail1, storeSeg2 ::? tail2)
+    val (toStore1, toStore2) = loop(toStack)
+    (fromStore, toStore1, toStore2)
 
 
   def join(stack: Stack, store: Store, storeLeft: Store, storeRight: Store): Store =
@@ -113,32 +146,6 @@ private[engine] object OpCascaded:
       else
         f(aa, bb)
     loop(0, ftorLeft, ftorRight, fun)
-
-
-  private def forkSegment(stack: Stack, store: Store): (Store, Store) =
-    if store.isEmpty then
-      (store, store)
-    else
-      val storeLeft = store.blankClone()
-      val storeRight = store.blankClone()
-      val n = stack.promptCount
-      @tailrec def loop(i: Int, j: Int): Unit =
-        if i < n then
-          val p = stack.piles(i).prompt
-          if p.isStateful then
-            val s0 = store.geti(j)
-            if p.hasForkJoin then
-              val (s1, s2) = p.onFork(s0)
-              storeLeft.setInPlace(j, s1.asLocal)
-              storeRight.setInPlace(j, s2.asLocal)
-            else
-              storeLeft.setInPlace(j, s0)
-              storeRight.setInPlace(j, s0)
-            loop(i + 1, j + 1)
-          else
-            loop(i + 1, j)
-      loop(0, 0)
-      (storeLeft, storeRight)
 
 
   private def joinSegment(stack: Stack, store: Store, storeLeft: Store, storeRight: Store): Store =

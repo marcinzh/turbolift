@@ -26,15 +26,10 @@ private[engine] object OpSplit:
           (stackHi, storeHi, stepMid, stackLo, storeLo)
         else
           //// Slow path: split this segment
-          val frameCountHi = todoStack.frameCount - divHeight
-          val frameCountLo = divHeight
-          //@#@OPTY {{ do hi & lo in one go
-          val (stackHi, storeHi) = migrate(todoStack, todoStore, frameCountHi, _.splitHi(divHeight, _))
-          val (stackLo, storeLo) = migrate(todoStack, todoStore, frameCountLo, _.splitLo(divHeight, _))
-          //@#@ }}
+          val (stackHi, storeHi, stackLo, storeLo) = splitSegment(todoStack, todoStore, divHeight)
           stackHi.setTailInPlace(accumStack, accumStep)
           storeHi.setTailInPlace(accumStore)
-          stackLo.setTailInPlace(todoStack.tailOrJoin, todoStack.aside)
+          stackLo.setTailInPlace(todoStack.tailOrNull, todoStack.asideOrNull)
           storeLo.setTailInPlace(todoStore.tailOrNull)
           val stepMid = divPile.topFrame.step
           (stackHi, storeHi, stepMid, stackLo, storeLo)
@@ -50,27 +45,79 @@ private[engine] object OpSplit:
     loop(stack, store, null, null, null, location.segmentDepth)
 
 
-  private def migrate(
-    oldStack: Stack,
-    oldStore: Store,
-    newFrameCount: Int,
-    pileSplitter: PileSplitter,
-  ): (Stack, Store) =
-    val (newStack, newStore, bundles, newPromptCount) =
-      migrateOut(oldStack, oldStore, newFrameCount, pileSplitter)
-    sort(bundles, newPromptCount)
-    migrateIn(newStack, newStore, bundles, newPromptCount)
-    (newStack, newStore)
+  private def splitSegment(oldStack: Stack, oldStore: Store, divHeight: Int): (Stack, Store, Stack, Store) =
+    var promptCountHi = 0
+    var promptCountLo = 0
+    var sigCountHi = 0
+    var sigCountLo = 0
+    var localCountHi = 0
+    var localCountLo = 0
+    var featuresHi = Features.Empty
+    var featuresLo = Features.Empty
+
+    //// Temporary bcoz we don't know the sizes of final piles of Hi & Lo Stack yet
+    val splitsHi = new Array[Pile.Split1](oldStack.promptCount)
+    val splitsLo = new Array[Pile.Split1](oldStack.promptCount)
+
+    //// Precalculate immutable parts of Hi & Lo Stack/Store. Also split piles
+    {
+      var oldLocalIndex = 0
+      val n = oldStack.promptCount
+      var i = 0
+      while i < n do
+        val oldPile = oldStack.piles(i)
+        val prompt = oldPile.prompt
+        val oldLocal = if prompt.isStateless then Local.void else oldStore.geti(oldLocalIndex)
+        val (splitHi, splitLo) = oldPile.split(divHeight, oldLocal)
+        if splitHi != null then
+          splitsHi(promptCountHi) = splitHi
+          promptCountHi += 1
+          sigCountHi += prompt.signatures.size
+          localCountHi += prompt.localCount
+          featuresHi |= prompt.features.mask
+        if splitLo != null then
+          splitsLo(promptCountLo) = splitLo
+          promptCountLo += 1
+          sigCountLo += prompt.signatures.size
+          localCountLo += prompt.localCount
+          featuresLo |= prompt.features.mask
+        i += 1
+        oldLocalIndex += prompt.localCount
+      end while
+    }
+
+    val frameCountHi = oldStack.frameCount - divHeight
+    val frameCountLo = divHeight
+    val newStackHi = Stack.blank(sigCount = sigCountHi, promptCount = promptCountHi, frameCount = frameCountHi, headFeatures = featuresHi)
+    val newStackLo = Stack.blank(sigCount = sigCountLo, promptCount = promptCountLo, frameCount = frameCountLo, headFeatures = featuresLo)
+    //@#@OPTY reuse `oldStore` if number of elements stays the same
+    val newStoreHi = oldStore.blankClone(localCountHi)
+    val newStoreLo = oldStore.blankClone(localCountLo)
+    fill(splitsHi, newStackHi, newStoreHi)
+    fill(splitsLo, newStackLo, newStoreLo)
+    (newStackHi, newStoreHi, newStackLo, newStoreLo)
 
 
-  private type PileSplitter = (Pile, Local) => (Pile | Null, Local)
+  //// Fills Stack.pile, Stack.lookup and Store
+  private def fill(splits: Array[Pile.Split1], newStack: Stack, newStore: Store): Unit =
+    val n = newStack.promptCount
+    sort(splits, n)
+    var i = 0
+    var localIndex = 0
+    var lookupIndex = newStack.lookup.initialIndexForSetInPlace
+    while i < n do
+      val split = splits(i)
+      newStack.piles(i) = split.pile
+      val prompt = split.pile.prompt
+      if prompt.isStateful then
+        newStore.setInPlace(localIndex, split.local)
+      val entry = new Entry(prompt, promptIndex = i, storeIndex = localIndex)
+      lookupIndex = newStack.lookup.setInPlace(lookupIndex, entry)
+      localIndex += prompt.localCount
+      i += 1
 
 
-  private case class Bundle(prompt: Prompt, pile: Pile, local: Local):
-    def ord = pile.minHeight
-
-
-  private def sort(arr: Array[Bundle], n: Int): Unit =
+  private def sort(arr: Array[Pile.Split1], n: Int): Unit =
     var i: Int = 1
     while i < n do
       val a = arr(i)
@@ -85,107 +132,6 @@ private[engine] object OpSplit:
         else
           0
       arr(loop(i)) = a
-      i += 1
-
-
-  private def migrateOut(
-    oldStack: Stack,
-    oldStore: Store,
-    newFrameCount: Int,
-    pileSplitter: PileSplitter,
-  ): (Stack, Store, Array[Bundle], Int) =
-    val oldPromptCount = oldStack.piles.size
-    val bundles = new Array[Bundle](oldPromptCount)
-
-    var srcPromptIndex: Int = 0
-    var srcLocalIndex: Int = 0
-    var newPromptCount: Int = 0
-    var newLocalCount: Int = 0
-    var newSigCount: Int = 0
-    var newFeatures = Features.Empty
-    var newForkPromptCount: Int = 0
-    var newForkSigCount: Int = 0
-    var newForkFeatures = Features.Empty
-
-    while srcPromptIndex < oldPromptCount do
-      val oldPile = oldStack.piles(srcPromptIndex)
-      val prompt = oldPile.prompt
-      val oldLocal = if prompt.isStateless then Local.void else oldStore.geti(srcLocalIndex)
-      val (newPile, newLocal) = pileSplitter(oldPile, oldLocal)
-      if newPile != null then
-        bundles(newPromptCount) = Bundle(prompt, newPile, newLocal)
-        newPromptCount += 1
-        newSigCount += prompt.signatures.size
-        newLocalCount += prompt.localCount
-        newFeatures |= prompt.features.mask
-        if newPile.hasBase then
-          newForkPromptCount += 1
-          newForkSigCount += prompt.signatures.size
-          newForkFeatures |= prompt.features.mask
-      srcPromptIndex += 1
-      srcLocalIndex += prompt.localCount
-    
-    val newStack = Stack.blank(
-      sigCount = newSigCount,
-      promptCount = newPromptCount,
-      frameCount = newFrameCount,
-      headFeatures = newFeatures,
-    )(
-      forkSigCount = newForkSigCount,
-      forkPromptCount = newForkPromptCount,
-      forkHeadFeatures = newForkFeatures,
-    )
-    //@#@OPTY reuse `oldStore` if number of elements stays the same
-    val newStore = oldStore.blankClone(newLocalCount)
-    (newStack, newStore, bundles, newPromptCount)
-
-
-  private def migrateIn(
-    newStack: Stack,
-    newStore: Store,
-    bundles: Array[Bundle],
-    newPromptCount: Int,
-  ): Unit =
-    var promptIndex: Int = 0
-    var destLocalIndex: Int = 0
-    var destSigIndex: Int = 0
-    var destForkPromptIndex: Int = 0
-    var destForkLocalIndex: Int = 0
-    var destForkSigIndex: Int = 0
-    while promptIndex < newPromptCount do
-      val bundle = bundles(promptIndex)
-      val prompt = bundle.prompt
-      addPromptInPlace(prompt, bundle.pile, newStack, promptIndex, destLocalIndex, destSigIndex)
-      if prompt.isStateful then
-        newStore.setInPlace(destLocalIndex, bundle.local)
-      if bundle.pile.hasBase then
-        val forkPile = Pile.base(prompt, destForkPromptIndex)
-        addPromptInPlace(prompt, forkPile, newStack.fork, destForkPromptIndex, destForkLocalIndex, destForkSigIndex)
-        destForkPromptIndex += 1
-        destForkSigIndex += prompt.signatures.size
-        destForkLocalIndex += prompt.localCount
-      promptIndex += 1
-      destSigIndex += prompt.signatures.size
-      destLocalIndex += prompt.localCount
-
-
-  private def addPromptInPlace(
-    prompt: Prompt,
-    pile: Pile,
-    destStack: Stack,
-    destPromptIndex: Int,
-    destLocalIndex: Int,
-    destSigIndex: Int,
-  ): Unit =
-    destStack.piles(destPromptIndex) = pile
-    val entry = Entry(prompt, Location.Shallow(promptIndex = destPromptIndex, storeIndex = destLocalIndex))
-    val sigs = prompt.signatures
-    val lookup = destStack.lookup
-    val n = sigs.size
-    val i0 = lookup.startIndexForSetInPlace(destSigIndex, n)
-    var i = 0
-    while i < n do
-      lookup.setInPlace(i0, i, sigs(i), entry)
       i += 1
 
 

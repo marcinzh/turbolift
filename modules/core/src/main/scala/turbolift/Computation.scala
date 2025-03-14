@@ -342,16 +342,22 @@ object Computation:
      *  Passes computed value to handler constructor.
      *  Effect used to compute the value, are absorbed by the handler, into its own dependencies.
      */ 
-    @annotation.targetName("flatHandleId")
-    def >>=![F[+_], L, N](f: A => Handler[[X] =>> X, F, L, N]): Handler[[X] =>> X, F, L, U & N] = Handler.flatHandle(thiz.map(f))
+    def flatHandleId[F[+_], L, N](f: A => Handler[[X] =>> X, F, L, N]): Handler[[X] =>> X, F, L, U & N] = Handler.flatHandle(thiz.map(f))
 
     /** Simplifies effectful creation of handlers.
      * 
      *  Passes computed value to handler constructor.
      *  Effect used to compute the value, are absorbed by the handler, into its own dependencies.
      */ 
-    @annotation.targetName("flatHandleConst")
-    def >>=![F[+_], L, N](f: A => Handler[[X] =>> A, F, L, N]): Handler[[X] =>> A, F, L, U & N] = Handler.flatHandle(thiz.map(f))
+    def flatHandleConst[F[+_], L, N](f: A => Handler[[X] =>> A, F, L, N]): Handler[[X] =>> A, F, L, U & N] = Handler.flatHandle(thiz.map(f))
+
+    /** Alias of [[flatHandleId]] */
+    @annotation.targetName("opFlatHandleId")
+    def >>=![F[+_], L, N](f: A => Handler[[X] =>> X, F, L, N]): Handler[[X] =>> X, F, L, U & N] = thiz.flatHandleId(f)
+
+    /** Alias of [[flatHandleConst]] */
+    @annotation.targetName("opFlatHandleConst")
+    def >>=![F[+_], L, N](f: A => Handler[[X] =>> A, F, L, N]): Handler[[X] =>> A, F, L, U & N] = thiz.flatHandleConst(f)
 
     /** Applies a handler to this computation.
      *

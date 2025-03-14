@@ -24,7 +24,7 @@ private[turbolift] final class ForeignExecutor(val underlying: ExecutionContext)
 
 
   override def runAsync[A](comp: Computation[A, ?], name: String, callback: Outcome[A] => Unit): Unit =
-    val fiber = FiberImpl.create(comp, this, name, isReentry = false, callback)
+    val fiber = FiberImpl.createRoot(comp, this, name, isReentry = false, callback)
     resume(fiber)
 
 

@@ -7,12 +7,19 @@ private[engine] final class Entry(
   val storeIndex: Short,
   val segmentDepth: Int, //// Initially meaningless
 ):
+  def this(prompt: Prompt, promptIndex: Int, storeIndex: Int) =
+    this(
+      prompt,
+      promptIndex = promptIndex.toShort,
+      storeIndex = storeIndex.toShort,
+      segmentDepth = 0,
+    )
+
   def this(prompt: Prompt, location: Location.Shallow) =
     this(
       prompt,
-      promptIndex = location.promptIndex.toShort,
-      storeIndex = location.storeIndex.toShort,
-      segmentDepth = 0,
+      promptIndex = location.promptIndex,
+      storeIndex = location.storeIndex,
     )
 
   inline def deepLocation(depth: Int): Location.Deep =

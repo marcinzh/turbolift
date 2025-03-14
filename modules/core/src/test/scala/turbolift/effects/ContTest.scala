@@ -8,6 +8,8 @@ import turbolift.mode.ST
 
 
 class ContTest extends Specification:
+  sequential
+
   "Basic ops" >> {
     "just reset" >>{
       case object K extends Cont[Int]

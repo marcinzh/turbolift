@@ -122,10 +122,21 @@ private object Lookup:
     def top: Entry = thiz(1).asInstanceOf[Entry]
 
 
-    def startIndexForSetInPlace(destIdx: Int, sigCount: Int): Int = thiz.size - 2 * (destIdx + sigCount)
-    def setInPlace(start: Int, i: Int, sig: Signature, e: Entry): Unit =
-      thiz(start + 2 * i) = sig
-      thiz(start + 2 * i + 1) = e
+    def initialIndexForSetInPlace: Int = thiz.size
+
+    def setInPlace(destIndex: Int, entry: Entry): Int =
+      val sigs = entry.prompt.signatures
+      val n = sigs.size
+      var i = 0
+      val j0 = destIndex - 2 * n
+      var j = j0
+      while i < n do
+        thiz(j) = sigs(i)
+        thiz(j + 1) = entry
+        i += 1
+        j += 2
+      j0
+
 
     def toStr =
       val ps = thiz.iterator.zipWithIndex.collect { case (e, i) if i % 2 == 1 => e.asInstanceOf[Entry].prompt }

@@ -74,8 +74,14 @@ sealed trait Interpreter extends Signature:
   def onFork(s: Local): (Local, Local)
   def onJoin(s1: Local, s2: Local): Local
 
-  //@#@TODO
-  private def resurceUnsafeHint: Boolean = false
+  /** Microoptimization hint, stating intent to use continuations.
+   *
+   *  Many effect handlers never capture the continuation, and this is the default expectation.
+   *
+   *  The `capture` will work regardless of value of this hint.
+   *  However, if not overriden to [[true]], the first `capture` will be more costly.
+   */
+  def captureHint: Boolean = false
 
   /** Creates a [[turbolift.Handler Handler]] from this interpreter. */
   final def toHandler: Handler[From, To, Elim, Intro] = HC.Primitive[From, To, Elim, Intro](this)
@@ -103,6 +109,8 @@ sealed trait Interpreter extends Signature:
       sigs :+ AnyChoice
     else
       sigs
+
+  override def toString = enumSignatures.mkString("+")
 
   private[turbolift] final def untyped: Interpreter.Untyped = asInstanceOf[Interpreter.Untyped]
 

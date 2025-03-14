@@ -7,12 +7,12 @@ import turbolift.internals.engine.{Env, Tag, Step}
 import turbolift.internals.engine.Misc._
 import turbolift.internals.engine.stacked.{Stack, Store, OpCascaded, OpPush}
 import Cause.{Cancelled => CancelPayload}
-import FiberImpl.Hook
+import FiberImpl.Extra
 
 
 private[turbolift] final class FiberImpl private (
   private[engine] val constantBits: Byte,
-  private[engine] var theParent: WarpImpl | FiberImpl | Hook,
+  private[engine] var theParentOrExtra: FiberImpl | Extra,
   private[engine] var theName: String,
 ) extends ChildLink with Fiber.Unsealed with Function1[Either[Throwable, Any], Unit]:
   private[engine] var theWaiteeOrBlocker: Waitee | Blocker | Null = null
@@ -22,7 +22,7 @@ private[turbolift] final class FiberImpl private (
   private[engine] var suspendedStack: Stack | Null = null
   private[engine] var suspendedStore: Store | Null = null
 
-  private def this(constantBits: Byte, theName: String) = this(constantBits, null.asInstanceOf[Hook], theName)
+  private def this(constantBits: Byte, theName: String) = this(constantBits, null.asInstanceOf[Extra], theName)
 
 
   //-------------------------------------------------------------------
@@ -30,10 +30,10 @@ private[turbolift] final class FiberImpl private (
   //-------------------------------------------------------------------
 
 
-  private[engine] def doFinalize(completion: Int, initialPayload: Any, stack: Stack | Null): FiberImpl | Null =
+  private[engine] def doFinalize(completion: Int, initialPayload: Any): FiberImpl | Null =
     val payload =
       if isExplicit then
-        ZipperImpl.make(stack, initialPayload, completion)
+        ZipperImpl.make(theParentOrExtra.asInstanceOf[Extra].join, initialPayload, completion)
       else
         initialPayload
 
@@ -60,22 +60,19 @@ private[turbolift] final class FiberImpl private (
     finallyNotifyAllWaiters()
 
     //// As a RACER or CHILD:
-    theParent match
+    theParentOrExtra match
       case arbiter: FiberImpl =>
         if isLastRacer then
           arbiter
         else
           null
 
-      case warp: WarpImpl =>
-        warp.removeFiber(this)
-        if isRoot then
-          warp.unsafeCancelAndForget()
-        null
-
-      case hook: Hook =>
-        hook.warp.removeFiber(this)
-        hook.call()
+      case extra: Extra =>
+        extra.warp.removeFiber(this)
+        //@#@THOV
+        // if isRoot then
+        //   extra.warp.unsafeCancelAndForget()
+        extra.call()
         null
 
 
@@ -224,10 +221,9 @@ private[turbolift] final class FiberImpl private (
 
 
   private[concurrent] override def deepCancelUp(): ChildLink =
-    theParent match
+    theParentOrExtra match
       case fiber: FiberImpl => fiber
-      case warp: WarpImpl => warp
-      case Hook(warp, _, _) => warp
+      case extra: Extra => extra.warp
 
 
   private def doDescend(
@@ -562,10 +558,9 @@ private[turbolift] final class FiberImpl private (
 
 
   override def parent: Fiber.Untyped | Warp =
-    theParent match
+    theParentOrExtra match
       case fiber: FiberImpl => fiber.untyped
-      case warp: WarpImpl => warp
-      case Hook(warp, _, _) => warp
+      case extra: Extra => extra.warp
 
 
   override def unsafeCancelAndForget(): Unit = doCancelAndForget()
@@ -630,7 +625,7 @@ private[turbolift] final class FiberImpl private (
 
   private def whichRacerAmI: Int = constantBits & Bits.Racer_Mask
   private def isRacer: Boolean = whichRacerAmI != Bits.Racer_None
-  private def getArbiter: FiberImpl = theParent.asInstanceOf[FiberImpl]
+  private def getArbiter: FiberImpl = theParentOrExtra.asInstanceOf[FiberImpl]
   private def getLeftRacer: FiberImpl = prevWaiter.asInstanceOf[FiberImpl]
   private def getRightRacer: FiberImpl = nextWaiter.asInstanceOf[FiberImpl]
   private def clearRacers(): Unit = clearWaiterLink()
@@ -647,27 +642,35 @@ private[turbolift] final class FiberImpl private (
 private[turbolift] object FiberImpl:
   type Callback = Outcome[Nothing] => Unit
 
-  def create(comp: Computation[?, ?], executor: Executor, name: String, isReentry: Boolean, callback: Callback): FiberImpl =
+  def createRoot(comp: Computation[?, ?], executor: Executor, name: String, isReentry: Boolean, callback: Callback): FiberImpl =
     val reentryBit = if isReentry then Bits.Const_Reentry else 0
     val constantBits = (Bits.Tree_Root | reentryBit).toByte
     val fiber = new FiberImpl(constantBits, name)
     val warp = WarpImpl.root
-    fiber.theParent = Hook(warp, fiber, callback.asInstanceOf[Any => Unit])
+    fiber.theParentOrExtra = Extra(fiber, Stack.initial, warp, callback.asInstanceOf[Any => Unit])
     warp.tryAddFiber(fiber)
     val env = Env.initial(executor)
     fiber.suspendInitial(comp.untyped, env)
     fiber
 
 
-  def createExplicit(warp: WarpImpl, name: String, callback: (ZipperImpl => Unit) | Null): FiberImpl =
+  def createExplicit(join: Stack, warp: WarpImpl, name: String, callback: (ZipperImpl => Unit) | Null): FiberImpl =
     val fiber = new FiberImpl(Bits.Tree_Explicit.toByte, name)
-    fiber.theParent = if callback == null then warp else Hook(warp, fiber, callback.nn.asInstanceOf[Any => Unit])
+    fiber.theParentOrExtra = Extra(fiber, join, warp, callback.asInstanceOf[(Any => Unit) | Null])
     fiber
 
 
-  final case class Hook(warp: WarpImpl, fiber: FiberImpl, callback: Any => Unit):
+  //// Additional data for explicit fiber
+  final case class Extra(
+    fiber: FiberImpl,
+    join: Stack,
+    warp: WarpImpl,
+    callback: (Any => Unit) | Null,
+  ):
     def call(): Unit =
-      if fiber.isExplicit then
-        callback(fiber.suspendedPayload)
-      else
-        callback(fiber.makeOutcome)
+      if callback != null then
+        if fiber.isExplicit then
+          callback.nn(fiber.suspendedPayload)
+        else
+          //// Must be the root fiber, bcoz implicit fibers dont have `Extra`
+          callback.nn(fiber.makeOutcome)

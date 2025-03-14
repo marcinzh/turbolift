@@ -22,7 +22,7 @@ private[turbolift] final class ReentrantExecutor(maxBusyThreads: Int) extends Wa
 
   override def runAsync[A](comp: Computation[A, ?], name: String, callback: Outcome[A] => Unit): Unit =
     val isReentry = ReentrantExecutor.currentVar.get != null
-    val fiber = FiberImpl.create(comp, this, name, isReentry, callback)
+    val fiber = FiberImpl.createRoot(comp, this, name, isReentry, callback)
     if !isReentry then
       resume(fiber)
     else

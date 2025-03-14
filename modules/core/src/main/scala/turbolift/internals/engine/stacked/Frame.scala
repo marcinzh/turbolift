@@ -1,28 +1,18 @@
 package turbolift.internals.engine.stacked
 import scala.annotation.tailrec
+import Frame.Split
 
 
 private final class Frame private (
-  val next: Frame | Null,
-  private val packed: FramePacked,
+  private var nextVar: Frame | Null,
+  private var packedVar: FramePacked,
   val step: Step,
   val local: Local,
-):
+) extends Cloneable:
   assert(isGuard <= isNested)
 
-  private def copy(
-    next: Frame | Null = next,
-    packed: FramePacked = packed,
-    step: Step = step,
-    local: Local = local,
-  ): Frame =
-    new Frame(
-      next = next,
-      packed = packed,
-      step = step,
-      local = local,
-    )
-
+  def next: Frame | Null = nextVar
+  def packed: FramePacked = packedVar
 
   def delta: Int = packed.delta
   def kind: FrameKind = packed.kind
@@ -31,7 +21,6 @@ private final class Frame private (
   def isBase: Boolean = !isNested
   def hasNext: Boolean = next != null
 
-
   def bottom: Frame = if next == null then this else next.nn.bottom
   def computeBottomHeight(initial: Int): Int =
     if next == null then initial else next.nn.computeBottomHeight(initial - delta)
@@ -39,57 +28,52 @@ private final class Frame private (
 
   def pushNext(step: Step, local: Local, delta: Int, isNested: Boolean, kind: FrameKind): Frame =
     new Frame(
-      next = this,
-      packed = FramePacked(delta, isNested, kind),
+      nextVar = this,
+      packedVar = FramePacked(delta, isNested, kind),
       step = step,
       local = local,
     )
 
 
-  def bridge: Frame =
-    new Frame(
-      next = null,
-      packed = packed.clearDelta,
-      step = Step.Bridge,
-      local = Local.nul,
-    )
-
-
-  def splitLo(initialHeight: Int, divHeight: Int, oldLocal: Local): (Frame, Int, Local) =
-    @tailrec def loop(frame: Frame, height: Int, prevLocal: Local): (Frame, Int, Local) =
-      if height < divHeight then
-        (frame, height, prevLocal)
-      else
-        loop(
-          frame = frame.next.nn,
-          height = height - frame.delta,
-          prevLocal = frame.local,
+  def split(initialHeight: Int, divHeight: Int): Split =
+    assert(divHeight <= initialHeight)
+    assert(divHeight > computeBottomHeight(initialHeight))
+    assert(hasNext)
+  
+    def loop(prevFrame: Frame | Null, currFrame: Frame, currHeight: Int): Split =
+      assert(currHeight >= divHeight)
+      val nextFrame = next.nn
+      val nextHeight = currHeight - currFrame.delta
+      val currLocal = currFrame.local
+      val currFrame2 = currFrame.clone().asInstanceOf[Frame]
+      currFrame2.nextVar = prevFrame
+      if nextHeight < divHeight then
+        //// split between `currFrame` and `nextFrame`
+        currFrame2.packedVar = currFrame2.packed.clearDelta
+        Split(
+          frameHi = currFrame2.reverseInPlace(),
+          frameLo = nextFrame,
+          heightHi = currHeight,
+          heightLo = nextHeight,
+          local = currLocal,
         )
-    loop(
-      frame = this,
-      height = initialHeight,
-      prevLocal = oldLocal,
-    )
-
-
-  //@#@TODO paranoid stack safety. Make `next` a var, and reverse in place
-  def splitHi(initialHeight: Int, divHeight: Int): (Frame, Int, Boolean) =
-    var newMinHeight = 0
-    var newHasBase = false
-    def loop(oldFrame: Frame, currentHeight: Int): Frame | Null =
-      if currentHeight > divHeight then
-        newMinHeight = currentHeight
-        newHasBase = oldFrame.isBase
-        val nextNewFrame = loop(oldFrame.next.nn, currentHeight - oldFrame.delta)
-        copy(next = nextNewFrame)
       else
-        null
-    val newTopFrame = loop(this, initialHeight)
-    (newTopFrame.nn, newMinHeight, newHasBase)
+        loop(currFrame2, nextFrame, nextHeight)
+    loop(null, this, initialHeight)
+
+
+  @tailrec private def reverseInPlace(last: Frame | Null = null): Frame =
+    val oldNext = next
+    nextVar = last
+    if oldNext != null then
+      oldNext.reverseInPlace(this)
+    else
+      this
 
 
   override def toString: String =
-    val s = s"+${delta}${step}"
+    val b = if isBase then "" else "%"
+    val s = s"+${delta}${b}${step}"
     if next == null then
       s
     else
@@ -101,8 +85,17 @@ private object Frame:
 
   def pushFirst(step: Step, isNested: Boolean, kind: FrameKind): Frame =
     new Frame(
-      next = null,
-      packed = FramePacked(0, isNested, kind),
+      nextVar = null,
+      packedVar = FramePacked(0, isNested, kind),
       step = step,
       local = Local.nul,
     )
+
+
+  final case class Split(
+    frameHi: Frame,
+    frameLo: Frame,
+    heightHi: Int,
+    heightLo: Int,
+    local: Local,
+  )
