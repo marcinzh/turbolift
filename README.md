@@ -22,7 +22,7 @@ Runnable with [`scala-cli`](https://scala-cli.virtuslab.org/).
 
 ```scala
 //> using scala "3.3.5"
-//> using dep "io.github.marcinzh::turbolift-core:0.104.0"
+//> using dep "io.github.marcinzh::turbolift-core:0.106.0"
 import turbolift.!!
 import turbolift.effects.{Reader, State, Error}
 
@@ -58,8 +58,8 @@ Same, but with [bindless](modules/bindless) syntax extension:
 
 ```scala
 //> using scala "3.3.5"
-//> using dep "io.github.marcinzh::turbolift-core:0.104.0"
-//> using dep "io.github.marcinzh::turbolift-bindless:0.104.0"
+//> using dep "io.github.marcinzh::turbolift-core:0.106.0"
+//> using dep "io.github.marcinzh::turbolift-bindless:0.106.0"
 import turbolift.!!
 import turbolift.effects.{Reader, State, Error}
 import turbolift.bindless._
@@ -97,11 +97,11 @@ sbt examples/run
 ## Usage in SBT
 
 ```scala
-libraryDependencies += "io.github.marcinzh" %% "turbolift-core" % "0.104.0"
+libraryDependencies += "io.github.marcinzh" %% "turbolift-core" % "0.106.0"
 ```
 
 Optionally, for the [bindless](modules/bindless) syntax extension:
 
 ```scala
-libraryDependencies += "io.github.marcinzh" %% "turbolift-bindless" % "0.104.0"
+libraryDependencies += "io.github.marcinzh" %% "turbolift-bindless" % "0.106.0"
 ```
