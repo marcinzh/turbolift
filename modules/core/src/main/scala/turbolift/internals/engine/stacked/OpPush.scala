@@ -56,6 +56,7 @@ private[engine] object OpPush:
 
 
   def pop(stack: Stack, store: Store): (Stack, Store, Step, Prompt, Frame, Local) =
+    assert(stack.nonEmptySegment) //// only stack stored in continuation is allowed to have empty `top` segment
     if stack.frameCount == 1 then
       //// Fast path: this is the last frame in top segment, so pop entire segment
       val topPile = stack.piles.head

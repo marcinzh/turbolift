@@ -47,7 +47,7 @@ private final class Pile private (
     )
 
 
-  def split(divHeight: Int, oldLocal: Local): Split2 =
+  def split(divHeight: Int, oldLocal: Local, truncate: Boolean): Split2 =
     if divHeight < minHeight then
       //// Fast path: all frames are ABOVE div
       val hi =
@@ -63,14 +63,37 @@ private final class Pile private (
       (null, lo)
     else 
       //// div is in range `minHeight`..`maxHeight`
-      if minHeight == maxHeight then
-        //// Fast path: single frame pile
+      if maxHeight == divHeight then
+        //// Special case: the split happens at this pile's prompt
+        val lo =
+          if minHeight == maxHeight then
+            //// This pile has single frame. Discard it
+            assert(!topFrame.hasNext)
+            null
+          else
+            //// Like `drop(1)` applied to list of frames
+            val newPile = copy(
+              topFrame = topFrame.next.nn,
+              maxHeight = maxHeight - topFrame.delta,
+            )
+            Split1(newPile, topFrame.local)
         val hi =
-          val newPile = if maxHeight == 0 then this else copy(minHeight = 0, maxHeight = 0)
-          Split1(newPile, oldLocal)
-        (hi, null)
-      else 
-        //// Slow path: must split frames
+          if truncate then
+            null
+          else
+            //// Like `take(1)` applied to list of frames
+            //@#@OPTY reuse
+            val newFrame = topFrame.dropNext
+            val newPile = copy(
+              minHeight = 0,
+              maxHeight = 0,
+              topFrame = newFrame,
+              hasBase = newFrame.isBase,
+            )
+            Split1(newPile, oldLocal)
+        (hi, lo)
+      else
+        //// General case: split tha list of frames somewhere in the middle
         val split = topFrame.split(initialHeight = maxHeight, divHeight = divHeight)
         val hi =
           val newPile = copy(

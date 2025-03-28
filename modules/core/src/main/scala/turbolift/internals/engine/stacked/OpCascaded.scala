@@ -53,7 +53,7 @@ private[engine] object OpCascaded:
           else
             storeSeg.setInPlace(i, s0.asLocal)
         i += 1
-      storeSeg ::? tail
+      storeSeg.copyWithTail(tail)
     val toStore = loop(toStack)
     (fromStore, toStore)
 
@@ -81,7 +81,7 @@ private[engine] object OpCascaded:
             storeSeg1.setInPlace(i, s0.asLocal)
             storeSeg2.setInPlace(i, s0.asLocal)
         i += 1
-      (storeSeg1 ::? tail1, storeSeg2 ::? tail2)
+      (storeSeg1.copyWithTail(tail1), storeSeg2.copyWithTail(tail2))
     val (toStore1, toStore2) = loop(toStack)
     (fromStore, toStore1, toStore2)
 

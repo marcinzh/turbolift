@@ -4,48 +4,64 @@ import turbolift.interpreter.Features
 
 
 private[engine] object OpSplit:
-  def split(stack: Stack, store: Store, location: Location.Deep): (Stack, Store, Step, Stack, Store) =
+  def split(stack: Stack, store: Store, location: Location.Deep, truncate: Boolean): (Stack, Store, Step, Stack, Store) =
     @tailrec def loop(
       todoStack: Stack,
       todoStore: Store,
       accumStack: Stack | Null,
       accumStore: Store | Null,
-      accumStep: Step | Null,
       depth: Int,
     ): (Stack, Store, Step, Stack, Store) =
       if depth == 0 then
         val divPile = todoStack.piles(location.promptIndex)
         val divHeight = divPile.maxHeight
-        if divHeight == 0 then
-          //// Fast path: stack has already been split at this location
-          val stackHi = todoStack ::? (accumStack, accumStep)
-          val storeHi = todoStore ::? accumStore
+        if divHeight == 0 && (!truncate || todoStack.frameCount == 1) then
+          //// Fast path: split happens at the lower boundary of this segment.
+          //// Also at the upper boundary, if `truncate`.
+          var stackHi: Stack = null.asInstanceOf[Stack]
+          var storeHi: Store = null.asInstanceOf[Store]
           val stepMid = todoStack.aside.nn
           val stackLo = todoStack.tail
           val storeLo = todoStore.tail
+          if truncate then
+            if accumStack == null then
+              stackHi = Stack.empty
+              storeHi = Store.empty
+            else
+              stackHi = Stack.empty.copyWithTail(accumStack)
+              storeHi = Store.empty.copyWithTail(accumStore)
+          else
+            //// Clear `aside` bcoz is extracted as `stepMid`
+            stackHi = todoStack.copyWithTail2(accumStack, null) 
+            storeHi = todoStore.copyWithTail(accumStore)
           (stackHi, storeHi, stepMid, stackLo, storeLo)
         else
           //// Slow path: split this segment
-          val (stackHi, storeHi, stackLo, storeLo) = splitSegment(todoStack, todoStore, divHeight)
-          stackHi.setTailInPlace(accumStack, accumStep)
-          storeHi.setTailInPlace(accumStore)
-          stackLo.setTailInPlace(todoStack.tailOrNull, todoStack.asideOrNull)
-          storeLo.setTailInPlace(todoStore.tailOrNull)
           val stepMid = divPile.topFrame.step
-          (stackHi, storeHi, stepMid, stackLo, storeLo)
+          val (stackHi, storeHi, stackLo, storeLo) = splitSegment(todoStack, todoStore, divHeight, truncate)
+          stackHi.setTailInPlace(accumStack)
+          storeHi.setTailInPlace(accumStore)
+          stackLo.setTailInPlace2(todoStack.tailOrNull, todoStack.asideOrNull)
+          storeLo.setTailInPlace(todoStore.tailOrNull)
+          //// It's ok when stackHi's head segment is empty, bcoz its dormant (stored in continuation).
+          //// But stackLo's head segment must be non empty.
+          if stackLo.nonEmptySegment then
+            (stackHi, storeHi, stepMid, stackLo, storeLo)
+          else
+            //// Squash empty segment, but don't lose it's `aside`
+            (stackHi, storeHi, stepMid.append(stackLo.aside), stackLo.tail, storeLo.tail)
       else
         loop(
           todoStack = todoStack.tail,
           todoStore = todoStore.tail,
-          accumStack = todoStack ::? (accumStack, accumStep),
-          accumStore = todoStore ::? accumStore,
-          accumStep = todoStack.aside,
+          accumStack = todoStack.copyWithTail(accumStack),
+          accumStore = todoStore.copyWithTail(accumStore),
           depth = depth - 1,
         )
-    loop(stack, store, null, null, null, location.segmentDepth)
+    loop(stack, store, null, null, location.segmentDepth)
 
 
-  private def splitSegment(oldStack: Stack, oldStore: Store, divHeight: Int): (Stack, Store, Stack, Store) =
+  private def splitSegment(oldStack: Stack, oldStore: Store, divHeight: Int, truncate: Boolean): (Stack, Store, Stack, Store) =
     var promptCountHi = 0
     var promptCountLo = 0
     var sigCountHi = 0
@@ -68,7 +84,7 @@ private[engine] object OpSplit:
         val oldPile = oldStack.piles(i)
         val prompt = oldPile.prompt
         val oldLocal = if prompt.isStateless then Local.void else oldStore.geti(oldLocalIndex)
-        val (splitHi, splitLo) = oldPile.split(divHeight, oldLocal)
+        val (splitHi, splitLo) = oldPile.split(divHeight, oldLocal, truncate)
         if splitHi != null then
           splitsHi(promptCountHi) = splitHi
           promptCountHi += 1
@@ -136,38 +152,76 @@ private[engine] object OpSplit:
 
 
   def merge(
+    stepHi: Step,
     stackHi: Stack,
     storeHi: Store,
-    stepMid: Step,
+    stepLo: Step,
     //@#@OPTY fuse with `store.setIfNotVoid``
-    // localMid: Local,
-    // locationMid: Location.Shallow,
+    // local: Local,
+    // location: Location.Shallow,
     stackLo: Stack,
     storeLo: Store,
-  ): (Stack, Store) =
-    @tailrec def loop(
-      todoStack: Stack,
-      todoStore: Store,
-      accumStep: Step,
-      accumStack: Stack,
-      accumStore: Store,
-    ): (Stack, Store) =
-      val newStack = todoStack ::? (accumStack, accumStep)
-      val newStore = todoStore ::? accumStore
-      if todoStack.isTailless then
-        (newStack, newStore)
+  ): (Step, Stack, Store) =
+    if stackHi.nonEmptySegment then
+      val (stack, store) = reverse(
+        todoStack = stackHi,
+        todoStore = storeHi,
+        accumStack = stackLo,
+        accumStore = storeLo,
+        aside = stepLo,
+      )
+      (stepHi, stack, store)
+    else
+      if stackHi.isTailless then
+        //// Continuation's head segment is empty and has no tail
+        val step2 = stepHi.append(stepLo)
+        (step2, stackLo, storeLo)
       else
-        loop(
-          todoStack = todoStack.tail,
-          todoStore = todoStore.tail,
-          accumStep = todoStack.aside.nn,
-          accumStack = newStack,
-          accumStore = newStore,
+        //// Continuation's head segment is empty, but it does have tail
+        val (stack, store) = reverse(
+          todoStack = stackHi.tail,
+          todoStore = storeHi.tail,
+          accumStack = stackLo,
+          accumStore = storeLo,
+          aside = stepLo,
         )
-    loop(
-      todoStack = stackHi,
-      todoStore = storeHi,
-      accumStep = stepMid,
-      accumStack = stackLo,
-      accumStore = storeLo,
-    )
+        (stepHi, stack, store)
+
+
+  private def reverse(
+    todoStack: Stack,
+    todoStore: Store,
+    accumStack: Stack,
+    accumStore: Store,
+    aside: Step, //// Replaces null of continuation's head segment's `aside`
+  ): (Stack, Store) =
+    val newStack = todoStack.copyWithTail2(accumStack, aside)
+    val newStore = todoStore.copyWithTail(accumStore)
+    if todoStack.isTailless then
+      (newStack, newStore)
+    else
+      reverseLoop(
+        todoStack = todoStack.tail,
+        todoStore = todoStore.tail,
+        accumStack = newStack,
+        accumStore = newStore,
+      )
+
+
+  @tailrec private def reverseLoop(
+    todoStack: Stack,
+    todoStore: Store,
+    accumStack: Stack,
+    accumStore: Store,
+  ): (Stack, Store) =
+    val newStack = todoStack.copyWithTail(accumStack)
+    val newStore = todoStore.copyWithTail(accumStore)
+    if todoStack.isTailless then
+      (newStack, newStore)
+    else
+      reverseLoop(
+        todoStack = todoStack.tail,
+        todoStore = todoStore.tail,
+        accumStack = newStack,
+        accumStore = newStore,
+      )

@@ -64,7 +64,7 @@ sealed trait Interpreter extends Signature:
   val Local = new turbolift.interpreter.Local[Local, ThisEffect](prompt)
 
   /** An instance of [[Control]] dedicated for this interpreter. */
-  val Control = new turbolift.interpreter.Control[Local, Unknown, To, Elim, Intro, Ambient](prompt)
+  val Control = new turbolift.interpreter.Control[Local, Unknown, From, To, Elim, Intro, Ambient](prompt)
 
   def onInitial: Local !! Intro
   def onReturn(aa: From[Unknown], s: Local): To[Unknown] !! ThisEffect

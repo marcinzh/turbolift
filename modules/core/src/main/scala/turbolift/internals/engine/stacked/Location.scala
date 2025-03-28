@@ -24,3 +24,5 @@ private[engine] object Location:
 
       def toStr: String =
         s"loc{pi=$promptIndex si=$storeIndex d=${segmentDepth}"
+
+    def invalid: Deep = apply(Entry.invalid)

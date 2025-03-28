@@ -26,10 +26,9 @@ extension [Fx <: ChoiceEffect](fx: Fx)
           val it = as.iterator
           def loop(): Option[Unknown] !! ThisEffect =
             if it.hasNext then
-              k(it.next()).flatMap {
+              k(it.next()).flatMap:
                 case None => loop()
                 case x => !!.pure(x)
-              }
             else
               !!.none
           loop()

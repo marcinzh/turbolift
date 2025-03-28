@@ -10,4 +10,5 @@ private[engine] final class ContImpl(
   //@#@TODO Redesign. Only the shallow part of `location` is used, and only
   //@#@TODO.. for overwriting Store during `resumePut`
   val location: Location.Deep,
-) extends Continuation[Any, Any, Any, Any]
+) extends Continuation[Any, Any, Any, Any]:
+  assert(stack.asideOrNull == null)

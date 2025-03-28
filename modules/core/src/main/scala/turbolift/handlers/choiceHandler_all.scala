@@ -19,9 +19,9 @@ extension [Fx <: ChoiceEffect](fx: Fx)
       override def empty: Nothing !! ThisEffect = Control.abort(Vector())
 
       override def choose[A](as: Iterable[A]): A !! ThisEffect =
-        Control.capture(k => as.iterator.flatMapEff(k(_)))
+        Control.capture(k => as.iterator.flatMapEff(k))
 
       override def choosePar[A](as: Iterable[A]): A !! ThisEffect =
-        Control.capture(k => as.iterator.flatMapParEff(k(_)))
+        Control.capture(k => as.iterator.flatMapParEff(k))
 
     .toHandler

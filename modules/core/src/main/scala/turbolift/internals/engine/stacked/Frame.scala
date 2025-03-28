@@ -35,6 +35,15 @@ private final class Frame private (
     )
 
 
+  def dropNext: Frame =
+    new Frame(
+      nextVar = null,
+      packedVar = packed.clearDelta,
+      step = Step.Pop,
+      local = Local.nul,
+    )
+
+
   def split(initialHeight: Int, divHeight: Int): Split =
     assert(divHeight <= initialHeight)
     assert(divHeight > computeBottomHeight(initialHeight))

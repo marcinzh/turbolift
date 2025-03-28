@@ -42,3 +42,4 @@ private[engine] final class Entry(
 
 private object Entry:
   val initial: Entry = Entry(Prompt.IO, promptIndex = 0, storeIndex = 0, segmentDepth = 0)
+  val invalid: Entry = Entry(null.asInstanceOf[Prompt], promptIndex = -1, storeIndex = -1, segmentDepth = -1)

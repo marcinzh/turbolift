@@ -9,6 +9,8 @@ import Local.Syntax._
 private trait Store_opaque:
   private final inline val RESERVED = 1
 
+  final val empty: Store = Store.wrap(Array(null))
+
   final def initial(env: Env): Store = Store.wrap(Array(env, null))
 
   final def blank(localCount: Int): Store =
@@ -36,15 +38,15 @@ private trait Store_opaque:
         seti(storeIndex, s)
       else
         // YOLO, NPE if not found
-        thiz ::? tail.deepPut(storeIndex, segmentDepth - 1, s)
+        thiz.copyWithTail(tail.deepPut(storeIndex, segmentDepth - 1, s))
 
 
     final def deepClone(segmentDepth: Int): Store =
       if segmentDepth == 0 then
-        thiz ::? tail
+        thiz.copyWithTail(tail)
       else
         // YOLO, NPE if not found
-        thiz ::? tail.deepClone(segmentDepth - 1)
+        thiz.copyWithTail(tail.deepClone(segmentDepth - 1))
 
 
     @tailrec final def deepPutInPlace[A, S](storeIndex: Int, segmentDepth: Int, s: Local): Unit =
@@ -133,7 +135,7 @@ private trait Store_opaque:
       Store.wrap(arr)
 
 
-    final inline def ::?(that: Store | Null): Store =
+    final inline def copyWithTail(that: Store | Null): Store =
       val arr = thiz.unwrap.clone()
       arr(thiz.tailIndex) = that
       Store.wrap(arr)

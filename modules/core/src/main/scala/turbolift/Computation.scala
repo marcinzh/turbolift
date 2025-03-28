@@ -336,6 +336,7 @@ object Computation:
 
   extension [A, U](thiz: Computation[A, U])
     def downCast[U2 >: U] = thiz.asInstanceOf[Computation[A, U2]]
+    def castEv[U2](using ev: U2 =:= U) = thiz.asInstanceOf[Computation[A, U2]]
   
     /** Simplifies effectful creation of handlers.
      * 

@@ -23,6 +23,8 @@ private[engine] final class Stack private (
   def aside: Step = asideVar.nn
   def asideOrNull: Step | Null = asideVar
   def canPop: Boolean = hasTail || frameCount > 1
+  def isEmptySegment: Boolean = piles.isEmpty
+  def nonEmptySegment: Boolean = piles.nonEmpty
   def promptCount: Int = piles.size
   def promptIter: Iterator[Prompt] = piles.iterator.map(_.prompt)
 
@@ -269,19 +271,26 @@ private[engine] final class Stack private (
   //-------------------------------------------------------------------
 
 
-  def setTailInPlace(tail: Stack | Null, aside: Step | Null): Unit =
+  def setTailInPlace(tail: Stack | Null): Unit =
+    this.tailVar = tail
+
+
+  def setTailInPlace2(tail: Stack | Null, aside: Step | Null): Unit =
     this.tailVar = tail
     this.asideVar = aside
 
 
-  private def copyWithTail(tail: Stack | Null, aside: Step | Null): Stack =
+  def copyWithTail(tail: Stack | Null): Stack =
+    val that = clone().asInstanceOf[Stack]
+    that.tailVar = tail
+    that
+
+  def copyWithTail2(tail: Stack | Null, aside: Step | Null): Stack =
     val that = clone().asInstanceOf[Stack]
     that.tailVar = tail
     that.asideVar = aside
     that
 
-
-  def ::?(that: (Stack | Null, Step | Null)): Stack = copyWithTail(tail = that._1, aside = that._2)
 
   override def toString: String = toStr
   def toStr: String = s"Stack(${toStrAux})"
@@ -314,6 +323,16 @@ private[engine] object Stack:
     stack.forkVar = stack
     stack
 
+
+  val empty: Stack =
+    new Stack(
+      lookup = Lookup.empty,
+      piles = Array.empty[Pile],
+      frameCount = 0,
+      headFeatures = Features.Empty,
+      tailVar = null,
+      asideVar = null,
+    )
 
 
   def newSegment(

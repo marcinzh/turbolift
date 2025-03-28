@@ -11,6 +11,17 @@ private[engine] sealed abstract class Step(val tag: Tag):
   final inline def pushFlat(fun: ? => ? !! ?): Step = new Step.MoreFlat(fun.asInstanceOf[Any => AnyComp], this)
   final inline def pushPure(fun: ? => ?): Step = new Step.MorePure(fun.asInstanceOf[Any => Any], this)
 
+  final def append(that: Step): Step =
+    that match
+      case x: Step.Unwind if x.isPop => this
+      case _ => appendLoop(that)
+
+  private final def appendLoop(that: Step): Step =
+    this match
+      case thiz: Step.MoreFlat => new Step.MoreFlat(thiz.fun, thiz.next.appendLoop(that))
+      case thiz: Step.MorePure => new Step.MorePure(thiz.fun, thiz.next.appendLoop(that))
+      case thiz: Step.Unwind => if thiz.isPop then that else this
+
 
 //@#@ public bcoz inline problem
 /*private[engine]*/ object Step:

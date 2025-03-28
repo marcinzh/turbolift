@@ -56,7 +56,7 @@ trait ProducerEffect[A] extends Effect[ProducerSignature[A]] with ProducerSignat
 
       override def yeld(value: A): Unit !! ThisEffect =
         Control.capture: k =>
-          Step.Yield(value, Control.strip(k(()))).pure_!!
+          Step.Yield(value, Control.strip(k())).pure_!!
 
     .toHandler
 

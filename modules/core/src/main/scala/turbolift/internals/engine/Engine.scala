@@ -7,7 +7,7 @@ import turbolift.io.{Fiber, Zipper, Warp, Snap, Outcome, Cause, Exceptions}
 import turbolift.io.{OnceVar, EffectfulVar, CountDownLatch, CyclicBarrier, ReentrantLock, Semaphore, Channel}
 import turbolift.interpreter.{Interpreter, Continuation, Prompt}
 import turbolift.internals.executor.Executor
-import turbolift.internals.engine.stacked.{Stack, Store, Entry, Local, FrameKind, OpPush, OpSplit, OpCascaded}
+import turbolift.internals.engine.stacked.{Stack, Store, Entry, Local, Location, FrameKind, OpPush, OpSplit, OpCascaded}
 import turbolift.internals.engine.concurrent.{Bits, Blocker, Waitee, FiberImpl, WarpImpl}
 import turbolift.internals.engine.concurrent.util.{OnceVarImpl, EffectfulVarImpl, CountDownLatchImpl, CyclicBarrierImpl, ReentrantLockImpl, SemaphoreImpl, ChannelImpl}
 import Tag.{Retire => ThreadDisowned}
@@ -523,14 +523,15 @@ private sealed abstract class Engine0 extends Runnable:
     val store = savedStore
     //-------------------
     val cont = cont0.asImpl
-    val (stack2, store2) = OpSplit.merge(
+    val (step2, stack2, store2) = OpSplit.merge(
+      stepHi  = cont.step,
       stackHi = cont.stack,
       storeHi = cont.store,
-      stepMid = step,
+      stepLo  = step,
       stackLo = stack,
       storeLo = store,
     )
-    loopStepRefreshEnv(value, cont.step, stack2, store2)
+    loopStepRefreshEnv(value, step2, stack2, store2)
 
 
   final def intrinsicResumePut[A, B, S, U](cont0: Continuation[A, B, S, U], value: A, local: S): Tag =
@@ -539,43 +540,45 @@ private sealed abstract class Engine0 extends Runnable:
     val store = savedStore
     //-------------------
     val cont = cont0.asImpl
-    val (stack2, store2) = OpSplit.merge(
+    val (step2, stack2, store2) = OpSplit.merge(
+      stepHi  = cont.step,
       stackHi = cont.stack,
       storeHi = cont.store.deepPutIfNotVoid(cont.location, local.asLocal),
-      stepMid = step,
+      stepLo  = step,
       stackLo = stack,
       storeLo = store,
     )
-    loopStepRefreshEnv(value, cont.step, stack2, store2)
+    loopStepRefreshEnv(value, step2, stack2, store2)
 
 
-  final def intrinsicCapture[A, B, S, U](prompt: Prompt, fun: Continuation[A, B, S, U] => B !! U): Tag =
+  final def intrinsicCapture[A, B, C, S, U, V](prompt: Prompt, fun: Continuation[A, B, S, U] => C !! V, truncate: Boolean): Tag =
     val step = savedStep
     val stack = savedStack
     val store = savedStore
     //-------------------
     val location = stack.locatePrompt(prompt)
-    val (stackHi, storeHi, stepMid, stackLo, storeLo) = OpSplit.split(stack, store, location)
-    //@#@THOV only the shallow paty of location2 is used
-    val location2 = stackHi.locatePrompt(prompt)
+    val (stackHi, storeHi, stepMid, stackLo, storeLo) = OpSplit.split(stack, store, location, truncate)
+    //@#@THOV only the shallow part of location2 is used, and only in `resumePut`
+    //// `invalid` is safe bcoz `resumePut` can't be called on truncated continuation
+    val location2 = if truncate then Location.Deep.invalid else stackHi.locatePrompt(prompt)
     val cont = new ContImpl(stackHi, storeHi, step, location2)
     val comp2 = fun(cont.cast[A, B, S, U])
     loopCompRefreshEnv(comp2, stepMid, stackLo, storeLo)
 
 
-  final def intrinsicCaptureGet[A, B, S, U](prompt: Prompt, fun: (Continuation[A, B, S, U], S) => B !! U): Tag =
+  final def intrinsicCaptureGet[A, B, C, S, U, V](prompt: Prompt, fun: (Continuation[A, B, S, U], S) => C !! V, truncate: Boolean): Tag =
     val step = savedStep
     val stack = savedStack
     val store = savedStore
     //-------------------
     val location = stack.locatePrompt(prompt)
-    val (stackHi, storeHi, stepMid, stackLo, storeLo) = OpSplit.split(stack, store, location)
-    //@#@THOV only the shallow paty of location2 is used
-    val location2 = stackHi.locatePrompt(prompt)
+    val local = store.deepGet(location)
+    val (stackHi, storeHi, stepMid, stackLo, storeLo) = OpSplit.split(stack, store, location, truncate)
+    //@#@THOV only the shallow part of location2 is used, and only in `resumePut`
+    //// `invalid` is safe bcoz `resumePut` can't be called on truncated continuation
+    val location2 = if truncate then Location.Deep.invalid else stackHi.locatePrompt(prompt)
     val cont = new ContImpl(stackHi, storeHi, step, location2)
-    val comp2 =
-      val local = storeHi.deepGet(location2)
-      fun(cont.cast[A, B, S, U], local.asInstanceOf[S])
+    val comp2 = fun(cont.cast[A, B, S, U], local.asInstanceOf[S])
     loopCompRefreshEnv(comp2, stepMid, stackLo, storeLo)
 
 
