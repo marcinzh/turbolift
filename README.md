@@ -11,6 +11,7 @@ See also:
 | [DaaE](https://github.com/marcinzh/daae) | Demo: a debugger implemented as an effect |
 | [Spot](https://github.com/marcinzh/spot) | Cats-Effect instances for Turbolift's `IO` effect |
 | [Enterprise](https://github.com/marcinzh/enterprise) | HTTP server implemented using Turbolift's effects |
+| [Beam](https://github.com/marcinzh/beam) | Streams implemented with Turbolift's effects |
 | [Effect Zoo](https://github.com/marcinzh/effect-zoo) | Microbenchmark suite for several effect systems, including Turbolift |
 
 ## Example
