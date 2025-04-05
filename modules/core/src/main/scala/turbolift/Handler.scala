@@ -33,16 +33,19 @@ import turbolift.typeclass.ExtendTuple
  */
 
 sealed trait Handler[From[+_], To[+_], Elim, Intro]:
-  private [turbolift] def doHandle[A, U](comp: From[A] !! (U & Elim)): To[A] !! (U & Intro)
+  /** The function that this handler represents. */
+  def doHandle[A, U](comp: From[A] !! (U & Elim)): To[A] !! (U & Intro)
+
+  /** [[doHandle]] as a value */
+  final def toFunction: [A, U] => (From[A] !! (U & Elim)) => (To[A] !! (U & Intro)) =
+    [A, U] => (comp: From[A] !! (U & Elim)) => doHandle(comp)
 
   /** Applies this handler to given computation.
     *
     * Equivalent of [[Computation]]'s `handleWith(this)`
     */
-  final def handle[V] = new HandleSyntax[V]
-  final class HandleSyntax[V]:
-    def apply[A, W](comp: From[A] !! W)(implicit ev: CanPartiallyHandle[V, W, Elim]): To[A] !! (V & Intro) =
-      doHandle[A, V](ev(comp))
+  final def handle[A, U](comp: A !! (U & Elim))(using ev: A =:= From[A]): To[A] !! (U & Intro) =
+    doHandle[A, U](comp.cast[From[A], U & Elim])
 
   /** Transforms this handler, by applying a post-processing function to its result`.
     *

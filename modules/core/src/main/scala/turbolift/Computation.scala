@@ -338,27 +338,15 @@ object Computation:
     def downCast[U2 >: U] = thiz.asInstanceOf[Computation[A, U2]]
     def castEv[U2](using ev: U2 =:= U) = thiz.asInstanceOf[Computation[A, U2]]
   
-    /** Simplifies effectful creation of handlers.
+    /** Creates a handler effectfully.
      * 
      *  Passes computed value to handler constructor.
-     *  Effect used to compute the value, are absorbed by the handler, into its own dependencies.
+     *  Effect used to compute the value are absorbed by the handler, into its own dependencies.
      */ 
-    def flatHandleId[F[+_], L, N](f: A => Handler[[X] =>> X, F, L, N]): Handler[[X] =>> X, F, L, U & N] = Handler.flatHandle(thiz.map(f))
+    def flatMapHandler[F[+_], G[+_], L, N](f: A => Handler[F, G, L, N]): Handler[F, G, L, U & N] = Handler.flatHandle(thiz.map(f))
 
-    /** Simplifies effectful creation of handlers.
-     * 
-     *  Passes computed value to handler constructor.
-     *  Effect used to compute the value, are absorbed by the handler, into its own dependencies.
-     */ 
-    def flatHandleConst[F[+_], L, N](f: A => Handler[[X] =>> A, F, L, N]): Handler[[X] =>> A, F, L, U & N] = Handler.flatHandle(thiz.map(f))
-
-    /** Alias of [[flatHandleId]] */
-    @annotation.targetName("opFlatHandleId")
-    def >>=![F[+_], L, N](f: A => Handler[[X] =>> X, F, L, N]): Handler[[X] =>> X, F, L, U & N] = thiz.flatHandleId(f)
-
-    /** Alias of [[flatHandleConst]] */
-    @annotation.targetName("opFlatHandleConst")
-    def >>=![F[+_], L, N](f: A => Handler[[X] =>> A, F, L, N]): Handler[[X] =>> A, F, L, U & N] = thiz.flatHandleConst(f)
+    /** Alias of [[flatMapHandler]] */
+    def >>=![F[+_], G[+_], L, N](f: A => Handler[F, G, L, N]): Handler[F, G, L, U & N] = Handler.flatHandle(thiz.map(f))
 
     /** Applies a handler to this computation.
      *
@@ -370,7 +358,7 @@ object Computation:
   extension [F[+_], G[+_], L, N](thiz: Computation[Handler[F, G, L, N], N])
     /** Simplifies effectful creation of handlers.
      * 
-     *  Same as [[turbolift.Handler.flatHandle Handler.flatHandle(this)]].
+     *  Same as `computation.flatMapHandler(handler => handler)`.
      */
     def flattenHandler: Handler[F, G, L, N] = Handler.flatHandle(thiz)
 
@@ -394,22 +382,9 @@ object Computation:
 
   //---------- Syntax ----------
 
-
   final class HandleWithSyntax[A, U, V](thiz: A !! U):
-    def id[F[+_], L, N, V2 <: V & N](h: Handler[[X] =>> X, F, L, N])(implicit ev: CanPartiallyHandle[V, U, L]): F[A] !! V2 =
-      h.doHandle[A, V](ev(thiz))
-
-    def const[F[+_], L, N, V2 <: V & N](h: Handler[[X] =>> A, F, L, N])(implicit ev: CanPartiallyHandle[V, U, L]): F[A] !! V2 =
-      h.doHandle[A, V](ev(thiz))
-
-    @annotation.targetName("applyId")
-    def apply[F[+_], L, N, V2 <: V & N](h: Handler[[X] =>> X, F, L, N])(implicit ev: CanPartiallyHandle[V, U, L]): F[A] !! V2 =
-      id(h)
-
-    @annotation.targetName("applyConst")
-    def apply[F[+_], L, N, V2 <: V & N](h: Handler[[X] =>> A, F, L, N])(implicit ev: CanPartiallyHandle[V, U, L]): F[A] !! V2 =
-      const(h)
-
+    def apply[F[+_], G[+_], L, N](h: Handler[F, G, L, N])(using ev1: A =:= F[A], ev2: (L & V) <:< U): G[A] !! (N & V) =
+      h.doHandle(thiz.cast[F[A], L & V])
 
   final class NamedSyntax[A, U](val comp: Computation[A, U], val name: String):
     def fork: Fiber[A, U] !! (U & IO & Warp) = Fiber.named(name).fork(comp)

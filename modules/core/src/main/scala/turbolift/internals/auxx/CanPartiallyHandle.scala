@@ -2,6 +2,7 @@ package turbolift.internals.auxx
 import scala.annotation.implicitNotFound
 import turbolift.!!
 
+//@#@ not used anymore
 
 @implicitNotFound(msg =
   "Effect leak in partial handler (implicit not found: CanPartiallyHandle)"+
