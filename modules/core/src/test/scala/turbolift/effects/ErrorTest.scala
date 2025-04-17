@@ -3,6 +3,7 @@ import org.specs2.mutable._
 import org.specs2.specification.core.Fragment
 import org.specs2.execute.Result
 import turbolift.{!!, Handler}
+import turbolift.Extensions._
 import turbolift.effects.{Error, State}
 import turbolift.typeclass.Accum
 import turbolift.mode.ST
@@ -13,7 +14,7 @@ class ErrorTest extends Specification with CanLaunchTheMissiles:
     def apply[T](a: => T, b: => T): T = if round then a else b
     def name = apply("first", "all")
     def header = s"With handler = ${name}"
-    def handler[T, Fx <: Error[T]](fx: Fx)(using Accum[T, T]): fx.ThisHandler[fx.Identity, Either[T, _], Any] =
+    def handler[T, Fx <: Error[T]](fx: Fx)(using Accum[T, T]): fx.ThisHandler[Identity, Either[T, _], Any] =
       apply(fx.handlers.first, fx.handlers.all)
 
   private val Pickers = List(true, false).map(new Picker(_))

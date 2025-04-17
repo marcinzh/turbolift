@@ -1,5 +1,6 @@
 package turbolift
 import scala.util.{Try, Success, Failure}
+import turbolift.Extensions.{Identity, Const}
 import turbolift.internals.auxx.{CanPartiallyHandle, CanPipe}
 import turbolift.interpreter.Interpreter
 import turbolift.typeclass.ExtendTuple

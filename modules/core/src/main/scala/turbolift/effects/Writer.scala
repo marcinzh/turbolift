@@ -1,5 +1,6 @@
 package turbolift.effects
 import turbolift.{!!, Effect, Signature}
+import turbolift.Extensions._
 import turbolift.typeclass.AccumZero
 import turbolift.handlers.{writerHandler_local, writerHandler_shared}
 

@@ -40,7 +40,6 @@ trait Effect[Z <: Signature] extends CanPerform[Z]:
   /** Object containing type definitions, to be used for implementing [[turbolift.interpreter.Interpreter Interpreters]] for this effect. */
   val impl: EffectImpl[this.type] = new EffectImpl(Array(this))
   export impl.ThisHandler
-  export turbolift.{Identity, Const}
 
 
   /** Combines with another [[Effect]] instance, for the purpose of sharing an [[interpreter.Interpreter Interpreter]]. */

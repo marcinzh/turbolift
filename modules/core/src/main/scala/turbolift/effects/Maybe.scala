@@ -1,6 +1,7 @@
 package turbolift.effects
 import scala.util.{Try, Success, Failure}
 import turbolift.{!!, Effect, Signature}
+import turbolift.Extensions._
 import turbolift.handlers.maybeHandler
 
 

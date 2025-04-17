@@ -1,6 +1,7 @@
 package turbolift.effects
 import org.specs2.mutable._
 import turbolift.{!!, Signature, Effect, Handler}
+import turbolift.Extensions._
 import turbolift.effects._
 
 

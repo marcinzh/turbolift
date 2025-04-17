@@ -15,8 +15,5 @@ object Extensions
   with FoldExtensions
   with MapFilterExtensions
   with TraverseExtensions:
-    export turbolift.{Identity, Const}
-
-
-type Identity[X] = X
-type Const[C] = [_] =>> C
+    type Identity[X] = X
+    type Const[C] = [_] =>> C

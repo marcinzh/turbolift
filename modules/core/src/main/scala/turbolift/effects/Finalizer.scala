@@ -1,10 +1,10 @@
 package turbolift.effects
 import java.io.{Closeable => JCloseable}
 import turbolift.{!!, Effect, Signature, Handler}
+import turbolift.Extensions._
 import turbolift.effects.IO
 import turbolift.handlers.finalizerHandler_IO
 import turbolift.io.ResourceFactory
-import turbolift.Extensions._
 
 
 trait FinalizerSignature[U] extends Signature:

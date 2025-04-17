@@ -1,5 +1,6 @@
 package turbolift.effects
 import turbolift.{!!, Signature, Effect}
+import turbolift.Extensions._
 
 
 trait ContSignature[R] extends Signature:

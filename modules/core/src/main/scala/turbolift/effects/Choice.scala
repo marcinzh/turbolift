@@ -1,6 +1,7 @@
 package turbolift.effects
 import scala.util.Try
 import turbolift.{!!, Effect, Signature}
+import turbolift.Extensions._
 import turbolift.handlers.{choiceHandler_first, choiceHandler_all}
 import turbolift.handlers.{choiceHandler_allBreadthFirst, choiceHandler_firstBreadthFirst}
 

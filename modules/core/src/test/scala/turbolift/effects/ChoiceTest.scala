@@ -3,6 +3,7 @@ import org.specs2.mutable._
 import org.specs2.specification.core.Fragment
 import org.specs2.execute.Result
 import turbolift.!!
+import turbolift.Extensions._
 import turbolift.effects.{Choice, Error}
 import turbolift.mode.ST
 
@@ -12,7 +13,7 @@ class ChoiceTest extends Specification:
     def apply[T](a: => T, b: => T): T = if round then a else b
     def name = apply("first", "all")
     def header = s"With handler = ${name}"
-    def handler[Fx <: Choice](fx: Fx): fx.ThisHandler[fx.Identity, Vector, Any] =
+    def handler[Fx <: Choice](fx: Fx): fx.ThisHandler[Identity, Vector, Any] =
       apply(
         fx.handlers.first.mapK([X] => (xs: Option[X]) => xs.toVector),
         fx.handlers.all,
