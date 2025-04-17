@@ -79,7 +79,7 @@ sealed trait Interpreter extends Signature:
    *  Many effect handlers never capture the continuation, and this is the default expectation.
    *
    *  The `capture` will work regardless of value of this hint.
-   *  However, if not overriden to [[true]], the first `capture` will be more costly.
+   *  However, if not overriden to `true`, the first `capture` will be more costly.
    */
   def captureHint: Boolean = false
 
