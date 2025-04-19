@@ -21,6 +21,20 @@ private[turbolift] final class SemaphoreImpl(private var permits: Long) extends 
     }
 
 
+  override def unsafeTryAcquire(count: Long): Boolean =
+    atomically {
+      if firstWaiter == null then
+        val n = permits - count
+        if n >= 0 then
+          permits = n
+          true
+        else
+          false
+      else
+        false
+    }
+
+
   @tailrec override def unsafeRelease(count: Long): Unit =
     var savedWaiter: FiberImpl | Null = null
 

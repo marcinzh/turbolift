@@ -8,9 +8,14 @@ import ReentrantLock.Status
 sealed trait ReentrantLock:
   final def acquire: Unit !! IO = CC.intrinsic(_.intrinsicAcquireReentrantLock(this))
 
+  final def tryAcquire: Boolean !! IO = Fiber.current.map(unsafeTryAcquire)
+
   final def release: Unit !! IO = !!.impure(unsafeRelease())
 
   final def use[A, U <: IO](body: A !! U): A !! U = IO.bracket(acquire)(_ => release)(_ => body)
+
+  final def tryUse[A, U <: IO](body: A !! U): Option[A] !! U =
+    IO.bracket(tryAcquire)(ok => !!.when(ok)(release))(ok => if ok then body.map(Some(_)) else !!.none)
 
   final def status: Status !! IO = !!.impure(unsafeStatus())
 
@@ -36,6 +41,7 @@ sealed trait ReentrantLock:
         case _ => 0
 
 
+  def unsafeTryAcquire(owner: Fiber.Untyped): Boolean
   def unsafeRelease(): Unit
   def unsafeStatus(): Status
 
