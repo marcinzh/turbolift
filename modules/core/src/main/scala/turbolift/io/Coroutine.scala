@@ -1,7 +1,7 @@
 package turbolift.io
 import turbolift.!!
 import turbolift.effects.{CoroutineEffect, IO}
-import turbolift.io.BlockingVar
+import turbolift.io.AtomicVar
 import turbolift.Extensions._
 import CoroutineEffect.Step
 import CoroutineImpl.Status
@@ -23,7 +23,7 @@ object Coroutine:
   def create[I, O, R, U](body: (fx: CoroutineEffect[I, O, R]) => I => R !! (U & fx.type)): Coroutine[I, O, R, U] !! IO =
     case object Fx extends CoroutineEffect[I, O, R]
     for
-      avar <- BlockingVar.create[Status[I, R, U & Fx.type]](Right(body(Fx)))
+      avar <- AtomicVar.createLockful[Status[I, R, U & Fx.type]](Right(body(Fx)))
       coro = new CoroutineImpl[I, O, R, U](Fx)(avar)
     yield coro
 
@@ -32,7 +32,7 @@ object Coroutine:
     create[Unit, O, R, U](fx => _ => body(fx))
 
 
-private final class CoroutineImpl[I, O, R, U](Fx: CoroutineEffect[I, O, R])(avar: BlockingVar[Status[I, R, U & Fx.type]]) extends Coroutine[I, O, R, U]:
+private final class CoroutineImpl[I, O, R, U](Fx: CoroutineEffect[I, O, R])(avar: AtomicVar[Status[I, R, U & Fx.type]]) extends Coroutine[I, O, R, U]:
   private type Fx = Fx.type
   private val handler = Fx.handler[U]
 

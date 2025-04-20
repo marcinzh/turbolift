@@ -1,7 +1,7 @@
 val ScalaLTS = "3.3.5"
 val ScalaNext = "3.6.4"
 ThisBuild / organization := "io.github.marcinzh"
-ThisBuild / version := "0.109.0-SNAPSHOT"
+ThisBuild / version := "0.110.0"
 ThisBuild / scalaVersion := ScalaLTS
 ThisBuild / crossScalaVersions := Seq(ScalaLTS, ScalaNext)
 ThisBuild / scalacOptions ++= Seq(
@@ -43,10 +43,31 @@ lazy val core = project
   .settings(Compile / scalacOptions += "-Yexplicit-nulls")
   .settings(Test / parallelExecution := false)
   .settings(Test / logBuffered := false)
+  .settings(publish / skip := false)
+  .settings(moduleName := (scalaVersion.value match {
+    case ScalaLTS => "turbolift-core"
+    case ScalaNext => "turbolift-core-next"
+  }))
   .settings(libraryDependencies ++= Seq(
     Deps.specs2_core,
     Deps.specs2_extra,
   ))
+
+lazy val bindless = project
+  .in(file("modules/bindless"))
+  .settings(name := "turbolift-bindless")
+  .settings(publish / skip := false)
+  .settings(moduleName := (scalaVersion.value match {
+    case ScalaLTS => "turbolift-bindless"
+    case ScalaNext => "turbolift-bindless-next"
+  }))
+  .settings(libraryDependencies += (scalaVersion.value match {
+    case ScalaLTS => Deps.cps
+    case ScalaNext => Deps.cps_next
+  }))
+  .settings(libraryDependencies += Deps.specs2_core)
+  .settings(licenses += ("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")))
+  .dependsOn(core)
 
 lazy val extra_effects = project
   .in(file("modules/extra_effects"))
@@ -68,23 +89,6 @@ lazy val devel = project
   .settings(publish / skip := true)
   .settings(libraryDependencies += Deps.jol)
   .dependsOn(core, extra_effects)
-
-lazy val bindless = project
-  .in(file("modules/bindless"))
-  .settings(name := "turbolift-bindless")
-  .settings(publish / skip := false)
-  .settings(libraryDependencies += (scalaVersion.value match {
-    case ScalaLTS => Deps.cps
-    case ScalaNext => Deps.cps_next
-  }))
-  .settings(moduleName := (scalaVersion.value match {
-    case ScalaLTS => "turbolift-bindless"
-    case ScalaNext => "turbolift-bindless-next"
-  }))
-  .settings(libraryDependencies += Deps.specs2_core)
-  .settings(licenses += ("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")))
-  .dependsOn(core)
-
 
 lazy val site = (project in file("docs"))
   .settings(publish / skip := true)

@@ -1,6 +1,7 @@
 package turbolift.internals.engine.concurrent.util
-import turbolift.io.ReentrantLock
+import turbolift.io.{ReentrantLock, Fiber}
 import turbolift.internals.engine.concurrent.{Bits, Waitee, FiberImpl}
+import turbolift.internals.engine.{asImpl}
 
 
 private[turbolift] final class ReentrantLockImpl extends Waitee with ReentrantLock.Unsealed:
@@ -24,21 +25,39 @@ private[turbolift] final class ReentrantLockImpl extends Waitee with ReentrantLo
     }
 
 
+  override def unsafeTryAcquire(owner: Fiber.Untyped): Boolean =
+    val waiter = owner.asImpl
+
+    atomically {
+      if reentryCount == 0 then
+        lockedBy = waiter
+        reentryCount = 1
+        true
+      else
+        if lockedBy == waiter then
+          reentryCount += 1
+          true
+        else
+          false
+    }
+
+
   override def unsafeRelease(): Unit =
     var savedWaiter: FiberImpl | Null = null
 
     atomically {
-      reentryCount -= 1
-      if reentryCount == 0 then
-        val x = firstWaiter
-        if x == null then
-          lockedBy = null
-        else
-          reentryCount = 1
-          lockedBy = x
-          savedWaiter = x
-          removeFirstWaiter()
-          x.standbyWaiterPure(())
+      if reentryCount > 0 then
+        reentryCount -= 1
+        if reentryCount == 0 then
+          val x = firstWaiter
+          if x == null then
+            lockedBy = null
+          else
+            reentryCount = 1
+            lockedBy = x
+            savedWaiter = x
+            removeFirstWaiter()
+            x.standbyWaiterPure(())
     }
 
     if savedWaiter != null then
