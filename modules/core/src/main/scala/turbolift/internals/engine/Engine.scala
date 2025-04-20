@@ -4,7 +4,7 @@ import scala.annotation.{tailrec, switch}
 import turbolift.{!!, Computation, Signature, ComputationCases => CC}
 import turbolift.effects.IO
 import turbolift.io.{Fiber, Zipper, Warp, Snap, Outcome, Cause, Exceptions}
-import turbolift.io.{OnceVar, EffectfulVar, CountDownLatch, CyclicBarrier, ReentrantLock, Semaphore, Channel}
+import turbolift.io.{OnceVar, EffectfulVar, CountDownLatch, CyclicBarrier, ReentrantLock, Mutex, Semaphore, Channel}
 import turbolift.interpreter.{Interpreter, Continuation, Prompt}
 import turbolift.internals.executor.Executor
 import turbolift.internals.engine.stacked.{Stack, Store, Entry, Local, Location, FrameKind, OpPush, OpSplit, OpCascaded}
@@ -976,6 +976,22 @@ private sealed abstract class Engine0 extends Runnable:
     //-------------------
     currentFiber.suspendStep((), step, stack, store)
     lock.asImpl.tryGetAcquiredBy(currentFiber, currentEnv.isCancellable) match
+      case Bits.WaiterSubscribed => ThreadDisowned
+      case Bits.WaiterAlreadyCancelled =>
+        currentFiber.clearSuspension()
+        loopCancel(stack, store)
+      case Bits.WaiteeAlreadyCompleted =>
+        currentFiber.clearSuspension()
+        loopStep((), step, stack, store)
+
+
+  final def intrinsicAcquireMutex(mutex: Mutex): Tag =
+    val step = savedStep
+    val stack = savedStack
+    val store = savedStore
+    //-------------------
+    currentFiber.suspendStep((), step, stack, store)
+    mutex.asImpl.tryGetAcquiredBy(currentFiber, currentEnv.isCancellable) match
       case Bits.WaiterSubscribed => ThreadDisowned
       case Bits.WaiterAlreadyCancelled =>
         currentFiber.clearSuspension()
