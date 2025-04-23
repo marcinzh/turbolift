@@ -12,10 +12,12 @@ ThisBuild / scalacOptions ++= Seq(
   "-release", "11",
 )
 ThisBuild / javacOptions ++= Seq("--release", "11")
-ThisBuild / scalacOptions += (scalaVersion.value match {
-  case ScalaLTS => "-Ykind-projector:underscores"
-  case ScalaNext => "-Xkind-projector:underscores"
-})
+ThisBuild / scalacOptions += {
+  if (VersionNumber(scalaVersion.value).matchesSemVer(SemanticSelector(">=3.4.0")))
+    "-Xkind-projector:underscores"
+  else
+    "-Ykind-projector:underscores"
+}
 ThisBuild / publish / skip := (scalaVersion.value != ScalaLTS)
 
 val Deps = {
