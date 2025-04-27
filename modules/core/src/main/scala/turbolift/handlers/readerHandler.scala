@@ -15,10 +15,14 @@ extension [R](fx: ReaderEffect[R])
 
       override val ask: R !! ThisEffect = Local.get
 
+      override def asksEff[A, U <: ThisEffect](f: R => A !! U): A !! U = Local.getsEff(f)
+
       override def asks[A](f: R => A): A !! ThisEffect = Local.gets(f)
 
       override def localPut[A, U <: ThisEffect](r1: R)(body: A !! U): A !! U = Control.delimitPut(body, r1)
 
       override def localModify[A, U <: ThisEffect](f: R => R)(body: A !! U): A !! U = Control.delimitModify(body, f)
+
+      override def localModifyEff[A, U <: ThisEffect](f: R => R !! U)(body: A !! U): A !! U = Local.getsEff(f).flatMap(Control.delimitPut(body, _))
 
     .toHandler

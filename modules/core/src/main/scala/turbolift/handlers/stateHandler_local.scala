@@ -41,4 +41,26 @@ extension [S](fx: StateEffect[S])
 
       override def getUpdateGet[A](f: S => (A, S)): (A, S, S) !! ThisEffect = Local.getUpdateGet(f)
 
+      override def getsEff[A, U <: ThisEffect](f: S => A !! U): A !! U = Local.getsEff(f)
+
+      override def putEff[U <: ThisEffect](s: S !! U): Unit !! U = Local.putEff(s)
+
+      override def swapEff[U <: ThisEffect](s: S !! U): S !! U = Local.swapEff(s)
+
+      override def modifyEff[U <: ThisEffect](f: S => S !! U): Unit !! U = Local.modifyEff(f)
+
+      override def modifyGetEff[U <: ThisEffect](f: S => S !! U): S !! U = Local.modifyGetEff(f)
+
+      override def getModifyEff[U <: ThisEffect](f: S => S !! U): S !! U = Local.getModifyEff(f)
+
+      override def getModifyGetEff[U <: ThisEffect](f: S => S !! U): (S, S) !! U = Local.getModifyGetEff(f)
+
+      override def updateEff[A, U <: ThisEffect](f: S => (A, S) !! U): A !! U = Local.updateEff(f)
+
+      override def updateGetEff[A, U <: ThisEffect](f: S => (A, S) !! U): (A, S) !! U = Local.updateGetEff(f)
+
+      override def getUpdateEff[A, U <: ThisEffect](f: S => (A, S) !! U): (A, S) !! U = Local.getUpdateEff(f)
+
+      override def getUpdateGetEff[A, U <: ThisEffect](f: S => (A, S) !! U): (A, S, S) !! U = Local.getUpdateGetEff(f)
+
     .toHandler

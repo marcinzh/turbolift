@@ -63,7 +63,7 @@ private sealed abstract class Engine0 extends Runnable:
       try
         middleLoop(tag)
       catch e =>
-        // e.printStackTrace()
+        e.printStackTrace()
         val e2 = if e.isInstanceOf[Exceptions.Panic] then e else new Exceptions.Unhandled(e)
         val c = Cause(e2)
         endOfLoop(Bits.Completion_Failure, c)
@@ -85,7 +85,7 @@ private sealed abstract class Engine0 extends Runnable:
         case (
           Tag.FlatMap | Tag.PureMap | Tag.MoreFlat | Tag.MorePure |
           Tag.Perform | Tag.Pure | Tag.Impure |
-          Tag.LocalGet | Tag.LocalPut | Tag.LocalUpdate | Tag.Sync
+          Tag.LocalGet | Tag.LocalGetsEff | Tag.LocalPut | Tag.LocalModify | Tag.LocalUpdate | Tag.Sync
         ) =>
           val payload = savedPayload
           val step    = savedStep
@@ -177,14 +177,27 @@ private sealed abstract class Engine0 extends Runnable:
                   val comp3 = instr1(local)
                   innerLoopComp(comp3, step, store)
 
+                case Tag.LocalGetsEff =>
+                  val instr3 = comp2.asInstanceOf[CC.LocalGetsEff[Any, Any, Local]]
+                  val local = store.deepGet(entry.storeIndex, entry.segmentDepth)
+                  val comp3 = instr1(local)
+                  val step2 = step.pushFlat(instr1)
+                  innerLoopComp(comp3, step2, store)
+
                 case Tag.LocalPut =>
                   val instr3 = comp2.asInstanceOf[CC.LocalPut[Local]]
                   val store2 = store.deepPut(entry.storeIndex, entry.segmentDepth, instr3.local)
                   val comp3 = instr1(())
                   innerLoopComp(comp3, step, store2)
 
+                case Tag.LocalModify =>
+                  val instr3 = comp2.asInstanceOf[CC.LocalModify[Local]]
+                  val store2 = store.deepModify(entry.storeIndex, entry.segmentDepth, instr3)
+                  val comp3 = instr1(())
+                  innerLoopComp(comp3, step, store2)
+
                 case Tag.LocalUpdate =>
-                  val instr3 = comp2.asInstanceOf[CC.LocalUpdate[Any, Local]]
+                  val instr3 = comp2.asInstanceOf[CC.LocalUpdate[Any, Any, Local]]
                   val store2 = store.deepClone(entry.segmentDepth)
                   val value = store2.deepUpdateInPlace(entry.storeIndex, entry.segmentDepth, instr3)
                   val comp3 = instr1(value)
@@ -228,14 +241,27 @@ private sealed abstract class Engine0 extends Runnable:
                   val value2 = instr1(local)
                   innerLoopStep(value2, step, store)
 
+                case Tag.LocalGetsEff =>
+                  val instr3 = comp2.asInstanceOf[CC.LocalGetsEff[Any, Any, Local]]
+                  val local = store.deepGet(entry.storeIndex, entry.segmentDepth)
+                  val comp3 = instr3(local)
+                  val step2 = step.pushPure(instr1)
+                  innerLoopComp(comp3, step2, store)
+
                 case Tag.LocalPut =>
                   val instr3 = comp2.asInstanceOf[CC.LocalPut[Local]]
                   val store2 = store.deepPut(entry.storeIndex, entry.segmentDepth, instr3.local)
                   val value2 = instr1(())
                   innerLoopStep(value2, step, store2)
 
+                case Tag.LocalModify =>
+                  val instr3 = comp2.asInstanceOf[CC.LocalModify[Local]]
+                  val store2 = store.deepModify(entry.storeIndex, entry.segmentDepth, instr3)
+                  val value2 = instr1(())
+                  innerLoopStep(value2, step, store2)
+
                 case Tag.LocalUpdate =>
-                  val instr3 = comp2.asInstanceOf[CC.LocalUpdate[Any, Local]]
+                  val instr3 = comp2.asInstanceOf[CC.LocalUpdate[Any, Any, Local]]
                   val store2 = store.deepClone(entry.segmentDepth)
                   val value = store2.deepUpdateInPlace(entry.storeIndex, entry.segmentDepth, instr3)
                   val value2 = instr1(value)
@@ -266,13 +292,24 @@ private sealed abstract class Engine0 extends Runnable:
               val local = store.deepGet(entry.storeIndex, entry.segmentDepth)
               innerLoopStep(local, step, store)
 
+            case Tag.LocalGetsEff =>
+              val instr2 = comp2.asInstanceOf[CC.LocalGetsEff[Any, Any, Local]]
+              val local = store.deepGet(entry.storeIndex, entry.segmentDepth)
+              val comp3 = instr2(local)
+              innerLoopComp(comp3, step, store)
+
             case Tag.LocalPut =>
               val instr2 = comp2.asInstanceOf[CC.LocalPut[Local]]
               val store2 = store.deepPut(entry.storeIndex, entry.segmentDepth, instr2.local)
               innerLoopStep((), step, store2)
 
+            case Tag.LocalModify =>
+              val instr2 = comp2.asInstanceOf[CC.LocalModify[Local]]
+              val store2 = store.deepModify(entry.storeIndex, entry.segmentDepth, instr2)
+              innerLoopStep((), step, store2)
+
             case Tag.LocalUpdate =>
-              val instr2 = comp2.asInstanceOf[CC.LocalUpdate[Any, Local]]
+              val instr2 = comp2.asInstanceOf[CC.LocalUpdate[Any, Any, Local]]
               val store2 = store.deepClone(entry.segmentDepth)
               val value = store2.deepUpdateInPlace(entry.storeIndex, entry.segmentDepth, instr2)
               innerLoopStep(value, step, store2)
@@ -295,14 +332,27 @@ private sealed abstract class Engine0 extends Runnable:
           val local = store.deepGet(entry.storeIndex, entry.segmentDepth)
           innerLoopStep(local, step, store)
 
+        case Tag.LocalGetsEff =>
+          val instr = payload.asInstanceOf[CC.LocalGetsEff[Any, Any, Local]]
+          val entry = findEntryByPrompt(instr.prompt, stack, hasShadow)
+          val local = store.deepGet(entry.storeIndex, entry.segmentDepth)
+          val comp2 = instr(local)
+          innerLoopComp(comp2, step, store)
+
         case Tag.LocalPut =>
           val instr = payload.asInstanceOf[CC.LocalPut[Local]]
           val entry = findEntryByPrompt(instr.prompt, stack, hasShadow)
           val store2 = store.deepPut(entry.storeIndex, entry.segmentDepth, instr.local)
           innerLoopStep((), step, store2)
 
+        case Tag.LocalModify =>
+          val instr = payload.asInstanceOf[CC.LocalModify[Local]]
+          val entry = findEntryByPrompt(instr.prompt, stack, hasShadow)
+          val store2 = store.deepModify(entry.storeIndex, entry.segmentDepth, instr)
+          innerLoopStep((), step, store2)
+
         case Tag.LocalUpdate =>
-          val instr = payload.asInstanceOf[CC.LocalUpdate[Any, Local]]
+          val instr = payload.asInstanceOf[CC.LocalUpdate[Any, Any, Local]]
           val entry = findEntryByPrompt(instr.prompt, stack, hasShadow)
           val store2 = store.deepClone(entry.segmentDepth)
           val value = store2.deepUpdateInPlace(entry.storeIndex, entry.segmentDepth, instr)

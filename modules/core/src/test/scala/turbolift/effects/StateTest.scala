@@ -21,30 +21,48 @@ class StateTest extends Specification:
   private val Pickers = List(true, false).map(new Picker(_)) 
 
   "Basic ops" >> {
+    case object S extends State[Int]
+    def f(n: Int) = n * 10
+    def g(n: Int) = (n.toString, n * 10)
+    def ff(n: Int) = !!.pure(f(n))
+    def gg(n: Int) = !!.pure(g(n))
+
     Fragment.foreach(Pickers) { picker =>
-      case object S extends State[Int]
       val h = picker.handler(S)
+      def program[A](op: A !! S.type): (A, Int) = op.handleWith(h(1)).runIO.get
       picker.header >> {
-        "get" >>{
-          S.get
-          .handleWith(h(1))
-          .unsafeRun.get === (1, 1)
+        "pure" >> {
+          "get" >>{ program(S.get) === (1, 1) }
+          "gets" >>{ program(S.gets(f)) === (10, 1) }
+          "put" >>{ program(S.put(2)) === ((), 2) }
+          "swap" >>{ program(S.swap(2)) === (1, 2) }
+          "modify" >>{ program(S.modify(f)) === ((), 10) }
+          "modifyGet" >>{ program(S.modifyGet(f)) === (10, 10) }
+          "getModify" >>{ program(S.getModify(f)) === (1, 10) }
+          "getModifyGet" >>{ program(S.getModifyGet(f)) === ((1, 10), 10) }
+          "update" >>{ program(S.update(g)) === ("1", 10) }
+          "updateGet" >>{ program(S.updateGet(g)) === (("1", 10), 10) }
+          "getUpdate" >>{ program(S.getUpdate(g)) === (("1", 1), 10) }
+          "getUpdateGet" >>{ program(S.getUpdateGet(g)) === (("1", 1, 10), 10) }
         }
 
-        "put" >>{
-          S.put(2)
-          .handleWith(h(1))
-          .unsafeRun.get === ((), 2)
-        }
-
-        "modify" >>{
-          S.modify(_ + 10)
-          .handleWith(h(1))
-          .unsafeRun.get === ((), 11)
+        "effectful" >> {
+          "getsEff" >>{ program(S.getsEff(ff)) === (10, 1) }
+          "putEff" >>{ program(S.putEff(!!.pure(2))) === ((), 2) }
+          "swapEff" >>{ program(S.swapEff(!!.pure(2))) === (1, 2) }
+          "modifyEff" >>{ program(S.modifyEff(ff)) === ((), 10) }
+          "modifyGetEff" >>{ program(S.modifyGetEff(ff)) === (10, 10) }
+          "getModifyEff" >>{ program(S.getModifyEff(ff)) === (1, 10) }
+          "getModifyGetEff" >>{ program(S.getModifyGetEff(ff)) === ((1, 10), 10) }
+          "updateEff" >>{ program(S.updateEff(gg)) === ("1", 10) }
+          "updateGetEff" >>{ program(S.updateGetEff(gg)) === (("1", 10), 10) }
+          "getUpdateEff" >>{ program(S.getUpdateEff(gg)) === (("1", 1), 10) }
+          "getUpdateGetEff" >>{ program(S.getUpdateGetEff(gg)) === (("1", 1, 10), 10) }
         }
       }
     }
   }
+
 
   "Combined ops" >> {
     Fragment.foreach(Pickers) { picker =>

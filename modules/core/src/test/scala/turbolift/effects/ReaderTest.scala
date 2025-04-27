@@ -21,6 +21,13 @@ class ReaderTest extends Specification:
       .run === 1
     }
 
+    "asksEff" >>{
+      case object R extends Reader[(Int, Int)]
+      R.asksEff(x => !!.pure(x._1))
+      .handleWith(R.handler((1, 2)))
+      .run === 1
+    }
+
     "localPut" >>{
       case object R extends Reader[Int]
       R.localPut(2) { R.ask }
@@ -31,6 +38,13 @@ class ReaderTest extends Specification:
     "localModify" >>{
       case object R extends Reader[Int]
       R.localModify(_ + 2) { R.ask }
+      .handleWith(R.handler(1))
+      .run === 3
+    }
+
+    "localModifyEff" >>{
+      case object R extends Reader[Int]
+      R.localModifyEff(x => !!.pure(x + 2)) { R.ask }
       .handleWith(R.handler(1))
       .run === 3
     }

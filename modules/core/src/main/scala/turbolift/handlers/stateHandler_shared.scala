@@ -7,7 +7,7 @@ import turbolift.Extensions._
 
 extension [S](fx: StateEffect[S])
   def stateHandler_shared(initial: S): fx.ThisHandler[Identity, (_, S), IO] =
-    AtomicVar(initial) >>=! { avar =>
+    AtomicVar(initial).flatMapHandler: avar =>
       new fx.impl.Proxy[IO] with StateSignature[S]:
         override def get: S !! ThisEffect = avar.get
 
@@ -33,6 +33,27 @@ extension [S](fx: StateEffect[S])
 
         override def getUpdateGet[A](f: S => (A, S)): (A, S, S) !! ThisEffect = avar.getUpdateGet(f)
 
+        override def getsEff[A, U <: ThisEffect](f: S => A !! U): A !! U = avar.getsEff(f)
+
+        override def putEff[U <: ThisEffect](s: S !! U): Unit !! U = avar.putEff(s)
+
+        override def swapEff[U <: ThisEffect](s: S !! U): S !! U = avar.swapEff(s)
+
+        override def modifyEff[U <: ThisEffect](f: S => S !! U): Unit !! U = avar.modifyEff(f)
+
+        override def modifyGetEff[U <: ThisEffect](f: S => S !! U): S !! U = avar.modifyGetEff(f)
+
+        override def getModifyEff[U <: ThisEffect](f: S => S !! U): S !! U = avar.getModifyEff(f)
+
+        override def getModifyGetEff[U <: ThisEffect](f: S => S !! U): (S, S) !! U = avar.getModifyGetEff(f)
+
+        override def updateEff[A, U <: ThisEffect](f: S => (A, S) !! U): A !! U = avar.updateEff(f)
+
+        override def updateGetEff[A, U <: ThisEffect](f: S => (A, S) !! U): (A, S) !! U = avar.updateGetEff(f)
+
+        override def getUpdateEff[A, U <: ThisEffect](f: S => (A, S) !! U): (A, S) !! U = avar.getUpdateEff(f)
+
+        override def getUpdateGetEff[A, U <: ThisEffect](f: S => (A, S) !! U): (A, S, S) !! U = avar.getUpdateGetEff(f)
+
       .toHandler
       .mapEffK([A] => (a: A) => avar.get.map((a, _)))
-    }

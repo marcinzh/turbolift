@@ -1,6 +1,7 @@
 package turbolift.internals.engine.stacked
 import scala.annotation.tailrec
 import turbolift.internals.engine.Env
+import turbolift.ComputationCases.LocalUpdate
 import Local.Syntax._
 
 
@@ -41,6 +42,16 @@ private trait Store_opaque:
         thiz.copyWithTail(tail.deepPut(storeIndex, segmentDepth - 1, s))
 
 
+    final def deepModify(storeIndex: Int, segmentDepth: Int, f: Local => Local): Store =
+      if segmentDepth == 0 then
+        val s = geti(storeIndex)
+        val s2 = f(s)
+        seti(storeIndex, s2)
+      else
+        // YOLO, NPE if not found
+        thiz.copyWithTail(tail.deepModify(storeIndex, segmentDepth - 1, f))
+
+
     final def deepClone(segmentDepth: Int): Store =
       if segmentDepth == 0 then
         thiz.copyWithTail(tail)
@@ -49,6 +60,7 @@ private trait Store_opaque:
         thiz.copyWithTail(tail.deepClone(segmentDepth - 1))
 
 
+    //// used in OpCascaded, but not in Engine.innerLoop
     @tailrec final def deepPutInPlace[A, S](storeIndex: Int, segmentDepth: Int, s: Local): Unit =
       if segmentDepth == 0 then
         setInPlace(storeIndex, s)
@@ -57,12 +69,25 @@ private trait Store_opaque:
         tail.deepPutInPlace(storeIndex, segmentDepth - 1, s)
 
 
-    @tailrec final def deepUpdateInPlace[A, S](storeIndex: Int, segmentDepth: Int, f: S => (A, S)): A =
+    //// unused
+    @tailrec final def deepModifyInPlace[S](storeIndex: Int, segmentDepth: Int, f: S => S): Unit =
       if segmentDepth == 0 then
         val s1 = geti(storeIndex)
-        val a_s2 = f(s1.asInstanceOf[S])
-        setInPlace(storeIndex, a_s2._2.asLocal)
-        a_s2._1
+        val s2 = f(s1.asInstanceOf[S])
+        setInPlace(storeIndex, s2.asLocal)
+      else
+        //// YOLO, NPE if not found
+        tail.deepModifyInPlace(storeIndex, segmentDepth - 1, f)
+
+
+    @tailrec final def deepUpdateInPlace[A, B, S](storeIndex: Int, segmentDepth: Int, f: LocalUpdate[A, B, S]): B =
+      if segmentDepth == 0 then
+        val s1 = geti(storeIndex).asInstanceOf[S]
+        val a = f(s1)
+        val b = f.project1(a, s1)
+        val s2 = f.project2(a)
+        setInPlace(storeIndex, s2.asLocal)
+        b
       else
         //// YOLO, NPE if not found
         tail.deepUpdateInPlace(storeIndex, segmentDepth - 1, f)

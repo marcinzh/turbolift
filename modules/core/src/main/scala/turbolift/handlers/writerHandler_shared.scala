@@ -9,7 +9,7 @@ import turbolift.Extensions._
 
 extension [W, W1](fx: WriterEffect[W, W1])
   def writerHandler_shared(implicit W: AccumZero[W, W1]): fx.ThisHandler[Identity, (_, W), IO] =
-    AtomicVar(W.zero) >>=! { avar =>
+    AtomicVar(W.zero).flatMapHandler: avar =>
       new fx.impl.Proxy[IO] with WriterSignature[W, W1]:
         override def tell(w: W1): Unit !! ThisEffect = avar.modify(_ |+ w)
 
@@ -41,4 +41,3 @@ extension [W, W1](fx: WriterEffect[W, W1])
 
       .toHandler
       .mapEffK([A] => (a: A) => avar.get.map((a, _)))
-    }

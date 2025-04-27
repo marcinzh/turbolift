@@ -15,24 +15,26 @@ object Tag:
   inline val Pure           = 5
   inline val Impure         = 6
   inline val LocalGet       = 7
-  inline val LocalPut       = 8
-  inline val LocalUpdate    = 9
-  inline val Sync           = 10
+  inline val LocalGetsEff   = 8
+  inline val LocalPut       = 9
+  inline val LocalModify    = 10
+  inline val LocalUpdate    = 11
+  inline val Sync           = 12
 
   //// Handled at middleLoop:
-  inline val Intrinsic      = 11
-  inline val Unwind         = 12
+  inline val Intrinsic      = 13
+  inline val Unwind         = 14
 
   //// Handled at outerLoop: (`Become` MUST be first in this group)
-  inline val Become         = 13
-  inline val Yield          = 14
-  inline val Retire         = 15
+  inline val Become         = 15
+  inline val Yield          = 16
+  inline val Retire         = 17
 
   //// Handled at outerLoop once, after fiber switch:
-  inline val NotifyOnceVar       = 16
-  inline val NotifyEffectfulVar  = 17
-  inline val NotifyZipper        = 18
-  inline val NotifyUnit          = 19
+  inline val NotifyOnceVar       = 18
+  inline val NotifyEffectfulVar  = 19
+  inline val NotifyZipper        = 20
+  inline val NotifyUnit          = 21
 
 
   def toStr(tag: Tag) =

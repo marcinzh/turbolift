@@ -29,6 +29,9 @@ class AtomicVarTest extends Specification:
           .runIO.get
 
         "pure" >> {
+          "get" >>{ program(_.get) === (1, 1) }
+          "gets" >>{ program(_.gets(f)) === (10, 1) }
+          "put" >>{ program(_.put(2)) === ((), 2) }
           "swap" >>{ program(_.swap(2)) === (1, 2) }
           "modify" >>{ program(_.modify(f)) === ((), 10) }
           "modifyGet" >>{ program(_.modifyGet(f)) === (10, 10) }
@@ -41,6 +44,8 @@ class AtomicVarTest extends Specification:
         }
 
         "effectful" >> {
+          "getsEff" >>{ program(_.getsEff(ff)) === (10, 1) }
+          "putEff" >>{ program(_.putEff(!!.pure(2))) === ((), 2) }
           "swapEff" >>{ program(_.swapEff(!!.pure(2))) === (1, 2) }
           "modifyEff" >>{ program(_.modifyEff(ff)) === ((), 10) }
           "modifyGetEff" >>{ program(_.modifyGetEff(ff)) === (10, 10) }

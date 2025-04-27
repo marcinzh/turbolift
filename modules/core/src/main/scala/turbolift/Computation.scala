@@ -410,7 +410,11 @@ object ComputationCases:
   sealed abstract class Sync[A, B](val isAttempt: Boolean) extends Computation[B, IO](Tag.Sync) with Function0[A]
   sealed abstract class Intrinsic[A, U] extends Computation[A, U](Tag.Intrinsic) with Function[Engine, Tag]
   sealed abstract class Perform[A, U, Z <: Signature](val sig: Signature) extends Computation[A, U](Tag.Perform) with Function1[Z, A !! U]
-  sealed abstract class LocalUpdate[A, S](val prompt: Prompt) extends Computation[A, Any](Tag.LocalUpdate) with Function1[S, (A, S)]
+  sealed abstract class LocalGetsEff[A, U, S](val prompt: Prompt) extends Computation[A, U](Tag.LocalGetsEff) with Function1[S, A !! U]
+  sealed abstract class LocalModify[S](val prompt: Prompt) extends Computation[Unit, Any](Tag.LocalModify) with Function1[S, S]
+  sealed abstract class LocalUpdate[A, B, S](val prompt: Prompt) extends Computation[B, Any](Tag.LocalUpdate) with Function1[S, A]:
+    def project1(a: A, s: S): B
+    def project2(a: A): S
 
   @nowarn("msg=anonymous class definition")
   private[turbolift] inline def sync[A, B](isAttempt: Boolean, inline thunk: => A): B !! IO =
@@ -428,6 +432,18 @@ object ComputationCases:
       override def apply(z: Z): A !! U = f(z)
 
   @nowarn("msg=anonymous class definition")
-  private[turbolift] inline def localUpdate[A, S](prompt: Prompt, inline f: S => (A, S)): A !! Any =
-    new LocalUpdate[A, S](prompt):
-      override def apply(s: S): (A, S) = f(s)
+  private[turbolift] inline def localGetsEff[A, U, S](prompt: Prompt, inline f: S => A !! U): A !! U =
+    new LocalGetsEff[A, U, S](prompt):
+      override def apply(s: S): A !! U = f(s)
+
+  @nowarn("msg=anonymous class definition")
+  private[turbolift] inline def localModify[S](prompt: Prompt, inline f: S => S): Unit !! Any =
+    new LocalModify[S](prompt):
+      override def apply(s: S): S = f(s)
+
+  @nowarn("msg=anonymous class definition")
+  private[turbolift] inline def localUpdate[A, B, S](prompt: Prompt, inline f: S => A, inline g: (A, S) => B, inline h: A => S): B !! Any =
+    new LocalUpdate[A, B, S](prompt):
+      override def apply(s: S): A = f(s)
+      override def project1(a: A, s: S): B = g(a, s)
+      override def project2(a: A): S = h(a)

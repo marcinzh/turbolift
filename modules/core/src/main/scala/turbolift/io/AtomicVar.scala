@@ -63,6 +63,7 @@ object AtomicVar:
 
   sealed trait Put[S]:
     final def put(s: S): Unit !! IO = !!.impure(unsafePut(s))
+    final def putEff[U <: IO](comp: S !! U): Unit !! U = comp.map(unsafePut)
     def unsafePut(s: S): Unit
 
 
