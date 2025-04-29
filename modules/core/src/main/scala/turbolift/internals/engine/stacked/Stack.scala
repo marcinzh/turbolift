@@ -306,9 +306,22 @@ private[engine] final class Stack private (
     if isTailless then
       a
     else
-      val b = aside.toString
+      val b = asideOrNull
       val c = tail.toStrAux
       s"$a |$b| $c"
+
+
+  def integrityCheck(): Unit =
+    val arr = new Array[Int](frameCount)
+    for pile <- piles do
+      def loop(frame: Frame, currHeight: Int): Unit =
+        arr(currHeight) += 1
+        if frame.hasNext then
+          loop(frame.next.nn, currHeight - frame.delta)
+        else
+          assert(currHeight == pile.minHeight)
+      loop(pile.topFrame, pile.maxHeight)
+    assert(arr.forall(_ == 1))
 
 
 private[engine] object Stack:

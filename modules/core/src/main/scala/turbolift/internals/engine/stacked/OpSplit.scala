@@ -102,7 +102,7 @@ private[engine] object OpSplit:
       end while
     }
 
-    val frameCountHi = oldStack.frameCount - divHeight
+    val frameCountHi = oldStack.frameCount - divHeight - (if truncate then 1 else 0)
     val frameCountLo = divHeight
     val newStackHi = Stack.blank(sigCount = sigCountHi, promptCount = promptCountHi, frameCount = frameCountHi, headFeatures = featuresHi)
     val newStackLo = Stack.blank(sigCount = sigCountLo, promptCount = promptCountLo, frameCount = frameCountLo, headFeatures = featuresLo)
@@ -111,6 +111,8 @@ private[engine] object OpSplit:
     val newStoreLo = oldStore.blankClone(localCountLo)
     fill(splitsHi, newStackHi, newStoreHi)
     fill(splitsLo, newStackLo, newStoreLo)
+    newStackHi.integrityCheck()
+    newStackLo.integrityCheck()
     (newStackHi, newStoreHi, newStackLo, newStoreLo)
 
 

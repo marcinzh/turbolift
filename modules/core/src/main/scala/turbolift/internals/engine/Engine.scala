@@ -63,7 +63,7 @@ private sealed abstract class Engine0 extends Runnable:
       try
         middleLoop(tag)
       catch e =>
-        e.printStackTrace()
+        // e.printStackTrace()
         val e2 = if e.isInstanceOf[Exceptions.Panic] then e else new Exceptions.Unhandled(e)
         val c = Cause(e2)
         endOfLoop(Bits.Completion_Failure, c)
@@ -180,7 +180,7 @@ private sealed abstract class Engine0 extends Runnable:
                 case Tag.LocalGetsEff =>
                   val instr3 = comp2.asInstanceOf[CC.LocalGetsEff[Any, Any, Local]]
                   val local = store.deepGet(entry.storeIndex, entry.segmentDepth)
-                  val comp3 = instr1(local)
+                  val comp3 = instr3(local)
                   val step2 = step.pushFlat(instr1)
                   innerLoopComp(comp3, step2, store)
 

@@ -50,10 +50,11 @@ private final class Pile private (
   def split(divHeight: Int, oldLocal: Local, truncate: Boolean): Split2 =
     if divHeight < minHeight then
       //// Fast path: all frames are ABOVE div
+      val n = divHeight + (if truncate then 1 else 0)
       val hi =
         val newPile = copy(
-          minHeight = minHeight - divHeight,
-          maxHeight = maxHeight - divHeight,
+          minHeight = minHeight - n,
+          maxHeight = maxHeight - n,
         )
         Split1(newPile, oldLocal)
       (hi, null)
