@@ -37,11 +37,11 @@ final class Local[S, V] private[interpreter] (private val prompt: Prompt):
   inline def getsEff[A, U <: V](f: S => A !! U): A !! U = CC.localGetsEff(prompt, f)
   inline def putEff[U <: V](ss: S !! U): Unit !! U = ss.flatMap(put)
   inline def swapEff[U <: V](ss: S !! U): S !! U = ss.flatMap(swap)
-  inline def modifyEff[U <: V](inline f: S => S !! U): Unit !! U = get.flatMap(f).flatMap(put)
-  inline def modifyGetEff[U <: V](inline f: S => S !! U): S !! U = get.flatMap(f).flatMap(s2 => put(s2).as(s2))
-  inline def getModifyEff[U <: V](inline f: S => S !! U): S !! U = get.flatMap(s => f(s).flatMap(s2 => put(s2).as(s)))
-  inline def getModifyGetEff[U <: V](inline f: S => S !! U): (S, S) !! U = get.flatMap(s => f(s).flatMap(s2 => put(s2).as((s, s2))))
-  inline def updateEff[A, U <: V](inline f: S => (A, S) !! U): A !! U = get.flatMap(f).flatMap { case (a, s2) => put(s2).as(a) }
-  inline def updateGetEff[A, U <: V](inline f: S => (A, S) !! U): (A, S) !! U = get.flatMap(f).flatMap { case a_s2@(_, s2) => put(s2).as(a_s2) }
-  inline def getUpdateEff[A, U <: V](inline f: S => (A, S) !! U): (A, S) !! U = get.flatMap(s => f(s).flatMap { case (a, s2) => put(s2).as((a, s)) })
-  inline def getUpdateGetEff[A, U <: V](inline f: S => (A, S) !! U): (A, S, S) !! U = get.flatMap(s => f(s).flatMap { case (a, s2) => put(s2).as((a, s, s2)) })
+  inline def modifyEff[U <: V](inline f: S => S !! U): Unit !! U = getsEff(f).flatMap(put)
+  inline def modifyGetEff[U <: V](inline f: S => S !! U): S !! U = getsEff(f).flatMap(s => put(s).as(s))
+  inline def getModifyEff[U <: V](inline f: S => S !! U): S !! U = getsEff(s => f(s).flatMap(put).as(s))
+  inline def getModifyGetEff[U <: V](inline f: S => S !! U): (S, S) !! U = getsEff(s => f(s).flatMap(s2 => put(s2).as((s, s2))))
+  inline def updateEff[A, U <: V](inline f: S => (A, S) !! U): A !! U = getsEff(f).flatMap { case (a, s2) => put(s2).as(a) }
+  inline def updateGetEff[A, U <: V](inline f: S => (A, S) !! U): (A, S) !! U = getsEff(f).flatMap { case a_s2@(_, s2) => put(s2).as(a_s2) }
+  inline def getUpdateEff[A, U <: V](inline f: S => (A, S) !! U): (A, S) !! U = getsEff(s => f(s).flatMap { case (a, s2) => put(s2).as((a, s)) })
+  inline def getUpdateGetEff[A, U <: V](inline f: S => (A, S) !! U): (A, S, S) !! U = getsEff(s => f(s).flatMap { case (a, s2) => put(s2).as((a, s, s2)) })
