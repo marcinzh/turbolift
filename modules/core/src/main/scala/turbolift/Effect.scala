@@ -1,5 +1,6 @@
 package turbolift
-import turbolift.internals.effect.{EffectImpl, CanPerform}
+import scala.annotation.experimental
+import turbolift.internals.effect.{EffectImpl, CanPerform, Boilerplate}
 /**
  * Base trait for any user-defined effect.
  *
@@ -47,6 +48,9 @@ trait Effect[Z <: Signature] extends CanPerform[Z]:
 
 
 object Effect:
+  @experimental inline def boilerplate[Z <: Signature]: Effect[Z] & Z = ${ Boilerplate.macroImpl[Z] }
+
+
   final class Combine2[Fx1 <: Signature, Fx2 <: Signature](val fx1: Fx1, val fx2: Fx2):
     val impl: EffectImpl[fx1.type & fx2.type] = new EffectImpl(Array(fx1, fx2))
     export impl.ThisHandler
