@@ -93,10 +93,13 @@ case object IO extends IO:
       cancellableSnap(body)
       .flatMap(release)
 
-  def bracket[A, B, U <: IO](acquire: A !! U)(release: A => Unit !! U)(use: A => B !! U): B !! U =
-    bracketSnap[A, B, U](acquire)((a, bb) => release(a) &&! unsnap(bb))(use)
+  def bracket[A, B, U <: IO](acquire: A !! U, release: A => Unit !! U)(use: A => B !! U): B !! U =
+    bracketSnap[A, B, U](acquire, (a, bb) => release(a) &&! unsnap(bb))(use)
 
-  def bracketSnap[A, B, U <: IO](acquire: A !! U)(release: (A, Snap[B]) => B !! U)(use: A => B !! U): B !! U =
+  def bracketVoid[A, U <: IO](acquire: Unit !! U, release: Unit !! U)(use: A !! U): A !! U =
+    bracket(acquire, _ => release)(_ => use)
+
+  def bracketSnap[A, B, U <: IO](acquire: A !! U, release: (A, Snap[B]) => B !! U)(use: A => B !! U): B !! U =
     uncancellable:
       acquire.flatMap: a =>
         cancellableSnap(use(a))
