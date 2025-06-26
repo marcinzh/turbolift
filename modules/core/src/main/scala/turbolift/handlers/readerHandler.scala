@@ -19,7 +19,9 @@ extension [R](fx: ReaderEffect[R])
 
       override def asks[A](f: R => A): A !! ThisEffect = Local.gets(f)
 
-      override def localPut[A, U <: ThisEffect](r1: R)(body: A !! U): A !! U = Control.delimitPut(body, r1)
+      override def localPut[A, U <: ThisEffect](r: R)(body: A !! U): A !! U = Control.delimitPut(body, r)
+
+      override def localPutEff[A, U <: ThisEffect](r: R !! U)(body: A !! U): A !! U = r.flatMap(Control.delimitPut(body, _))
 
       override def localModify[A, U <: ThisEffect](f: R => R)(body: A !! U): A !! U = Control.delimitModify(body, f)
 

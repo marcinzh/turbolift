@@ -63,4 +63,12 @@ extension [S](fx: StateEffect[S])
 
       override def getUpdateGetEff[A, U <: ThisEffect](f: S => (A, S) !! U): (A, S, S) !! U = Local.getUpdateGetEff(f)
 
+      override def localPut[A, U <: ThisEffect](s: S)(body: A !! U): A !! U = Control.delimitPut(body, s).map(_._1)
+
+      override def localPutEff[A, U <: ThisEffect](s: S !! U)(body: A !! U): A !! U = s.flatMap(Control.delimitPut(body, _)).map(_._1)
+
+      override def localModify[A, U <: ThisEffect](f: S => S)(body: A !! U): A !! U = Control.delimitModify(body, f).map(_._1)
+
+      override def localModifyEff[A, U <: ThisEffect](f: S => S !! U)(body: A !! U): A !! U = Local.getsEff(f).flatMap(Control.delimitPut(body, _)).map(_._1)
+
     .toHandler

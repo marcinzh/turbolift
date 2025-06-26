@@ -9,16 +9,17 @@ import turbolift.handlers.{errorHandler_first, errorHandler_all}
 trait ErrorSignature[E, E1] extends Signature:
   def raise(e: E1): Nothing !! ThisEffect
   def raises(e: E): Nothing !! ThisEffect
-  def toEither[A, U <: ThisEffect](body: A !! U): Either[E, A] !! U
-  def catchAllEff[A, U <: ThisEffect](body: A !! U)(f: E => A !! U): A !! U
+  def catchToEither[A, U <: ThisEffect](body: A !! U): Either[E, A] !! U
+
+  @deprecated("toEither") final def toEither[A, U <: ThisEffect](body: A !! U): Either[E, A] !! U = catchToEither(body)
 
 
 trait ErrorEffect[E, E1] extends Effect[ErrorSignature[E, E1]] with ErrorSignature[E, E1]:
   final override def raise(e: E1): Nothing !! this.type = perform(_.raise(e))
   final override def raises(e: E): Nothing !! this.type = perform(_.raises(e))
-  final override def toEither[A, U <: this.type](body: A !! U): Either[E, A] !! U = perform(_.toEither(body))
-  final override def catchAllEff[A, U <: this.type](body: A !! U)(f: E => A !! U): A !! U = perform(_.catchAllEff(body)(f))
+  final override def catchToEither[A, U <: this.type](body: A !! U): Either[E, A] !! U = perform(_.catchToEither(body))
 
+  final def catchAllEff[A, U <: this.type](body: A !! U)(f: E => A !! U): A !! U = catchToEither(body).flatMap(_.fold(f, !!.pure))
   final def catchAll[A, U <: this.type](body: A !! U)(f: E => A): A !! U = catchAllEff(body)(f.andThen(!!.pure))
   final def catchSome[A, U <: this.type](body: A !! U)(f: PartialFunction[E, A]): A !! U = catchSomeEff(body)(f.andThen(!!.pure))
   final def catchSomeEff[A, U <: this.type](body: A !! U)(f: PartialFunction[E, A !! U]): A !! U = catchAllEff(body)(f.applyOrElse(_, raises))

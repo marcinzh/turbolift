@@ -30,6 +30,11 @@ trait StateSignature[S] extends Signature:
   def getUpdateEff[A, U <: ThisEffect](f: S => (A, S) !! U): (A, S) !! U
   def getUpdateGetEff[A, U <: ThisEffect](f: S => (A, S) !! U): (A, S, S) !! U
 
+  def localPut[A, U <: ThisEffect](s: S)(body: A !! U): A !! U
+  def localPutEff[A, U <: ThisEffect](s: S !! U)(body: A !! U): A !! U
+  def localModify[A, U <: ThisEffect](f: S => S)(body: A !! U): A !! U
+  def localModifyEff[A, U <: ThisEffect](f: S => S !! U)(body: A !! U): A !! U
+
 
 trait StateEffect[S] extends Effect[StateSignature[S]] with StateSignature[S]:
   final override val get: S !! this.type = perform(_.get)
@@ -45,17 +50,22 @@ trait StateEffect[S] extends Effect[StateSignature[S]] with StateSignature[S]:
   final override def getUpdate[A](f: S => (A, S)): (A, S) !! this.type = perform(_.getUpdate(f))
   final override def getUpdateGet[A](f: S => (A, S)): (A, S, S) !! this.type = perform(_.getUpdateGet(f))
 
-  final override def getsEff[A, U <: ThisEffect](f: S => A !! U): A !! U = perform(_.getsEff(f))
-  final override def putEff[U <: ThisEffect](s: S !! U): Unit !! U = perform(_.putEff(s))
-  final override def swapEff[U <: ThisEffect](s: S !! U): S !! U = perform(_.swapEff(s))
-  final override def modifyEff[U <: ThisEffect](f: S => S !! U): Unit !! U = perform(_.modifyEff(f))
-  final override def modifyGetEff[U <: ThisEffect](f: S => S !! U): S !! U = perform(_.modifyGetEff(f))
-  final override def getModifyEff[U <: ThisEffect](f: S => S !! U): S !! U = perform(_.getModifyEff(f))
-  final override def getModifyGetEff[U <: ThisEffect](f: S => S !! U): (S, S) !! U = perform(_.getModifyGetEff(f))
-  final override def updateEff[A, U <: ThisEffect](f: S => (A, S) !! U): A !! U = perform(_.updateEff(f))
-  final override def updateGetEff[A, U <: ThisEffect](f: S => (A, S) !! U): (A, S) !! U = perform(_.updateGetEff(f))
-  final override def getUpdateEff[A, U <: ThisEffect](f: S => (A, S) !! U): (A, S) !! U = perform(_.getUpdateEff(f))
-  final override def getUpdateGetEff[A, U <: ThisEffect](f: S => (A, S) !! U): (A, S, S) !! U = perform(_.getUpdateGetEff(f))
+  final override def getsEff[A, U <: this.type](f: S => A !! U): A !! U = perform(_.getsEff(f))
+  final override def putEff[U <: this.type](s: S !! U): Unit !! U = perform(_.putEff(s))
+  final override def swapEff[U <: this.type](s: S !! U): S !! U = perform(_.swapEff(s))
+  final override def modifyEff[U <: this.type](f: S => S !! U): Unit !! U = perform(_.modifyEff(f))
+  final override def modifyGetEff[U <: this.type](f: S => S !! U): S !! U = perform(_.modifyGetEff(f))
+  final override def getModifyEff[U <: this.type](f: S => S !! U): S !! U = perform(_.getModifyEff(f))
+  final override def getModifyGetEff[U <: this.type](f: S => S !! U): (S, S) !! U = perform(_.getModifyGetEff(f))
+  final override def updateEff[A, U <: this.type](f: S => (A, S) !! U): A !! U = perform(_.updateEff(f))
+  final override def updateGetEff[A, U <: this.type](f: S => (A, S) !! U): (A, S) !! U = perform(_.updateGetEff(f))
+  final override def getUpdateEff[A, U <: this.type](f: S => (A, S) !! U): (A, S) !! U = perform(_.getUpdateEff(f))
+  final override def getUpdateGetEff[A, U <: this.type](f: S => (A, S) !! U): (A, S, S) !! U = perform(_.getUpdateGetEff(f))
+
+  final override def localPut[A, U <: this.type](s: S)(body: A !! U): A !! U = perform(_.localPut(s)(body))
+  final override def localPutEff[A, U <: this.type](s: S !! U)(body: A !! U): A !! U = perform(_.localPutEff(s)(body))
+  final override def localModify[A, U <: this.type](f: S => S)(body: A !! U): A !! U = perform(_.localModify(f)(body))
+  final override def localModifyEff[A, U <: this.type](f: S => S !! U)(body: A !! U): A !! U = perform(_.localModifyEff(f)(body))
 
   /** Predefined handlers for this effect. */
   object handlers:

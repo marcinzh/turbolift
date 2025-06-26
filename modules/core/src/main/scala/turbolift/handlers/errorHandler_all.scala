@@ -29,11 +29,6 @@ extension [E, E1](fx: ErrorEffect[E, E1])
 
       override def raises(e: E): Nothing !! ThisEffect = Control.abort(Left(e))
 
-      override def toEither[A, U <: ThisEffect](body: A !! U): Either[E, A] !! U = Control.delimit(body)
-
-      override def catchAllEff[A, U <: ThisEffect](body: A !! U)(f: E => A !! U): A !! U =
-        Control.delimit(body).flatMap:
-          case Right(a) => !!.pure(a)
-          case Left(e) => f(e)
+      override def catchToEither[A, U <: ThisEffect](body: A !! U): Either[E, A] !! U = Control.delimit(body)
 
     .toHandler

@@ -55,5 +55,33 @@ extension [S](fx: StateEffect[S])
 
         override def getUpdateGetEff[A, U <: ThisEffect](f: S => (A, S) !! U): (A, S, S) !! U = avar.getUpdateGetEff(f)
 
+        override def localPut[A, U <: ThisEffect](s: S)(body: A !! U): A !! U =
+          for
+            s0 <- avar.swap(s)
+            a <- body
+            _ <- avar.put(s0)
+          yield a
+
+        override def localPutEff[A, U <: ThisEffect](s: S !! U)(body: A !! U): A !! U =
+          for
+            s0 <- avar.swapEff(s)
+            a <- body
+            _ <- avar.put(s0)
+          yield a
+
+        override def localModify[A, U <: ThisEffect](f: S => S)(body: A !! U): A !! U =
+          for
+            s0 <- avar.getModify(f)
+            a <- body
+            _ <- avar.put(s0)
+          yield a
+
+        override def localModifyEff[A, U <: ThisEffect](f: S => S !! U)(body: A !! U): A !! U =
+          for
+            s0 <- avar.getModifyEff(f)
+            a <- body
+            _ <- avar.put(s0)
+          yield a
+
       .toHandler
       .mapEffK([A] => (a: A) => avar.get.map((a, _)))
