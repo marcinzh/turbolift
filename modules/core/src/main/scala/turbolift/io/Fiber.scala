@@ -29,7 +29,7 @@ sealed trait Fiber[+A, -U]:
   final def nowOrNever: Zipper[A, U] !! IO = CC.intrinsic(_.intrinsicAwaitFiber(this, isCancel = true, isVoid = false))
 
   /** Get result of this fiber now, or fail it's still pending. */
-  final def getOrDie: Zipper[A, U] !! IO = poll.flatMap(IO.fromOption(_)(new Exceptions.Pending))
+  final def getOrDie: Zipper[A, U] !! IO = poll.flatMap(IO.raiseFromOption(_)(new Exceptions.Pending))
 
   /** Try to get result of this fiber now. */
   final def poll: Option[Zipper[A, U]] !! IO = !!.impure(unsafePoll())

@@ -56,11 +56,11 @@ class IOTest extends Specification:
     }
 
     "attempt success" >>{
-      IO.blockingAttempt(42).runIO === Outcome.Success(Right(42))
+      IO.attemptBlocking(42).runIO === Outcome.Success(Right(42))
     }
 
     "attempt failure" >>{
-      IO.blockingAttempt(throw E).runIO === Outcome.Success(Left(E))
+      IO.attemptBlocking(throw E).runIO === Outcome.Success(Left(E))
     }
 
     "fork & cancel " >>{
@@ -79,25 +79,49 @@ class IOTest extends Specification:
   "async" >> {
     case object E extends Exception
 
-    "success" >>{
-      @volatile var x: Int = -1
-      (for
-        a <- IO.async: cb =>
-          x = 42
-          cb(Right("omg"))
-        b <- IO(x)
-      yield (a, b))
-      .runIO
-      .===(Outcome.Success(("omg", 42)))
+    "plain" >> {
+      "success" >>{
+        @volatile var x: Int = -1
+        (for
+          a <- IO.async: cb =>
+            x = 42
+            cb(Right("omg"))
+          b <- IO(x)
+        yield (a, b))
+        .runIO
+        .===(Outcome.Success(("omg", 42)))
+      }
+
+      "failure" >>{
+        IO.async: cb =>
+          cb(Left(E))
+        .runIO
+        .===(Outcome.Failure(Cause.Thrown(E)))
+      }
     }
 
-    "failure" >>{
-      IO.async: cb =>
-        cb(Left(E))
-      .runIO
-      .===(Outcome.Failure(Cause.Thrown(E)))
+    "attempt" >> {
+      "success" >>{
+        @volatile var x: Int = -1
+        (for
+          a <- IO.attemptAsync: cb =>
+            x = 42
+            cb(Right("omg"))
+          b <- IO(x)
+        yield (a, b))
+        .runIO
+        .===(Outcome.Success((Right("omg"), 42)))
+      }
+
+      "failure" >>{
+        IO.attemptAsync: cb =>
+          cb(Left(E))
+        .runIO
+        .===(Outcome.Success(Left(E)))
+      }
     }
   }
+
 
 
   "executeOn" >> {
@@ -135,7 +159,7 @@ class IOTest extends Specification:
         case object E extends Exception
         (for
           ex1 <- IO.executor
-          err <- IO.toEither(IO.raise(E).executeOn(otherExec))
+          err <- IO.catchToEither(IO.raise(E).executeOn(otherExec))
           ex2 <- IO.executor
         yield (ex1 == ex2, err))
         .runIO

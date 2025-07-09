@@ -423,6 +423,16 @@ private sealed abstract class Engine0 extends Runnable:
         this.savedPayload = ()
         tag2
 
+      case Tag.NotifyEither =>
+        savedPayload.asInstanceOf[Either[Throwable, Any]] match
+          case Right(a) =>
+            savedPayload = a
+            tag2
+          case Left(e) =>
+            savedPayload = Cause(e)
+            savedStep = Step.Throw
+            Step.Throw.tag
+
       case _ => tag
 
 
@@ -865,8 +875,8 @@ private sealed abstract class Engine0 extends Runnable:
         loopStep((), step, stack, store)
 
 
-  final def intrinsicAsync[A](callback: (Either[Throwable, A] => Unit) => Unit): Tag =
-    currentFiber.suspendStep(null, savedStep, savedStack, savedStore)
+  final def intrinsicAsync[A](callback: (Either[Throwable, A] => Unit) => Unit, isAttempt: Boolean): Tag =
+    currentFiber.suspend(if isAttempt then savedStep.tag else Tag.NotifyEither, null, savedStep, savedStack, savedStore)
     callback(currentFiber)
     ThreadDisowned
 

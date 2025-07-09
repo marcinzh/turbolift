@@ -24,36 +24,48 @@ case object IO extends IO:
   //---------- Side Effects ----------
 
 
-  def apply[A](thunk: => A): A !! IO = CC.sync(isAttempt = false, thunk)
+  //** Alias of [[sync]] */
+  def apply[A](thunk: => A): A !! IO = sync(thunk)
 
-  def attempt[A](thunk: => A): Either[Throwable, A] !! IO = CC.sync(isAttempt = true, thunk)
+  def sync[A](thunk: => A): A !! IO = CC.sync(isAttempt = false, thunk)
 
-  def async[A](callback: (Either[Throwable, A] => Unit) => Unit): A !! IO = CC.intrinsic(_.intrinsicAsync(callback))
+  def async[A](callback: (Either[Throwable, A] => Unit) => Unit): A !! IO = CC.intrinsic(_.intrinsicAsync(callback, isAttempt = false))
 
   def blocking[A](thunk: => A): A !! IO = CC.intrinsic(_.intrinsicBlocking(() => thunk, isAttempt = false))
-  
-  def blockingAttempt[A](thunk: => A): Either[Throwable, A] !! IO = CC.intrinsic(_.intrinsicBlocking(() => thunk, isAttempt = true))
 
+  def attemptSync[A](thunk: => A): Either[Throwable, A] !! IO = CC.sync(isAttempt = true, thunk)
+
+  def attemptAsync[A](callback: (Either[Throwable, A] => Unit) => Unit): Either[Throwable, A] !! IO = CC.intrinsic(_.intrinsicAsync(callback, isAttempt = true))
+
+  def attemptBlocking[A](thunk: => A): Either[Throwable, A] !! IO = CC.intrinsic(_.intrinsicBlocking(() => thunk, isAttempt = true))
+
+  def attemptEff[A, U <: IO](body: A !! U): Either[Throwable, A] !! U =
+    snap(body).flatMap:
+      case Snap.Success(a) => !!.pure(Right(a))
+      case Snap.Failure(c) => !!.pure(c.toEither)
+      case aa: Snap.NotSuccess => unsnap(aa)
+
+  @deprecated("Use attemptBlocking")
+  def blockingAttempt[A](thunk: => A): Either[Throwable, A] !! IO = CC.intrinsic(_.intrinsicBlocking(() => thunk, isAttempt = true))
 
 
   //---------- Exceptions ----------
 
+  def fail(c: Cause): Nothing !! IO = unsnap(Snap.Failure(c))
 
   def raise(e: Throwable): Nothing !! IO = fail(Cause.Thrown(e))
 
-  def fail(c: Cause): Nothing !! IO = unsnap(Snap.Failure(c))
+  def raiseFromOption[A](ee: Option[A])(e: => Throwable): A !! IO = ee.fold(raise(e))(!!.pure)
 
-  def fromOption[A](ee: Option[A])(e: => Throwable): A !! IO = ee.fold(raise(e))(!!.pure)
+  def raiseFromEither[A](ee: Either[Throwable, A]): A !! IO = ee.fold(raise, !!.pure)
 
-  def fromEither[A](ee: Either[Throwable, A]): A !! IO = ee.fold(raise, !!.pure)
+  def raiseFromTry[A](ee: Try[A]): A !! IO = ee.fold(raise, !!.pure)
 
-  def fromTry[A](ee: Try[A]): A !! IO = ee.fold(raise, !!.pure)
+  def catchToOption[A, U <: IO](body: A !! U): Option[A] !! U = catchToTry(body).map(_.toOption)
 
-  def toOption[A, U <: IO](body: A !! U): Option[A] !! U = toTry(body).map(_.toOption)
+  def catchToEither[A, U <: IO](body: A !! U): Either[Throwable, A] !! U = catchToTry(body).map(_.toEither)
 
-  def toEither[A, U <: IO](body: A !! U): Either[Throwable, A] !! U = toTry(body).map(_.toEither)
-
-  def toTry[A, U <: IO](body: A !! U): Try[A] !! U =
+  def catchToTry[A, U <: IO](body: A !! U): Try[A] !! U =
     snap(body).flatMap:
       case Snap.Success(a) => !!.pure(TrySuccess(a)) 
       case Snap.Failure(c) => !!.pure(c.toTry) 
@@ -80,6 +92,13 @@ case object IO extends IO:
     snap(body).flatMap:
       case ss @ Snap.Cancelled => comp &&! unsnap(ss)
       case aa => unsnap(aa)
+
+  @deprecated("Use raiseFromOption") def fromOption[A](ee: Option[A])(e: => Throwable): A !! IO = raiseFromOption(ee)(e)
+  @deprecated("Use raiseFromEither") def fromEither[A](ee: Either[Throwable, A]): A !! IO = raiseFromEither(ee)
+  @deprecated("Use raiseFromTry") def fromTry[A](ee: Try[A]): A !! IO = raiseFromTry(ee)
+  @deprecated("Use catchToOption") def toOption[A, U <: IO](body: A !! U): Option[A] !! U = catchToOption(body)
+  @deprecated("Use catchToEither") def toEither[A, U <: IO](body: A !! U): Either[Throwable, A] !! U = catchToEither(body)
+  @deprecated("Use catchToTry") def toTry[A, U <: IO](body: A !! U): Try[A] !! U = catchToTry(body)
 
 
   //---------- Finalization ----------

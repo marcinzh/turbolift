@@ -35,6 +35,7 @@ object Tag:
   inline val NotifyEffectfulVar  = 19
   inline val NotifyZipper        = 20
   inline val NotifyUnit          = 21
+  inline val NotifyEither        = 22
 
 
   def toStr(tag: Tag) =
@@ -62,4 +63,5 @@ object Tag:
       case NotifyEffectfulVar => "NotifyEffectfulVar"
       case NotifyZipper       => "NotifyZipper"
       case NotifyUnit         => "NotifyUnit"
+      case NotifyEither       => "NotifyEither"
       case _                  => s"Tag($tag)"

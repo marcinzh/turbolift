@@ -60,7 +60,7 @@ class ResourceTest extends Specification:
     "in acquire" >>{
       (for
         v <- AtomicVar(1)
-        e <- IO.toEither:
+        e <- IO.catchToEither:
           (for
             _ <- Finalizer.use(IO(throw ex1), _ => v.event(2))
             _ <- v.event(3)
@@ -75,7 +75,7 @@ class ResourceTest extends Specification:
     "in release" >>{
       (for
         v <- AtomicVar(1)
-        e <- IO.toEither:
+        e <- IO.catchToEither:
           (for
             _ <- Finalizer.use(v.event(2), _ => IO(throw ex1))
             _ <- v.event(3)

@@ -396,9 +396,10 @@ private[turbolift] final class FiberImpl private (
 
   //// `this` == callback for IO.async
   override def apply(ee: Either[Throwable, Any]): Unit =
-    ee match
-      case Right(a) => suspendedPayload = a
-      case Left(e) => suspendAsFailure(e)
+    suspendedPayload = ee
+    // ee match
+    //   case Right(a) => suspendedPayload = a
+    //   case Left(e) => suspendAsFailure(e)
     resume()
 
 

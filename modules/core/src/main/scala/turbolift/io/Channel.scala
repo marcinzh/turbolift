@@ -7,7 +7,6 @@ import turbolift.internals.engine.concurrent.util.ChannelImpl
 sealed trait Channel[A] extends Channel.Get[A] with Channel.Put[A]:
   final def asGet: Channel.Get[A] = this
   final def asPut: Channel.Put[A] = this
-  final def untyped: Fiber.Untyped = asInstanceOf[Fiber.Untyped]
 
 
 object Channel:

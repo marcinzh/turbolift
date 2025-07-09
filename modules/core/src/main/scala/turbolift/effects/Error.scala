@@ -11,7 +11,7 @@ trait ErrorSignature[E, E1] extends Signature:
   def raises(e: E): Nothing !! ThisEffect
   def catchToEither[A, U <: ThisEffect](body: A !! U): Either[E, A] !! U
 
-  @deprecated("toEither") final def toEither[A, U <: ThisEffect](body: A !! U): Either[E, A] !! U = catchToEither(body)
+  @deprecated("Use catchToEither") final def toEither[A, U <: ThisEffect](body: A !! U): Either[E, A] !! U = catchToEither(body)
 
 
 trait ErrorEffect[E, E1] extends Effect[ErrorSignature[E, E1]] with ErrorSignature[E, E1]:
@@ -27,9 +27,13 @@ trait ErrorEffect[E, E1] extends Effect[ErrorSignature[E, E1]] with ErrorSignatu
   final def raise[K, V1](k: K, v: V1)(using ev: ((K, V1)) <:< E1): Unit !! this.type = raise(ev((k, v)))
   final def raises[K, V](k: K, v: V)(using ev: ((K, V)) <:< E): Unit !! this.type = raises(ev((k, v)))
 
-  final def fromOption[A](x: Option[A])(e: => E1): A !! this.type = x.fold(raise(e))(!!.pure)
-  final def fromEither[A](x: Either[E1, A]): A !! this.type = x.fold(raise, !!.pure)
-  final def fromTry[A](x: Try[A])(using ev: Throwable <:< E1): A !! this.type = x.fold(e => raise(ev(e)), !!.pure)
+  final def raiseFromOption[A](x: Option[A])(e: => E1): A !! this.type = x.fold(raise(e))(!!.pure)
+  final def raiseFromEither[A](x: Either[E1, A]): A !! this.type = x.fold(raise, !!.pure)
+  final def raiseFromTry[A](x: Try[A])(using ev: Throwable <:< E1): A !! this.type = x.fold(e => raise(ev(e)), !!.pure)
+
+  @deprecated("Use raiseFromOption") final def fromOption[A](x: Option[A])(e: => E1): A !! this.type = raiseFromOption(x)(e)
+  @deprecated("Use raiseFromEither") final def fromEither[A](x: Either[E1, A]): A !! this.type = raiseFromEither(x)
+  @deprecated("Use raiseFromTry") final def fromTry[A](x: Try[A])(using ev: Throwable <:< E1): A !! this.type = raiseFromTry(x)
 
   /** Predefined handlers for this effect. */
   object handlers:
