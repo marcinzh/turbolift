@@ -16,6 +16,7 @@ trait ResourceEffect[U] extends Effect[ResourceSignature[U]] with ResourceSignat
   final override def register(release: Unit !! U): Unit !! this.type = perform(_.register(release))
   final override def use[A](acquire: A !! U, release: A => Unit !! U): A !! this.type = perform(_.use(acquire, release))
 
+  final def use(acquire: Unit !! U, release: Unit !! U): Unit !! this.type = perform(_.use(acquire, _ => release))
   final def use[A](rf: ResourceFactory[A, U]): A !! this.type = use(rf.acquire, rf.release(_))
   final def scoped[A, V](comp: A !! (V & this.type)): A !! (V & U) = comp.handleWith(handlers.default)
 

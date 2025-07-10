@@ -63,7 +63,7 @@ class ResourceTest extends Specification:
         v <- AtomicVar(1)
         e <- IO.catchToEither:
           (for
-            _ <- Resource.use(IO(throw ex1), _ => v.event(2))
+            _ <- Resource.use(IO(throw ex1), v.event(2))
             _ <- v.event(3)
           yield ())
           .finalized
@@ -78,7 +78,7 @@ class ResourceTest extends Specification:
         v <- AtomicVar(1)
         e <- IO.catchToEither:
           (for
-            _ <- Resource.use(v.event(2), _ => IO(throw ex1))
+            _ <- Resource.use(v.event(2), IO(throw ex1))
             _ <- v.event(3)
           yield ())
           .finalized
@@ -94,9 +94,9 @@ class ResourceTest extends Specification:
         v <- AtomicVar(1)
         e <- IO.snap:
           (for
-            _ <- Resource.use(v.event(2), _ => IO(throw ex1))
+            _ <- Resource.use(v.event(2), IO(throw ex1))
             _ <- v.event(3)
-            _ <- Resource.use(v.event(4), _ => IO(throw ex2))
+            _ <- Resource.use(v.event(4), IO(throw ex2))
             _ <- v.event(5)
           yield ())
           .finalized
@@ -106,6 +106,28 @@ class ResourceTest extends Specification:
       .runIO
       .===(Outcome.Success((123456, Snap.Failure(Cause.Then(Cause.Thrown(ex2), Cause.Thrown(ex1))))))
     }
+  }
+
+  "nested" >>{
+    (for
+      v <- AtomicVar(0L)
+      _ <- 
+        (for
+          _ <- Resource.use(v.event(1), v.event(2))
+          _ <- v.event(3)
+          _ <- 
+            (for
+              _ <- Resource.use(v.event(4), v.event(5))
+              _ <- v.event(6)
+            yield ())
+            .finalized
+          _ <- v.event(7)
+        yield ())
+        .finalized
+      n <- v.get
+    yield n)
+    .runIO
+    .===(Outcome.Success(1346572))
   }
 
   "parallel" >> {
