@@ -1,9 +1,10 @@
-package turbolift.handlers
+package turbolift.data
 import java.lang.StrictMath
 import Double.NaN
 import Splitmix64._
 
 
+/** Internal state of [[turbolift.effects.Random]] effect's predefined handler. */
 case class Splitmix64(value: Long, secondGaussian: Double = NaN):
   def next: Splitmix64 = copy(value = mix1(value))
   def jump: Splitmix64 = Splitmix64(mix2(value))
@@ -42,8 +43,13 @@ case class Splitmix64(value: Long, secondGaussian: Double = NaN):
     val value2 = loop(0, value)
     (arr, Splitmix64(value2))
 
+  def fork: (Splitmix64, Splitmix64) =
+    val that1 = next
+    val that2 = jump
+    (that1, that2)
 
-private object Splitmix64:
+
+object Splitmix64:
   private inline val S = 6371467827229002779L
   private inline val G1 = 0x9e3779b97f4a7c15L
   private inline val G2 = G1 * 0x1337c0d3

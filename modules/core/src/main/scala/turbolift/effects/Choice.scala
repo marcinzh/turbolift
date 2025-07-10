@@ -1,9 +1,8 @@
 package turbolift.effects
 import scala.util.Try
-import turbolift.{!!, Effect, Signature}
+import turbolift.{!!, Signature, Effect, Handler}
 import turbolift.Extensions._
-import turbolift.handlers.{choiceHandler_first, choiceHandler_all}
-import turbolift.handlers.{choiceHandler_allBreadthFirst, choiceHandler_firstBreadthFirst}
+import turbolift.data.{QueVector, QueOption}
 
 
 trait ChoiceSignature extends Signature:
@@ -13,6 +12,7 @@ trait ChoiceSignature extends Signature:
 
 
 trait ChoiceEffect extends Effect[ChoiceSignature] with ChoiceSignature:
+  enclosing =>
   final override val empty: Nothing !! this.type = perform(_.empty)
   final override def choose[A](as: Iterable[A]): A !! this.type = perform(_.choose(as))
   final override def choosePar[A](as: Iterable[A]): A !! this.type = perform(_.choosePar(as))
@@ -28,10 +28,75 @@ trait ChoiceEffect extends Effect[ChoiceSignature] with ChoiceSignature:
 
   /** Predefined handlers for this effect. */
   object handlers:
-    def first: ThisHandler[Identity, Option, Any] = ChoiceEffect.this.choiceHandler_first
-    def all: ThisHandler[Identity, Vector, Any] = ChoiceEffect.this.choiceHandler_all
-    def firstBreadthFirst: ThisHandler[Identity, Option, Any] = ChoiceEffect.this.choiceHandler_firstBreadthFirst
-    def allBreadthFirst: ThisHandler[Identity, Vector, Any] = ChoiceEffect.this.choiceHandler_allBreadthFirst
+    /** Collect into a `Vector` all succesful paths in depth-first search order. */
+    def all: Handler[Identity, Vector, enclosing.type, Any] =
+      new impl.Stateless[Identity, Vector, Any] with impl.Parallel with ChoiceSignature:
+        override def onReturn(a: Unknown): Vector[Unknown] !! Any = !!.pure(Vector(a))
+        override def onRestart(as: Vector[Unknown]): Unknown !! enclosing.type = enclosing.choose(as)
+        override def onUnknown(as: Vector[Unknown]): Option[Unknown] = as.headOption
+        override def onZip[A, B, C](as: Vector[A], bs: Vector[B], k: (A, B) => C): Vector[C] = as.flatMap(a => bs.map(k(a, _)))
+
+        override def empty: Nothing !! ThisEffect = Control.abort(Vector())
+        override def choose[A](as: Iterable[A]): A !! ThisEffect = Control.capture(k => as.iterator.flatMapEff(k))
+        override def choosePar[A](as: Iterable[A]): A !! ThisEffect = Control.capture(k => as.iterator.flatMapParEff(k))
+    .toHandler
+
+    /** Collect into an `Option` the first path in depth-first search order. */
+    def first: Handler[Identity, Option, enclosing.type, Any] =
+      new impl.Stateless[Identity, Option, Any] with impl.Parallel with ChoiceSignature:
+        override def onReturn(a: Unknown): Option[Unknown] !! Any = !!.pure(Some(a))
+        override def onRestart(as: Option[Unknown]): Unknown !! enclosing.type = as.fold(enclosing.empty)(!!.pure)
+        override def onUnknown(as: Option[Unknown]): Option[Unknown] = as
+        override def onZip[A, B, C](as: Option[A], bs: Option[B], k: (A, B) => C): Option[C] = as.zip(bs).map(k.tupled)
+
+        override def empty: Nothing !! ThisEffect = Control.abort(None)
+        override def choosePar[A](as: Iterable[A]): A !! ThisEffect = choose(as)
+        override def choose[A](as: Iterable[A]): A !! ThisEffect =
+          Control.capture: k =>
+            val it = as.iterator
+            def loop(): Option[Unknown] !! ThisEffect =
+              if it.hasNext then
+                k(it.next()).flatMap:
+                  case None => loop()
+                  case x => !!.pure(x)
+              else
+                !!.none
+            loop()
+      .toHandler
+
+    /** Collect into a `Vector` all succesful paths in breadth-first search order. */
+    def allBreadthFirst: Handler[Identity, Vector, enclosing.type, Any] =
+      new impl.Stateful[Identity, Vector, Any] with impl.Parallel with ChoiceSignature:
+        override type Local = QueVector[Unknown, ThisEffect]
+        override def onInitial = QueVector.empty.pure_!!
+        override def onReturn(a: Unknown, q: Local): Vector[Unknown] !! ThisEffect = q.addDone(a).drain
+        override def onRestart(as: Vector[Unknown]): Unknown !! enclosing.type = enclosing.choose(as)
+        override def onUnknown(aa: Vector[Unknown]): Option[Unknown] = aa.headOption
+        override def onZip[A, B, C](as: Vector[A], bs: Vector[B], k: (A, B) => C): Vector[C] = as.flatMap(a => bs.map(k(a, _)))
+
+        override def empty: Nothing !! ThisEffect = Control.captureGet((_, q) => q.drain)
+        override def choosePar[A](as: Iterable[A]): A !! ThisEffect = choose(as)
+        override def choose[A](as: Iterable[A]): A !! ThisEffect =
+          Control.captureGet: (k, q) =>
+            q.addTodo(as.iterator.map(a => k(a, _))).drain
+      .toHandler
+
+    /** Collect into an `Option` the first path in breadth-first search order. */
+    def firstBreadthFirst: Handler[Identity, Option, enclosing.type, Any] =
+      new impl.Stateful[Identity, Option, Any] with impl.Parallel with ChoiceSignature:
+        override type Local = QueOption[Unknown, ThisEffect]
+        override def onInitial = QueOption.empty.pure_!!
+        override def onReturn(a: Unknown, q: Local): Option[Unknown] !! ThisEffect = !!.pure(Some(a))
+        override def onRestart(as: Option[Unknown]): Unknown !! enclosing.type = enclosing.fromOption(as)
+        override def onUnknown(aa: Option[Unknown]): Option[Unknown] = aa
+        override def onZip[A, B, C](as: Option[A], bs: Option[B], k: (A, B) => C): Option[C] = as.zip(bs).map(k.tupled)
+
+        override def empty: Nothing !! ThisEffect = Control.captureGet((_, q) => q.drain)
+        override def choosePar[A](as: Iterable[A]): A !! ThisEffect = choose(as)
+        override def choose[A](as: Iterable[A]): A !! ThisEffect =
+          Control.captureGet: (k, q) =>
+            q.addTodo(as.iterator.map(a => k(a, _))).drain
+      .toHandler
 
 
 trait Choice extends ChoiceEffect:

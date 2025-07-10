@@ -1,8 +1,9 @@
 package turbolift.effects
+import java.lang.{System => JConsole}
+import java.io.{BufferedReader, InputStreamReader}
 import scala.io.AnsiColor
-import turbolift.{!!, Signature, Effect}
+import turbolift.{!!, Signature, Effect, Handler}
 import turbolift.Extensions._
-import turbolift.handlers.{consoleHandler_blocking, consoleHandler_nonBlocking}
 
 
 trait ConsoleSignature extends Signature:
@@ -15,6 +16,7 @@ trait ConsoleSignature extends Signature:
 
 
 trait ConsoleEffect extends Effect[ConsoleSignature] with ConsoleSignature with AnsiColor:
+  enclosing =>
   final override def readChar: Option[Char] !! this.type = perform(_.readChar)
   final override def readLine: String !! this.type = perform(_.readLine)
   final override def print(text: String): Unit !! this.type = perform(_.print(text))
@@ -28,8 +30,29 @@ trait ConsoleEffect extends Effect[ConsoleSignature] with ConsoleSignature with 
 
   /** Predefined handlers for this effect. */
   object handlers:
-    def blocking: ThisHandler[Identity, Identity, IO] = ConsoleEffect.this.consoleHandler_blocking
-    def nonBlocking: ThisHandler[Identity, Identity, IO] = ConsoleEffect.this.consoleHandler_nonBlocking
+    /** Invokes `java.lang.System` console functions with `IO.blocking`. */
+    def blocking: Handler[Identity, Identity, enclosing.type, IO] =
+      IO(new BufferedReader(new InputStreamReader(JConsole.in))).flatMapHandler: breader =>
+        new impl.Proxy[IO] with ConsoleSignature:
+          override def readChar: Option[Char] !! ThisEffect = IO.blocking { val n = breader.nn.read(); Option.when(n >= 0)(n.toChar) }
+          override def readLine: String !! ThisEffect = IO.blocking(breader.nn.readLine().nn)
+          override def print(text: String): Unit !! ThisEffect = IO.blocking(JConsole.out.nn.print(text))
+          override def printErr(text: String): Unit !! ThisEffect = IO.blocking(JConsole.err.nn.print(text))
+          override def printLine(text: String): Unit !! ThisEffect = IO.blocking(JConsole.out.nn.println(text))
+          override def printLineErr(text: String): Unit !! ThisEffect = IO.blocking(JConsole.err.nn.println(text))
+        .toHandler
+
+    /** Invokes `java.lang.System` console functions with `IO.sync`. */
+    def nonBlocking: Handler[Identity, Identity, enclosing.type, IO] =
+      IO(new BufferedReader(new InputStreamReader(JConsole.in))).flatMapHandler: breader =>
+        new impl.Proxy[IO] with ConsoleSignature:
+          override def readChar: Option[Char] !! ThisEffect = IO { val n = breader.nn.read(); Option.when(n >= 0)(n.toChar) }
+          override def readLine: String !! ThisEffect = IO(breader.nn.readLine().nn)
+          override def print(text: String): Unit !! ThisEffect = IO(JConsole.out.nn.print(text))
+          override def printErr(text: String): Unit !! ThisEffect = IO(JConsole.err.nn.print(text))
+          override def printLine(text: String): Unit !! ThisEffect = IO(JConsole.out.nn.println(text))
+          override def printLineErr(text: String): Unit !! ThisEffect = IO(JConsole.err.nn.println(text))
+        .toHandler
 
 
 /** Predefined instance of this effect. */

@@ -2,9 +2,8 @@ package turbolift.effects
 import java.io.{Closeable => JCloseable}
 import turbolift.{!!, Effect, Signature, Handler}
 import turbolift.Extensions._
-import turbolift.effects.IO
-import turbolift.handlers.finalizerHandler_IO
-import turbolift.io.ResourceFactory
+import turbolift.io.{ResourceFactory, Cause, Snap}
+import turbolift.data.Trail
 
 
 trait FinalizerSignature[U] extends Signature:
@@ -24,7 +23,33 @@ object FinalizerEffect:
       thiz.use(IO(acquire), a => IO(a.close))
 
     def handlerIO: Handler[Identity, Identity, thiz.type, U] =
-      thiz.finalizerHandler_IO
+      new thiz.impl.Stateful[Identity, (_, Trail[U]), U] with thiz.impl.Parallel.ForkJoin with FinalizerSignature[U]:
+        override type Local = Trail[U]
+        override def onInitial: Local !! Any = !!.pure(Trail.empty)
+        override def onReturn(a: Unknown, s: Local): (Unknown, Local) !! Any = !!.pure((a, s))
+
+        override def onRestart(a_s: (Unknown, Local)): Unknown !! ThisEffect =
+          val (a, s) = a_s
+          Local.modify(s ++ _).as(a)
+
+        override def onUnknown(aa: (Unknown, Local)): Option[Unknown] = Some(aa._1)
+
+        override def onZip[A, B, C](a_s: (A, Local), b_s: (B, Local), k: (A, B) => C): (C, Local) =
+          val (a, s1) = a_s
+          val (b, s2) = b_s
+          (k(a, b), s1 & s2)
+
+        override def onFork(s: Local): (Local, Local) = (s, Trail.empty)
+
+        override def use[A](acquire: A !! U, release: A => Unit !! U): A !! ThisEffect =
+          IO.uncancellable:
+            acquire.flatMap: a =>
+              Local.modify(Trail(release(a)) ++ _).as(a)
+
+      .toHandler
+      .tapStateEff: trail =>
+        IO.uncancellable(trail.run)
+      .dropState
 
 
 trait FinalizerEffectIO[U <: IO] extends FinalizerEffect[U]:

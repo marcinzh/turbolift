@@ -1,7 +1,8 @@
 package turbolift.effects
-import turbolift.{!!, Signature, Effect}
+import scala.util.{Random => ScalaRandom}
+import turbolift.{!!, Signature, Effect, Handler}
 import turbolift.Extensions._
-import turbolift.handlers.{randomHandler_local, randomHandler_shared}
+import turbolift.data.Splitmix64
 
 
 trait RandomSignature extends Signature:
@@ -22,6 +23,7 @@ trait RandomSignature extends Signature:
 
 
 trait RandomEffect extends Effect[RandomSignature] with RandomSignature:
+  enclosing =>
   final override def nextBoolean: Boolean !! this.type = perform(_.nextBoolean)
   final override def nextInt: Int !! this.type = perform(_.nextInt)
   final override def nextInt(n: Int): Int !! this.type = perform(_.nextInt(n))
@@ -39,10 +41,80 @@ trait RandomEffect extends Effect[RandomSignature] with RandomSignature:
 
   /** Predefined handlers for this effect. */
   object handlers:
-    def local: ThisHandler[Identity, Identity, IO] = RandomEffect.this.randomHandler_local
-    def shared: ThisHandler[Identity, Identity, IO] = RandomEffect.this.randomHandler_shared
-    def local(seed: Long): ThisHandler[Identity, Identity, Any] = RandomEffect.this.randomHandler_local(seed)
-    def shared(seed: Long): ThisHandler[Identity, Identity, IO] = RandomEffect.this.randomHandler_shared(seed)
+    private def randomSeed: Long !! IO = IO.sync(ScalaRandom.nextLong)
+
+    def local: Handler[Identity, Identity, enclosing.type, IO] = randomSeed.flatMapHandler(local(_))
+    def shared: Handler[Identity, Identity, enclosing.type, IO] = randomSeed.flatMapHandler(shared(_))
+
+    /** Deterministic, even under parallelism. */
+    def local(seed: Long): Handler[Identity, Identity, enclosing.type, Any] =
+      new impl.Stateful[Identity, (_, Splitmix64), Any] with impl.Parallel.ForkJoin with RandomSignature:
+        override type Local = Splitmix64
+        override def onInitial: Local !! Any = !!.pure(Splitmix64(seed))
+        override def onReturn(a: Unknown, s: Splitmix64): (Unknown, Splitmix64) !! Any = !!.pure((a, s))
+        override def onRestart(aa: (Unknown, Splitmix64)) = enclosing.setSeed(aa._2.value) &&! !!.pure(aa._1)
+        override def onUnknown(aa: (Unknown, Splitmix64)): Option[Unknown] = Some(aa._1)
+        override def onFork(s: Splitmix64): (Splitmix64, Splitmix64) = s.fork
+
+        override def onZip[A, B, C](aa: (A, Splitmix64), bb: (B, Splitmix64), k: (A, B) => C) =
+          val (a, _) = aa
+          val (b, s) = bb
+          (k(a, b), s)
+
+        private inline def simple[A](inline f: Splitmix64 => A): A !! ThisEffect =
+          Local.update: s =>
+            val s2 = s.next
+            (f(s2), s2)
+
+        override def nextBoolean: Boolean !! ThisEffect = simple(x => (x.value & 1) != 0)
+        override def nextInt: Int !! ThisEffect = simple(_.value.toInt)
+        override def nextInt(n: Int): Int !! ThisEffect = between(0, n)
+        override def nextLong: Long !! ThisEffect = simple(_.value)
+        override def nextLong(n: Long): Long !! ThisEffect = between(0, n)
+        override def nextFloat: Float !! ThisEffect = simple(_.toDoubleInclusive.toFloat)
+        override def nextDouble: Double !! ThisEffect = simple(_.toDoubleInclusive)
+
+        private inline def between[A](range: Double, inline f: Double => A): A !! ThisEffect =
+          simple(x => f((x.toDoubleExclusive * range).floor))
+
+        override def between(minInclusive: Long, maxExclusive: Long): Long !! ThisEffect =
+          between((maxExclusive - minInclusive).toDouble, _.floor.toLong + minInclusive)
+
+        override def between(minInclusive: Int, maxExclusive: Int): Int !! ThisEffect =
+          between(maxExclusive - minInclusive, _.floor.toInt + minInclusive)
+
+        override def between(minInclusive: Double, maxExclusive: Double): Double !! ThisEffect =
+          between(maxExclusive - minInclusive, _.floor + minInclusive)
+
+        override def between(minInclusive: Float, maxExclusive: Float): Float !! ThisEffect =
+          between(maxExclusive - minInclusive, _.floor.toFloat + minInclusive)
+
+        override def nextGaussian: Double !! ThisEffect = Local.update(_.gaussian)
+        override def nextBytes(n: Int): Array[Byte] !! ThisEffect = Local.update(_.bytes(n))
+        override def setSeed(seed: Long): Unit !! ThisEffect = Local.modify(_.seed(seed))
+      .toHandler
+      .dropState
+
+
+    /** Non deterministic. */
+    def shared(seed: Long): Handler[Identity, Identity, enclosing.type, IO] =
+      IO(new ScalaRandom(seed)).flatMapHandler: rng =>
+        new impl.Proxy[IO] with RandomSignature:
+          override def nextBoolean: Boolean !! ThisEffect = IO(rng.nextBoolean)
+          override def nextInt: Int !! ThisEffect = IO(rng.nextInt)
+          override def nextInt(n: Int): Int !! ThisEffect = IO(rng.nextInt(n))
+          override def nextLong: Long !! ThisEffect = IO(rng.nextLong)
+          override def nextLong(n: Long): Long !! ThisEffect = IO(rng.nextLong(n))
+          override def nextFloat: Float !! ThisEffect = IO(rng.nextFloat)
+          override def nextDouble: Double !! ThisEffect = IO(rng.nextDouble)
+          override def nextGaussian: Double !! ThisEffect = IO(rng.nextGaussian)
+          override def between(minInclusive: Int, maxExclusive: Int): Int !! ThisEffect = IO(rng.between(minInclusive, maxExclusive))
+          override def between(minInclusive: Long, maxExclusive: Long): Long !! ThisEffect = IO(rng.between(minInclusive, maxExclusive))
+          override def between(minInclusive: Float, maxExclusive: Float): Float !! ThisEffect = IO(rng.between(minInclusive, maxExclusive))
+          override def between(minInclusive: Double, maxExclusive: Double): Double !! ThisEffect = IO(rng.between(minInclusive, maxExclusive))
+          override def nextBytes(n: Int): Array[Byte] !! ThisEffect = IO(rng.nextBytes(n))
+          override def setSeed(seed: Long): Unit !! ThisEffect = IO(rng.setSeed(seed))
+        .toHandler
 
 
 /** Predefined instance of this effect. */

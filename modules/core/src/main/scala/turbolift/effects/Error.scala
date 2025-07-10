@@ -1,9 +1,9 @@
 package turbolift.effects
 import scala.util.{Try, Success, Failure}
-import turbolift.{!!, Effect, Signature}
+import turbolift.{!!, Signature, Effect, Handler}
 import turbolift.Extensions._
 import turbolift.typeclass.{Accum, One}
-import turbolift.handlers.{errorHandler_first, errorHandler_all} 
+import turbolift.typeclass.Syntax._
 
 
 trait ErrorSignature[E, E1] extends Signature:
@@ -15,12 +15,13 @@ trait ErrorSignature[E, E1] extends Signature:
 
 
 trait ErrorEffect[E, E1] extends Effect[ErrorSignature[E, E1]] with ErrorSignature[E, E1]:
+  enclosing =>
   final override def raise(e: E1): Nothing !! this.type = perform(_.raise(e))
   final override def raises(e: E): Nothing !! this.type = perform(_.raises(e))
   final override def catchToEither[A, U <: this.type](body: A !! U): Either[E, A] !! U = perform(_.catchToEither(body))
 
-  final def catchAllEff[A, U <: this.type](body: A !! U)(f: E => A !! U): A !! U = catchToEither(body).flatMap(_.fold(f, !!.pure))
   final def catchAll[A, U <: this.type](body: A !! U)(f: E => A): A !! U = catchAllEff(body)(f.andThen(!!.pure))
+  final def catchAllEff[A, U <: this.type](body: A !! U)(f: E => A !! U): A !! U = catchToEither(body).flatMap(_.fold(f, !!.pure))
   final def catchSome[A, U <: this.type](body: A !! U)(f: PartialFunction[E, A]): A !! U = catchSomeEff(body)(f.andThen(!!.pure))
   final def catchSomeEff[A, U <: this.type](body: A !! U)(f: PartialFunction[E, A !! U]): A !! U = catchAllEff(body)(f.applyOrElse(_, raises))
 
@@ -37,9 +38,39 @@ trait ErrorEffect[E, E1] extends Effect[ErrorSignature[E, E1]] with ErrorSignatu
 
   /** Predefined handlers for this effect. */
   object handlers:
-    def first(using One[E, E1]): ThisHandler[Identity, Either[E, _], Any] = ErrorEffect.this.errorHandler_first
-    def all(using Accum[E, E1]): ThisHandler[Identity, Either[E, _], Any] = ErrorEffect.this.errorHandler_all
-    def allReduce(using E =:= E1)(plus: (E, E1) => E): ThisHandler[Identity, Either[E, _], Any] = all(using Accum.instanceEq( plus))
+    /** Short-circuit on the first error. */
+    def first(using E: One[E, E1]): Handler[Identity, Either[E, _], enclosing.type, Any] =
+      new impl.Stateless[Identity, Either[E, _], Any] with impl.Sequential.Restartable with ErrorSignature[E, E1]:
+        override def onReturn(a: Unknown): Either[E, Unknown] !! Any = !!.pure(Right(a))
+        override def onRestart(aa: Either[E, Unknown]): Unknown !! enclosing.type = aa.fold(enclosing.raises, !!.pure)
+        override def onUnknown(aa: Either[E, Unknown]): Option[Unknown] = aa.toOption
+
+        override def raise(e: E1): Nothing !! ThisEffect = raises(E.one(e))
+        override def raises(e: E): Nothing !! ThisEffect = Control.abort(Left(e))
+        override def catchToEither[A, U <: ThisEffect](body: A !! U): Either[E, A] !! U = Control.delimit(body)
+      .toHandler
+
+    /** Accumulate all errors (Applicative). */
+    def all(using E: Accum[E, E1]): Handler[Identity, Either[E, _], enclosing.type, Any] =
+      new impl.Stateless[Identity, Either[E, _], Any] with impl.Parallel with ErrorSignature[E, E1]:
+        override def onReturn(a: Unknown): Either[E, Unknown] !! Any = !!.pure(Right(a))
+        override def onRestart(aa: Either[E, Unknown]): Unknown !! enclosing.type = aa.fold(enclosing.raises, !!.pure)
+        override def onUnknown(aa: Either[E, Unknown]): Option[Unknown] = aa.toOption
+        override def onZip[A, B, C](ea: Either[E, A], eb: Either[E, B], k: (A, B) => C): Either[E, C] =
+          (ea, eb) match
+            case (Right(a), Right(b)) => Right(k(a, b))
+            case (Left(e1), Left(e2)) => Left(e1 |+| e2)
+            case (Left(e), _) => Left(e)
+            case (_, Left(e)) => Left(e)
+
+        override def raise(e: E1): Nothing !! ThisEffect = raises(E.one(e))
+        override def raises(e: E): Nothing !! ThisEffect = Control.abort(Left(e))
+        override def catchToEither[A, U <: ThisEffect](body: A !! U): Either[E, A] !! U = Control.delimit(body)
+      .toHandler
+
+    /** Lile [[all]], but accumulate with given function instead of typeclass. */
+    def allReduce(using E =:= E1)(plus: (E, E1) => E): Handler[Identity, Either[E, _], enclosing.type, Any] =
+      all(using Accum.instanceEq( plus))
 
 
 trait Error[E] extends ErrorEffect[E, E]:
