@@ -1,10 +1,11 @@
-package turbolift.internals.effect
+package turbolift.internals.macros
 import scala.annotation.experimental
 import scala.collection.mutable.ListBuffer
 import scala.quoted.*
 import turbolift.{Signature => Sig, Effect}
 
 
+//@#@TODO doesn't properly handle methods with type parameters
 @experimental object Boilerplate:
   private inline def debug(x: Any) = ()
   // private def debug(x: Any) = println(s"[Bolierplate] $x")

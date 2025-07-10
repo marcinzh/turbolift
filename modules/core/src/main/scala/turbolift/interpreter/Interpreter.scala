@@ -1,7 +1,6 @@
 package turbolift.interpreter
 import turbolift.{!!, Signature, Handler, HandlerCases => HC}
-import turbolift.effects.{ChoiceSignature, IO}
-import turbolift.internals.effect.AnyChoice
+import turbolift.effects.{ChoiceSignature, Alternative, IO}
 
 
 /** Super trait for any user-defined [[Interpreter Interpreter]].
@@ -106,7 +105,7 @@ sealed trait Interpreter extends Signature:
   private[turbolift] final val signatures: Array[Signature] =
     val sigs = enumSignatures
     if features.isChoice then
-      sigs :+ AnyChoice
+      sigs :+ Alternative
     else
       sigs
 

@@ -1,20 +1,20 @@
-package turbolift.internals.effect
+package turbolift.effects
 import turbolift.!!
-import turbolift.effects.ChoiceSignature
+import turbolift.{ComputationCases => CC}
 
 
 /** Virtual `Choice` effect instance.
  *
  *  Allows invoking operations of `Choice` effect,
  *  without the need of knowing its concrete instance.
- *  `AnyChoice` is designed to "match" the nearest (innermost) instance of `Choice` effect
+ *  `Alternative` is designed to "match" the nearest (innermost) instance of `Choice` effect
  *  currently present in the effect stack.
  *
  *  This is needed for making the following mechanisms to work:
- *  - Guards in `for` comprehensions
- *  - `Alternative`-like composition, using binary `++!` operator
+ *  - Guards in `for` comprehensions use `Alternative.empty`
+ *  - Binary operators `+!` and `++!` (similar to `<+>` from Cats) use `plus` and `plusPar`.
  */
-private[turbolift] case object AnyChoice extends CanPerform[ChoiceSignature] with ChoiceSignature:
+case object Alternative extends ChoiceSignature:
   override type ThisEffect >: ChoiceSignature
 
   override val empty: Nothing !! ThisEffect = perform(_.empty)
@@ -23,3 +23,6 @@ private[turbolift] case object AnyChoice extends CanPerform[ChoiceSignature] wit
 
   def plus[A, U <: ThisEffect](lhs: A !! U, rhs: => A !! U): A !! U = choose(Vector(lhs, !!.impureEff(rhs))).flatten
   def plusPar[A, U <: ThisEffect](lhs: A !! U, rhs: A !! U): A !! U = choosePar(Vector(lhs, rhs)).flatten
+
+  private final inline def perform[A, U <: ThisEffect](inline f: (ChoiceSignature { type ThisEffect = U }) => A !! U): A !! U =
+    CC.perform[A, U, ChoiceSignature { type ThisEffect = U }](this, f)

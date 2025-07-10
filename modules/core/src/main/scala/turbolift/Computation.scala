@@ -1,9 +1,8 @@
 package turbolift
 import scala.annotation.nowarn
 import scala.concurrent.duration.FiniteDuration
-import turbolift.effects.{ChoiceSignature, IO, UnsafeIO, Each, Finalizer}
+import turbolift.effects.{ChoiceSignature, Alternative, IO, UnsafeIO, Each, Finalizer}
 import turbolift.internals.auxx.CanPartiallyHandle
-import turbolift.internals.effect.AnyChoice
 import turbolift.internals.executor.Executor
 import turbolift.interpreter.Prompt
 import turbolift.internals.engine.{Env, Engine, Tag}
@@ -119,13 +118,13 @@ sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift]
   final def ||![A2 >: A, U2 <: U & IO](that: => A2 !! U2): A2 !! U2 = CC.intrinsic(_.intrinsicOrSeq(this, () => that))
 
   /** Parallel version of `++!`. */
-  final def +![A2 >: A, U2 <: U & ChoiceSignature](that: A2 !! U2): A2 !! U2 = AnyChoice.plusPar(this, that)
+  final def +![A2 >: A, U2 <: U & ChoiceSignature](that: A2 !! U2): A2 !! U2 = Alternative.plusPar(this, that)
 
   /** Applies `plus` operation from the innermost `Choice` effect in the current scope.
    *
    * Similar to `<|>` operator of `Alternative`.
    */
-  final def ++![A2 >: A, U2 <: U & ChoiceSignature](that: => A2 !! U2): A2 !! U2 = AnyChoice.plus(this, that)
+  final def ++![A2 >: A, U2 <: U & ChoiceSignature](that: => A2 !! U2): A2 !! U2 = Alternative.plus(this, that)
 
   /** Applies filter, using `empty` operation from the innermost `Choice` effect in the current scope. */
   final def withFilter[U2 <: U & ChoiceSignature](f: A => Boolean): A !! U2 = flatMap(a => if f(a) then !!.pure(a) else !!.empty)
@@ -209,7 +208,7 @@ object Computation:
   @deprecated def defer[A, U](comp: => A !! U): A !! U = impureEff(comp)
 
   /** Executes `empty` operation from the innermost `Choice` effect in the current scope. */
-  def empty: Nothing !! ChoiceSignature = AnyChoice.empty
+  def empty: Nothing !! ChoiceSignature = Alternative.empty
 
   /** Handles `Each` effect. */
   def every[A, U](body: A !! (U & Each)): Vector[A] !! U = body.handleWith(Each.handler)
