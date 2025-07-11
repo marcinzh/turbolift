@@ -76,4 +76,4 @@ Once the interpreter is defined, we can obtain a handler from it, using `toHandl
 
 See the source
 of predefined [effects](https://github.com/marcinzh/turbolift/tree/master/modules/core/src/main/scala/turbolift/effects)
-and their predefined [handlers](https://github.com/marcinzh/turbolift/tree/master/modules/core/src/main/scala/turbolift/handlers).
+and their predefined handlers.

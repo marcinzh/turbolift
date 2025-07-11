@@ -21,9 +21,9 @@ See [Advanced Features](advanced/index.html).
 
 Excerpt from [Effect Zoo](https://github.com/marcinzh/effect-zoo) microbenchmark results:
 
-![image](img/bench-cdown.png)
-
 ![image](img/bench-sumh.png)
+
+![image](img/bench-fmf.png)
 
 More results [here](bench/index.html).
 
