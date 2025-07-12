@@ -16,9 +16,9 @@ See <a href="advanced/index.html">Advanced Features</a>.</p>
 
 <p>Excerpt from <a href="https://github.com/marcinzh/effect-zoo">Effect Zoo</a> microbenchmark results:</p>
 
-<p><img src="img/bench-cdown.png" alt="image" /></p>
-
 <p><img src="img/bench-sumh.png" alt="image" /></p>
+
+<p><img src="img/bench-fmf.png" alt="image" /></p>
 
 <p>More results <a href="bench/index.html">here</a>.</p>
 
@@ -42,21 +42,21 @@ See <a href="advanced/index.html">Advanced Features</a>.</p>
     <span class="o">}</span>
     <span class="k">_</span> <span class="k">&lt;-</span> <span class="nv">MyState</span><span class="o">.</span><span class="py">put</span><span class="o">(</span><span class="n">c</span><span class="o">)</span>
   <span class="nf">yield</span> <span class="o">()</span>
-<span class="c1">// program: Computation[Unit, MyReader &amp; MyError &amp; MyState] = turbolift.Computation@1ab93b39</span>
+<span class="c1">// program: Computation[Unit, MyState &amp; MyReader &amp; MyError] = &lt;function1&gt;</span>
 
 <span class="k">val</span> <span class="nv">result</span> <span class="k">=</span> <span class="n">program</span>
   <span class="o">.</span><span class="py">handleWith</span><span class="o">(</span><span class="nv">MyState</span><span class="o">.</span><span class="py">handler</span><span class="o">(</span><span class="mi">100</span><span class="o">).</span><span class="py">justState</span><span class="o">)</span>
   <span class="o">.</span><span class="py">handleWith</span><span class="o">(</span><span class="nv">MyReader</span><span class="o">.</span><span class="py">handler</span><span class="o">(</span><span class="mi">3</span><span class="o">))</span>
   <span class="o">.</span><span class="py">handleWith</span><span class="o">(</span><span class="nv">MyError</span><span class="o">.</span><span class="py">handler</span><span class="o">)</span>
   <span class="o">.</span><span class="py">run</span>
-<span class="c1">// result: Either[String, Identity[Int]] = Right(value = 33)</span>
+<span class="c1">// result: Either[String, Int] = Right(value = 33)</span>
 </code></pre></div></div>
 
 <hr />
 
 <h2 id="usage">Usage</h2>
 
-<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">libraryDependencies</span> <span class="o">+=</span> <span class="s">"io.github.marcinzh"</span> <span class="o">%%</span> <span class="s">"turbolift-core"</span> <span class="o">%</span> <span class="s">"0.82.0"</span>
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">libraryDependencies</span> <span class="o">+=</span> <span class="s">"io.github.marcinzh"</span> <span class="o">%%</span> <span class="s">"turbolift-core"</span> <span class="o">%</span> <span class="s">"0.114.0"</span>
 </code></pre></div></div>
 
 <h2 id="credits">Credits</h2>
