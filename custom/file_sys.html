@@ -1,0 +1,118 @@
+<!DOCTYPE html><html><head><title>Turbolift: Effect example: File System</title><meta charset="utf-8" /><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="author" content="marcinzh" /><meta name="description" content="Algebraic Effects for Scala 3" /><meta name="og:image" content="/turbolift/img/poster.png" /><meta name="image" property="og:image" content="/turbolift/img/poster.png" /><meta name="og:title" content="Turbolift: Effect example: File System" /><meta name="title" property="og:title" content="Turbolift: Effect example: File System" /><meta name="og:site_name" content="Turbolift" /><meta name="og:url" content="https://github.com/marcinzh/turbolift" /><meta name="og:type" content="website" /><meta name="og:description" content="Algebraic Effects for Scala 3" /><link rel="icon" type="image/png" href="/turbolift/img/favicon.png" /><meta name="twitter:title" content="Turbolift: Effect example: File System" /><meta name="twitter:image" content="https://marcinzh.github.io/turbolift/img/poster.png" /><meta name="twitter:description" content="Algebraic Effects for Scala 3" /><meta name="twitter:card" content="summary_large_image" /><link rel="icon" type="image/png" sizes="16x16" href="/turbolift/img/favicon16x16.png" /><link rel="icon" type="image/png" sizes="24x24" href="/turbolift/img/favicon24x24.png" /><link rel="icon" type="image/png" sizes="32x32" href="/turbolift/img/favicon32x32.png" /><link rel="icon" type="image/png" sizes="48x48" href="/turbolift/img/favicon48x48.png" /><link rel="icon" type="image/png" sizes="57x57" href="/turbolift/img/favicon57x57.png" /><link rel="icon" type="image/png" sizes="60x60" href="/turbolift/img/favicon60x60.png" /><link rel="icon" type="image/png" sizes="64x64" href="/turbolift/img/favicon64x64.png" /><link rel="icon" type="image/png" sizes="70x70" href="/turbolift/img/favicon70x70.png" /><link rel="icon" type="image/png" sizes="72x72" href="/turbolift/img/favicon72x72.png" /><link rel="icon" type="image/png" sizes="76x76" href="/turbolift/img/favicon76x76.png" /><link rel="icon" type="image/png" sizes="96x96" href="/turbolift/img/favicon96x96.png" /><link rel="icon" type="image/png" sizes="114x114" href="/turbolift/img/favicon114x114.png" /><link rel="icon" type="image/png" sizes="120x120" href="/turbolift/img/favicon120x120.png" /><link rel="icon" type="image/png" sizes="128x128" href="/turbolift/img/favicon128x128.png" /><link rel="icon" type="image/png" sizes="144x144" href="/turbolift/img/favicon144x144.png" /><link rel="icon" type="image/png" sizes="150x150" href="/turbolift/img/favicon150x150.png" /><link rel="icon" type="image/png" sizes="152x152" href="/turbolift/img/favicon152x152.png" /><link rel="icon" type="image/png" sizes="196x196" href="/turbolift/img/favicon196x196.png" /><link rel="icon" type="image/png" sizes="310x310" href="/turbolift/img/favicon310x310.png" /><link rel="icon" type="image/png" sizes="310x150" href="/turbolift/img/favicon310x150.png" /><link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" /><link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" /><link rel="stylesheet" href="/turbolift/highlight/styles/atom-one-light.css" /><link rel="stylesheet" href="/turbolift/css/pattern-style.css" /></head><body class="docs"><div id="wrapper"><div id="sidebar-wrapper"><ul id="sidebar" class="sidebar-nav"><li class="sidebar-brand"><a href="/turbolift/" class="brand"><div class="brand-wrapper"><span>Turbolift</span></div></a></li> <li><a href="/turbolift/overview.html" class="">Overview</a></li> <li><a href="/turbolift/custom/index.html" class="">Defining your own effects and handlers</a> <ul class="sub-section"> <li><a href="/turbolift/custom/flip.html" class="">Effect example: Flip </a></li> <li><a href="/turbolift/custom/file_sys.html" class=" active ">Effect example: File System</a></li></ul></li> <li><a href="/turbolift/advanced/index.html" class="">Advanced Features</a> <ul class="sub-section"> <li><a href="/turbolift/advanced/labelled.html" class="">Labelled Effects</a></li> <li><a href="/turbolift/advanced/applicative.html" class="">Applicative Effects</a></li> <li><a href="/turbolift/advanced/higher.html" class="">Higher Order Effects</a></li> <li><a href="/turbolift/advanced/bidir.html" class="">Bidirectional Effects</a></li></ul></li> <li><a href="/turbolift/io.html" class="">IO</a></li></ul></div><div id="page-content-wrapper"><div class="nav"><div class="container-fluid"><div class="row"><div class="col-lg-12"><div class="action-menu pull-left clearfix"><a href="#menu-toggle" id="menu-toggle"><i class="fa fa-bars" aria-hidden="true"></i></a></div><ul class="pull-right"><li class="search-nav hidden-xs hidden-sm"><div id="search-dropdown"><label><i class="fa fa-search"></i>Search</label><input id="search-bar" type="text" placeholder="Enter keywords here..." onclick="displayToggleSearch(event)" /><ul id="search-dropdown-content" class="dropdown dropdown-content"></ul></div></li><li id="gh-eyes-item" class="hidden-xs to-uppercase"><a href="https://github.com/marcinzh/turbolift" target="_blank" rel="noopener noreferrer"><i class="fa fa-eye"></i><span>Watchers<span id="eyes" class="label label-default">--</span></span></a></li><li id="gh-stars-item" class="hidden-xs to-uppercase"><a href="https://github.com/marcinzh/turbolift" target="_blank" rel="noopener noreferrer"><i class="fa fa-star-o"></i><span>Stars<span id="stars" class="label label-default">--</span></span></a></li></ul></div></div></div></div><div id="content" data-github-owner="marcinzh" data-github-repo="turbolift"><div class="content-wrapper"><section><h1 id="effect-example-file-system">Effect example: File System</h1>
+
+<p>In the Haskell community, there are many effect systems positioning themselves as an alternative to the mainstream MTL.
+The File System effect example is often used as their demonstrator of reinterpretation.</p>
+
+<p>This is how it looks in Turbolift:</p>
+
+<h2 id="definition">Definition</h2>
+
+<h3 id="1-imports">1. Imports</h3>
+
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="nn">turbolift.</span><span class="o">{!!,</span> <span class="nc">Signature</span><span class="o">,</span> <span class="nc">Effect</span><span class="o">,</span> <span class="nc">Handler</span><span class="o">}</span>
+<span class="k">import</span> <span class="nn">turbolift.effects.</span><span class="o">{</span><span class="nc">State</span><span class="o">,</span> <span class="nc">Error</span><span class="o">}</span>
+</code></pre></div></div>
+
+<h3 id="2-define-the-signature">2. Define the signature</h3>
+
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">trait</span> <span class="nc">FileSystemSignature</span> <span class="k">extends</span> <span class="nc">Signature</span><span class="k">:</span>
+  <span class="kt">def</span> <span class="kt">readFile</span><span class="o">(</span><span class="kt">path:</span> <span class="kt">String</span><span class="o">)</span><span class="kt">:</span> <span class="kt">String</span> <span class="kt">!!</span> <span class="kt">ThisEffect</span>
+  <span class="k">def</span> <span class="nf">writeFile</span><span class="o">(</span><span class="n">path</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">contents</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span><span class="k">:</span> <span class="kt">Unit</span> <span class="kt">!!</span> <span class="kt">ThisEffect</span>
+</code></pre></div></div>
+
+<h3 id="3-define-the-effect-type">3. Define the effect type</h3>
+
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">trait</span> <span class="nc">FileSystemEffect</span> <span class="k">extends</span> <span class="nc">Effect</span><span class="o">[</span><span class="kt">FileSystemSignature</span><span class="o">]</span> <span class="k">with</span> <span class="nc">FileSystemSignature</span><span class="k">:</span>
+  <span class="c1">// Boilerplate:</span>
+  <span class="k">final</span> <span class="k">override</span> <span class="k">def</span> <span class="nf">readFile</span><span class="o">(</span><span class="n">path</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">=</span> <span class="nf">perform</span><span class="o">(</span><span class="nv">_</span><span class="o">.</span><span class="py">readFile</span><span class="o">(</span><span class="n">path</span><span class="o">))</span>
+  <span class="k">final</span> <span class="k">override</span> <span class="k">def</span> <span class="nf">writeFile</span><span class="o">(</span><span class="n">path</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">contents</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">=</span> <span class="nf">perform</span><span class="o">(</span><span class="nv">_</span><span class="o">.</span><span class="py">writeFile</span><span class="o">(</span><span class="n">path</span><span class="o">,</span> <span class="n">contents</span><span class="o">))</span>
+</code></pre></div></div>
+
+<h3 id="4-define-a-handler">4. Define a handler</h3>
+
+<p>Instantiate custom <code class="language-plaintext highlighter-rouge">FileError</code> effect, that we will be using in the handler:</p>
+
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">case</span> <span class="k">object</span> <span class="nc">FileError</span> <span class="k">extends</span> <span class="nc">Error</span><span class="o">[</span><span class="kt">FileErrorCause</span><span class="o">]</span>
+<span class="k">type</span> <span class="kt">FileError</span> <span class="o">=</span> <span class="nv">FileError</span><span class="o">.</span><span class="py">type</span>
+
+<span class="n">enum</span> <span class="nc">FileErrorCause</span><span class="k">:</span>
+  <span class="kt">case</span> <span class="kt">NoSuchFile</span><span class="o">(</span><span class="kt">path:</span> <span class="kt">String</span><span class="o">)</span>
+
+  <span class="kt">def</span> <span class="kt">message</span> <span class="o">=</span> <span class="k">this</span> <span class="k">match</span>
+    <span class="k">case</span> <span class="nc">NoSuchFile</span><span class="o">(</span><span class="n">path</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">s</span><span class="s">"No such file found: $path"</span>
+</code></pre></div></div>
+
+<p>The handler itself:</p>
+
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nf">extension</span> <span class="o">(</span><span class="n">fx</span><span class="k">:</span> <span class="kt">FileSystemEffect</span><span class="o">)</span>
+  <span class="k">def</span> <span class="nf">inMemoryHandler</span> <span class="k">=</span>
+    <span class="c1">// Internal state:</span>
+    <span class="k">case</span> <span class="k">object</span> <span class="nc">S</span> <span class="k">extends</span> <span class="nc">State</span><span class="o">[</span><span class="kt">Map</span><span class="o">[</span><span class="kt">String</span>, <span class="kt">String</span><span class="o">]]</span>
+    <span class="k">type</span> <span class="kt">S</span> <span class="o">=</span> <span class="nv">S</span><span class="o">.</span><span class="py">type</span>
+
+    <span class="c1">// Our proxy depends on 2 effects: `S` and `FileError`</span>
+    <span class="k">new</span> <span class="nv">fx</span><span class="o">.</span><span class="py">impl</span><span class="o">.</span><span class="py">Proxy</span><span class="o">[</span><span class="kt">S</span> <span class="kt">&amp;</span> <span class="kt">FileError</span><span class="o">]</span> <span class="k">with</span> <span class="nc">FileSystemSignature</span><span class="k">:</span>
+      <span class="kt">override</span> <span class="kt">def</span> <span class="kt">readFile</span><span class="o">(</span><span class="kt">path:</span> <span class="kt">String</span><span class="o">)</span> <span class="o">=</span>
+        <span class="nv">S</span><span class="o">.</span><span class="py">gets</span><span class="o">(</span><span class="nv">_</span><span class="o">.</span><span class="py">get</span><span class="o">(</span><span class="n">path</span><span class="o">)).</span><span class="py">flatMap</span> <span class="o">{</span>
+          <span class="k">case</span> <span class="nc">Some</span><span class="o">(</span><span class="n">contents</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="o">!!.</span><span class="py">pure</span><span class="o">(</span><span class="n">contents</span><span class="o">)</span>
+          <span class="k">case</span> <span class="nc">None</span> <span class="k">=&gt;</span> <span class="nv">FileError</span><span class="o">.</span><span class="py">raise</span><span class="o">(</span><span class="nv">FileErrorCause</span><span class="o">.</span><span class="py">NoSuchFile</span><span class="o">(</span><span class="n">path</span><span class="o">))</span>
+        <span class="o">}</span>
+
+      <span class="k">override</span> <span class="k">def</span> <span class="nf">writeFile</span><span class="o">(</span><span class="n">path</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">contents</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">=</span>
+        <span class="nv">S</span><span class="o">.</span><span class="py">modify</span><span class="o">(</span><span class="nv">_</span><span class="o">.</span><span class="py">updated</span><span class="o">(</span><span class="n">path</span><span class="o">,</span> <span class="n">contents</span><span class="o">))</span>
+
+    <span class="o">.</span><span class="py">toHandler</span>
+    <span class="o">.</span><span class="py">partiallyProvideWith</span><span class="o">[</span><span class="kt">FileError</span><span class="o">](</span><span class="nv">S</span><span class="o">.</span><span class="py">handler</span><span class="o">(</span><span class="nc">Map</span><span class="o">()).</span><span class="py">dropState</span><span class="o">)</span>
+</code></pre></div></div>
+
+<p>Our handler has 2 dependencies: <code class="language-plaintext highlighter-rouge">S</code> and <code class="language-plaintext highlighter-rouge">FileError</code> effects.
+Using <code class="language-plaintext highlighter-rouge">partiallyProvideWith</code> method, we modify the handler in such a way,
+that dependency on <code class="language-plaintext highlighter-rouge">S</code> is removed (satisfied), but dependency on <code class="language-plaintext highlighter-rouge">FileError</code> remains.
+This way, we hide handler’s internal state from the outside world. 
+Responsibility to handle the error effect though, is passed on the user.</p>
+
+<hr />
+
+<h2 id="usage">Usage</h2>
+
+<h3 id="instantiate-the-effect">Instantiate the effect</h3>
+
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">case</span> <span class="k">object</span> <span class="nc">MyFS</span> <span class="k">extends</span> <span class="nc">FileSystemEffect</span>
+
+<span class="c1">// Optional:</span>
+<span class="k">type</span> <span class="kt">MyFS</span> <span class="o">=</span> <span class="nv">MyFS</span><span class="o">.</span><span class="py">type</span>
+</code></pre></div></div>
+
+<h3 id="run-a-program-using-the-effect--handler">Run a program using the effect &amp; handler</h3>
+
+<div class="language-scala highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">val</span> <span class="nv">program</span> <span class="k">=</span>
+  <span class="k">for</span>
+    <span class="k">_</span> <span class="k">&lt;-</span> <span class="nv">MyFS</span><span class="o">.</span><span class="py">writeFile</span><span class="o">(</span><span class="s">"hello.txt"</span><span class="o">,</span> <span class="s">"Hello world!"</span><span class="o">)</span>
+    <span class="n">contents</span> <span class="k">&lt;-</span> <span class="nv">MyFS</span><span class="o">.</span><span class="py">readFile</span><span class="o">(</span><span class="s">"hello.txt"</span><span class="o">)</span>
+  <span class="k">yield</span> <span class="n">contents</span>
+<span class="c1">// program: Computation[String, ThisEffect] = &lt;function1&gt;</span>
+
+<span class="k">val</span> <span class="nv">result</span> <span class="k">=</span> <span class="n">program</span>
+  <span class="o">.</span><span class="py">handleWith</span><span class="o">(</span><span class="nv">MyFS</span><span class="o">.</span><span class="py">inMemoryHandler</span><span class="o">)</span>
+  <span class="o">.</span><span class="py">handleWith</span><span class="o">(</span><span class="nv">FileError</span><span class="o">.</span><span class="py">handler</span><span class="o">)</span>
+  <span class="o">.</span><span class="py">run</span>
+<span class="c1">// result: Either[FileErrorCause, String] = Right(value = "Hello world!")</span>
+</code></pre></div></div>
+</section></div></div></div></div><script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/js/bootstrap.min.js"></script><script src="/turbolift/highlight/highlight.pack.js"></script><script src="/turbolift/lunr/lunr.js"></script><script>
+// For all code blocks, copy the language from the containing div
+// to the inner code tag (where hljs expects it to be)
+const langPrefix = 'language-';
+document.querySelectorAll(`div[class^='${langPrefix}']`).forEach(function(div) {
+  div.classList.forEach(function(cssClass) {
+    if (cssClass.startsWith(langPrefix)) {
+      const lang = cssClass.substring(langPrefix.length);
+      div.querySelectorAll('pre code').forEach(function(code) {
+        code.classList.add(lang);
+      });
+    }
+  });
+});
+
+hljs.configure({languages:['scala','java','bash']});
+hljs.initHighlightingOnLoad();
+      </script><script>console.info('\x57\x65\x62\x73\x69\x74\x65\x20\x62\x75\x69\x6c\x74\x20\x77\x69\x74\x68\x3a\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x5f\x5f\x20\x20\x20\x20\x5f\x5f\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x5f\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x5f\x20\x5f\x5f\x0a\x20\x20\x20\x5f\x5f\x5f\x5f\x5f\x2f\x20\x2f\x5f\x20\x20\x2f\x20\x2f\x5f\x20\x20\x20\x20\x20\x20\x5f\x5f\x5f\x5f\x20\x5f\x5f\x5f\x20\x20\x28\x5f\x29\x5f\x5f\x5f\x5f\x5f\x5f\x5f\x5f\x5f\x5f\x5f\x5f\x5f\x20\x20\x5f\x5f\x5f\x5f\x5f\x28\x5f\x29\x20\x2f\x5f\x5f\x5f\x5f\x20\x20\x5f\x5f\x5f\x5f\x5f\x0a\x20\x20\x2f\x20\x5f\x5f\x5f\x2f\x20\x5f\x5f\x20\x5c\x2f\x20\x5f\x5f\x2f\x5f\x5f\x5f\x5f\x5f\x2f\x20\x5f\x5f\x20\x60\x5f\x5f\x20\x5c\x2f\x20\x2f\x20\x5f\x5f\x5f\x2f\x20\x5f\x5f\x5f\x2f\x20\x5f\x5f\x20\x5c\x2f\x20\x5f\x5f\x5f\x2f\x20\x2f\x20\x5f\x5f\x2f\x20\x5f\x20\x5c\x2f\x20\x5f\x5f\x5f\x2f\x0a\x20\x28\x5f\x5f\x20\x20\x29\x20\x2f\x5f\x2f\x20\x2f\x20\x2f\x5f\x2f\x5f\x5f\x5f\x5f\x5f\x2f\x20\x2f\x20\x2f\x20\x2f\x20\x2f\x20\x2f\x20\x2f\x20\x2f\x5f\x5f\x2f\x20\x2f\x20\x20\x2f\x20\x2f\x5f\x2f\x20\x28\x5f\x5f\x20\x20\x29\x20\x2f\x20\x2f\x5f\x2f\x20\x20\x5f\x5f\x28\x5f\x5f\x20\x20\x29\x0a\x2f\x5f\x5f\x5f\x5f\x2f\x5f\x2e\x5f\x5f\x5f\x2f\x5c\x5f\x5f\x2f\x20\x20\x20\x20\x20\x2f\x5f\x2f\x20\x2f\x5f\x2f\x20\x2f\x5f\x2f\x5f\x2f\x5c\x5f\x5f\x5f\x2f\x5f\x2f\x20\x20\x20\x5c\x5f\x5f\x5f\x5f\x2f\x5f\x5f\x5f\x5f\x2f\x5f\x2f\x5c\x5f\x5f\x2f\x5c\x5f\x5f\x5f\x2f\x5f\x5f\x5f\x5f\x2f\x0a\x0a\x68\x74\x74\x70\x73\x3a\x2f\x2f\x34\x37\x64\x65\x67\x2e\x67\x69\x74\x68\x75\x62\x2e\x69\x6f\x2f\x73\x62\x74\x2d\x6d\x69\x63\x72\x6f\x73\x69\x74\x65\x73')</script><script src="/turbolift/js/search.js"></script><script src="/turbolift/js/main.js"></script></body></html>
