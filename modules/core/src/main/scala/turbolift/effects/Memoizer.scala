@@ -99,5 +99,5 @@ object Memoizer:
     val handler: ThisHandler[Identity, Identity, U]
 
   def fix[K, V, U](f: (fx: Fix[K, V, U]) => K => V !! (U & fx.type)): Fix[K, V, U] = new:
-    override val handler: Handler[Identity, Identity, U] = handlers.default[U](f(this))
+    override val handler: ThisHandler[Identity, Identity, U] = handlers.default[U](f(this))
 */

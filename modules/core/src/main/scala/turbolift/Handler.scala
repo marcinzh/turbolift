@@ -137,6 +137,8 @@ sealed trait Handler[From[+_], To[+_], Elim, Intro]:
   /** Transforms this handler, by discarding its result. */
   final def void: Handler[From, [X] =>> Unit, Elim, Intro] = mapK([X] => (_: To[X]) => ())
 
+  final def castElim[Elim2]: Handler[From, To, Elim2, Intro] = asInstanceOf[Handler[From, To, Elim2, Intro]]
+
 
 object Handler:
   /** Transforms a computation of a handler, into a new handler.

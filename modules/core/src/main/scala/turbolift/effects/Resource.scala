@@ -60,8 +60,8 @@ object ResourceEffect:
     def use[A <: JCloseable](acquire: => A): A !! thiz.type = thiz.use(IO(acquire), a => IO(a.close))
 
 
-/** Predefined instance of [[Resource]] effect. */
-case object Resource extends ResourceEffect[IO]:
+/** Predefined instance of [[ResourceEffect]]. */
+case object ResourceIO extends ResourceEffect[IO]:
   export handlers.{default => handler}
 
-type Resource = Resource.type
+type ResourceIO = ResourceIO.type

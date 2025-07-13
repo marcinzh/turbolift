@@ -1,7 +1,7 @@
 package turbolift.io
 import java.io.{Closeable => JCloseable}
 import turbolift.!!
-import turbolift.effects.{IO, Resource}
+import turbolift.effects.{IO, ResourceIO}
 
 
 /** To be used with [[turbolift.effects.ResourceEffect ResourceEffect]]. */
@@ -19,7 +19,7 @@ object ResourceFactory:
       override def release(a: A) = rel(a)
 
   extension [A](thiz: ResourceFactory[A, IO])
-    def use: A !! Resource = Resource.use(thiz)
+    def use: A !! ResourceIO = ResourceIO.use(thiz)
 
   trait Closeable[A <: JCloseable] extends ResourceFactory[A, IO]:
     final override def release(a: A): Unit !! IO = IO(a.close)

@@ -1,7 +1,7 @@
 package turbolift
 import scala.annotation.nowarn
 import scala.concurrent.duration.FiniteDuration
-import turbolift.effects.{ChoiceSignature, Alternative, IO, UnsafeIO, Each, Resource}
+import turbolift.effects.{ChoiceSignature, Alternative, IO, UnsafeIO, Each, ResourceIO, PolyResource}
 import turbolift.internals.auxx.CanPartiallyHandle
 import turbolift.internals.executor.Executor
 import turbolift.interpreter.Prompt
@@ -350,8 +350,12 @@ object Computation:
     def warpAwait(name: String): A !! U = warp(Warp.ExitMode.Await, name)
 
 
-  extension [A, U <: IO](thiz: Computation[A, U & Resource])
-    def finalized: A !! U = Resource.scoped(thiz)
+  extension [A, U <: IO](thiz: Computation[A, U & ResourceIO])
+    def finalizedIO: A !! U = ResourceIO.scoped(thiz)
+
+
+  extension [A, U, V](thiz: Computation[A, PolyResource.@@[V] & U])
+    def finalized: A !! (V & U) = PolyResource.scoped[V](thiz)
 
 
   extension [A, U](thiz: Computation[A, U])

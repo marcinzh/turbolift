@@ -28,6 +28,11 @@ import turbolift.interpreter.{Interpreter => IC, Mixins}
  * case object MyGoogle extends Google
  * type MyGoogle = MyGoogle.type // optional
  *
+ * // Alternative way to instantiate the effect, using macro to skip the boilerplate:
+ * // (generates the `trait Google` above)
+ * val MyGoogle = Effect.boilerplate[GoogleSignature]
+ * type MyGoogle = MyGoogle.type // optional
+ *
  * // Invoking operations:
  * val program: Int !! MyGoogle = MyGoogle.countPicturesOf("cat")
  * }}}
@@ -158,3 +163,137 @@ object Effect:
   final class Combine4[Fx1 <: Signature, Fx2 <: Signature, Fx3 <: Signature, Fx4 <: Signature](val fx1: Fx1, val fx2: Fx2, val fx3: Fx3, val fx4: Fx4):
     val impl: Impl[fx1.type & fx2.type & fx3.type & fx4.type] = new Impl(Array(fx1, fx2, fx3, fx4))
     export impl.ThisHandler
+
+
+
+  /** API for defining custom **effects**.
+   *
+   * Allows to "polymorphize" an effect that has a type parameter (e.g. `Reader[R]`, `Error[E]`).
+   * //@#@TODO link to microsite
+   *
+   * The [[Polymorphic_+]] variant is for effects with single type parameter.
+   * The parameter will be **covariantly** inferred at call sites.
+   */
+  abstract class Polymorphic_+[Fx[_] <: Effect[?], Q](protected val monomorphic: Fx[Q]):
+    /** Read as `Apply`
+     *
+     * This effect, but with given type parameter applied.
+     */
+    type @@[+X]
+
+    /** API for defining custom **effects**.*/
+    inline def polymorphize[X] = new Polymorphize[X]
+
+    /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
+    final class Polymorphize[X]:
+      inline def polyFx: Fx[X] = monomorphic.asInstanceOf[Fx[X]]
+      inline def perform[A, U](f: (fx: Fx[X]) => A !! (U & fx.type)): A !! (U & @@[X]) = f(polyFx).cast[A, @@[X] & U]
+      inline def handler[F[+_], G[+_], N](f: (fx: Fx[X]) => Handler[F, G, fx.type, N]): Handler[F, G, @@[X], N] = f(polyFx).castElim[@@[X]]
+      inline def apply[A](f: Polymorphize[X] => A): A = f(this)
+      inline def lift[A, U, Fxx <: Fx[X]](comp: A !! (@@[X] & U)): A !! (Fxx & U) = comp.cast[A, Fxx & U]
+      inline def unlift[A, U, Fxx <: Fx[X]](comp: A !! (Fxx & U)): A !! (@@[X] & U) = comp.cast[A, @@[X] & U]
+
+
+  /** API for defining custom **effects**.
+   *
+   * Allows to "polymorphize" an effect that has a type parameter (e.g. `Reader[R]`, `Error[E]`).
+   * //@#@TODO link to microsite
+   *
+   * [[Polymorphic_-]] is for effects with single type parameter.
+   * The parameter will be **contravariantly** inferred at call sites.
+   */
+  abstract class Polymorphic_-[Fx[_] <: Effect[?], Q](protected val monomorphic: Fx[Q]):
+    /** Read as `Apply`
+     *
+     * This effect, but with given type parameter applied.
+     */
+    type @@[-X]
+
+    /** API for defining custom **effects**.*/
+    inline def polymorphize[X] = new Polymorphize[X]
+
+    /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
+    final class Polymorphize[X]:
+      inline def polyFx: Fx[X] = monomorphic.asInstanceOf[Fx[X]]
+      inline def perform[A, U](f: (fx: Fx[X]) => A !! (U & fx.type)): A !! (U & @@[X]) = f(polyFx).cast[A, @@[X] & U]
+      inline def handler[F[+_], G[+_], N](f: (fx: Fx[X]) => Handler[F, G, fx.type, N]): Handler[F, G, @@[X], N] = f(polyFx).castElim[@@[X]]
+      inline def apply[A](f: Polymorphize[X] => A): A = f(this)
+      inline def lift[A, U, Fxx <: Fx[X]](comp: A !! (@@[X] & U)): A !! (Fxx & U) = comp.cast[A, Fxx & U]
+      inline def unlift[A, U, Fxx <: Fx[X]](comp: A !! (Fxx & U)): A !! (@@[X] & U) = comp.cast[A, @@[X] & U]
+
+
+  /** API for defining custom **effects**.
+   *
+   * Allows to "polymorphize" an effect that has a type parameter (e.g. `Reader[R]`, `Error[E]`).
+   * //@#@TODO link to microsite
+   *
+   * [[Polymorphic_=]] is for effects with single type parameter.
+   * The parameter will be **invariantly** inferred at call sites.
+   */
+  abstract class Polymorphic_=[Fx[_] <: Effect[?], Q](protected val monomorphic: Fx[Q]):
+    /** Read as `Apply`
+     *
+     * This effect, but with given type parameter applied.
+     */
+    type @@[X]
+
+    /** API for defining custom **effects**.*/
+    inline def polymorphize[X] = new Polymorphize[X]
+
+    /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
+    final class Polymorphize[X]:
+      inline def polyFx: Fx[X] = monomorphic.asInstanceOf[Fx[X]]
+      inline def perform[A, U](f: (fx: Fx[X]) => A !! (U & fx.type)): A !! (U & @@[X]) = f(polyFx).cast[A, @@[X] & U]
+      inline def handler[F[+_], G[+_], N](f: (fx: Fx[X]) => Handler[F, G, fx.type, N]): Handler[F, G, @@[X], N] = f(polyFx).castElim[@@[X]]
+      inline def apply[A](f: Polymorphize[X] => A): A = f(this)
+      inline def lift[A, U, Fxx <: Fx[X]](comp: A !! (@@[X] & U)): A !! (Fxx & U) = comp.cast[A, Fxx & U]
+      inline def unlift[A, U, Fxx <: Fx[X]](comp: A !! (Fxx & U)): A !! (@@[X] & U) = comp.cast[A, @@[X] & U]
+
+
+  /** API for defining custom **effects**.
+   * 
+   * Like [[Polymorphic_+]], but for effects with 2 parameters.
+   */
+  abstract class Polymorphic_++[Fx[_, _] <: Effect[?], Q1, Q2](protected val monomorphic: Fx[Q1, Q2]):
+    /** Read as `Apply`
+     *
+     * This effect, but with given type parameters applied.
+     */
+    type @@[+X, +Y]
+
+    /** API for defining custom **effects**.*/
+    inline def polymorphize[X, Y] = new Polymorphize[X, Y]
+
+    /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
+    final class Polymorphize[X, Y]:
+      inline def polyFx: Fx[X, Y] = monomorphic.asInstanceOf[Fx[X, Y]]
+      inline def perform[A, U](f: (fx: Fx[X, Y]) => A !! (U & fx.type)): A !! (U & @@[X, Y]) = f(polyFx).cast[A, @@[X, Y] & U]
+      inline def handler[F[+_], G[+_], N](f: (fx: Fx[X, Y]) => Handler[F, G, fx.type, N]): Handler[F, G, @@[X, Y], N] = f(polyFx).castElim[@@[X, Y]]
+      inline def apply[A](f: Polymorphize[X, Y] => A): A = f(this)
+      inline def lift[A, U, Fxx <: Fx[X, Y]](comp: A !! (@@[X, Y] & U)): A !! (Fxx & U) = comp.cast[A, Fxx & U]
+      inline def unlift[A, U, Fxx <: Fx[X, Y]](comp: A !! (Fxx & U)): A !! (@@[X, Y] & U) = comp.cast[A, @@[X, Y] & U]
+
+
+  /** API for defining custom **effects**.
+   * 
+   * Like [[Polymorphic_+]], but for effects with 2 parameters.
+   */
+  abstract class Polymorphic_-+[Fx[_, _] <: Effect[?], Q1, Q2](protected val monomorphic: Fx[Q1, Q2]):
+    /** Read as `Apply`
+     *
+     * This effect, but with given type parameters applied.
+     */
+    type @@[-X, +Y]
+
+    /** API for defining custom **effects**.*/
+    inline def polymorphize[X, Y] = new Polymorphize[X, Y]
+
+    /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
+    final class Polymorphize[X, Y]:
+      inline def polyFx: Fx[X, Y] = monomorphic.asInstanceOf[Fx[X, Y]]
+      inline def perform[A, U](f: (fx: Fx[X, Y]) => A !! (U & fx.type)): A !! (U & @@[X, Y]) = f(polyFx).cast[A, @@[X, Y] & U]
+      inline def handler[F[+_], G[+_], N](f: (fx: Fx[X, Y]) => Handler[F, G, fx.type, N]): Handler[F, G, @@[X, Y], N] = f(polyFx).castElim[@@[X, Y]]
+      inline def apply[A](f: Polymorphize[X, Y] => A): A = f(this)
+      inline def lift[A, U, Fxx <: Fx[X, Y]](comp: A !! (@@[X, Y] & U)): A !! (Fxx & U) = comp.cast[A, Fxx & U]
+      inline def unlift[A, U, Fxx <: Fx[X, Y]](comp: A !! (Fxx & U)): A !! (@@[X, Y] & U) = comp.cast[A, @@[X, Y] & U]
+
