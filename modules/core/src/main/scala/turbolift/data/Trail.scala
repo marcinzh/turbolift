@@ -1,17 +1,18 @@
 package turbolift.data
 import turbolift.!!
-import turbolift.effects.IO
+import turbolift.effects.UnsafeIO
+import turbolift.data.{Cause, Snap}
 
 
-/** Internal state of [[turbolift.effects.Finalizer]] effect's predefined handler. */
-opaque type Trail[-U <: IO] = Snap[Unit] !! U
+/** Internal state of [[turbolift.effects.Resource]] effect's default handler. */
+opaque type Trail[-U] = Snap[Unit] !! U
 
 object Trail:
-  val empty: Trail[IO] = !!.pure(Snap.unit)
-  def apply[U <: IO](comp: Unit !! U): Trail[U] = IO.snap(comp)
+  val empty: Trail[Any] = !!.pure(Snap.unit)
+  def apply[U](comp: Unit !! U): Trail[U] = UnsafeIO.snap(comp)
 
-  extension [U <: IO](thiz: Trail[U])
-    def run: Unit !! U = thiz.flatMap(IO.unsnap)
+  extension [U](thiz: Trail[U])
+    def run: Unit !! U = thiz.flatMap(UnsafeIO.unsnap)
     def &(that: Trail[U]): Trail[U] = thiz.zipWithPar(that)(lift(_ & _))
     def ++(that: Trail[U]): Trail[U] = thiz.zipWith(that)(lift(_ ++ _))
 

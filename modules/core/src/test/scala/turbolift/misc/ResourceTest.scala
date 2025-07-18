@@ -4,7 +4,7 @@ import turbolift.!!
 import turbolift.effects._
 import turbolift.data.{Outcome, Snap, Cause}
 import turbolift.io.{AtomicVar, ResourceFactory}
-import turbolift.effects.{Finalizer, FinalizerEffect}
+import turbolift.effects.{Resource, ResourceEffect}
 import Auxx._
 
 
@@ -21,7 +21,7 @@ class ResourceTest extends Specification:
         _ <-
           (for
             _ <- v.event(4)
-            _ <- Finalizer.use(rf)
+            _ <- Resource.use(rf)
             _ <- v.event(5)
           yield ())
           .finalized
@@ -40,9 +40,9 @@ class ResourceTest extends Specification:
         _ <-
           (for
             _ <- v.event(6)
-            _ <- Finalizer.use(rf1)
+            _ <- Resource.use(rf1)
             _ <- v.event(7)
-            _ <- Finalizer.use(rf2)
+            _ <- Resource.use(rf2)
             _ <- v.event(8)
           yield ())
           .finalized
@@ -63,7 +63,7 @@ class ResourceTest extends Specification:
         v <- AtomicVar(1)
         e <- IO.catchToEither:
           (for
-            _ <- Finalizer.use(IO(throw ex1), _ => v.event(2))
+            _ <- Resource.use(IO(throw ex1), _ => v.event(2))
             _ <- v.event(3)
           yield ())
           .finalized
@@ -78,7 +78,7 @@ class ResourceTest extends Specification:
         v <- AtomicVar(1)
         e <- IO.catchToEither:
           (for
-            _ <- Finalizer.use(v.event(2), _ => IO(throw ex1))
+            _ <- Resource.use(v.event(2), _ => IO(throw ex1))
             _ <- v.event(3)
           yield ())
           .finalized
@@ -94,9 +94,9 @@ class ResourceTest extends Specification:
         v <- AtomicVar(1)
         e <- IO.snap:
           (for
-            _ <- Finalizer.use(v.event(2), _ => IO(throw ex1))
+            _ <- Resource.use(v.event(2), _ => IO(throw ex1))
             _ <- v.event(3)
-            _ <- Finalizer.use(v.event(4), _ => IO(throw ex2))
+            _ <- Resource.use(v.event(4), _ => IO(throw ex2))
             _ <- v.event(5)
           yield ())
           .finalized
@@ -130,7 +130,7 @@ class ResourceTest extends Specification:
         _ <-
           (for
             _ <- clock.fork
-            _ <- Finalizer.use(rf) *! Finalizer.use(rf)
+            _ <- Resource.use(rf) *! Resource.use(rf)
             _ <- v.event(0)
           yield ())
           .finalized
@@ -152,10 +152,10 @@ class ResourceTest extends Specification:
         clock = mkClock(v, g1, g2)
         _ <-
           (for
-            _ <- Finalizer.use(rf1)
+            _ <- Resource.use(rf1)
             _ <- clock.fork
-            _ <- Finalizer.use(rf2) *! Finalizer.use(rf2)
-            _ <- Finalizer.use(rf3)
+            _ <- Resource.use(rf2) *! Resource.use(rf2)
+            _ <- Resource.use(rf3)
             _ <- v.event(0)
           yield ())
           .finalized

@@ -1,10 +1,10 @@
 package turbolift.io
 import java.io.{Closeable => JCloseable}
 import turbolift.!!
-import turbolift.effects.{IO, Finalizer}
+import turbolift.effects.{IO, Resource}
 
 
-/** To be used with [[turbolift.effects.FinalizerEffect FinalizerEffect]]. */
+/** To be used with [[turbolift.effects.ResourceEffect ResourceEffect]]. */
 trait ResourceFactory[A, U]:
   def acquire: A !! U
   def release(value: A): Unit !! U
@@ -19,7 +19,7 @@ object ResourceFactory:
       override def release(a: A) = rel(a)
 
   extension [A](thiz: ResourceFactory[A, IO])
-    def use: A !! Finalizer = Finalizer.use(thiz)
+    def use: A !! Resource = Resource.use(thiz)
 
   trait Closeable[A <: JCloseable] extends ResourceFactory[A, IO]:
     final override def release(a: A): Unit !! IO = IO(a.close)

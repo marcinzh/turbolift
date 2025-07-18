@@ -6,24 +6,23 @@ import turbolift.io.ResourceFactory
 import turbolift.data.Trail
 
 
-trait FinalizerSignature[U] extends Signature:
+trait ResourceSignature[U] extends Signature:
+  def register(release: Unit !! U): Unit !! ThisEffect
   def use[A](acquire: A !! U, release: A => Unit !! U): A !! ThisEffect
 
 
-trait FinalizerEffect[U] extends Effect[FinalizerSignature[U]] with FinalizerSignature[U]:
+trait ResourceEffect[U] extends Effect[ResourceSignature[U]] with ResourceSignature[U]:
+  enclosing =>
+  final override def register(release: Unit !! U): Unit !! this.type = perform(_.register(release))
   final override def use[A](acquire: A !! U, release: A => Unit !! U): A !! this.type = perform(_.use(acquire, release))
 
-  final def use[A, U2 >: U](rf: ResourceFactory[A, U2]): A !! this.type =
-    use(rf.acquire, rf.release(_))
+  final def use[A](rf: ResourceFactory[A, U]): A !! this.type = use(rf.acquire, rf.release(_))
+  final def scoped[A, V](comp: A !! (V & this.type)): A !! (V & U) = comp.handleWith(handlers.default)
 
-
-object FinalizerEffect:
-  extension [U <: IO](thiz: FinalizerEffect[U])
-    def use[A <: JCloseable](acquire: => A): A !! thiz.type =
-      thiz.use(IO(acquire), a => IO(a.close))
-
-    def handlerIO: Handler[Identity, Identity, thiz.type, U] =
-      new thiz.impl.Stateful[Identity, (_, Trail[U]), U] with thiz.impl.Parallel.ForkJoin with FinalizerSignature[U]:
+  /** Predefined handlers for this effect. */
+  object handlers:
+    def default: Handler[Identity, Identity, enclosing.type, U] =
+      new impl.Stateful[Identity, (_, Trail[U]), U] with impl.Parallel.ForkJoin with ResourceSignature[U]:
         override type Local = Trail[U]
         override def onInitial: Local !! Any = !!.pure(Trail.empty)
         override def onReturn(a: Unknown, s: Local): (Unknown, Local) !! Any = !!.pure((a, s))
@@ -41,25 +40,27 @@ object FinalizerEffect:
 
         override def onFork(s: Local): (Local, Local) = (s, Trail.empty)
 
+        override def register(release: Unit !! U): Unit !! ThisEffect = Local.modify(Trail(release) ++ _)
+
         override def use[A](acquire: A !! U, release: A => Unit !! U): A !! ThisEffect =
-          IO.uncancellable:
+          UnsafeIO.uncancellable:
             acquire.flatMap: a =>
               Local.modify(Trail(release(a)) ++ _).as(a)
 
       .toHandler
       .tapStateEff: trail =>
-        IO.uncancellable(trail.run)
+        UnsafeIO.uncancellable(trail.run)
       .dropState
 
 
-trait FinalizerEffectIO[U <: IO] extends FinalizerEffect[U]:
-  /** Default handler for this effect. */
-  def handler = this.handlerIO
+object ResourceEffect:
+  extension [U <: IO](thiz: ResourceEffect[U])
+    def register[A <: JCloseable](a: A): Unit !! thiz.type = register(IO(a.close))
+    def use[A <: JCloseable](acquire: => A): A !! thiz.type = thiz.use(IO(acquire), a => IO(a.close))
 
-  def scoped[A, V](comp: A !! (V & this.type)): A !! (V & U) = comp.handleWith(handler)
 
+/** Predefined instance of [[Resource]] effect. */
+case object Resource extends ResourceEffect[IO]:
+  export handlers.{default => handler}
 
-/** Predefined instance of this effect. */
-case object Finalizer extends FinalizerEffectIO[IO]
-
-type Finalizer = Finalizer.type
+type Resource = Resource.type
