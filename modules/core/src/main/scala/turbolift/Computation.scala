@@ -1,7 +1,7 @@
 package turbolift
 import scala.annotation.nowarn
 import scala.concurrent.duration.FiniteDuration
-import turbolift.effects.{ChoiceSignature, IO, Each, Finalizer}
+import turbolift.effects.{ChoiceSignature, IO, UnsafeIO, Each, Finalizer}
 import turbolift.internals.auxx.CanPartiallyHandle
 import turbolift.internals.effect.AnyChoice
 import turbolift.internals.executor.Executor
@@ -140,19 +140,23 @@ sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift]
   //@#@OLD
   // final override def toString = s"turbolift.Computation@${hashCode.toHexString}"
 
+
+  //---------- postfix syntax ----------
+
+
+  final def guarantee[U2 <: U](release: Unit !! U2): A !! U2 = !!.guarantee(release)(this)
+
+  final def onAbort[U2 <: U](f: (Any, Prompt) => Unit !! U2): A !! U2 = !!.onAbort(this)(f)
+
+
   //---------- IO operations in postfix syntax ----------
+
 
   /** Run this computation in a new fiber. */
   final def fork: Fiber[A, U] !! (U & IO & Warp) = Fiber.fork(this)
 
   /** Like [[fork]], but the fiber is created as a child of specific warp, rather than the current warp. */
   final def forkAt(warp: Warp): Fiber[A, U] !! (U & IO) = Fiber.forkAt(warp)(this)
-
-  final def onFailure[U2 <: U & IO](f: Throwable => Unit !! U2): A !! U2 = IO.onFailure(this)(f)
-
-  final def onCancel[U2 <: U & IO](comp: Unit !! U2): A !! U2 = IO.onCancel(this)(comp)
-
-  final def guarantee[U2 <: U & IO](release: Unit !! U2): A !! U2 = IO.guarantee(release)(this)
 
   final def executeOn[U2 <: U & IO](exec: Executor): A !! U2 = IO.executeOn(exec)(this)
 
@@ -293,6 +297,22 @@ object Computation:
   def sequentiallyIf[A, U](cond: Boolean)(body: A !! U): A !! U = parallellyIf(!cond)(body)
   def parallelly[A, U](body: A !! U): A !! U = parallellyIf(true)(body)
   def sequentially[A, U](body: A !! U): A !! U = parallellyIf(false)(body)
+
+
+  //---------- Bracket ----------
+
+
+  def guarantee[A, U](release: Unit !! U)(body: A !! U): A !! U =
+    UnsafeIO.guarantee(release)(body)
+
+  def onAbort[A, U](body: A !! U)(f: (Any, Prompt) => Unit !! U): A !! U =
+    UnsafeIO.onAbort(body)(f)
+
+  def bracket[A, B, U](acquire: A !! U, release: A => Unit !! U)(use: A => B !! U): B !! U =
+    UnsafeIO.bracket(acquire, release)(use)
+
+  def bracketVoid[A, U](acquire: Unit !! U, release: Unit !! U)(use: A !! U): A !! U =
+    UnsafeIO.bracketVoid(acquire, release)(use)
 
 
   //---------- Extensions ----------
