@@ -2,7 +2,7 @@ package turbolift.effects
 import org.specs2.mutable._
 import turbolift.!!
 import turbolift.Extensions._
-import turbolift.effects.Writer
+import turbolift.effects.WriterEffect
 import turbolift.effects.Cont
 import turbolift.mode.ST
 
@@ -95,7 +95,7 @@ class ContTest extends Specification:
 
     "cont & writer" >>{
       case object K extends Cont[Unit]
-      case object W extends Writer[String]
+      case object W extends WriterEffect[String]
       type K = K.type
       type W = W.type
 

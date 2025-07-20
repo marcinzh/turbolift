@@ -2,7 +2,7 @@ package turbolift.misc
 import java.util.concurrent.{Executor => JExecutor}
 import org.specs2.mutable._
 import turbolift.!!
-import turbolift.effects.{IO, Error}
+import turbolift.effects.{IO, ErrorEffect}
 import turbolift.data.{Outcome, Cause}
 import turbolift.io.AtomicVar
 import turbolift.internals.executor.Executor
@@ -146,7 +146,7 @@ class IOTest extends Specification:
       }
 
       "error" >>{
-        case object E extends Error[String]
+        case object E extends ErrorEffect[String]
         (for
           ex1 <- IO.executor
           err <- E.raise("OMG").executeOn(otherExec).handleWith(E.handler)

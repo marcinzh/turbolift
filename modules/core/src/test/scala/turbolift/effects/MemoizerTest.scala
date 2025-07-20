@@ -3,7 +3,7 @@ import org.specs2.mutable._
 import org.specs2.specification.core.Fragment
 import turbolift.!!
 import turbolift.Extensions._
-import turbolift.effects.{Memoizer, MemoizerEffect, WriterK, IO}
+import turbolift.effects.{MemoizerEffect, WriterEffectK, IO}
 
 
 class MemoizerTest extends Specification with CanLaunchTheMissiles:
@@ -28,7 +28,7 @@ class MemoizerTest extends Specification with CanLaunchTheMissiles:
         def prog(n: Int) =
           val missiles = Missile.make(n + 1)
 
-          case object M extends Memoizer[Int, Int]
+          case object M extends MemoizerEffect[Int, Int]
           type M = M.type
 
           def fib(i: Int) =
@@ -57,7 +57,7 @@ class MemoizerTest extends Specification with CanLaunchTheMissiles:
   "Memoizing acyclic graph" >> {
     Fragment.foreach(Pickers) { picker =>
       picker.header >> {
-        case object W extends WriterK[Vector, Int]
+        case object W extends WriterEffectK[Vector, Int]
         type W = W.type
 
         case class Vertex(serno: Int, outgoing: List[Edge])
@@ -77,7 +77,7 @@ class MemoizerTest extends Specification with CanLaunchTheMissiles:
         val prog =
           val missiles = Missile.make(outgoings.size)
 
-          case object M extends Memoizer[Int, Vertex]
+          case object M extends MemoizerEffect[Int, Vertex]
           type M = M.type
 
           def visit(n: Int) =

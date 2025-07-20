@@ -4,11 +4,23 @@ import turbolift.{!!, Signature, Effect, Handler}
 import turbolift.Extensions._
 
 
+/** Signature of [[MaybeEffect]]. */
 trait MaybeSignature extends Signature:
   def empty: Nothing !! ThisEffect
   def catchToOption[A, U <: ThisEffect](body: A !! U): Option[A] !! U
 
 
+/** Base trait for custom instances of Maybe effect.
+ *
+ * {{{
+ * case object MyMaybe extends MaybeEffect
+ * // optional:
+ * type MyMaybe = MyMaybe.type
+ * }}}
+ *
+ * @see [[Maybe]]
+ * @see [[Broken]]
+ */
 trait MaybeEffect extends Effect[MaybeSignature] with MaybeSignature:
   enclosing =>
   final override val empty: Nothing !! this.type = perform(_.empty)
@@ -37,15 +49,22 @@ trait MaybeEffect extends Effect[MaybeSignature] with MaybeSignature:
     def orElseCancel: Handler[Identity, Identity, enclosing.type, IO] = default.mapEffK([X] => (xx: Option[X]) => xx.fold(IO.cancel)(!!.pure))
 
 
-trait Maybe extends MaybeEffect:
-  export handlers.{default => handler}
+object MaybeEffect:
+  extension (thiz: MaybeEffect)
+    /** Alias of the default handler for this effect.
+     *
+     * Defined as an extension, to allow custom redefinitions without restrictions imposed by overriding
+     */
+    def handler: Handler[Identity, Option, thiz.type, Any] = thiz.handlers.default
 
-/** Predefined instance of this effect. */
-case object Maybe extends Maybe
+
+/** Predefined instance of [[MaybeEffect]]. */
+case object Maybe extends MaybeEffect
+type Maybe = Maybe.type
 
 
-/** Predefined instance of this effect, used by `io.EffectfulVar`. */
-case object Broken extends Maybe:
+/** Predefined instance of [[MaybeEffect]], used by `io.EffectfulVar`. */
+case object Broken extends MaybeEffect:
   export handlers.{toOption, orElse => getOrElse, orCancel => getOrCancel}
 
 type Broken = Broken.type

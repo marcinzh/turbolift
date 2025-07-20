@@ -4,88 +4,88 @@ import org.specs2.execute.Typecheck
 import org.specs2.matcher.TypecheckMatchers._
 import turbolift.!!
 import turbolift.Extensions._
-import turbolift.effects._
+import turbolift.effects.{Reader, Writer, State, Error, Resource}
 import turbolift.mode.ST
 
 
-class PolyEffectTest extends Specification:
-  "PolyReader" >>{
+class EffectTest extends Specification:
+  "Reader" >>{
     trait Foo { def foo: Int }
     trait Bar { def bar: Boolean }
     final class FooBar(override val foo: Int, override val bar: Boolean) extends Foo with Bar
 
     val prog =
-      PolyReader.asks[Foo](_.foo) **!
-      PolyReader.asks[Bar](_.bar)
+      Reader.asks[Foo](_.foo) **!
+      Reader.asks[Bar](_.bar)
 
     Typecheck {"""
-      val _: (Int, Boolean) !! PolyReader.@@[Foo & Bar] = prog
+      val _: (Int, Boolean) !! Reader.@@[Foo & Bar] = prog
     """} must succeed
 
-    prog.handleWith(PolyReader.handlers.default(FooBar(42, true))).run.===((42, true))
+    prog.handleWith(Reader.handler(FooBar(42, true))).run.===((42, true))
   }
 
 
-  "PolyWriter" >>{
+  "Writer" >>{
     import scala.{List => Nel} // ;-)
 
     val prog =
-      PolyWriter.tell(Nel(42)) &&!
-      PolyWriter.tell(Nel(true))
+      Writer.tell(Nel(42)) &&!
+      Writer.tell(Nel(true))
 
     Typecheck {"""
-      val _: Unit !! PolyWriter.@@[Nel[Int | Boolean]] = prog
+      val _: Unit !! Writer.@@[Nel[Int | Boolean]] = prog
     """} must succeed
 
-    prog.handleWith(PolyWriter.handlers.local[Nel[Int | Boolean]].justState).run.===(Nel(42, true))
+    prog.handleWith(Writer.handler[Nel[Int | Boolean]].justState).run.===(Nel(42, true))
   }
 
 
-  "PolyState" >>{
+  "State" >>{
     val prog =
       (for
-        a <- PolyState.get[Int]
-        _ <- PolyState.put(a + 1)
+        a <- State.get[Int]
+        _ <- State.put(a + 1)
       yield a)
 
     Typecheck {"""
-      val _: Int !! PolyState.@@[Int] = prog
+      val _: Int !! State.@@[Int] = prog
     """} must succeed
 
-    prog.handleWith(PolyState.handlers.local(42)).run.===((42, 43))
+    prog.handleWith(State.handler(42)).run.===((42, 43))
   }
 
 
-  "PolyError" >> {
+  "Error" >> {
     "FO" >>{
       val prog =
-        PolyError.raise(42).as(()) &&!
-        PolyError.raise(true).as(())
+        Error.raise(42).as(()) &&!
+        Error.raise(true).as(())
 
       Typecheck {"""
-        val _: Unit !! PolyError.@@[Int | Boolean] = prog
+        val _: Unit !! Error.@@[Int | Boolean] = prog
       """} must succeed
 
-      prog.handleWith(PolyError.handlers.default).run.===(Left(42))
+      prog.handleWith(Error.handler).run.===(Left(42))
     }
 
     "HO" >>{
       val prog =
-        PolyError.catchToEither[Int](PolyError.raise(42).as(())) **!
-        PolyError.catchToEither[Boolean](PolyError.raise(true).as(()))
+        Error.catchToEither[Int](Error.raise(42).as(())) **!
+        Error.catchToEither[Boolean](Error.raise(true).as(()))
 
       Typecheck {"""
-        val _: (Either[Int, Unit], Either[Boolean, Unit]) !! PolyError.@@[Int | Boolean] = prog
+        val _: (Either[Int, Unit], Either[Boolean, Unit]) !! Error.@@[Int | Boolean] = prog
       """} must succeed
 
-      prog.handleWith(PolyError.handlers.default).run.===(Right((Left(42), Left(true))))
+      prog.handleWith(Error.handler).run.===(Right((Left(42), Left(true))))
     }
   }
 
 
-  "PolyResource" >>{
-    case object S1 extends State[Int]
-    case object S2 extends State[Int]
+  "Resource" >>{
+    case object S1 extends StateEffect[Int]
+    case object S2 extends StateEffect[Int]
     type S1 = S1.type
     type S2 = S2.type
     case object E extends Exception
@@ -93,8 +93,8 @@ class PolyEffectTest extends Specification:
     val prog =
       IO.catchToEither:
         (for
-          _ <- PolyResource.register(S1.modify(_ + 1))
-          _ <- PolyResource.register(S2.modify(_ + 1))
+          _ <- Resource.register(S1.modify(_ + 1))
+          _ <- Resource.register(S2.modify(_ + 1))
           _ <- IO(throw E)
         yield ())
       .finalized

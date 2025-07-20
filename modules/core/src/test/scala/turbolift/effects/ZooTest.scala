@@ -1,7 +1,7 @@
 package turbolift.effects
 import org.specs2.mutable._
 import turbolift.!!
-import turbolift.effects.{Error, Writer, State, Choice}
+import turbolift.effects.{ErrorEffect, WriterEffect, StateEffect, ChoiceEffect}
 import turbolift.mode.ST
 
 /** Based on "The Effect Semantics Zoo"
@@ -10,8 +10,8 @@ import turbolift.mode.ST
 
 class ZooTest extends Specification:
   "State + Error" >> {
-    case object S extends State[Boolean]
-    case object E extends Error[Unit]
+    case object S extends StateEffect[Boolean]
+    case object E extends ErrorEffect[Unit]
 
     val hS = S.handler(false).eval
     val hE = E.handlers.first
@@ -24,8 +24,8 @@ class ZooTest extends Specification:
 
 
   "Choice + Error" >> {
-    case object C extends Choice
-    case object E extends Error[Unit]
+    case object C extends ChoiceEffect
+    case object E extends ErrorEffect[Unit]
 
     val hC = C.handlers.all
     val hE = E.handlers.first
@@ -41,8 +41,8 @@ class ZooTest extends Specification:
 
 
   "Choice + Writer" >> {
-    case object C extends Choice
-    case object W extends Writer[Int]
+    case object C extends ChoiceEffect
+    case object W extends WriterEffect[Int]
 
     val hC = C.handlers.all
     val hW = W.handler

@@ -1,12 +1,12 @@
 package turbolift.effects
 import org.specs2.mutable._
 import turbolift.!!
-import turbolift.effects.Maybe
+import turbolift.effects.MaybeEffect
 import turbolift.mode.ST
 
 
 class MaybeTest extends Specification with CanLaunchTheMissiles:
-  case object M extends Maybe
+  case object M extends MaybeEffect
 
   "Basic ops" >> {
     "some" >>{

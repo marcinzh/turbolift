@@ -1,13 +1,13 @@
 package turbolift.type_safety
 import turbolift.{!!, Handler}
-import turbolift.effects.{Reader, Writer, State}
+import turbolift.effects.{ReaderEffect, WriterEffect, StateEffect}
 import turbolift.Extensions._
 
 
 object Dummies {
-  case object Fx1 extends State[Double]
-  case object Fx2 extends Writer[String]
-  case object Fx3 extends Reader[Boolean]
+  case object Fx1 extends StateEffect[Double]
+  case object Fx2 extends WriterEffect[String]
+  case object Fx3 extends ReaderEffect[Boolean]
   type Fx1 = Fx1.type
   type Fx2 = Fx2.type
   type Fx3 = Fx3.type

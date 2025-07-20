@@ -6,6 +6,7 @@ import turbolift.{!!, Signature, Effect, Handler}
 import turbolift.Extensions._
 
 
+/** Signature of [[ConsoleEffect]]. */
 trait ConsoleSignature extends Signature:
   def readChar: Option[Char] !! ThisEffect
   def readLine: String !! ThisEffect
@@ -15,6 +16,18 @@ trait ConsoleSignature extends Signature:
   def printLineErr(text: String): Unit !! ThisEffect
 
 
+/** Base trait for custom instances of Console effect.
+ *
+ * {{{
+ * case object MyConsole extends ConsoleEffect
+ * // optional:
+ * type MyConsole = MyConsole.type
+ * }}}
+ *
+ * Effectful version of [[scala.Console]]
+ *
+ * @see [[Console]]
+ */
 trait ConsoleEffect extends Effect[ConsoleSignature] with ConsoleSignature with AnsiColor:
   enclosing =>
   final override def readChar: Option[Char] !! this.type = perform(_.readChar)
@@ -55,8 +68,15 @@ trait ConsoleEffect extends Effect[ConsoleSignature] with ConsoleSignature with 
         .toHandler
 
 
-/** Predefined instance of this effect. */
-case object Console extends ConsoleEffect:
-  export handlers.{blocking => handler}
+object ConsoleEffect:
+  extension (thiz: ConsoleEffect)
+    /** Alias of the default handler for this effect.
+     *
+     * Defined as an extension, to allow custom redefinitions without restrictions imposed by overriding
+     */
+    def handler: Handler[Identity, Identity, thiz.type, IO] = thiz.handlers.blocking
 
+
+/** Predefined instance of [[ConsoleEffect]]. */
+case object Console extends ConsoleEffect
 type Console = Console.type

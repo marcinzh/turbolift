@@ -6,12 +6,11 @@ import turbolift.Extensions._
 import turbolift.io.OnceVar
 
 
-/** Memoizes a recursive, effectful function.
+/** Signature for [[MemoizerEffect]].
  *
- *  Use the `memo` operation in places, where you'd normally want to invoke the function.
- *  Provide the actual function as a parameter to handler.
+ * @tparam K input of the memoized function
+ * @tparam V output of the memoized function
  */
-
 trait MemoizerSignature[K, V] extends Signature:
   /** Invoke the function being memoized.
    *
@@ -32,6 +31,24 @@ trait MemoizerSignature[K, V] extends Signature:
   def toMap: Map[K, V] !! ThisEffect
 
 
+/** Base trait for custom instances of Memoizer effect.
+ *
+ * {{{
+ * case object MyMemoizer extends MemoizerEffect[Int, String]
+ * // optional:
+ * type MyMemoizer = MyMemoizer.type
+ * }}}
+ *
+ * Memoizes a recursive, effectful function.
+ * Use the `memo` operation in places, where you'd normally want to invoke the function.
+ * Provide the actual function as a parameter to handler.
+ *
+ * @see [[PolyMemoizerEffect]]
+ * @see [[Memoizer]]
+ *
+ * @tparam K input of the memoized function
+ * @tparam V output of the memoized function
+ */
 trait MemoizerEffect[K, V] extends Effect[MemoizerSignature[K, V]] with MemoizerSignature[K, V]:
   enclosing =>
   final override def memo(k: K): V !! this.type = perform(_.memo(k))
@@ -88,16 +105,48 @@ trait MemoizerEffect[K, V] extends Effect[MemoizerSignature[K, V]] with Memoizer
         .toHandler
 
 
-trait Memoizer[K, V] extends MemoizerEffect[K, V]:
-  export handlers.{local => handler}
+object MemoizerEffect:
+  extension [K, V](thiz: MemoizerEffect[K, V])
+    /** Alias of the default handler for this effect.
+     *
+     * Defined as an extension, to allow custom redefinitions without restrictions imposed by overriding
+     */
+    def handler[U](f: K => V !! (U & thiz.type)): Handler[Identity, Identity, thiz.type, U] = thiz.handlers.local(f)
 
-
-//@#@TODO `fix` syntax doesn't work in Scala 3.6.3
-/*
-object Memoizer:
+  //@#@TODO `fix` syntax doesn't work in Scala 3.6.3
+  /*
   trait Fix[K, V, U] extends MemoizerEffect[K, V]:
     val handler: ThisHandler[Identity, Identity, U]
 
   def fix[K, V, U](f: (fx: Fix[K, V, U]) => K => V !! (U & fx.type)): Fix[K, V, U] = new:
     override val handler: ThisHandler[Identity, Identity, U] = handlers.default[U](f(this))
-*/
+  */
+
+
+/** Polymorphic variant of [[MemoizerEffect]].
+ *
+ * The 'K' and 'V' parameters are inferred from the call sites
+ * of the effects's operations and handlers.
+ */
+abstract class PolyMemoizerEffect extends Effect.Polymorphic_-+[[X, Y] =>> MemoizerEffect[X, Y], Any, Any](new MemoizerEffect[Any, Any] {}):
+  final def memo[K, V](k: K): V !! @@[K, V] = polymorphize[K, V].perform(_.memo(k))
+  final def domain[K, V]: Set[K] !! @@[K, V] = polymorphize[K, V].perform(_.domain)
+  final def toMap[K, V]: Map[K, V] !! @@[K, V] = polymorphize[K, V].perform(_.toMap)
+
+  object handlers:
+    def local[K, V, U](f: K => V !! (U & @@[K, V])): Handler[Identity, Identity, @@[K, V], U] =
+      polymorphize[K, V]: p =>
+        p.handler(_.handlers.local(k => p.lift(f(k))))
+
+    def shared[K, V, U <: IO](f: K => V !! (U & @@[K, V])): Handler[Identity, Identity, @@[K, V], U] =
+      polymorphize[K, V]: p =>
+        p.handler(_.handlers.shared(k => p.lift(f(k))))
+
+
+/** Predefined instance of [[PolyMemoizerEffect]] effect.
+ *
+ * Note that using predefined effect instances like this, is anti-modular.
+ * However, they can be convenient in exploratory code.
+ */
+case object Memoizer extends PolyMemoizerEffect
+type Memoizer[K, V] = Memoizer.@@[K, V]

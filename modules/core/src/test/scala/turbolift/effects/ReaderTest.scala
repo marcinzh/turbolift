@@ -1,49 +1,49 @@
 package turbolift.effects
 import org.specs2.mutable._
 import turbolift.!!
-import turbolift.effects.{Reader, WriterK}
+import turbolift.effects.{ReaderEffect, WriterEffectK}
 import turbolift.mode.ST
 
 
 class ReaderTest extends Specification:
   "Basic ops" >> {
     "ask" >>{
-      case object R extends Reader[Int]
+      case object R extends ReaderEffect[Int]
       R.ask
       .handleWith(R.handler(1))
       .run === 1
     }
 
     "asks" >>{
-      case object R extends Reader[(Int, Int)]
+      case object R extends ReaderEffect[(Int, Int)]
       R.asks(_._1)
       .handleWith(R.handler((1, 2)))
       .run === 1
     }
 
     "asksEff" >>{
-      case object R extends Reader[(Int, Int)]
+      case object R extends ReaderEffect[(Int, Int)]
       R.asksEff(x => !!.pure(x._1))
       .handleWith(R.handler((1, 2)))
       .run === 1
     }
 
     "localPut" >>{
-      case object R extends Reader[Int]
+      case object R extends ReaderEffect[Int]
       R.localPut(2) { R.ask }
       .handleWith(R.handler(1))
       .run === 2
     }
 
     "localModify" >>{
-      case object R extends Reader[Int]
+      case object R extends ReaderEffect[Int]
       R.localModify(_ + 2) { R.ask }
       .handleWith(R.handler(1))
       .run === 3
     }
 
     "localModifyEff" >>{
-      case object R extends Reader[Int]
+      case object R extends ReaderEffect[Int]
       R.localModifyEff(x => !!.pure(x + 2)) { R.ask }
       .handleWith(R.handler(1))
       .run === 3
@@ -53,21 +53,21 @@ class ReaderTest extends Specification:
 
   "Combined ops" >> {
     "ask **! localPut" >>{
-      case object R extends Reader[Int]
+      case object R extends ReaderEffect[Int]
       (R.ask **! R.localPut(2) { R.ask })
       .handleWith(R.handler(1))
       .run === (1, 2)
     }
 
     "localPut **! ask" >>{
-      case object R extends Reader[Int]
+      case object R extends ReaderEffect[Int]
       (R.localPut(2) { R.ask } **! R.ask)
       .handleWith(R.handler(1))
       .run === (2, 1)
     }
 
     "nested localModify x1" >>{
-      case object R extends Reader[Int]
+      case object R extends ReaderEffect[Int]
       (
         R.ask **!
         R.localModify(_ + 10) {
@@ -81,7 +81,7 @@ class ReaderTest extends Specification:
 
 
     "nested localModify x2" >>{
-      case object R extends Reader[Int]
+      case object R extends ReaderEffect[Int]
       (
         R.ask **!
         R.localModify(_ + 1) {
@@ -98,7 +98,7 @@ class ReaderTest extends Specification:
     }
 
     "nested localModify x3" >>{
-      case object R extends Reader[Int]
+      case object R extends ReaderEffect[Int]
       (
         R.ask **!
         R.localModify(_ + 1) {
@@ -121,7 +121,7 @@ class ReaderTest extends Specification:
 
 
   "Par ops" >> {
-    case object R extends Reader[Int]
+    case object R extends ReaderEffect[Int]
     val h = R.handler(1)
 
     "ask *! ask" >>{

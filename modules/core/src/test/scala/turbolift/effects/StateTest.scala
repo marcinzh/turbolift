@@ -3,7 +3,7 @@ import org.specs2.mutable._
 import org.specs2.specification.core.Fragment
 import turbolift.!!
 import turbolift.Extensions._
-import turbolift.effects.{State, IO}
+import turbolift.effects.{StateEffect, IO}
 import turbolift.mode.ST
 
 
@@ -12,7 +12,7 @@ class StateTest extends Specification:
     def apply[T](a: => T, b: => T): T = if round then a else b
     def name = apply("local", "shared")
     def header = s"With handler = ${name}"
-    def handler[S, Fx <: State[S]](fx: Fx): S => fx.ThisHandler[Identity, (_, S), IO] =
+    def handler[S, Fx <: StateEffect[S]](fx: Fx): S => fx.ThisHandler[Identity, (_, S), IO] =
       s => apply(
         fx.handlers.local(s).tapEffK([X] => (_: (X, S)) => !!.unit.upCast[IO]),
         fx.handlers.shared(s),
@@ -21,7 +21,7 @@ class StateTest extends Specification:
   private val Pickers = List(true, false).map(new Picker(_)) 
 
   "Basic ops" >> {
-    case object S extends State[Int]
+    case object S extends StateEffect[Int]
     def f(n: Int) = n * 10
     def g(n: Int) = (n.toString, n * 10)
     def ff(n: Int) = !!.pure(f(n))
@@ -68,7 +68,7 @@ class StateTest extends Specification:
     Fragment.foreach(Pickers) { picker =>
       picker.header >> {
         "put & get" >>{
-          case object S extends State[Int]
+          case object S extends StateEffect[Int]
           (for
             a <- S.get
             _ <- S.put(2)
@@ -79,8 +79,8 @@ class StateTest extends Specification:
         }
           
         "2 states interleaved" >>{
-          case object S1 extends State[Int]
-          case object S2 extends State[Int]
+          case object S1 extends StateEffect[Int]
+          case object S2 extends StateEffect[Int]
           (for
             a <- S1.get
             b <- S2.get

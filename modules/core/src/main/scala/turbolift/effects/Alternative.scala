@@ -3,11 +3,11 @@ import turbolift.!!
 import turbolift.{ComputationCases => CC}
 
 
-/** Virtual `Choice` effect instance.
+/** Virtual instance of [[ChoiceEffect]]
  *
- *  Allows invoking operations of `Choice` effect,
+ *  Allows invoking operations of [[ChoiceEffect]],
  *  without the need of knowing its concrete instance.
- *  `Alternative` is designed to "match" the nearest (innermost) instance of `Choice` effect
+ *  [[Alternative]] is designed to "match" the nearest (innermost) instance of [[ChoiceEffect]]
  *  currently present in the effect stack.
  *
  *  This is needed for making the following mechanisms to work:

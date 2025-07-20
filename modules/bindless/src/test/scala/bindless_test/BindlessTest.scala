@@ -7,9 +7,9 @@ import turbolift.bindless._
 
 object MacroSafeSpace:
   def stuff =
-    case object S extends State[Int]
-    case object W extends Writer[String]
-    case object R extends Reader[Boolean]
+    case object S extends StateEffect[Int]
+    case object W extends WriterEffect[String]
+    case object R extends ReaderEffect[Boolean]
 
     `do`:
       val s = S.getModify(_ * 10).!

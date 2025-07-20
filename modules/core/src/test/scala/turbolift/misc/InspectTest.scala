@@ -1,7 +1,7 @@
 package turbolift.misc
 import org.specs2.mutable._
 import turbolift.!!
-import turbolift.effects.{IO, Error}
+import turbolift.effects.{IO, ErrorEffect}
 import turbolift.effects.CanLaunchTheMissiles
 import turbolift.data.{Outcome, Cause}
 import turbolift.mode.ST
@@ -46,7 +46,7 @@ class InspectTest extends Specification with CanLaunchTheMissiles:
 
   "Combined ops" >> {
     "guarantee & error" >>{
-      case object E extends Error[String]
+      case object E extends ErrorEffect[String]
       val missile = Missile()
       IO.guarantee(missile.launch_!):
         E.raise("OMG")

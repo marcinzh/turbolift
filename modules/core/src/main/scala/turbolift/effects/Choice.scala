@@ -5,12 +5,23 @@ import turbolift.Extensions._
 import turbolift.data.{QueVector, QueOption}
 
 
+/** Signature of [[ChoiceEffect]]. */
 trait ChoiceSignature extends Signature:
   def empty: Nothing !! ThisEffect
   def choose[A](as: Iterable[A]): A !! ThisEffect
   def choosePar[A](as: Iterable[A]): A !! ThisEffect
 
 
+/** Base trait for custom instances of Choice effect.
+ *
+ * {{{
+ * case object MyChoice extends ChoiceEffect
+ * // optional:
+ * type MyChoice = MyChoice.type
+ * }}}
+ *
+ * @see [[Choice]]
+ */
 trait ChoiceEffect extends Effect[ChoiceSignature] with ChoiceSignature:
   enclosing =>
   final override val empty: Nothing !! this.type = perform(_.empty)
@@ -99,12 +110,21 @@ trait ChoiceEffect extends Effect[ChoiceSignature] with ChoiceSignature:
       .toHandler
 
 
-trait Choice extends ChoiceEffect:
-  export handlers.{all => handler}
+object ChoiceEffect:
+  extension (thiz: ChoiceEffect)
+    /** Alias of the default handler for this effect.
+     *
+     * Defined as an extension, to allow custom redefinitions without restrictions imposed by overriding
+     */
+    def handler: Handler[Identity, Vector, thiz.type, Any] = thiz.handlers.all
+    def void: Handler[Identity, Const[Unit], thiz.type, Any] = handler.void
 
 
-/** Predefined instance of [[Choice]] effect. */
-case object Each extends Choice:
-  def void: ThisHandler[Identity, Const[Unit], Any] = handlers.all.void
+/** Predefined instance of [[ChoiceEffect]]. */
+case object Choice extends ChoiceEffect
+type Choice = Choice.type
 
+
+/** Predefined instance of [[ChoiceEffect]]. */
+case object Each extends ChoiceEffect
 type Each = Each.type

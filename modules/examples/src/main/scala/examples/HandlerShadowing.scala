@@ -1,7 +1,7 @@
 package examples
 import turbolift.{!!, Signature, Effect, Handler}
 import turbolift.Extensions._
-import turbolift.effects.State
+import turbolift.effects.StateEffect
 
 
 case object HandlerShadowing extends Example:
@@ -64,7 +64,7 @@ case object HandlerShadowing extends Example:
 
 
     def rainbow =
-      case object S extends State[Int]
+      case object S extends StateEffect[Int]
       new fx.impl.Proxy[S.type & Konsole] with KonsoleSignature:
         override def log(text: String): Unit !! ThisEffect =
           for
@@ -73,7 +73,7 @@ case object HandlerShadowing extends Example:
             _ <- Control.shadow(Konsole.log(s"${color}$text${Console.RESET}"))
           yield ()
       .toHandler
-      .partiallyProvideWith[Konsole](S.handler(0).dropState)
+      .partiallyProvideWith[Konsole](S.handlers.local(0).dropState)
 
   //----- Run -----
 

@@ -4,7 +4,7 @@ import turbolift.{!!, Effect, Signature}
 import turbolift.Extensions._
 import turbolift.typeclass.AccumZero
 import turbolift.effects.{DependencyGraph, DependencyGraphSignature}
-import turbolift.effects.{WriterG, WriterGK}
+import turbolift.effects.{WriterEffectG, WriterEffectGK}
 
 
 /** Badly needs better name.
@@ -61,8 +61,8 @@ trait DependencyGraph[K, V] extends Effect[DependencyGraphSignature[K, V]] with 
     def local(bottom: V): ThisHandler[Identity, (_, Map[K, V]), Any] =
       type Solution = K => V
 
-      case object Compute extends WriterG[Map, K, Solution => V]
-      case object Propagate extends WriterGK[Map, K, Set, K]
+      case object Compute extends WriterEffectG[Map, K, Solution => V]
+      case object Propagate extends WriterEffectGK[Map, K, Set, K]
 
       def computeConst(value: V): Solution => V = (_: Solution) => value
       val computeBottom = computeConst(bottom)

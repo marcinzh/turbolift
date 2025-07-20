@@ -2,7 +2,7 @@ package turbolift.extra_effects
 import org.specs2.mutable._
 import turbolift.!!
 import turbolift.Extensions._
-import turbolift.effects.WriterK
+import turbolift.effects.WriterEffectK
 import turbolift.effects.Generator
 import turbolift.mode.ST
 
@@ -80,14 +80,14 @@ class GeneratorTest extends Specification:
 
   "Combined ops" >> {
     "finite producer & infinite consumer" >>{
-      case object W extends WriterK[Vector, Long]
+      case object W extends WriterEffectK[Vector, Long]
       forEachDo(W.tell(_))(finiteNums)
       .handleWith(W.handler.justState)
       .run === Vector(1, 2, 3)
     }
 
     "infinite producer & finite consumer" >>{
-      case object W extends WriterK[Vector, Long]
+      case object W extends WriterEffectK[Vector, Long]
       takeSomeAndDo(3)(W.tell(_))(infiniteNums)
       .handleWith(W.handler.justState)
       .run === Vector(42, 42, 42)

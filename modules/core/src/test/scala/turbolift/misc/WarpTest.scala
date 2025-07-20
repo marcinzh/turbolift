@@ -1,7 +1,7 @@
 package turbolift.misc
 import org.specs2.mutable._
 import turbolift.!!
-import turbolift.effects.{IO, Error}
+import turbolift.effects.{IO, ErrorEffect}
 import turbolift.data.Outcome
 import turbolift.io.{Fiber, Warp, AtomicVar, OnceVar}
 import Auxx._
@@ -156,7 +156,7 @@ class WarpTest extends Specification:
     }
 
     "Error effect" >>{
-      case object E extends Error[String]
+      case object E extends ErrorEffect[String]
       E.raise("OMG")
       .warp
       .handleWith(E.handler)
@@ -165,7 +165,7 @@ class WarpTest extends Specification:
     }
 
     "Error effect & paused fiber" >>{
-      case object E extends Error[String]
+      case object E extends ErrorEffect[String]
       (for
         v <- AtomicVar(42)
         e <- 
@@ -182,7 +182,7 @@ class WarpTest extends Specification:
     }
 
     "Error effect & paused fiber with guarantee" >>{
-      case object E extends Error[String]
+      case object E extends ErrorEffect[String]
       (for
         v1 <- AtomicVar(42)
         v2 <- AtomicVar("a")

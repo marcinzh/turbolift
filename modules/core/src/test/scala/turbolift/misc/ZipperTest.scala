@@ -89,7 +89,7 @@ class ZipperTest extends Specification:
 
   "effectful" >> {
     "with Error" >>{
-      case object E extends ErrorK[List, String]
+      case object E extends ErrorEffectK[List, String]
       (for
         fib1 <- E.raise("A").fork
         fib2 <- E.raise("B").fork
@@ -105,7 +105,7 @@ class ZipperTest extends Specification:
     }
 
     "with Writer" >>{
-      case object W extends WriterK[List, String]
+      case object W extends WriterEffectK[List, String]
       (for
         fib1 <- W.tell("A").fork
         fib2 <- W.tell("B").fork
@@ -137,7 +137,7 @@ class ZipperTest extends Specification:
 
     "getIO requires IO-only effect" >>{
       Typecheck {"""
-        case object S extends State[Unit];
+        case object S extends StateEffect[Unit];
         for
           fib <- S.put(()).fork
           zip <- fib.await

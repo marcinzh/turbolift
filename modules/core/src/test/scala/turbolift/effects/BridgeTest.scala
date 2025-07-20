@@ -20,7 +20,7 @@ class BridgeTest extends Specification:
 
 
   case object D extends DummyEffect
-  case object R extends Reader[Int]
+  case object R extends ReaderEffect[Int]
 
   "bridge" >> {
     (for

@@ -25,12 +25,12 @@ Runnable with [`scala-cli`](https://scala-cli.virtuslab.org/).
 //> using scala "3.3.5"
 //> using dep "io.github.marcinzh::turbolift-core:0.114.0"
 import turbolift.!!
-import turbolift.effects.{Reader, State, Error}
+import turbolift.effects.{ReaderEffect, StateEffect, ErrorEffect}
 
 @main def main =
-  case object MyReader extends Reader[Int]
-  case object MyState extends State[Int]
-  case object MyError extends Error[String]
+  case object MyReader extends ReaderEffect[Int]
+  case object MyState extends StateEffect[Int]
+  case object MyError extends ErrorEffect[String]
 
   val program =
     for

@@ -4,7 +4,7 @@ import org.specs2.specification.core.Fragment
 import org.specs2.execute.Result
 import turbolift.{!!, Handler}
 import turbolift.Extensions._
-import turbolift.effects.{Error, State}
+import turbolift.effects.{ErrorEffect, StateEffect}
 import turbolift.typeclass.Accum
 import turbolift.mode.ST
 
@@ -14,14 +14,14 @@ class ErrorTest extends Specification with CanLaunchTheMissiles:
     def apply[T](a: => T, b: => T): T = if round then a else b
     def name = apply("first", "all")
     def header = s"With handler = ${name}"
-    def handler[T, Fx <: Error[T]](fx: Fx)(using Accum[T, T]): fx.ThisHandler[Identity, Either[T, _], Any] =
+    def handler[T, Fx <: ErrorEffect[T]](fx: Fx)(using Accum[T, T]): fx.ThisHandler[Identity, Either[T, _], Any] =
       apply(fx.handlers.first, fx.handlers.all)
 
   private val Pickers = List(true, false).map(new Picker(_))
 
   "Basic ops" >> {
     "raise" >>{
-      case object E extends Error[Int]
+      case object E extends ErrorEffect[Int]
       val missile = Missile()
       (E.raise(1) &&! missile.launch_!)
       .handleWith(E.handler)
@@ -31,7 +31,7 @@ class ErrorTest extends Specification with CanLaunchTheMissiles:
     }
 
     "catchAll" >>{
-      case object E extends Error[Int]
+      case object E extends ErrorEffect[Int]
       E.catchAll(E.raise(1))(_ => 2)
       .handleWith(E.handler)
       .run === Right(2)
@@ -41,8 +41,8 @@ class ErrorTest extends Specification with CanLaunchTheMissiles:
 
   "Combined ops" >> {
     "raise & put" >> {
-      case object E extends Error[Int]
-      case object S extends State[Int]
+      case object E extends ErrorEffect[Int]
+      case object S extends StateEffect[Int]
       val prog =
         for
           _ <- S.put(1)
@@ -66,8 +66,8 @@ class ErrorTest extends Specification with CanLaunchTheMissiles:
     }
 
     "catchAll & put before raise" >> {
-      case object E extends Error[Int]
-      case object S extends State[Int]
+      case object E extends ErrorEffect[Int]
+      case object S extends StateEffect[Int]
       val prog =
         E.catchAll {
           for
@@ -93,8 +93,8 @@ class ErrorTest extends Specification with CanLaunchTheMissiles:
     }
 
     "catchAll & put after raise" >> {
-      case object E extends Error[Unit]
-      case object S extends State[Int]
+      case object E extends ErrorEffect[Unit]
+      case object S extends StateEffect[Int]
       val prog = E.catchAllEff(E.raise(()))(_ => S.put(10))
 
       Fragment.foreach(Pickers) { picker =>
@@ -113,8 +113,8 @@ class ErrorTest extends Specification with CanLaunchTheMissiles:
     }
 
     "catchAll & localPut" >> {
-      case object R extends Reader[Int]
-      case object E extends Error[Unit]
+      case object R extends ReaderEffect[Int]
+      case object E extends ErrorEffect[Unit]
       val prog =
         E.catchAllEff(R.localPut(2)(E.raise(())))(_ => R.ask)
 
@@ -138,7 +138,7 @@ class ErrorTest extends Specification with CanLaunchTheMissiles:
     Fragment.foreach(Pickers) { picker =>
       picker.header >> {
         "raise *!" >>{
-          case object E extends Error[Int]
+          case object E extends ErrorEffect[Int]
           (E.raise(1) *! E.raise(2))
           .handleWith(picker.handler(E))
           .run === picker(
@@ -148,7 +148,7 @@ class ErrorTest extends Specification with CanLaunchTheMissiles:
         }
 
         "raise *! *!" >>{
-          case object E extends Error[Int]
+          case object E extends ErrorEffect[Int]
           (E.raise(1) *! E.raise(2) *! E.raise(10))
           .handleWith(picker.handler(E))
           .run === picker(
@@ -158,7 +158,7 @@ class ErrorTest extends Specification with CanLaunchTheMissiles:
         }
 
         "raise *! &&!" >>{
-          case object E extends Error[Int]
+          case object E extends ErrorEffect[Int]
           (E.raise(1) *! E.raise(2) &&! E.raise(10))
           .handleWith(picker.handler(E))
           .run === picker(
@@ -168,7 +168,7 @@ class ErrorTest extends Specification with CanLaunchTheMissiles:
         }
 
         "sequentially raise &! raise" >>{
-          case object E extends Error[Int]
+          case object E extends ErrorEffect[Int]
           !!.sequentially(E.raise(1) &! E.raise(2))
           .handleWith(picker.handler(E))
           .run === picker(
@@ -178,7 +178,7 @@ class ErrorTest extends Specification with CanLaunchTheMissiles:
         }
 
         "parallelly raise &! raise" >>{
-          case object E extends Error[Int]
+          case object E extends ErrorEffect[Int]
           !!.parallelly(E.raise(1) &! E.raise(2))
           .handleWith(picker.handler(E))
           .run === picker(
@@ -188,8 +188,8 @@ class ErrorTest extends Specification with CanLaunchTheMissiles:
         }
 
         "raise & tell" >> {
-          case object E extends Error[String]
-          case object W extends Writer[String]
+          case object E extends ErrorEffect[String]
+          case object W extends WriterEffect[String]
           val prog = 
             for
               _ <- W.tell("a")
@@ -213,8 +213,8 @@ class ErrorTest extends Specification with CanLaunchTheMissiles:
         }
 
         "catchAll & tell (simpler)" >> {
-          case object E extends Error[String]
-          case object W extends Writer[Int]
+          case object E extends ErrorEffect[String]
+          case object W extends WriterEffect[Int]
           val prog =
             E.catchAll {
               for
@@ -237,8 +237,8 @@ class ErrorTest extends Specification with CanLaunchTheMissiles:
         }
 
         "catchAll & tell" >> {
-          case object E extends Error[String]
-          case object W extends Writer[String]
+          case object E extends ErrorEffect[String]
+          case object W extends WriterEffect[String]
           val prog = 
             E.catchAll {
               for

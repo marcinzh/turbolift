@@ -4,7 +4,7 @@ import turbolift.{!!, Effect, Signature}
 import turbolift.Extensions._
 import turbolift.typeclass.PlusZero
 import turbolift.typeclass.Syntax._
-import turbolift.effects.{WriterG, WriterGK}
+import turbolift.effects.{WriterEffectG, WriterEffectGK}
 
 
 /** Badly needs better name.
@@ -56,9 +56,9 @@ trait MonoidalDependencyGraph[K, V] extends Effect[MonoidalDependencyGraphSignat
   /** Predefined handlers for this effect. */
   object handlers:
     def local(using V: PlusZero[V]): ThisHandler[Identity, (_, Map[K, V]), Any] =
-      case object IncomingConst extends WriterG[Map, K, V]
-      case object OutgoingConst extends WriterG[Map, K, V]
-      case object Propagate extends WriterGK[Map, K, Set, K]
+      case object IncomingConst extends WriterEffectG[Map, K, V]
+      case object OutgoingConst extends WriterEffectG[Map, K, V]
+      case object Propagate extends WriterEffectGK[Map, K, Set, K]
       type Fx3 = IncomingConst.type & OutgoingConst.type & Propagate.type
 
       new impl.Proxy[Fx3] with MonoidalDependencyGraphSignature[K, V]:

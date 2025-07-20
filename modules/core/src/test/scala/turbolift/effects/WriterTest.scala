@@ -3,7 +3,7 @@ import org.specs2.mutable._
 import org.specs2.specification.core.Fragment
 import turbolift.!!
 import turbolift.Extensions._
-import turbolift.effects.{Writer, WriterK, WriterGK, IO}
+import turbolift.effects.{WriterEffectExt, WriterEffect, WriterEffectK, WriterEffectGK, IO}
 import turbolift.typeclass.AccumZero
 import turbolift.mode.ST
 
@@ -13,7 +13,7 @@ class WriterTest extends Specification:
     def apply[T](a: => T, b: => T): T = if round then a else b
     def name = apply("local", "shared")
     def header = s"With handler = ${name}"
-    def handler[W, W1, Fx <: WriterEffect[W, W1]](fx: Fx)(using AccumZero[W, W1]): fx.ThisHandler[Identity, (_, W), IO] =
+    def handler[W, W1, Fx <: WriterEffectExt[W, W1]](fx: Fx)(using AccumZero[W, W1]): fx.ThisHandler[Identity, (_, W), IO] =
       apply(
         fx.handlers.local.tapEffK([X] => (_: (X, W)) => !!.unit.upCast[IO]),
         fx.handlers.shared,
@@ -22,7 +22,7 @@ class WriterTest extends Specification:
   private val Pickers = List(true, false).map(new Picker(_)) 
 
   "Basic ops" >> {
-    case object W extends Writer[Int]
+    case object W extends WriterEffect[Int]
     Fragment.foreach(Pickers) { picker =>
       val h = picker.handler(W)
       picker.header >> {
@@ -63,14 +63,14 @@ class WriterTest extends Specification:
     Fragment.foreach(Pickers) { picker =>
       picker.header >> {
         "tell x2" >>{
-          case object W extends Writer[String]
+          case object W extends WriterEffect[String]
           (W.tell("a") &&! W.tell("b"))
           .handleWith(picker.handler(W).justState)
           .unsafeRun.get === "ab"
         }
 
         "tell & listen" >>{
-          case object W extends Writer[String]
+          case object W extends WriterEffect[String]
           (for
             _ <- W.tell("a")
             workaround <- W.listen(W.tell("b") &&! W.tell("c"))
@@ -82,8 +82,8 @@ class WriterTest extends Specification:
         }
 
         "2 writers" >>{
-          case object W1 extends Writer[Int]
-          case object W2 extends Writer[String]
+          case object W1 extends WriterEffect[Int]
+          case object W2 extends WriterEffect[String]
           (for
             _ <- W1.tell(1)
             _ <- W2.tell("a")
@@ -99,7 +99,7 @@ class WriterTest extends Specification:
   }
 
   "Par ops" >> {
-    case object W extends Writer[String]
+    case object W extends WriterEffect[String]
     Fragment.foreach(Pickers) { picker =>
       val h = picker.handler(W).justState
       picker.header >> {
@@ -149,7 +149,7 @@ class WriterTest extends Specification:
     Fragment.foreach(Pickers) { picker =>
       picker.header >> {
         "WriterK" >>{
-          case object W extends WriterK[Vector, Char]
+          case object W extends WriterEffectK[Vector, Char]
           (for
             _ <- W.tell('a')
             _ <- W.tells("bc".toVector)
@@ -160,7 +160,7 @@ class WriterTest extends Specification:
         }
 
         "WriterGK" >>{
-          case object W extends WriterGK[Map, String, Vector, Int]
+          case object W extends WriterEffectGK[Map, String, Vector, Int]
           (for
             _ <- W.tell("a", 1)
             _ <- W.tell("b", 10)

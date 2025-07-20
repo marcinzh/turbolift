@@ -4,7 +4,7 @@ import org.specs2.specification.core.Fragment
 import org.specs2.execute.Result
 import turbolift.!!
 import turbolift.Extensions._
-import turbolift.effects.{Choice, Error}
+import turbolift.effects.{ChoiceEffect, ErrorEffect}
 import turbolift.mode.ST
 
 
@@ -13,7 +13,7 @@ class ChoiceTest extends Specification:
     def apply[T](a: => T, b: => T): T = if round then a else b
     def name = apply("first", "all")
     def header = s"With handler = ${name}"
-    def handler[Fx <: Choice](fx: Fx): fx.ThisHandler[Identity, Vector, Any] =
+    def handler[Fx <: ChoiceEffect](fx: Fx): fx.ThisHandler[Identity, Vector, Any] =
       apply(
         fx.handlers.first.mapK([X] => (xs: Option[X]) => xs.toVector),
         fx.handlers.all,
@@ -22,7 +22,7 @@ class ChoiceTest extends Specification:
   private val Pickers = List(true, false).map(new Picker(_))
 
   "Basic ops" >> {
-    case object C extends Choice
+    case object C extends ChoiceEffect
     Fragment.foreach(Pickers) { picker =>
       val handler = picker.handler(C)
       picker.header >> {
@@ -95,7 +95,7 @@ class ChoiceTest extends Specification:
 
 
   "Combined ops" >> {
-    case object C extends Choice
+    case object C extends ChoiceEffect
     Fragment.foreach(Pickers) { picker =>
       val handler = picker.handler(C)
       picker.header >> {
@@ -150,7 +150,7 @@ class ChoiceTest extends Specification:
         }
 
         "choose >>= tell" >> {
-          case object W extends Writer[Int]
+          case object W extends WriterEffect[Int]
           val hW = W.handler
           val hC = picker.handler(C)
 
@@ -174,7 +174,7 @@ class ChoiceTest extends Specification:
         }
 
         "choose >>= raise" >> {
-          case object E extends Error[Int]
+          case object E extends ErrorEffect[Int]
           val hE = E.handlers.all
           val hC = picker.handler(C)
 
@@ -204,7 +204,7 @@ class ChoiceTest extends Specification:
         }
 
         "plus & raise" >> {
-          case object E extends Error[Int]
+          case object E extends ErrorEffect[Int]
           val hE = E.handler
           val hC = picker.handler(C)
 

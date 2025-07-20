@@ -6,6 +6,11 @@ import turbolift.typeclass.{Accum, One}
 import turbolift.typeclass.Syntax._
 
 
+/** Signature of [[ErrorEffectExt]].
+ *
+ * @tparam E Accumulated error
+ * @tparam E1 Singular error added to the accumulator (commonly same as [[E]])
+ */
 trait ErrorSignature[E, E1] extends Signature:
   def raise(e: E1): Nothing !! ThisEffect
   def raises(e: E): Nothing !! ThisEffect
@@ -14,7 +19,36 @@ trait ErrorSignature[E, E1] extends Signature:
   @deprecated("Use catchToEither") final def toEither[A, U <: ThisEffect](body: A !! U): Either[E, A] !! U = catchToEither(body)
 
 
-trait ErrorEffect[E, E1] extends Effect[ErrorSignature[E, E1]] with ErrorSignature[E, E1]:
+/** Base trait for custom instances of Error effect.
+ *
+ * {{{
+ * case object MyError extends ErrorEffect[String]
+ * // optional:
+ * type MyError = MyError.type
+ * }}}
+ *
+ * This effect covers both applicative-error and monadic-error.
+ * The behavior depends on:
+ * - selected handler: `first` vs. `all`
+ * - composition of computations: sequential (`flatMap`, `zip`, etc.) vs. parallel (`zipPar`, etc.).
+ *
+ * Notice that [[ErrorEffectExt]] takes type 2 parameters.
+ * This abstraction enables ergonomic syntax of `raise(e)`,
+ * which relieves the user from the necessity of wrapping `e` in `Nel` (`raise(Nel(e))`),
+ * as in the standard `Validated` applicative functor.
+ * For the simpler, single-parmeter version, see [[ErrorEffect]].
+ *
+ * @see [[ErrorEffect]]
+ * @see [[ErrorEffectK]]
+ * @see [[ErrorEffectG]]
+ * @see [[ErrorEffectGK]]
+ * @see [[PolyErrorEffect]]
+ * @see [[Error]]
+ *
+ * @tparam E Accumulated error
+ * @tparam E1 Singular error added to the accumulator (commonly same as [[E]])
+ */
+trait ErrorEffectExt[E, E1] extends Effect[ErrorSignature[E, E1]] with ErrorSignature[E, E1]:
   enclosing =>
   final override def raise(e: E1): Nothing !! this.type = perform(_.raise(e))
   final override def raises(e: E): Nothing !! this.type = perform(_.raises(e))
@@ -73,14 +107,106 @@ trait ErrorEffect[E, E1] extends Effect[ErrorSignature[E, E1]] with ErrorSignatu
       all(using Accum.instanceEq( plus))
 
 
-trait Error[E] extends ErrorEffect[E, E]:
-  export handlers.{first => handler}
+object ErrorEffectExt:
+  extension [E, E1](thiz: ErrorEffectExt[E, E1])
+    /** Alias of the default handler for this effect.
+     *
+     * Defined as an extension, to allow custom redefinitions without restrictions imposed by overriding
+     */
+    def handler(using E: One[E, E1]): Handler[Identity, Either[E, _], thiz.type, Any] = thiz.handlers.first
 
-trait ErrorK[F[_], E] extends ErrorEffect[F[E], E]:
-  export handlers.{first => handler}
 
-trait ErrorG[M[_, _], K, V] extends ErrorEffect[M[K, V], (K, V)]:
-  export handlers.{first => handler}
+/** Specialized [[ErrorEffectExt]], where `E` and `E1` are the same (e.g. a semigroup). */
+trait ErrorEffect[E] extends ErrorEffectExt[E, E]
 
-trait ErrorGK[M[_, _], K, F[_], V] extends ErrorEffect[M[K, F[V]], (K, V)]:
-  export handlers.{first => handler}
+/** Specialized [[ErrorEffectExt]], where errors `E` are accumulated into `F[E]` (e.g. a collection). */
+trait ErrorEffectK[F[_], E] extends ErrorEffectExt[F[E], E]
+
+/** Specialized [[ErrorEffectExt]], where pairs `(K, V)` are accumulated into `M[K, V]` (e.g. a map). */
+trait ErrorEffectG[M[_, _], K, V] extends ErrorEffectExt[M[K, V], (K, V)]
+
+/** Specialized [[ErrorEffectExt]], where pairs `(K, V)` are accumulated into `M[K, F[V]]` (e.g. a map of collections). */
+trait ErrorEffectGK[M[_, _], K, F[_], V] extends ErrorEffectExt[M[K, F[V]], (K, V)]
+
+
+/** Polymorphic variant of [[ErrorEffect]].
+ *
+ * In the monomorphic variant, the `E` type parameter is supplied during creation of an instance of the effect:
+ * {{{
+ * // The `E` is explicitly set as `String`:
+ * case object MyError extends ErrorEffect[String]
+ *
+ * // The `E` is inferred from the effect instance:
+ * val computation = Myerror.raise("OMG")
+ * }}}
+ *
+ * In the polymorphic variant, the `E` type parameter is **contravariantly** inferred
+ * at call sites of effect's operations and handlers.
+ * In practice, the type can "grow as you go":
+ *
+ * {{{
+ * case object MyError extends PolyErrorEffect
+ *
+ * val computation1 = MyError.raise(42)              // `E` inferred as `Int`
+ * val computation2 = MyError.raise("OMG")           // `E` inferred as `String`
+ * val computation3 = computation1 &&! computation2  // `E` inferred as `Int | String`
+ *
+ * // Inferred types of the above computations:
+ * val _: Nothing !! MyError.@@[Int]          = computation1
+ * val _: Nothing !! MyError.@@[String]       = computation2
+ * val _: Nothing !! MyError.@@[Int | String] = computation3
+ * }}}
+ */
+abstract class PolyErrorEffect extends Effect.Polymorphic_-[ErrorEffect, Any](new ErrorEffect[Any] {}):
+  final def raise[E](e: E): Nothing !! @@[E] = polymorphize[E].perform(_.raise(e))
+  final def catchToEither[E] = new CatchToEitherApply[E]
+  final def catchAll[E] = new CatchAllApply[E]
+  final def catchAllEff[E] = new CatchAllEffApply[E]
+  final def catchSome[E] = new CatchSomeApply[E]
+  final def catchSomeEff[E] = new CatchSomeEffApply[E]
+
+  final def fromOption[A, E](x: Option[A])(e: => E): A !! @@[E] = x.fold(raise(e))(!!.pure)
+  final def fromEither[A, E](x: Either[E, A]): A !! @@[E] = x.fold(raise, !!.pure)
+  final def fromTry[A, E](x: Try[A])(using ev: Throwable <:< E): A !! @@[E] = x.fold(e => raise(ev(e)), !!.pure)
+
+  /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
+  final class CatchToEitherApply[E]:
+    def apply[A, U <: @@[E]](body: A !! U): Either[E, A] !! U = polymorphize[E].perform(_.catchToEither(body))
+
+  /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
+  final class CatchAllApply[E]:
+    def apply[A, U <: @@[E]](body: A !! U)(f: E => A): A !! U = catchAllEff(body)(f.andThen(!!.pure))
+
+  /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
+  final class CatchAllEffApply[E]:
+    def apply[A, U <: @@[E]](body: A !! U)(f: E => A !! U): A !! U = catchToEither(body).flatMap(_.fold(f, !!.pure))
+
+  /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
+  final class CatchSomeApply[E]:
+    def apply[A, U <: @@[E]](body: A !! U)(f: PartialFunction[E, A]): A !! U = catchSomeEff(body)(f.andThen(!!.pure))
+
+  /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
+  final class CatchSomeEffApply[E]:
+    def apply[A, U <: @@[E]](body: A !! U)(f: PartialFunction[E, A !! U]): A !! U = catchAllEff(body)(f.applyOrElse(_, raise))
+
+
+  /** Predefined handlers for this effect. */
+  object handlers:
+    def default[E]: Handler[Identity, Either[E, _], @@[E], Any] = polymorphize[E].handler(_.handlers.first)
+
+
+object PolyErrorEffect:
+  extension (thiz: PolyErrorEffect)
+    /** Alias of the default handler for this effect.
+     *
+     * Defined as an extension, to allow custom redefinitions without restrictions imposed by overriding
+     */
+    def handler[E]: Handler[Identity, Either[E, _], thiz.@@[E], Any] = thiz.handlers.default
+
+/** Predefined instance of [[PolyErrorEffect]].
+ *
+ * Note that using predefined effect instances like this, is anti-modular.
+ * However, they can be convenient in exploratory code.
+ */
+case object Error extends PolyErrorEffect
+type Error[E] = Error.@@[E]

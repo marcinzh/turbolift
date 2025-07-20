@@ -3,7 +3,7 @@ import org.specs2._
 import org.specs2.execute.Typecheck
 import org.specs2.matcher.TypecheckMatchers._
 import turbolift.!!
-import turbolift.effects.{Reader, Writer, State, Choice}
+import turbolift.effects.{ReaderEffect, WriterEffect, StateEffect, ChoiceEffect}
 import turbolift.mode.ST
 
 
@@ -11,10 +11,10 @@ class InferenceTest extends Specification:
   def is = br ^ "Effect inference" ! stuff
 
   def stuff =
-    case object S extends State[Double]
-    case object W extends Writer[String]
-    case object R extends Reader[Boolean]
-    case object C extends Choice
+    case object S extends StateEffect[Double]
+    case object W extends WriterEffect[String]
+    case object R extends ReaderEffect[Boolean]
+    case object C extends ChoiceEffect
     type S = S.type
     type W = W.type
     type R = R.type

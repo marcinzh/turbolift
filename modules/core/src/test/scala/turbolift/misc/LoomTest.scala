@@ -1,7 +1,7 @@
 package turbolift.misc
 import org.specs2.mutable._
 import turbolift.!!
-import turbolift.effects.{IO, Error, Writer}
+import turbolift.effects.{IO, ErrorEffect, WriterEffect}
 import turbolift.data.Outcome
 import turbolift.io.{Fiber, Warp, Loom, AtomicVar, OnceVar}
 import Auxx._
@@ -25,8 +25,8 @@ class LoomTest extends Specification:
 
 
   "effectful" >> {
-    case object E extends Error[String]; type E = E.type
-    case object W extends Writer[String]; type W = W.type
+    case object E extends ErrorEffect[String]; type E = E.type
+    case object W extends WriterEffect[String]; type W = W.type
 
     "writer" >> {
       (for

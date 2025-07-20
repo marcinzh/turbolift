@@ -1,10 +1,9 @@
 package turbolift.misc
 import org.specs2.mutable._
 import turbolift.!!
-import turbolift.effects._
+import turbolift.effects.{Resource, IO}
 import turbolift.data.{Outcome, Snap, Cause}
 import turbolift.io.{AtomicVar, ResourceFactory}
-import turbolift.effects.PolyResource
 import Auxx._
 
 
@@ -21,7 +20,7 @@ class ResourceTest extends Specification:
         _ <-
           (for
             _ <- v.event(4)
-            _ <- PolyResource.use(rf)
+            _ <- Resource.use(rf)
             _ <- v.event(5)
           yield ())
           .finalized
@@ -40,9 +39,9 @@ class ResourceTest extends Specification:
         _ <-
           (for
             _ <- v.event(6)
-            _ <- PolyResource.use(rf1)
+            _ <- Resource.use(rf1)
             _ <- v.event(7)
-            _ <- PolyResource.use(rf2)
+            _ <- Resource.use(rf2)
             _ <- v.event(8)
           yield ())
           .finalized
@@ -63,7 +62,7 @@ class ResourceTest extends Specification:
         v <- AtomicVar(1)
         e <- IO.catchToEither:
           (for
-            _ <- PolyResource.use(IO(throw ex1), v.event(2))
+            _ <- Resource.use(IO(throw ex1), v.event(2))
             _ <- v.event(3)
           yield ())
           .finalized
@@ -78,7 +77,7 @@ class ResourceTest extends Specification:
         v <- AtomicVar(1)
         e <- IO.catchToEither:
           (for
-            _ <- PolyResource.use(v.event(2), IO(throw ex1))
+            _ <- Resource.use(v.event(2), IO(throw ex1))
             _ <- v.event(3)
           yield ())
           .finalized
@@ -94,9 +93,9 @@ class ResourceTest extends Specification:
         v <- AtomicVar(1)
         e <- IO.snap:
           (for
-            _ <- PolyResource.use(v.event(2), IO(throw ex1))
+            _ <- Resource.use(v.event(2), IO(throw ex1))
             _ <- v.event(3)
-            _ <- PolyResource.use(v.event(4), IO(throw ex2))
+            _ <- Resource.use(v.event(4), IO(throw ex2))
             _ <- v.event(5)
           yield ())
           .finalized
@@ -113,11 +112,11 @@ class ResourceTest extends Specification:
       v <- AtomicVar(0L)
       _ <- 
         (for
-          _ <- PolyResource.use(v.event(1), v.event(2))
+          _ <- Resource.use(v.event(1), v.event(2))
           _ <- v.event(3)
           _ <- 
             (for
-              _ <- PolyResource.use(v.event(4), v.event(5))
+              _ <- Resource.use(v.event(4), v.event(5))
               _ <- v.event(6)
             yield ())
             .finalized
@@ -152,7 +151,7 @@ class ResourceTest extends Specification:
         _ <-
           (for
             _ <- clock.fork
-            _ <- PolyResource.use(rf) *! PolyResource.use(rf)
+            _ <- Resource.use(rf) *! Resource.use(rf)
             _ <- v.event(0)
           yield ())
           .finalized
@@ -174,10 +173,10 @@ class ResourceTest extends Specification:
         clock = mkClock(v, g1, g2)
         _ <-
           (for
-            _ <- PolyResource.use(rf1)
+            _ <- Resource.use(rf1)
             _ <- clock.fork
-            _ <- PolyResource.use(rf2) *! PolyResource.use(rf2)
-            _ <- PolyResource.use(rf3)
+            _ <- Resource.use(rf2) *! Resource.use(rf2)
+            _ <- Resource.use(rf3)
             _ <- v.event(0)
           yield ())
           .finalized

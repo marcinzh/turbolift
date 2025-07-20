@@ -10,9 +10,9 @@ class OtherTest extends Specification:
 
   //// Regression in OpCascaded.fork1/fork2 rewrite #50163b397
   "OpCascaded.fork" >> {
-    case object W extends WriterK[List, Int]
-    case object Dummy1 extends Reader[Boolean]
-    case object Dummy2 extends Reader[Double]
+    case object W extends WriterEffectK[List, Int]
+    case object Dummy1 extends ReaderEffect[Boolean]
+    case object Dummy2 extends ReaderEffect[Double]
 
     val handler =
       Dummy1.handler(true) &&&!

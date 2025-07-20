@@ -4,11 +4,26 @@ import turbolift.Extensions._
 import CoroutineEffect.Step
 
 
+/** Signature of [[CoroutineEffect]]. */
 trait CoroutineSignature[I, O, R] extends Signature:
   def yeld(value: O): I !! ThisEffect
   def exit(value: R): Nothing !! ThisEffect
 
 
+/** Base trait for custom instances of Coroutine effect.
+ *
+ * {{{
+ * case object MyCoroutine extends CoroutineEffect[Int, String, Unit]
+ * // optional:
+ * type MyCoroutine = MyCoroutine.type
+ * }}}
+ *
+ * @see [[turbolift.io.Coroutine]]
+ *
+ * @tparam I value passed to the coroutine when it's resumed
+ * @tparam O value returned by the coroutine when it suspends
+ * @tparam R value returned by the coroutine when it ends
+ */
 trait CoroutineEffect[I, O, R] extends Effect[CoroutineSignature[I, O, R]] with CoroutineSignature[I, O, R]:
   enclosing =>
   final override def yeld(value: O): I !! this.type = perform(_.yeld(value))

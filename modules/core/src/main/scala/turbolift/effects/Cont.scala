@@ -3,6 +3,7 @@ import turbolift.{!!, Signature, Effect, Handler}
 import turbolift.Extensions._
 
 
+/** Signature of [[Cont]] effect. */
 trait ContSignature[R] extends Signature:
   def shift[A, U <: ThisEffect](f: (A => R !! U) => R !! U): A !! U
   def reset[U <: ThisEffect](body: R !! U): R !! U

@@ -15,8 +15,8 @@ trait AutoInc extends Effect[AutoIncSignature] with AutoIncSignature:
   
   /** Predefined handler for this effect. */
   def handler(initial: Int): ThisHandler[Identity, (_, Int), Any] =
-    case object S extends State[Int]
+    case object S extends StateEffect[Int]
     new impl.Proxy[S.type] with AutoIncSignature:
       override def next: Int !! ThisEffect = S.getModify(_ + 1)
     .toHandler
-    .provideWith(S.handler(initial))
+    .provideWith(S.handlers.local(initial))

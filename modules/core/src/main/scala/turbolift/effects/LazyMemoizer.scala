@@ -6,19 +6,11 @@ import turbolift.Extensions._
 import turbolift.io.OnceVar
 
 
-/** Memoizes a recursive, effectful, lazy function.
+/** Signature for [[LazyMemoizerEffect]].
  *
- *  Like the `Memoizer` effect, but this version can be used to build or transform
- *  **cyclic** data structures.
- *
- *  The price to pay is that that `memo` returns a thunk.
- *  The constructor of the cyclic data structure should store obtained thunks,
- *  rather than attempt to call them.
- *
- *  Calling obtained thunks *BEFORE* this effect is handled,
- *  may raise `TieTheKnot` exception and should be considered a defect.
+ * @tparam K input of the memoized function
+ * @tparam V output of the memoized function
  */
-
 trait LazyMemoizerSignature[K, V] extends Signature:
   /** Invoke the function being memoized.
    *
@@ -39,6 +31,31 @@ trait LazyMemoizerSignature[K, V] extends Signature:
   def toMap: Map[K, V] !! ThisEffect
 
 
+/** Base trait for custom instances of LazyMemoizer effect.
+ *
+ * {{{
+ * case object MyLazyMemoizer extends LazyMemoizerEffect[Int, String]
+ * // optional:
+ * type MyLazyMemoizer = MyLazyMemoizer.type
+ * }}}
+ *
+ * Memoizes a recursive, effectful, **lazy** function.
+ * Like the [[MemoizerEffect]], but this version can be used to build or transform
+ * **cyclic** data structures.
+ *
+ * The price to pay is that that `memo` returns a thunk.
+ * The constructor of the cyclic data structure should store obtained thunks,
+ * rather than attempt to call them.
+ *
+ *  Calling obtained thunks *BEFORE* this effect is handled,
+ *  may raise `TieTheKnot` exception and should be considered a defect.
+ *
+ * @see [[PolyLazyMemoizerEffect]]
+ * @see [[LazyMemoizer]]
+ *
+ * @tparam K input of the memoized function
+ * @tparam V output of the memoized function
+ */
 trait LazyMemoizerEffect[K, V] extends Effect[LazyMemoizerSignature[K, V]] with LazyMemoizerSignature[K, V]:
   enclosing =>
   final override def memo(k: K): (() => V) !! this.type = perform(_.memo(k))
@@ -95,23 +112,54 @@ trait LazyMemoizerEffect[K, V] extends Effect[LazyMemoizerSignature[K, V]] with 
         .toHandler
 
 
+object LazyMemoizerEffect:
+  extension [K, V](thiz: LazyMemoizerEffect[K, V])
+    /** Alias of the default handler for this effect.
+     *
+     * Defined as an extension, to allow custom redefinitions without restrictions imposed by overriding
+     */
+    def handler[U](f: K => V !! (U & thiz.type)): Handler[Identity, Identity, thiz.type, U] = thiz.handlers.local(f)
 
-trait LazyMemoizer[K, V] extends LazyMemoizerEffect[K, V]:
-  export handlers.{local => handler}
-
-
-//@#@TODO `fix` syntax doesn't work in Scala 3.6.3
-/*
-object LazyMemoizer:
+  //@#@TODO `fix` syntax doesn't work in Scala 3.6.3
+  /*
   trait Fix[K, V, U] extends LazyMemoizerEffect[K, V]:
     val handler: ThisHandler[Identity, Identity, U]
 
   def fix[K, V, U](f: (fx: Fix[K, V, U]) => K => V !! (U & fx.type)): Fix[K, V, U] = new:
-    override val handler: Handler[Identity, Identity, U] = handlers.default[U](f(this))
-*/
+    override val handler: ThisHandler[Identity, Identity, U] = handlers.default[U](f(this))
+  */
 
 
 private final class Thunk[A] extends Function0[A]:
   private var result: A = null.asInstanceOf[A]
   def :=(value: A): Unit = result = value
   override def apply(): A = result
+
+
+/** Polymorphic variant of [[LazyMemoizerEffect]].
+ *
+ * The 'K' and 'V' parameters are inferred from the call sites
+ * of the effects's operations and handlers.
+ */
+abstract class PolyLazyMemoizerEffect extends Effect.Polymorphic_-+[[X, Y] =>> LazyMemoizerEffect[X, Y], Any, Any](new LazyMemoizerEffect[Any, Any] {}):
+  final def memo[K, V](k: K): (() => V) !! @@[K, V] = polymorphize[K, V].perform(_.memo(k))
+  final def domain[K, V]: Set[K] !! @@[K, V] = polymorphize[K, V].perform(_.domain)
+  final def toMap[K, V]: Map[K, V] !! @@[K, V] = polymorphize[K, V].perform(_.toMap)
+
+  object handlers:
+    def local[K, V, U](f: K => V !! (U & @@[K, V])): Handler[Identity, Identity, @@[K, V], U] =
+      polymorphize[K, V]: p =>
+        p.handler(_.handlers.local(k => p.lift(f(k))))
+
+    def shared[K, V, U <: IO](f: K => V !! (U & @@[K, V])): Handler[Identity, Identity, @@[K, V], U] =
+      polymorphize[K, V]: p =>
+        p.handler(_.handlers.shared(k => p.lift(f(k))))
+
+
+/** Predefined instance of [[PolyLazyMemoizerEffect]] effect.
+ *
+ * Note that using predefined effect instances like this, is anti-modular.
+ * However, they can be convenient in exploratory code.
+ */
+case object LazyMemoizer extends PolyLazyMemoizerEffect
+type LazyMemoizer[K, V] = LazyMemoizer.@@[K, V]

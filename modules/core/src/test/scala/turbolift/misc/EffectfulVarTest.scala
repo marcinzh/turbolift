@@ -98,8 +98,8 @@ class EffectfulVarTest extends Specification:
 
 
   "Effectful ops" >> {
-    case object W extends Writer[String]; type W = W.type
-    case object E extends Error[String]; type E = E.type
+    case object W extends WriterEffect[String]; type W = W.type
+    case object E extends ErrorEffect[String]; type E = E.type
 
     "with Writer" >>{
       (for

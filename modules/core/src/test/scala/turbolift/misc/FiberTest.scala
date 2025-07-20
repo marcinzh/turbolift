@@ -355,7 +355,7 @@ class FiberTest extends Specification:
 
   "effectful" >> {
     "using Error" >>{
-      case object E extends ErrorK[List, String]
+      case object E extends ErrorEffectK[List, String]
       (for
         fib1 <- E.raise("A").fork
         fib2 <- E.raise("B").fork
@@ -368,7 +368,7 @@ class FiberTest extends Specification:
     }
 
     "using Writer" >>{
-      case object W extends WriterK[List, String]
+      case object W extends WriterEffectK[List, String]
       (for
         fib1 <- W.tell("A").fork
         fib2 <- W.tell("B").fork
@@ -383,7 +383,7 @@ class FiberTest extends Specification:
     }
 
     "using Choice" >>{
-      case object C extends Choice
+      case object C extends ChoiceEffect
       (for
         fib1 <- C("a", "b").fork
         fib2 <- C(1, 2).fork
@@ -416,8 +416,8 @@ class FiberTest extends Specification:
     }
 
     "using local effect & handler" >>{
-      case object W1 extends Writer[String]
-      case object W2 extends Writer[String]
+      case object W1 extends WriterEffect[String]
+      case object W2 extends WriterEffect[String]
       (for
         _ <- W1.tell("a")
         fib <- (W1.tell("b") &&! W2.tell("c")).handleWith(W2.handler.justState).fork
@@ -449,7 +449,7 @@ class FiberTest extends Specification:
     "effectful fiber must inherit its handlers from the environment at fork" >> {
       "wrong" >>{
         Typecheck {"""
-          case object W extends Writer[String]
+          case object W extends WriterEffect[String]
           (for
             fib <- W.tell("a").as(42).fork
             aw <- fib.join.handleWith(W.handler)
@@ -461,7 +461,7 @@ class FiberTest extends Specification:
       }
 
       "correct" >>{
-        case object W extends Writer[String]
+        case object W extends WriterEffect[String]
         (for
           fib <- W.tell("a").as(42).fork
           a <- fib.join
@@ -473,7 +473,7 @@ class FiberTest extends Specification:
       }
 
       "also correct" >>{
-        case object W extends Writer[String]
+        case object W extends WriterEffect[String]
         (for
           workaround <- W.tell("a").as(42).fork.handleWith(W.handler)
           (fib, w) = workaround

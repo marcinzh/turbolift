@@ -1,7 +1,7 @@
 package examples
 import turbolift.{!!, Signature, Effect}
 import turbolift.Extensions._
-import turbolift.effects.{State, Console}
+import turbolift.effects.{StateEffect, Console}
 
 
 case object PingPong extends Example:
@@ -40,7 +40,7 @@ case object PingPong extends Example:
 
   extension (fx: Pong)
     def pinger(limit: Int) =
-      case object S extends State[Int]
+      case object S extends StateEffect[Int]
       new fx.impl.Proxy[Console & S.type] with PongSignature:
         override def pong: Unit !! (ThisEffect & Ping) =
           for
@@ -49,7 +49,7 @@ case object PingPong extends Example:
             _ <- !!.when(i < limit)(Control.reinterpret(Ping.ping))
           yield ()
       .toHandler
-      .partiallyProvideWith[Console](S.handler(0).dropState)
+      .partiallyProvideWith[Console](S.handlers.local(0).dropState)
 
   //----- Run -----
 

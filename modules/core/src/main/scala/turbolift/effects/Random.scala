@@ -5,6 +5,7 @@ import turbolift.Extensions._
 import turbolift.data.Splitmix64
 
 
+/** Signature of [[RandomEffect]]. */
 trait RandomSignature extends Signature:
   def nextBoolean: Boolean !! ThisEffect
   def nextInt: Int !! ThisEffect
@@ -22,6 +23,18 @@ trait RandomSignature extends Signature:
   def setSeed(seed: Long): Unit !! ThisEffect
 
 
+/** Base trait for custom instances of Random effect.
+ *
+ * {{{
+ * case object MyRandom extends RandomEffect
+ * // optional:
+ * type MyRandom = MyRandom.type
+ * }}}
+ *
+ * Effectful version of [[scala.util.Random]]
+ *
+ * @see [[Random]]
+ */
 trait RandomEffect extends Effect[RandomSignature] with RandomSignature:
   enclosing =>
   final override def nextBoolean: Boolean !! this.type = perform(_.nextBoolean)
@@ -117,8 +130,15 @@ trait RandomEffect extends Effect[RandomSignature] with RandomSignature:
         .toHandler
 
 
-/** Predefined instance of this effect. */
-case object Random extends RandomEffect:
-  export handlers.{local => handler}
+object RandomEffect:
+  extension (thiz: RandomEffect)
+    /** Alias of the default handler for this effect.
+     *
+     * Defined as an extension, to allow custom redefinitions without restrictions imposed by overriding
+     */
+    def handler: Handler[Identity, Identity, thiz.type, IO] = thiz.handlers.local
 
+
+/** Predefined instance of this [[RandomEffect]]. */
+case object Random extends RandomEffect
 type Random = Random.type

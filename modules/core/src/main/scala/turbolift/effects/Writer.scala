@@ -1,11 +1,16 @@
 package turbolift.effects
 import turbolift.{!!, Signature, Effect, Handler}
 import turbolift.Extensions._
-import turbolift.typeclass.AccumZero
+import turbolift.typeclass.{PlusZero, AccumZero}
 import turbolift.typeclass.Syntax._
 import turbolift.io.AtomicVar
 
 
+/** Signature of [[WriterEffectExt]].
+ *
+ * @tparam W Accumulator
+ * @tparam W1 Singular value added to the accumulator
+ */
 trait WriterSignature[W, W1] extends Signature:
   def tell(w: W1): Unit !! ThisEffect
   def tells(w: W): Unit !! ThisEffect
@@ -15,7 +20,31 @@ trait WriterSignature[W, W1] extends Signature:
   def pass[A, U <: ThisEffect](body: (A, W => W) !! U): A !! U
 
 
-trait WriterEffect[W, W1] extends Effect[WriterSignature[W, W1]] with WriterSignature[W, W1]:
+/** Base trait for custom instances of Writer effect.
+ *
+ * {{{
+ * case object MyWriter extends WriterEffect[Int]
+ * // optional:
+ * type MyWriter = MyWriter.type
+ * }}}
+ *
+ * Notice that [[WriterEffectExt]] takes type 2 parameters.
+ * This abstraction enables ergonomic syntax of `tell(w)`,
+ * which relieves the user from the necessity of wrapping `w` in `Nel` (`raise(Nel(w))`),
+ * as in the standard `Writer` monad.
+ * For the simpler, single-parmeter version, see [[WriterEffect]].
+ *
+ * @see [[WriterEffect]]
+ * @see [[WriterEffectK]]
+ * @see [[WriterEffectG]]
+ * @see [[WriterEffectGK]]
+ * @see [[PolyWriterEffect]]
+ * @see [[Writer]]
+ *
+ * @tparam W Accumulator
+ * @tparam W1 Singular value added to the accumulator
+ */
+trait WriterEffectExt[W, W1] extends Effect[WriterSignature[W, W1]] with WriterSignature[W, W1]:
   enclosing =>
   final override def tell(w: W1): Unit !! this.type = perform(_.tell(w))
   final override def tells(w: W): Unit !! this.type = perform(_.tells(w))
@@ -95,14 +124,106 @@ trait WriterEffect[W, W1] extends Effect[WriterSignature[W, W1]] with WriterSign
     def sharedFold(using W =:= W1)(zero: W, plus: (W, W1) => W): Handler[Identity, (_, W), enclosing.type, IO] = shared(using AccumZero.instanceEq(zero, plus))
 
 
-trait Writer[W] extends WriterEffect[W, W]:
-  export handlers.{local => handler}
+object WriterEffectExt:
+  extension [W, W1](thiz: WriterEffectExt[W, W1])
+    /** Alias of the default handler for this effect.
+     *
+     * Defined as an extension, to allow custom redefinitions without restrictions imposed by overriding
+     */
+    def handler(using W: AccumZero[W, W1]): Handler[Identity, (_, W), thiz.type, Any] = thiz.handlers.local
 
-trait WriterK[F[_], W] extends WriterEffect[F[W], W]:
-  export handlers.{local => handler}
 
-trait WriterG[M[_, _], K, V] extends WriterEffect[M[K, V], (K, V)]:
-  export handlers.{local => handler}
+/** Specialized [[WriterEffectExt]], where `W` and `W1` are the same (e.g. a monoid). */
+trait WriterEffect[W] extends WriterEffectExt[W, W]
 
-trait WriterGK[M[_, _], K, F[_], V] extends WriterEffect[M[K, F[V]], (K, V)]:
-  export handlers.{local => handler}
+/** Specialized [[WriterEffectExt]], where values `W` are accumulated into `F[W]` (e.g. a collection). */
+trait WriterEffectK[F[_], W] extends WriterEffectExt[F[W], W]
+
+/** Specialized [[WriterEffectExt]], where pairs `(K, V)` are accumulated into `M[K, V]` (e.g. a map). */
+trait WriterEffectG[M[_, _], K, V] extends WriterEffectExt[M[K, V], (K, V)]
+
+/** Specialized [[WriterEffectExt]], where pairs `(K, V)` are accumulated into `M[K, F[V]]` (e.g. a map of collections). */
+trait WriterEffectGK[M[_, _], K, F[_], V] extends WriterEffectExt[M[K, F[V]], (K, V)]
+
+
+/** Polymorphic variant of [[WriterEffect]].
+ *
+ * In the monomorphic variant, the `W` type parameter is supplied during creation of an instance of the effect:
+ * {{{
+ * // The `W` is explicitly set as `Int`:
+ * case object MyWriter extends WriterEffect[Int]  
+ *
+ * // The `W` is inferred from the effect instance:
+ * val computation = MyWriter.tell(42)
+ * }}}
+ *
+ * In the polymorphic variant, the `W` type parameter is **contravariantly** inferred
+ * at call sites of effect's operations and handlers.
+ * In practice, the type can "grow as you go":
+ *
+ * {{{
+ * case object MyWriter extends PolyWriterEffect
+ *
+ * val computation1 = MyWriter.tell(42)              // `W` inferred as `Int`
+ * val computation2 = MyWriter.tell("OMG")           // `W` inferred as `String`
+ * val computation3 = computation1 &&! computation2  // `W` inferred as `Int | String`
+ *
+ * // Inferred types of the above computations:
+ * val _: Unit !! MyWriter.@@[Int]          = computation1
+ * val _: Unit !! MyWriter.@@[String]       = computation2
+ * val _: Unit !! MyWriter.@@[Int | String] = computation3
+ * }}}
+ */
+abstract class PolyWriterEffect extends Effect.Polymorphic_-[WriterEffect, Any](new WriterEffect[Any] {}):
+  final def tell[W](w: W): Unit !! @@[W] = polymorphize[W].perform(_.tell(w))
+  final def mute[W] = MuteApply[W]
+  final def listen[W] = ListenApply[W]
+  final def censor[W] = CensorApply[W]
+  final def pass[W] = PassApply[W]
+
+
+  /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
+  final class MuteApply[W]:
+    def apply[A, U <: @@[W]](body: A !! U): A !! U = polymorphize[W].perform(_.mute(body))
+
+  /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
+  final class ListenApply[W]:
+    def apply[A, U <: @@[W]](body: A !! U): (A, W) !! U = polymorphize[W].perform(_.listen(body))
+
+  /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
+  final class CensorApply[W]:
+    def apply[A, U <: @@[W]](f: W => W)(body: A !! U): A !! U = polymorphize[W].perform(_.censor(f)(body))
+
+  /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
+  final class PassApply[W]:
+    def apply[A, U <: @@[W]](body: (A, W => W) !! U): A !! U = polymorphize[W].perform(_.pass(body))
+
+
+  /** Predefined handlers for this effect. */
+  object handlers:
+    def local[W](using W: PlusZero[W]): Handler[Identity, (_, W), @@[W], Any] = polymorphize[W].handler(_.handlers.local)
+    def shared[W](using W: PlusZero[W]): Handler[Identity, (_, W), @@[W], IO] = polymorphize[W].handler(_.handlers.shared)
+
+    /** Lile [[local]], but accumulate with given function instead of typeclass. */
+    def localFold[W](zero: W, plus: (W, W) => W): Handler[Identity, (_, W), @@[W], Any] = local(using PlusZero.instance(zero, plus))
+
+    /** Lile [[shared]], but accumulate with given function instead of typeclass. */
+    def sharedFold[W](zero: W, plus: (W, W) => W): Handler[Identity, (_, W), @@[W], IO] = shared(using PlusZero.instance(zero, plus))
+
+
+object PolyWriterEffect:
+  extension (thiz: PolyWriterEffect)
+    /** Alias of the default handler for this effect.
+     *
+     * Defined as an extension, to allow custom redefinitions without restrictions imposed by overriding
+     */
+    def handler[W](using W: PlusZero[W]): Handler[Identity, (_, W), thiz.@@[W], Any] = thiz.handlers.local
+
+
+/** Predefined instance of [[PolyWriterEffect]].
+ *
+ * Note that using predefined effect instances like this, is anti-modular.
+ * However, they can be convenient in exploratory code.
+ */
+case object Writer extends PolyWriterEffect
+type Writer[W] = Writer.@@[W]
