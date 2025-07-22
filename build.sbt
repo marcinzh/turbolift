@@ -1,5 +1,5 @@
 val ScalaLTS = "3.3.6"
-val ScalaNext = "3.6.4"
+val ScalaNext = "3.7.0"
 
 ThisBuild / organization := "io.github.marcinzh"
 ThisBuild / version := "0.115.0-SNAPSHOT"
@@ -23,12 +23,13 @@ ThisBuild / publish / skip := (scalaVersion.value != ScalaLTS)
 
 val Deps = {
   val specs2_v = "5.4.0"
+  val cps_v = "1.1.2"
   object deps {
     val specs2_core = "org.specs2" %% "specs2-core" % specs2_v % "test"
     val specs2_extra = "org.specs2" %% "specs2-matcher-extra" % specs2_v % "test"
     val jol = "org.openjdk.jol" % "jol-core" % "0.17"
-    val cps = "io.github.dotty-cps-async" %% "dotty-cps-async" % "1.0.0"
-    val cps_next = "io.github.dotty-cps-async" %% "dotty-cps-async-next" % "1.0.0"
+    val cps = "io.github.dotty-cps-async" %% "dotty-cps-async" % cps_v
+    val cps_next = "io.github.dotty-cps-async" %% "dotty-cps-async-next" % cps_v
   }
   deps
 }

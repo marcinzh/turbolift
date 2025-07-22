@@ -20,7 +20,7 @@ private object Macro:
       case '[u] =>
         val transformedBody = transform(body.asTerm):
           case Apply(TypeApply(Ident("!"), List(a, u2)), List(comp)) =>
-            (a.tpe.asType, u2.tpe.asType) match
+            (a.tpe.asType, u2.tpe.asType): @unchecked match
               case ('[a], '[u2]) =>
                 '{
                   cps.await[Computation[_, u2], a, Computation[_, u2]](${comp.asExprOf[Computation[a, u2]]})(
