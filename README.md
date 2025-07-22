@@ -22,8 +22,8 @@ Runnable with [`scala-cli`](https://scala-cli.virtuslab.org/).
 > Turbolift requires **Java 11** or newer.
 
 ```scala
-//> using scala "3.3.5"
-//> using dep "io.github.marcinzh::turbolift-core:0.114.0"
+//> using scala "3.3.6"
+//> using dep "io.github.marcinzh::turbolift-core:0.116.0"
 import turbolift.!!
 import turbolift.effects.{ReaderEffect, StateEffect, ErrorEffect}
 
@@ -58,9 +58,9 @@ import turbolift.effects.{ReaderEffect, StateEffect, ErrorEffect}
 Same, but with [bindless](modules/bindless) syntax extension:
 
 ```scala
-//> using scala "3.3.5"
-//> using dep "io.github.marcinzh::turbolift-core:0.114.0"
-//> using dep "io.github.marcinzh::turbolift-bindless:0.114.0"
+//> using scala "3.3.6"
+//> using dep "io.github.marcinzh::turbolift-core:0.116.0"
+//> using dep "io.github.marcinzh::turbolift-bindless:0.116.0"
 import turbolift.!!
 import turbolift.effects.{Reader, State, Error}
 import turbolift.bindless._
@@ -98,11 +98,11 @@ sbt examples/run
 ## Usage in SBT
 
 ```scala
-libraryDependencies += "io.github.marcinzh" %% "turbolift-core" % "0.114.0"
+libraryDependencies += "io.github.marcinzh" %% "turbolift-core" % "0.116.0"
 ```
 
 Optionally, for the [bindless](modules/bindless) syntax extension:
 
 ```scala
-libraryDependencies += "io.github.marcinzh" %% "turbolift-bindless" % "0.114.0"
+libraryDependencies += "io.github.marcinzh" %% "turbolift-bindless" % "0.116.0"
 ```
