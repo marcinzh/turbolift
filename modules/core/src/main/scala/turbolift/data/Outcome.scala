@@ -1,4 +1,4 @@
-package turbolift.io
+package turbolift.data
 import turbolift.!!
 import turbolift.effects.IO
 import scala.util.{Try, Success => TrySuccess, Failure => TryFailure}

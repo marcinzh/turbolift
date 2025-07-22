@@ -2,7 +2,7 @@ package turbolift.misc
 import org.specs2.mutable._
 import turbolift.!!
 import turbolift.effects.IO
-import turbolift.io.{Outcome, Cause}
+import turbolift.data.{Outcome, Cause}
 
 
 class BinaryOpTest extends Specification:

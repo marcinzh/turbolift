@@ -3,7 +3,7 @@ import org.specs2.mutable._
 import turbolift.!!
 import turbolift.effects.{IO, Error}
 import turbolift.effects.CanLaunchTheMissiles
-import turbolift.io.{Outcome, Cause}
+import turbolift.data.{Outcome, Cause}
 import turbolift.mode.ST
 
 

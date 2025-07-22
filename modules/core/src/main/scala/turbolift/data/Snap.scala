@@ -1,4 +1,4 @@
-package turbolift.io
+package turbolift.data
 import turbolift.!!
 import turbolift.effects.IO
 import turbolift.interpreter.Prompt

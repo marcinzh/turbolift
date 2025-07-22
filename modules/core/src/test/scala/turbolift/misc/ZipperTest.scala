@@ -4,7 +4,8 @@ import org.specs2.execute.Typecheck
 import org.specs2.matcher.TypecheckMatchers._
 import turbolift.!!
 import turbolift.effects._
-import turbolift.io.{Fiber, Warp, OnceVar, Outcome}
+import turbolift.data.Outcome
+import turbolift.io.{Fiber, Warp, OnceVar}
 
 
 class ZipperTest extends Specification:

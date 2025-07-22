@@ -2,7 +2,7 @@ package turbolift.effects
 import java.io.{Closeable => JCloseable}
 import turbolift.{!!, Effect, Signature, Handler}
 import turbolift.Extensions._
-import turbolift.io.{ResourceFactory, Cause, Snap}
+import turbolift.io.ResourceFactory
 import turbolift.data.Trail
 
 

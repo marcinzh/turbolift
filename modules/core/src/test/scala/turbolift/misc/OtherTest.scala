@@ -2,7 +2,7 @@ package turbolift.misc
 import org.specs2.mutable._
 import turbolift.!!
 import turbolift.effects._
-import turbolift.io.{Outcome}
+import turbolift.data.Outcome
 
 
 class OtherTest extends Specification:

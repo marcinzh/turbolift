@@ -1,5 +1,6 @@
 package turbolift.io
 import turbolift.{!!, ComputationCases => CC}
+import turbolift.data.{Outcome, Exceptions}
 import turbolift.effects.IO
 
 

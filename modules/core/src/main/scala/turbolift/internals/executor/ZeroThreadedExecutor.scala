@@ -1,7 +1,7 @@
 package turbolift.internals.executor
 import scala.annotation.tailrec
 import turbolift.Computation
-import turbolift.io.Outcome
+import turbolift.data.Outcome
 import turbolift.internals.engine.{Engine, Halt}
 import turbolift.internals.engine.concurrent.{FiberImpl, WaiterLink}
 

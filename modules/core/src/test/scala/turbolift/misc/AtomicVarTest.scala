@@ -3,7 +3,8 @@ import org.specs2.mutable._
 import org.specs2.specification.core.Fragment
 import turbolift.!!
 import turbolift.effects.IO
-import turbolift.io.{Outcome, AtomicVar}
+import turbolift.data.Outcome
+import turbolift.io.AtomicVar
 
 
 class AtomicVarTest extends Specification:

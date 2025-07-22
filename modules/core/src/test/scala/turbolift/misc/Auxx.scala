@@ -3,7 +3,8 @@ import java.util.concurrent.CountDownLatch
 import org.specs2.mutable._
 import turbolift.!!
 import turbolift.effects.IO
-import turbolift.io.{Outcome, AtomicVar}
+import turbolift.data.Outcome
+import turbolift.io.AtomicVar
 
 
 object Auxx:

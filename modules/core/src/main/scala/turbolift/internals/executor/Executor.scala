@@ -4,7 +4,7 @@ import scala.concurrent.ExecutionContext
 import turbolift.Computation
 import turbolift.effects.IO
 import turbolift.mode.Mode
-import turbolift.io.Outcome
+import turbolift.data.Outcome
 import turbolift.internals.engine.concurrent.FiberImpl
 
 

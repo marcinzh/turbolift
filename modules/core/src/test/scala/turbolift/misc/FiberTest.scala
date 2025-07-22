@@ -4,7 +4,8 @@ import org.specs2.execute.Typecheck
 import org.specs2.matcher.TypecheckMatchers._
 import turbolift.!!
 import turbolift.effects._
-import turbolift.io.{Fiber, Outcome, Cause, AtomicVar}
+import turbolift.data.{Outcome, Cause}
+import turbolift.io.{Fiber, AtomicVar}
 import Auxx._
 
 

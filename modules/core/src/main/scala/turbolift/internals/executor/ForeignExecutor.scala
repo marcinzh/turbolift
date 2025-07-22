@@ -2,7 +2,7 @@ package turbolift.internals.executor
 import java.util.concurrent.{Executors, Executor => JExecutor, ArrayBlockingQueue}
 import scala.concurrent.ExecutionContext
 import turbolift.Computation
-import turbolift.io.Outcome
+import turbolift.data.Outcome
 import turbolift.internals.engine.{Engine, Halt}
 import turbolift.internals.engine.concurrent.FiberImpl
 

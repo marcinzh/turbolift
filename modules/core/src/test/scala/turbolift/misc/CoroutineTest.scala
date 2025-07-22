@@ -2,7 +2,8 @@ package turbolift.misc
 import org.specs2.mutable._
 import turbolift.!!
 import turbolift.effects.IO
-import turbolift.io.{Coroutine, Outcome}
+import turbolift.data.Outcome
+import turbolift.io.Coroutine
 
 
 class CoroutineTest extends Specification:

@@ -2,7 +2,8 @@ package turbolift.misc
 import org.specs2.mutable._
 import turbolift.!!
 import turbolift.effects._
-import turbolift.io.{Outcome, Snap, EffectfulVar, Zipper, Warp}
+import turbolift.data.{Outcome, Snap}
+import turbolift.io.{EffectfulVar, Zipper, Warp}
 
 
 class EffectfulVarTest extends Specification:

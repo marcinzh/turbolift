@@ -2,7 +2,8 @@ package turbolift.misc
 import org.specs2.mutable._
 import turbolift.!!
 import turbolift.effects._
-import turbolift.io.{Outcome, Snap, Cause, AtomicVar, ResourceFactory}
+import turbolift.data.{Outcome, Snap, Cause}
+import turbolift.io.{AtomicVar, ResourceFactory}
 import turbolift.effects.{Finalizer, FinalizerEffect}
 import Auxx._
 

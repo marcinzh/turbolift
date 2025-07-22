@@ -1,7 +1,6 @@
 package turbolift.data
 import turbolift.!!
 import turbolift.effects.IO
-import turbolift.io.{Cause, Snap}
 
 
 /** Internal state of [[turbolift.effects.Finalizer]] effect's predefined handler. */

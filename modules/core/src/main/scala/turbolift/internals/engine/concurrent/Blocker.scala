@@ -1,7 +1,7 @@
 package turbolift.internals.engine.concurrent
 import java.util.concurrent.{TimeUnit, Future}
 import java.util.concurrent.atomic.AtomicReference
-import turbolift.io.Exceptions
+import turbolift.data.Exceptions
 import turbolift.internals.executor.{Pool, Scheduler}
 
 

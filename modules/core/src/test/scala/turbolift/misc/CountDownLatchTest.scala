@@ -2,7 +2,8 @@ package turbolift.misc
 import org.specs2.mutable._
 import turbolift.!!
 import turbolift.effects.IO
-import turbolift.io.{AtomicVar, Outcome, Warp, CountDownLatch}
+import turbolift.data.Outcome
+import turbolift.io.{AtomicVar, Warp, CountDownLatch}
 import Auxx._
 
 

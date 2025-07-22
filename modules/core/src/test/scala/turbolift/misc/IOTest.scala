@@ -3,7 +3,8 @@ import java.util.concurrent.{Executor => JExecutor}
 import org.specs2.mutable._
 import turbolift.!!
 import turbolift.effects.{IO, Error}
-import turbolift.io.{AtomicVar, Outcome, Cause}
+import turbolift.data.{Outcome, Cause}
+import turbolift.io.AtomicVar
 import turbolift.internals.executor.Executor
 import Auxx._
 

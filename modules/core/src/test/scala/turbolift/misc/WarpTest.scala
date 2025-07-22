@@ -2,7 +2,8 @@ package turbolift.misc
 import org.specs2.mutable._
 import turbolift.!!
 import turbolift.effects.{IO, Error}
-import turbolift.io.{Fiber, Warp, Outcome, AtomicVar, OnceVar}
+import turbolift.data.Outcome
+import turbolift.io.{Fiber, Warp, AtomicVar, OnceVar}
 import Auxx._
 
 

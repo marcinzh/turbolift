@@ -6,7 +6,8 @@ import turbolift.internals.auxx.CanPartiallyHandle
 import turbolift.internals.executor.Executor
 import turbolift.interpreter.Prompt
 import turbolift.internals.engine.{Env, Engine, Tag}
-import turbolift.io.{Outcome, Fiber, Warp}
+import turbolift.data.Outcome
+import turbolift.io.{Fiber, Warp}
 import turbolift.mode.Mode
 import turbolift.{ComputationCases => CC}
 

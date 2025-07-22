@@ -1,4 +1,4 @@
-package turbolift.io
+package turbolift.data
 import scala.util.control.ControlThrowable
 import turbolift.interpreter.Prompt
 

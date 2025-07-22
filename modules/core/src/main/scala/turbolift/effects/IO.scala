@@ -3,7 +3,7 @@ import java.time.Instant
 import scala.util.{Try, Success => TrySuccess, Failure => TryFailure}
 import scala.concurrent.duration._
 import turbolift.{!!, Signature, ComputationCases => CC}
-import turbolift.io.{Cause, Snap}
+import turbolift.data.{Cause, Snap}
 import turbolift.interpreter.Prompt
 import turbolift.internals.executor.Executor
 

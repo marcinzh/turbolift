@@ -1,6 +1,6 @@
 package turbolift.internals.engine
 import turbolift.!!
-import turbolift.io.{Outcome, Exceptions}
+import turbolift.data.{Outcome, Exceptions}
 import turbolift.internals.engine.concurrent.{FiberImpl, WarpImpl}
 
 

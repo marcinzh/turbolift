@@ -1,4 +1,4 @@
-package turbolift.io
+package turbolift.data
 import turbolift.interpreter.Prompt
 import scala.util.{Try, Failure => TryFailure}
 
