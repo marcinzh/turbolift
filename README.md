@@ -25,17 +25,86 @@ Runnable with [`scala-cli`](https://scala-cli.virtuslab.org/).
 //> using scala "3.3.6"
 //> using dep "io.github.marcinzh::turbolift-core:0.116.0"
 import turbolift.!!
+import turbolift.effects.{Reader, State, Error}
+
+@main def main =
+  val program =
+    for
+      a <- State.get[Int]
+      b <- Reader.ask[Int]
+      c <-
+        if b != 0
+        then !!.pure(a / b)
+        else Error.raise(s"Tried to divide $a by zero")
+      _ <- State.put(c)
+    yield ()
+
+  val result =
+    program
+    .handleWith(State.handler(100))
+    .handleWith(Reader.handler(3))
+    .handleWith(Error.handler)
+    .run
+
+  println(result) // Right(((),33))
+```
+
+&nbsp;
+
+Same, but with [bindless](modules/bindless) syntax extension (`async/await` alike):
+
+```scala
+//> using scala "3.3.6"
+//> using dep "io.github.marcinzh::turbolift-core:0.116.0"
+//> using dep "io.github.marcinzh::turbolift-bindless:0.116.0"
+import turbolift.!!
+import turbolift.effects.{Reader, State, Error}
+import turbolift.bindless._
+
+@main def main =
+  val program =
+    `do`:
+      val a = State.get[Int].!
+      val b = Reader.ask[Int].!
+      val c =
+        if b != 0
+        then a / b
+        else Error.raise(s"Tried to divide $a by zero").!
+      State.put(c).!
+
+  val result =
+    program
+    .handleWith(State.handler(100))
+    .handleWith(Reader.handler(3))
+    .handleWith(Error.handler)
+    .run
+
+  println(result) // Right(((),33))
+```
+
+&nbsp;
+
+Same as the first example, but using monomorphized effect instances:
+- 👍 Better for modularity (see [Labeled Effects](https://marcinzh.github.io/turbolift/advanced/labelled.html)).
+- 👍 QOL: Helps type inference and improves clarity of error messages.
+- 👎 Slightly more verbose, since effect instance definitions are required (e.g. `case object MyEffect extends SomeEffect`).
+
+```scala
+//> using scala "3.3.6"
+//> using dep "io.github.marcinzh::turbolift-core:0.116.0"
+import turbolift.!!
 import turbolift.effects.{ReaderEffect, StateEffect, ErrorEffect}
 
 @main def main =
+  // 👉 Definitions of custom effect instances:
   case object MyReader extends ReaderEffect[Int]
   case object MyState extends StateEffect[Int]
   case object MyError extends ErrorEffect[String]
 
   val program =
     for
-      a <- MyState.get
-      b <- MyReader.ask
+      a <- MyState.get   // 👉 No need for explicit type parameter: `get[Int]`
+      b <- MyReader.ask  // 👉 No need for explicit type parameter: `ask[Int]`
       c <-
         if b != 0
         then !!.pure(a / b)
@@ -55,40 +124,6 @@ import turbolift.effects.{ReaderEffect, StateEffect, ErrorEffect}
 
 &nbsp;
 
-Same, but with [bindless](modules/bindless) syntax extension:
-
-```scala
-//> using scala "3.3.6"
-//> using dep "io.github.marcinzh::turbolift-core:0.116.0"
-//> using dep "io.github.marcinzh::turbolift-bindless:0.116.0"
-import turbolift.!!
-import turbolift.effects.{Reader, State, Error}
-import turbolift.bindless._
-
-@main def main =
-  case object MyReader extends Reader[Int]
-  case object MyState extends State[Int]
-  case object MyError extends Error[String]
-
-  val program =
-    `do`:
-      val a = MyState.get.!
-      val b = MyReader.ask.!
-      val c =
-        if b != 0
-        then a / b
-        else MyError.raise(s"Tried to divide $a by zero").!
-      MyState.put(c).!
-
-  val result =
-    program
-    .handleWith(MyState.handler(100))
-    .handleWith(MyReader.handler(3))
-    .handleWith(MyError.handler)
-    .run
-
-  println(result) // Right(((),33))
-```
 See also [examples](modules/examples/src/main/scala/examples/) folder. Runnable with `sbt`:
 ```sh
 sbt examples/run
