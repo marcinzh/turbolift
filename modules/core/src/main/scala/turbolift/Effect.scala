@@ -106,6 +106,14 @@ object Effect:
     /** Alias for [[Handler]], specialized to eliminate this effect. */
     final type ThisHandler[F[+_], G[+_], N] = Handler[F, G, Fx, N]
 
+    object ThisHandler:
+      /** Alias of [[ThisHandler]] where `From` is identity. */
+      type Id[G[+_], Intro] = ThisHandler[[X] =>> X, G, Intro]
+
+      /** Alias of [[ThisHandler]] where `From` and `To` are identity. */
+      type IdId[Intro] = ThisHandler[[X] =>> X, [X] =>> X, Intro]
+
+
     sealed trait ThisInterpreter extends IC.Unsealed:
       final override type Elim = Fx
       private[turbolift] final override def enumSignatures: Array[Signature] = sigs

@@ -141,6 +141,12 @@ sealed trait Handler[From[+_], To[+_], Elim, Intro]:
 
 
 object Handler:
+  /** Alias of [[Handler]] where `From` is identity. */
+  type Id[G[+_], Elim, Intro] = Handler[Identity, G, Elim, Intro]
+
+  /** Alias of [[Handler]] where `From` and `To` are identity. */
+  type IdId[Elim, Intro] = Handler[Identity, Identity, Elim, Intro]
+
   /** Transforms a computation of a handler, into a new handler.
    *
    *  Useful for effectful creation of handlers.
