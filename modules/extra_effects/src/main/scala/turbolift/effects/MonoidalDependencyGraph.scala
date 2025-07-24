@@ -1,6 +1,6 @@
 package turbolift.effects
 import scala.util.chaining._
-import turbolift.{!!, Effect, Signature}
+import turbolift.{!!, Signature, Effect, Handler}
 import turbolift.Extensions._
 import turbolift.typeclass.PlusZero
 import turbolift.typeclass.Syntax._
@@ -55,7 +55,7 @@ trait MonoidalDependencyGraph[K, V] extends Effect[MonoidalDependencyGraphSignat
 
   /** Predefined handlers for this effect. */
   object handlers:
-    def local(using V: PlusZero[V]): ThisHandler[Identity, (_, Map[K, V]), Any] =
+    def local(using V: PlusZero[V]): Handler.Id[(_, Map[K, V]), enclosing.type, Any] =
       case object IncomingConst extends WriterEffectG[Map, K, V]
       case object OutgoingConst extends WriterEffectG[Map, K, V]
       case object Propagate extends WriterEffectGK[Map, K, Set, K]
@@ -80,8 +80,16 @@ trait MonoidalDependencyGraph[K, V] extends Effect[MonoidalDependencyGraphSignat
         )
 
 
-    def local(zero: V, plus: (V, V) => V): ThisHandler[Identity, (_, Map[K, V]), Any] = local(using PlusZero.instance(zero, plus))
+    def local(zero: V, plus: (V, V) => V): Handler.Id[(_, Map[K, V]), enclosing.type, Any] = local(using PlusZero.instance(zero, plus))
 
+
+object MonoidalDependencyGraph:
+  extension [K, V](thiz: MonoidalDependencyGraph[K, V])
+    /** Alias of the default handler for this effect.
+     *
+     * Defined as an extension, to allow custom redefinitions without restrictions imposed by overriding
+     */
+    def handler(using V: PlusZero[V]): Handler.Id[(_, Map[K, V]), thiz.type, Any] = thiz.handlers.local
 
 
 private def solveMonoidalDeps[K, V](inConst: Map[K, V], outConst: Map[K, V], propagate: Map[K, Set[K]])(using V: PlusZero[V]): Map[K, V] =

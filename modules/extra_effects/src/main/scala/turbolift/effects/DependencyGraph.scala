@@ -1,6 +1,6 @@
 package turbolift.effects
 import scala.util.chaining._
-import turbolift.{!!, Effect, Signature}
+import turbolift.{!!, Signature, Effect, Handler}
 import turbolift.Extensions._
 import turbolift.typeclass.AccumZero
 import turbolift.effects.{DependencyGraph, DependencyGraphSignature}
@@ -58,7 +58,7 @@ trait DependencyGraph[K, V] extends Effect[DependencyGraphSignature[K, V]] with 
 
   /** Predefined handlers for this effect. */
   object handlers:
-    def local(bottom: V): ThisHandler[Identity, (_, Map[K, V]), Any] =
+    def local(bottom: V): Handler.Id[(_, Map[K, V]), enclosing.type, Any] =
       type Solution = K => V
 
       case object Compute extends WriterEffectG[Map, K, Solution => V]
@@ -97,6 +97,15 @@ trait DependencyGraph[K, V] extends Effect[DependencyGraphSignature[K, V]] with 
           comp.withDefaultValue(computeBottom),
           prop.withDefaultValue(Set.empty)
         ) 
+
+
+object DependencyGraph:
+  extension [K, V](thiz: DependencyGraph[K, V])
+    /** Alias of the default handler for this effect.
+     *
+     * Defined as an extension, to allow custom redefinitions without restrictions imposed by overriding
+     */
+    def handler(bottom: V): Handler.Id[(_, Map[K, V]), thiz.type, Any] = thiz.handlers.local(bottom)
 
 
 private def solveDeps[K, V](bottom: V, compute: Map[K, (K => V) => V], propagate: Map[K, Set[K]]): Map[K, V] =
