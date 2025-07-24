@@ -14,7 +14,7 @@ object Mixins:
 
   private[interpreter] sealed trait HasNotRestart extends Interpreter.Unsealed:
     final override def onRestart(aa: To[Unknown]): Unknown !! Elim = unimplemented
-    final override def onUnknown(aa: To[Unknown]): Option[Unknown] = unimplemented
+    final override def onOnce(aa: To[Unknown]): Option[Unknown] = unimplemented
 
   private[interpreter] sealed trait HasNotForkJoin extends Interpreter.Unsealed:
     final override def onFork(s: Local): (Local, Local) = unimplemented

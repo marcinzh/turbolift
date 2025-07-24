@@ -16,12 +16,12 @@ private[engine] object OpCascaded:
     loop(stack)
 
 
-  def unknown(stack: Stack, ftor: Any): Option[Any] =
+  def once(stack: Stack, ftor: Any): Option[Any] =
     def loop(todo: Stack): Option[Any] =
       if todo.isTailless then
-        unknownSegment(todo, ftor)
+        onceSegment(todo, ftor)
       else
-        loop(todo.tail).flatMap(unknownSegment(todo, _))
+        loop(todo.tail).flatMap(onceSegment(todo, _))
     loop(stack)
 
 
@@ -131,14 +131,14 @@ private[engine] object OpCascaded:
     loop(0, comp)
 
 
-  private def unknownSegment(seg: Stack, ftor: Any): Option[Any] =
+  private def onceSegment(seg: Stack, ftor: Any): Option[Any] =
     val n = seg.promptCount
     @tailrec def loop(i: Int, accum: Any): Option[Any] =
       if i < n then
         val p = seg.piles(i).prompt
         val i2 = i + 1
         if p.hasRestart then
-          p.onUnknown(accum) match
+          p.onOnce(accum) match
             case Some(ftor2) => loop(i2, ftor2)
             case None => None
         else

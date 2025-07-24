@@ -44,7 +44,7 @@ trait ChoiceEffect extends Effect[ChoiceSignature] with ChoiceSignature:
       new impl.Stateless[Identity, Vector, Any] with impl.Parallel with ChoiceSignature:
         override def onReturn(a: Unknown): Vector[Unknown] !! Any = !!.pure(Vector(a))
         override def onRestart(as: Vector[Unknown]): Unknown !! enclosing.type = enclosing.choose(as)
-        override def onUnknown(as: Vector[Unknown]): Option[Unknown] = as.headOption
+        override def onOnce(as: Vector[Unknown]): Option[Unknown] = as.headOption
         override def onZip[A, B, C](as: Vector[A], bs: Vector[B], k: (A, B) => C): Vector[C] = as.flatMap(a => bs.map(k(a, _)))
 
         override def empty: Nothing !! ThisEffect = Control.abort(Vector())
@@ -57,7 +57,7 @@ trait ChoiceEffect extends Effect[ChoiceSignature] with ChoiceSignature:
       new impl.Stateless[Identity, Option, Any] with impl.Parallel with ChoiceSignature:
         override def onReturn(a: Unknown): Option[Unknown] !! Any = !!.pure(Some(a))
         override def onRestart(as: Option[Unknown]): Unknown !! enclosing.type = as.fold(enclosing.empty)(!!.pure)
-        override def onUnknown(as: Option[Unknown]): Option[Unknown] = as
+        override def onOnce(as: Option[Unknown]): Option[Unknown] = as
         override def onZip[A, B, C](as: Option[A], bs: Option[B], k: (A, B) => C): Option[C] = as.zip(bs).map(k.tupled)
 
         override def empty: Nothing !! ThisEffect = Control.abort(None)
@@ -82,7 +82,7 @@ trait ChoiceEffect extends Effect[ChoiceSignature] with ChoiceSignature:
         override def onInitial = QueVector.empty.pure_!!
         override def onReturn(a: Unknown, q: Local): Vector[Unknown] !! ThisEffect = q.addDone(a).drain
         override def onRestart(as: Vector[Unknown]): Unknown !! enclosing.type = enclosing.choose(as)
-        override def onUnknown(aa: Vector[Unknown]): Option[Unknown] = aa.headOption
+        override def onOnce(aa: Vector[Unknown]): Option[Unknown] = aa.headOption
         override def onZip[A, B, C](as: Vector[A], bs: Vector[B], k: (A, B) => C): Vector[C] = as.flatMap(a => bs.map(k(a, _)))
 
         override def empty: Nothing !! ThisEffect = Control.captureGet((_, q) => q.drain)
@@ -99,7 +99,7 @@ trait ChoiceEffect extends Effect[ChoiceSignature] with ChoiceSignature:
         override def onInitial = QueOption.empty.pure_!!
         override def onReturn(a: Unknown, q: Local): Option[Unknown] !! ThisEffect = !!.pure(Some(a))
         override def onRestart(as: Option[Unknown]): Unknown !! enclosing.type = enclosing.fromOption(as)
-        override def onUnknown(aa: Option[Unknown]): Option[Unknown] = aa
+        override def onOnce(aa: Option[Unknown]): Option[Unknown] = aa
         override def onZip[A, B, C](as: Option[A], bs: Option[B], k: (A, B) => C): Option[C] = as.zip(bs).map(k.tupled)
 
         override def empty: Nothing !! ThisEffect = Control.captureGet((_, q) => q.drain)

@@ -63,7 +63,7 @@ trait WriterEffectExt[W, W1] extends Effect[WriterSignature[W, W1]] with WriterS
         override def onInitial: W !! Any = !!.pure(W.zero)
         override def onReturn(a: Unknown, w: W): (Unknown, W) !! Any = !!.pure((a, w))
         override def onRestart(a_w: (Unknown, W)): Unknown !! enclosing.type = enclosing.tells(a_w._2) &&! !!.pure(a_w._1)
-        override def onUnknown(aa: (Unknown, W)): Option[Unknown] = Some(aa._1)
+        override def onOnce(aa: (Unknown, W)): Option[Unknown] = Some(aa._1)
 
         override def onZip[A, B, C](a_w: (A, W), b_w: (B, W), k: (A, B) => C): (C, W) = (k(a_w._1, b_w._1), a_w._2 |+| b_w._2)
         override def onFork(w: W): (W, W) = (w, W.zero)

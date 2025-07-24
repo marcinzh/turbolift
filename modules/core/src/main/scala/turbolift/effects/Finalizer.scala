@@ -48,7 +48,7 @@ trait FinalizerEffect[U] extends Effect[FinalizerSignature[U]] with FinalizerSig
           val (a, s) = a_s
           Local.modify(s ++ _).as(a)
 
-        override def onUnknown(aa: (Unknown, Local)): Option[Unknown] = Some(aa._1)
+        override def onOnce(aa: (Unknown, Local)): Option[Unknown] = Some(aa._1)
 
         override def onZip[A, B, C](a_s: (A, Local), b_s: (B, Local), k: (A, B) => C): (C, Local) =
           val (a, s1) = a_s

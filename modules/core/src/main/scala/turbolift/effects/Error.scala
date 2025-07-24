@@ -77,7 +77,7 @@ trait ErrorEffectExt[E, E1] extends Effect[ErrorSignature[E, E1]] with ErrorSign
       new impl.Stateless[Identity, Either[E, _], Any] with impl.Sequential.Restartable with ErrorSignature[E, E1]:
         override def onReturn(a: Unknown): Either[E, Unknown] !! Any = !!.pure(Right(a))
         override def onRestart(aa: Either[E, Unknown]): Unknown !! enclosing.type = aa.fold(enclosing.raises, !!.pure)
-        override def onUnknown(aa: Either[E, Unknown]): Option[Unknown] = aa.toOption
+        override def onOnce(aa: Either[E, Unknown]): Option[Unknown] = aa.toOption
 
         override def raise(e: E1): Nothing !! ThisEffect = raises(E.one(e))
         override def raises(e: E): Nothing !! ThisEffect = Control.abort(Left(e))
@@ -89,7 +89,7 @@ trait ErrorEffectExt[E, E1] extends Effect[ErrorSignature[E, E1]] with ErrorSign
       new impl.Stateless[Identity, Either[E, _], Any] with impl.Parallel with ErrorSignature[E, E1]:
         override def onReturn(a: Unknown): Either[E, Unknown] !! Any = !!.pure(Right(a))
         override def onRestart(aa: Either[E, Unknown]): Unknown !! enclosing.type = aa.fold(enclosing.raises, !!.pure)
-        override def onUnknown(aa: Either[E, Unknown]): Option[Unknown] = aa.toOption
+        override def onOnce(aa: Either[E, Unknown]): Option[Unknown] = aa.toOption
         override def onZip[A, B, C](ea: Either[E, A], eb: Either[E, B], k: (A, B) => C): Either[E, C] =
           (ea, eb) match
             case (Right(a), Right(b)) => Right(k(a, b))

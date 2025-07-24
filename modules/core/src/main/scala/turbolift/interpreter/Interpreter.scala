@@ -68,7 +68,7 @@ sealed trait Interpreter extends Signature:
   def onInitial: Local !! Intro
   def onReturn(aa: From[Unknown], s: Local): To[Unknown] !! ThisEffect
   def onRestart(aa: To[Unknown]): Unknown !! (Elim & ThisEffect)
-  def onUnknown(aa: To[Unknown]): Option[Unknown]
+  def onOnce(aa: To[Unknown]): Option[Unknown]
   def onZip[A, B, C](aa: To[A], bb: To[B], k: (A, B) => C): To[C]
   def onFork(s: Local): (Local, Local)
   def onJoin(s1: Local, s2: Local): Local

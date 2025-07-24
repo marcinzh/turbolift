@@ -19,7 +19,7 @@ private[engine] sealed abstract class ZipperImpl extends Zipper.Unsealed:
 
   final override def toOption: Option[Any] =
     this match
-      case Functor(payload, stack) => OpCascaded.unknown(stack, payload)
+      case Functor(payload, stack) => OpCascaded.once(stack, payload)
       case _ => None
 
 

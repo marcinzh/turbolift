@@ -36,7 +36,7 @@ trait MaybeEffect extends Effect[MaybeSignature] with MaybeSignature:
       new impl.Stateless[Identity, Option, Any] with impl.Parallel with MaybeSignature:
         override def onReturn(a: Unknown): Option[Unknown] !! Any = !!.pure(Some(a))
         override def onRestart(aa: Option[Unknown]): Unknown !! enclosing.type = aa.fold(enclosing.empty)(!!.pure)
-        override def onUnknown(aa: Option[Unknown]): Option[Unknown] = aa
+        override def onOnce(aa: Option[Unknown]): Option[Unknown] = aa
         override def onZip[A, B, C](aa: Option[A], bb: Option[B], k: (A, B) => C): Option[C] = aa.zip(bb).map(k.tupled)
 
         override def empty: Nothing !! ThisEffect = Control.abort(None)

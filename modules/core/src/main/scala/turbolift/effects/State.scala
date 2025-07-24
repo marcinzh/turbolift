@@ -88,7 +88,7 @@ trait StateEffect[S] extends Effect[StateSignature[S]] with StateSignature[S]:
         override def onInitial: S !! Any = !!.pure(initial)
         override def onReturn(a: Unknown, s: S): (Unknown, S) !! Any = !!.pure((a, s))
         override def onRestart(a_s: (Unknown, S)): Unknown !! enclosing.type = enclosing.put(a_s._2) &&! !!.pure(a_s._1)
-        override def onUnknown(aa: (Unknown, S)): Option[Unknown] = Some(aa._1)
+        override def onOnce(aa: (Unknown, S)): Option[Unknown] = Some(aa._1)
 
         override val get: S !! ThisEffect = Local.get
         override def gets[A](f: S => A): A !! ThisEffect = Local.get.map(f)

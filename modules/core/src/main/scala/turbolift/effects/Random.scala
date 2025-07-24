@@ -66,7 +66,7 @@ trait RandomEffect extends Effect[RandomSignature] with RandomSignature:
         override def onInitial: Local !! Any = !!.pure(Splitmix64(seed))
         override def onReturn(a: Unknown, s: Splitmix64): (Unknown, Splitmix64) !! Any = !!.pure((a, s))
         override def onRestart(aa: (Unknown, Splitmix64)) = enclosing.setSeed(aa._2.value) &&! !!.pure(aa._1)
-        override def onUnknown(aa: (Unknown, Splitmix64)): Option[Unknown] = Some(aa._1)
+        override def onOnce(aa: (Unknown, Splitmix64)): Option[Unknown] = Some(aa._1)
         override def onFork(s: Splitmix64): (Splitmix64, Splitmix64) = s.fork
 
         override def onZip[A, B, C](aa: (A, Splitmix64), bb: (B, Splitmix64), k: (A, B) => C) =
