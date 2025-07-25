@@ -69,6 +69,7 @@ sealed trait Interpreter extends Signature:
   def onReturn(aa: From[Unknown], s: Local): To[Unknown] !! ThisEffect
   def onRestart(aa: To[Unknown]): Unknown !! (Elim & ThisEffect)
   def onOnce(aa: To[Unknown]): Option[Unknown]
+  def onAbort(s: Local): Unit !! ThisEffect = !!.unit
   def onZip[A, B, C](aa: To[A], bb: To[B], k: (A, B) => C): To[C]
   def onFork(s: Local): (Local, Local)
   def onJoin(s1: Local, s2: Local): Local
@@ -180,7 +181,9 @@ object Interpreter:
 
     final override def onInitial: Local !! Intro = Void.pure
     final override def onReturn(aa: From[Unknown], s: Void): To[Unknown] !! ThisEffect = onReturn(aa)
+    final override def onAbort(s: Void): Unit !! ThisEffect = onAbort
     def onReturn(aa: From[Unknown]): To[Unknown] !! ThisEffect
+    def onAbort: Unit !! ThisEffect = !!.unit
 
 
   /** Base class for any user-defined [[Interpreter]] Interpreter, that has local state.

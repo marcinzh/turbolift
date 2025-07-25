@@ -490,8 +490,12 @@ private sealed abstract class Engine0 extends Runnable:
           val comp2 = prompt.onReturn(payload, local)
           loopComp(comp2, step2, stack2, store2)
         else
-          val step3 = if prompt == instr.prompt then step2 else step
-          loopStep(payload, step3, stack2, store2)
+          if prompt == instr.prompt then
+            loopStep(payload, step2, stack2, store2)
+          else
+            //@#@TODO reconcile nested unwinds
+            val comp = prompt.onAbort(local).as(payload)
+            loopComp(comp, step, stack2, store2)
     else //// canPop
       val completion = instr.kind match
         case Step.UnwindKind.Pop    => Bits.Completion_Success
