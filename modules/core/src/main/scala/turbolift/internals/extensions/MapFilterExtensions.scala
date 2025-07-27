@@ -117,6 +117,44 @@ private[turbolift] trait MapFilterExtensions extends AuxExtensions:
         else
           mbs &! mb
 
+    /** Like `collectFirst` from the standard library, but collects the last result instead of the first. */
+    def collectLast[B, U](f: PartialFunction[A, B]): Option[B] =
+      thiz.iterator.foldLeft(None: Option[B])((mb, a) => f.lift(a).orElse(mb))
+
+    /** Like `collectFirst` from the standard library, but using effectful function. */
+    def collectFirstEff[B, U](f: PartialFunction[A, B !! U]): Option[B] !! U =
+      !!.impure(thiz.iterator).flatMap: it =>
+        def loop: Option[B] !! U =
+          if it.hasNext then
+            f.lift(it.next()) match
+              case Some(comp) => comp.map(Some(_))
+              case None => !!.impureEff(loop)
+          else
+            !!.none
+        loop
+
+    /** Like `collectLast`, but using effectful function. */
+    def collectLastEff[B, U](f: PartialFunction[A, B !! U]): Option[B] !! U =
+      !!.impure(thiz.iterator).flatMap: it =>
+        def loop(acc: Option[B]): Option[B] !! U =
+          if it.hasNext then
+            f.lift(it.next()) match
+              case Some(comp) => comp.flatMap(a => loop(Some(a)))
+              case None => !!.impureEff(loop(acc))
+          else
+            !!.pure(acc)
+        loop(None)
+
+    /** Like `segmentLength` from the standard library, but using effectful function. */
+    def segmentLengthEff[U](f: A => Boolean !! U): Int !! U =
+      !!.impure(thiz.iterator).flatMap: it =>
+        def loop(acc: Int): Int !! U =
+          if it.hasNext then
+            f(it.next()).flatMap(x => loop(acc + (if x then 1 else 0)))
+          else
+            !!.pure(acc)
+        loop(0)
+
 
   extension [A, S[X] <: Iterable[X]](thiz: S[A])
     // :-(
