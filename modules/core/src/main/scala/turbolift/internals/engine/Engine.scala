@@ -915,23 +915,19 @@ private sealed abstract class Engine0 extends Runnable:
       loopCancel(stack, store)
 
 
-  final def intrinsicSuppress[A, U](body: A !! U, delta: Int): Tag =
+  final def intrinsicSuppress[A, U](newValue: Boolean, body: Boolean => A !! U): Tag =
     val step = savedStep
     val stack = savedStack
     val store = savedStore
     //-------------------
-    val n1 = currentEnv.suppressions
-    val n2 = 0.max(n1 + delta)
-    if n1 == n2 then
-      loopComp(body, step, stack, store)
+    val oldValue = currentEnv.isCancellable
+    if oldValue == newValue then
+      loopComp(body(oldValue), step, stack, store)
     else
-      val env2 = currentEnv.copy(suppressions = n2)
+      val env2 = currentEnv.copy(isCancellable = newValue)
       val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, env2.asLocal, FrameKind.suppress)
       this.currentEnv = env2
-      if cancellationCheck() then
-        loopCancel(stack2, store2)
-      else
-        loopComp(body, Step.Pop, stack2, store2)
+      loopComp(body(oldValue), Step.Pop, stack2, store2)
 
 
   final def intrinsicExecOn[A, U](exec: Executor, body: A !! U): Tag =

@@ -113,6 +113,10 @@ case object IO extends IO:
 
   def uncancellable[A, U <: IO](comp: A !! U): A !! U = UnsafeIO.uncancellable(comp)
 
+  def uncancellableWith[A, U <: IO](body: UnsafeIO.CancellabilityScope => A !! U): A !! U = UnsafeIO.uncancellableWith(body)
+
+  def isCancellable: Boolean !! IO = UnsafeIO.isCancellable
+
   def snap[A, U <: IO](body: A !! U): Snap[A] !! U = UnsafeIO.snap(body)
 
   def unsnap[A](aa: Snap[A]): A !! IO = UnsafeIO.unsnap(aa)
@@ -189,9 +193,17 @@ object UnsafeIO:
         cancellableSnap(use(a))
         .flatMap(release(a, _))
 
-  def cancellable[A, U](comp: A !! U): A !! U = CC.intrinsic(_.intrinsicSuppress(comp, -1))
+  def cancellable[A, U](comp: A !! U): A !! U = CC.intrinsic(_.intrinsicSuppress(true, _ => comp))
 
-  def uncancellable[A, U](comp: A !! U): A !! U = CC.intrinsic(_.intrinsicSuppress(comp, +1))
+  def uncancellable[A, U](comp: A !! U): A !! U = CC.intrinsic(_.intrinsicSuppress(false, _ => comp))
+
+  def uncancellableWith[A, U](body: CancellabilityScope => A !! U): A !! U =
+    CC.intrinsic(_.intrinsicSuppress(false, x => body(CancellabilityScope(x))))
+
+  final class CancellabilityScope(val wasCancellable: Boolean):
+    def apply[A, U](body: A !! U): A !! U = if wasCancellable then cancellable(body) else body
+
+  def isCancellable: Boolean !! Any = !!.envAsk(_.isCancellable)
 
   //@#@TODO fuse
   def cancellableSnap[A, U](comp: A !! U): Snap[A] !! U = snap(cancellable(comp))

@@ -98,3 +98,16 @@ class UncancellableTest extends Specification:
       .runIO.===(Outcome.Cancelled)
     }
   }
+
+  "nested" >>{
+    (
+      IO.isCancellable **!
+      IO.uncancellableWith: restoreOuter =>
+        IO.isCancellable **!
+        IO.uncancellableWith: restoreInner =>
+          IO.isCancellable **!
+          restoreInner(IO.isCancellable) **!
+          restoreOuter(IO.isCancellable)
+    )
+    .runIO.===(Outcome.Success((true, (false, ((false, false), true)))))
+  }

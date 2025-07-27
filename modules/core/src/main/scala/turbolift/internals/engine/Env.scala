@@ -9,27 +9,27 @@ private[turbolift] final class Env(
   val executor: Executor,
   val tickLow: Short,
   val tickHigh: Short,
-  val isParallelismRequested: Boolean = true,
   val currentWarp: WarpImpl | Null,
-  val suppressions: Int,
   val shadowMap: ShadowMap,
+  val isParallelismRequested: Boolean = true,
+  val isCancellable: Boolean,
 ):
   def copy(
     executor: Executor = executor,
     tickLow: Short = tickLow,
     tickHigh: Short = tickHigh,
-    isParallelismRequested: Boolean = isParallelismRequested,
     currentWarp: WarpImpl | Null = currentWarp,
-    suppressions: Int = suppressions,
     shadowMap: ShadowMap = shadowMap,
+    isParallelismRequested: Boolean = isParallelismRequested,
+    isCancellable: Boolean = isCancellable
   ) = new Env(
     executor = executor,
     tickLow = tickLow,
     tickHigh = tickHigh,
-    isParallelismRequested = isParallelismRequested,
     currentWarp = currentWarp,
-    suppressions = suppressions,
     shadowMap = shadowMap,
+    isParallelismRequested = isParallelismRequested,
+    isCancellable = isCancellable,
   )
 
   def par(x: Boolean): Env =
@@ -40,7 +40,6 @@ private[turbolift] final class Env(
 
   override def toString = s"Env#%04X".format(hashCode & 0xFFFF)
 
-  def isCancellable: Boolean = suppressions <= 0
 
 
 private[internals] object Env:
@@ -50,6 +49,6 @@ private[internals] object Env:
       tickHigh = 20,
       tickLow = 1000,
       currentWarp = null,
-      suppressions = 0,
       shadowMap = ShadowMap.empty,
+      isCancellable = true,
     )
