@@ -57,6 +57,24 @@ class ResourceTest extends Specification:
     val ex1 = new Exception("EX1")
     val ex2 = new Exception("EX2")
 
+    "in use" >>{
+      (for
+        v <- AtomicVar(1)
+        e <- IO.catchToEither:
+          (for
+            _ <- Finalizer.use(v.event(2), v.event(3))
+            _ <- v.event(4)
+            _ <- IO(throw ex1)
+            _ <- v.event(5)
+          yield ())
+          .finalized
+        _ <- v.event(6)
+        n <- v.get
+      yield (n, e))
+      .runIO
+      .===(Outcome.Success((12436, Left(ex1))))
+    }
+
     "in acquire" >>{
       (for
         v <- AtomicVar(1)
@@ -185,5 +203,29 @@ class ResourceTest extends Specification:
       .warp
       .runIO
       .===(Outcome.Success(1334470855662L))
+    }
+
+    "with exceptions" >>{
+      val ex1 = new Exception("EX1")
+
+      (for
+        v <- AtomicVar(0L)
+        g1 <- Gate(1)
+        g2 <- Gate(1)
+        rf = parRes(v, g1, g2, 1, 3)
+        clock = mkClock(v, g1, g2)
+        e <- IO.catchToEither:
+          (for
+            _ <- clock.fork
+            _ <- Finalizer.use(rf) *! Finalizer.use(rf)
+            _ <- v.event(0)
+            _ <- IO(throw ex1)
+          yield ())
+          .finalized
+        n <- v.get
+      yield (n, e))
+      .warp
+      .runIO
+      .===(Outcome.Success((112203344L, Left(ex1))))
     }
   }

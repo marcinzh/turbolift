@@ -146,7 +146,13 @@ sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift]
 
   final def guarantee[U2 <: U](release: Unit !! U2): A !! U2 = !!.guarantee(release)(this)
 
+  final def onSuccess[U2 <: U](f: A => Unit !! U2): A !! U2 = !!.onSuccess(this)(f)
+
   final def onAbort[U2 <: U](f: (Any, Prompt) => Unit !! U2): A !! U2 = !!.onAbort(this)(f)
+
+  final def onFailure[U2 <: U](f: Throwable => Unit !! U2): A !! U2 = !!.onFailure(this)(f)
+
+  final def onCancel[U2 <: U](comp: Unit !! U2): A !! U2 = !!.onCancel(this)(comp)
 
 
   //---------- IO operations in postfix syntax ----------
@@ -302,11 +308,11 @@ object Computation:
   //---------- Bracket ----------
 
 
-  def guarantee[A, U](release: Unit !! U)(body: A !! U): A !! U =
-    UnsafeIO.guarantee(release)(body)
-
-  def onAbort[A, U](body: A !! U)(f: (Any, Prompt) => Unit !! U): A !! U =
-    UnsafeIO.onAbort(body)(f)
+  def guarantee[A, U](release: Unit !! U)(body: A !! U): A !! U = UnsafeIO.guarantee(release)(body)
+  def onSuccess[A, U](body: A !! U)(f: A => Unit !! U): A !! U = UnsafeIO.onSuccess(body)(f)
+  def onAbort[A, U](body: A !! U)(f: (Any, Prompt) => Unit !! U): A !! U = UnsafeIO.onAbort(body)(f)
+  def onFailure[A, U](body: A !! U)(f: Throwable => Unit !! U): A !! U = UnsafeIO.onFailure(body)(f)
+  def onCancel[A, U](body: A !! U)(comp: Unit !! U): A !! U = UnsafeIO.onCancel(body)(comp)
 
   def bracket[A, B, U](acquire: A !! U, release: A => Unit !! U)(use: A => B !! U): B !! U =
     UnsafeIO.bracket(acquire, release)(use)

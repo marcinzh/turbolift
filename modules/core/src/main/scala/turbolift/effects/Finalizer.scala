@@ -38,11 +38,19 @@ trait FinalizerEffect[U] extends Effect[FinalizerSignature[U]] with FinalizerSig
 
   /** Predefined handlers for this effect. */
   object handlers:
-    def default: Handler[Identity, Identity, enclosing.type, U] =
+    def default[U]: Handler.IdId[enclosing.type, U] =
+      Handler.fromFunction([A, V] => (comp: A !! (V & enclosing.type)) => {
+        underlying[U].handle(comp)
+        .onSuccess((_, trail) => trail.run)
+        .map(_._1)
+      })
+
+    private def underlying[U]: Handler[Identity, (_, Trail[U]), enclosing.type, U] =
       new impl.Stateful[Identity, (_, Trail[U]), U] with impl.Parallel.ForkJoin with FinalizerSignature[U]:
         override type Local = Trail[U]
         override def onInitial: Local !! Any = !!.pure(Trail.empty)
         override def onReturn(a: Unknown, s: Local): (Unknown, Local) !! Any = !!.pure((a, s))
+        override def onAbort(s: Local): Unit !! ThisEffect = s.run
 
         override def onRestart(a_s: (Unknown, Local)): Unknown !! ThisEffect =
           val (a, s) = a_s
@@ -65,9 +73,6 @@ trait FinalizerEffect[U] extends Effect[FinalizerSignature[U]] with FinalizerSig
               Local.modify(Trail(release(a)) ++ _).as(a)
 
       .toHandler
-      .tapStateEff: trail =>
-        UnsafeIO.uncancellable(trail.run)
-      .dropState
 
 
 object FinalizerEffect:

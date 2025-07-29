@@ -121,6 +121,10 @@ case object IO extends IO:
 
   def unsnap[A](aa: Snap[A]): A !! IO = UnsafeIO.unsnap(aa)
 
+  def onSuccess[A, U <: IO](body: A !! U)(f: A => Unit !! U): A !! U = UnsafeIO.onSuccess(body)(f)
+
+  def onAbort[A, U <: IO](body: A !! U)(f: (Any, Prompt) => Unit !! U): A !! U = UnsafeIO.onAbort(body)(f)
+
   def onFailure[A, U <: IO](body: A !! U)(f: Throwable => Unit !! U): A !! U = UnsafeIO.onFailure(body)(f)
 
   def onCancel[A, U <: IO](body: A !! U)(comp: Unit !! U): A !! U = UnsafeIO.onCancel(body)(comp)
@@ -214,6 +218,9 @@ object UnsafeIO:
 
   def onSnapSome[A, U](body: A !! U)(f: PartialFunction[Snap[A], Unit !! U]) = 
     snap(body).flatMap(ss => f.lift(ss).getOrElse(!!.unit) &&! unsnap(ss))
+
+  def onSuccess[A, U](body: A !! U)(f: A => Unit !! U): A !! U =
+    onSnapSome(body) { case Snap.Success(a) => f(a) }
 
   def onAbort[A, U](body: A !! U)(f: (Any, Prompt) => Unit !! U): A !! U =
     //@#@WTF unreachable case
