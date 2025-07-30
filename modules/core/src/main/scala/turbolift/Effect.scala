@@ -195,9 +195,9 @@ object Effect:
     /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
     final class Polymorphize[X]:
       inline def polyFx: Fx[X] = monomorphic.asInstanceOf[Fx[X]]
-      inline def perform[A, U](f: (fx: Fx[X]) => A !! (U & fx.type)): A !! (U & @@[X]) = f(polyFx).cast[A, @@[X] & U]
-      inline def handler[F[+_], G[+_], N](f: (fx: Fx[X]) => Handler[F, G, fx.type, N]): Handler[F, G, @@[X], N] = f(polyFx).castElim[@@[X]]
-      inline def apply[A](f: Polymorphize[X] => A): A = f(this)
+      inline def perform[A, U](inline f: (fx: Fx[X]) => A !! (U & fx.type)): A !! (U & @@[X]) = f(polyFx).cast[A, @@[X] & U]
+      inline def handler[F[+_], G[+_], N](inline f: (fx: Fx[X]) => Handler[F, G, fx.type, N]): Handler[F, G, @@[X], N] = f(polyFx).castElim[@@[X]]
+      inline def apply[A](inline f: Polymorphize[X] => A): A = f(this)
       inline def lift[A, U, Fxx <: Fx[X]](comp: A !! (@@[X] & U)): A !! (Fxx & U) = comp.cast[A, Fxx & U]
       inline def unlift[A, U, Fxx <: Fx[X]](comp: A !! (Fxx & U)): A !! (@@[X] & U) = comp.cast[A, @@[X] & U]
 
@@ -223,9 +223,9 @@ object Effect:
     /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
     final class Polymorphize[X]:
       inline def polyFx: Fx[X] = monomorphic.asInstanceOf[Fx[X]]
-      inline def perform[A, U](f: (fx: Fx[X]) => A !! (U & fx.type)): A !! (U & @@[X]) = f(polyFx).cast[A, @@[X] & U]
-      inline def handler[F[+_], G[+_], N](f: (fx: Fx[X]) => Handler[F, G, fx.type, N]): Handler[F, G, @@[X], N] = f(polyFx).castElim[@@[X]]
-      inline def apply[A](f: Polymorphize[X] => A): A = f(this)
+      inline def perform[A, U](inline f: (fx: Fx[X]) => A !! (U & fx.type)): A !! (U & @@[X]) = f(polyFx).cast[A, @@[X] & U]
+      inline def handler[F[+_], G[+_], N](inline f: (fx: Fx[X]) => Handler[F, G, fx.type, N]): Handler[F, G, @@[X], N] = f(polyFx).castElim[@@[X]]
+      inline def apply[A](inline f: Polymorphize[X] => A): A = f(this)
       inline def lift[A, U, Fxx <: Fx[X]](comp: A !! (@@[X] & U)): A !! (Fxx & U) = comp.cast[A, Fxx & U]
       inline def unlift[A, U, Fxx <: Fx[X]](comp: A !! (Fxx & U)): A !! (@@[X] & U) = comp.cast[A, @@[X] & U]
 
@@ -251,9 +251,9 @@ object Effect:
     /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
     final class Polymorphize[X]:
       inline def polyFx: Fx[X] = monomorphic.asInstanceOf[Fx[X]]
-      inline def perform[A, U](f: (fx: Fx[X]) => A !! (U & fx.type)): A !! (U & @@[X]) = f(polyFx).cast[A, @@[X] & U]
-      inline def handler[F[+_], G[+_], N](f: (fx: Fx[X]) => Handler[F, G, fx.type, N]): Handler[F, G, @@[X], N] = f(polyFx).castElim[@@[X]]
-      inline def apply[A](f: Polymorphize[X] => A): A = f(this)
+      inline def perform[A, U](inline f: (fx: Fx[X]) => A !! (U & fx.type)): A !! (U & @@[X]) = f(polyFx).cast[A, @@[X] & U]
+      inline def handler[F[+_], G[+_], N](inline f: (fx: Fx[X]) => Handler[F, G, fx.type, N]): Handler[F, G, @@[X], N] = f(polyFx).castElim[@@[X]]
+      inline def apply[A](inline f: Polymorphize[X] => A): A = f(this)
       inline def lift[A, U, Fxx <: Fx[X]](comp: A !! (@@[X] & U)): A !! (Fxx & U) = comp.cast[A, Fxx & U]
       inline def unlift[A, U, Fxx <: Fx[X]](comp: A !! (Fxx & U)): A !! (@@[X] & U) = comp.cast[A, @@[X] & U]
 
@@ -275,9 +275,9 @@ object Effect:
     /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
     final class Polymorphize[X, Y]:
       inline def polyFx: Fx[X, Y] = monomorphic.asInstanceOf[Fx[X, Y]]
-      inline def perform[A, U](f: (fx: Fx[X, Y]) => A !! (U & fx.type)): A !! (U & @@[X, Y]) = f(polyFx).cast[A, @@[X, Y] & U]
-      inline def handler[F[+_], G[+_], N](f: (fx: Fx[X, Y]) => Handler[F, G, fx.type, N]): Handler[F, G, @@[X, Y], N] = f(polyFx).castElim[@@[X, Y]]
-      inline def apply[A](f: Polymorphize[X, Y] => A): A = f(this)
+      inline def perform[A, U](inline f: (fx: Fx[X, Y]) => A !! (U & fx.type)): A !! (U & @@[X, Y]) = f(polyFx).cast[A, @@[X, Y] & U]
+      inline def handler[F[+_], G[+_], N](inline f: (fx: Fx[X, Y]) => Handler[F, G, fx.type, N]): Handler[F, G, @@[X, Y], N] = f(polyFx).castElim[@@[X, Y]]
+      inline def apply[A](inline f: Polymorphize[X, Y] => A): A = f(this)
       inline def lift[A, U, Fxx <: Fx[X, Y]](comp: A !! (@@[X, Y] & U)): A !! (Fxx & U) = comp.cast[A, Fxx & U]
       inline def unlift[A, U, Fxx <: Fx[X, Y]](comp: A !! (Fxx & U)): A !! (@@[X, Y] & U) = comp.cast[A, @@[X, Y] & U]
 
@@ -299,9 +299,9 @@ object Effect:
     /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
     final class Polymorphize[X, Y]:
       inline def polyFx: Fx[X, Y] = monomorphic.asInstanceOf[Fx[X, Y]]
-      inline def perform[A, U](f: (fx: Fx[X, Y]) => A !! (U & fx.type)): A !! (U & @@[X, Y]) = f(polyFx).cast[A, @@[X, Y] & U]
-      inline def handler[F[+_], G[+_], N](f: (fx: Fx[X, Y]) => Handler[F, G, fx.type, N]): Handler[F, G, @@[X, Y], N] = f(polyFx).castElim[@@[X, Y]]
-      inline def apply[A](f: Polymorphize[X, Y] => A): A = f(this)
+      inline def perform[A, U](inline f: (fx: Fx[X, Y]) => A !! (U & fx.type)): A !! (U & @@[X, Y]) = f(polyFx).cast[A, @@[X, Y] & U]
+      inline def handler[F[+_], G[+_], N](inline f: (fx: Fx[X, Y]) => Handler[F, G, fx.type, N]): Handler[F, G, @@[X, Y], N] = f(polyFx).castElim[@@[X, Y]]
+      inline def apply[A](inline f: Polymorphize[X, Y] => A): A = f(this)
       inline def lift[A, U, Fxx <: Fx[X, Y]](comp: A !! (@@[X, Y] & U)): A !! (Fxx & U) = comp.cast[A, Fxx & U]
       inline def unlift[A, U, Fxx <: Fx[X, Y]](comp: A !! (Fxx & U)): A !! (@@[X, Y] & U) = comp.cast[A, @@[X, Y] & U]
 
