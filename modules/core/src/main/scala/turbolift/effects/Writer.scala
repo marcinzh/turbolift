@@ -176,6 +176,7 @@ trait WriterEffectGK[M[_, _], K, F[_], V] extends WriterEffectExt[M[K, F[V]], (K
  */
 abstract class PolyWriterEffect extends Effect.Polymorphic_-[WriterEffect, Any](new WriterEffect[Any] {}):
   final def tell[W](w: W): Unit !! @@[W] = polymorphize[W].perform(_.tell(w))
+  final def tells[W](w: W): Unit !! @@[W] = polymorphize[W].perform(_.tells(w))
   final def mute[W] = MuteApply[W]
   final def listen[W] = ListenApply[W]
   final def censor[W] = CensorApply[W]

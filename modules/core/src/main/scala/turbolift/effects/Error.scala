@@ -175,19 +175,19 @@ abstract class PolyErrorEffect extends Effect.Polymorphic_-[ErrorEffect, Any](ne
 
   /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
   final class CatchAllApply[E]:
-    def apply[A, U <: @@[E]](body: A !! U)(f: E => A): A !! U = catchAllEff(body)(f.andThen(!!.pure))
+    def apply[A, U <: @@[E]](body: A !! U)(f: E => A): A !! U = polymorphize[E].perform(_.catchAll(body)(f))
 
   /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
   final class CatchAllEffApply[E]:
-    def apply[A, U <: @@[E]](body: A !! U)(f: E => A !! U): A !! U = catchToEither(body).flatMap(_.fold(f, !!.pure))
+    def apply[A, U <: @@[E]](body: A !! U)(f: E => A !! U): A !! U = polymorphize[E].perform(_.catchAllEff(body)(f))
 
   /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
   final class CatchSomeApply[E]:
-    def apply[A, U <: @@[E]](body: A !! U)(f: PartialFunction[E, A]): A !! U = catchSomeEff(body)(f.andThen(!!.pure))
+    def apply[A, U <: @@[E]](body: A !! U)(f: PartialFunction[E, A]): A !! U = polymorphize[E].perform(_.catchSome(body)(f))
 
   /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
   final class CatchSomeEffApply[E]:
-    def apply[A, U <: @@[E]](body: A !! U)(f: PartialFunction[E, A !! U]): A !! U = catchAllEff(body)(f.applyOrElse(_, raise))
+    def apply[A, U <: @@[E]](body: A !! U)(f: PartialFunction[E, A !! U]): A !! U = polymorphize[E].perform(_.catchSomeEff(body)(f))
 
 
   /** Predefined handlers for this effect. */
