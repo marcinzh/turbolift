@@ -5,7 +5,7 @@ import turbolift.effects.IO
 import turbolift.internals.engine.concurrent.atomic.{AtomicRefVH, AtomicIntVH, AtomicLongVH, AtomicBoolVH}
 
 
-sealed trait AtomicVar[@specialized(Int, Long, Boolean) S] extends AtomicVar.Get[S] with AtomicVar.Put[S]:
+sealed trait AtomicVar[S] extends AtomicVar.Get[S] with AtomicVar.Put[S]:
   final def asGet: AtomicVar.Get[S] = this
   final def asPut: AtomicVar.Put[S] = this
 
@@ -77,7 +77,7 @@ object AtomicVar:
   def createLockful(initial: Long): AtomicVar[Long] !! IO = !!.impure(unsafeCreateLockful(initial))
   def createLockful(initial: Boolean): AtomicVar[Boolean] !! IO = !!.impure(unsafeCreateLockful(initial))
 
-  def unsafeCreateLockful[@specialized(Int, Long, Boolean) S](initial: S): Lockful[S] = new Lockful(initial)
+  def unsafeCreateLockful[S](initial: S): Lockful[S] = new Lockful(initial)
 
   def unsafeCreateLocklessInt(initial: Int): AtomicVar[Int] =
     new AtomicIntVH(initial) with Lockless[Int]:
@@ -111,7 +111,7 @@ object AtomicVar:
       override def unsafeCompareAndSet(a: S, b: S): Boolean = casVH(a, b)
 
 
-  private sealed trait Lockless[@specialized(Int, Long, Boolean) S] extends AtomicVar[S]:
+  private sealed trait Lockless[S] extends AtomicVar[S]:
     final override def isLocked: Boolean !! IO = !!.pure(false)
     final override def unsafeIsLocked(): Boolean = false
 
@@ -210,7 +210,7 @@ object AtomicVar:
       yield bb
 
 
-  final class Lockful[@specialized(Int, Long, Boolean) S] (_initial: S) extends AtomicVar[S]:
+  final class Lockful[S] (_initial: S) extends AtomicVar[S]:
     @volatile private var currentValue: S = _initial
     private val lock: Mutex = Mutex.unsafeCreate()
 
