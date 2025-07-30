@@ -1,7 +1,7 @@
 package turbolift
 import scala.annotation.nowarn
 import scala.concurrent.duration.FiniteDuration
-import turbolift.effects.{ChoiceSignature, Alternative, IO, UnsafeIO, Each, Resource, ResourceIO}
+import turbolift.effects.{ChoiceSignature, Alternative, IO, UnsafeIO, Each, Finalizer, FinalizerIO}
 import turbolift.internals.auxx.CanPartiallyHandle
 import turbolift.internals.executor.Executor
 import turbolift.interpreter.Prompt
@@ -311,8 +311,8 @@ object Computation:
   def bracket[A, B, U](acquire: A !! U, release: A => Unit !! U)(use: A => B !! U): B !! U =
     UnsafeIO.bracket(acquire, release)(use)
 
-  def bracketVoid[A, U](acquire: Unit !! U, release: Unit !! U)(use: A !! U): A !! U =
-    UnsafeIO.bracketVoid(acquire, release)(use)
+  def bracket[A, U](acquire: Unit !! U, release: Unit !! U)(use: A !! U): A !! U =
+    UnsafeIO.bracket(acquire, release)(use)
 
 
   //---------- Extensions ----------
@@ -350,12 +350,12 @@ object Computation:
     def warpAwait(name: String): A !! U = warp(Warp.ExitMode.Await, name)
 
 
-  extension [A, U <: IO](thiz: Computation[A, U & ResourceIO])
-    def finalizedIO: A !! U = ResourceIO.scoped(thiz)
+  extension [A, U <: IO](thiz: Computation[A, U & FinalizerIO])
+    def finalizedIO: A !! U = FinalizerIO.scoped(thiz)
 
 
-  extension [A, U, V](thiz: Computation[A, Resource.@@[V] & U])
-    def finalized: A !! (V & U) = Resource.scoped[V](thiz)
+  extension [A, U, V](thiz: Computation[A, Finalizer.@@[V] & U])
+    def finalized: A !! (V & U) = Finalizer.scoped[V](thiz)
 
 
   extension [A, U](thiz: Computation[A, U])

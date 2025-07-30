@@ -1,26 +1,26 @@
 package turbolift.misc
 import org.specs2.mutable._
 import turbolift.!!
-import turbolift.effects.{Resource, IO}
-import turbolift.data.{Outcome, Snap, Cause}
-import turbolift.io.{AtomicVar, ResourceFactory}
+import turbolift.effects.{Finalizer, IO}
+import turbolift.data.{Outcome, Snap, Cause, Resource}
+import turbolift.io.{AtomicVar}
 import Auxx._
 
 
 class ResourceTest extends Specification:
   sequential
 
-  def basicRF(v: AtomicVar[Int], acq: Int, rel: Int) = ResourceFactory[Unit, IO](v.event(acq), _ => v.event(rel))
+  def basicRes(v: AtomicVar[Int], acq: Int, rel: Int) = Resource(v.event(acq), v.event(rel))
 
   "basic" >> {
     "one res" >>{
       (for
         v <- AtomicVar(1)
-        rf = basicRF(v, 2, 3)
+        res = basicRes(v, 2, 3)
         _ <-
           (for
             _ <- v.event(4)
-            _ <- Resource.use(rf)
+            _ <- Finalizer.use(res)
             _ <- v.event(5)
           yield ())
           .finalized
@@ -34,14 +34,14 @@ class ResourceTest extends Specification:
     "two res" >>{
       (for
         v <- AtomicVar(1)
-        rf1 = basicRF(v, 2, 3)
-        rf2 = basicRF(v, 4, 5)
+        res1 = basicRes(v, 2, 3)
+        res2 = basicRes(v, 4, 5)
         _ <-
           (for
             _ <- v.event(6)
-            _ <- Resource.use(rf1)
+            _ <- Finalizer.use(res1)
             _ <- v.event(7)
-            _ <- Resource.use(rf2)
+            _ <- Finalizer.use(res2)
             _ <- v.event(8)
           yield ())
           .finalized
@@ -62,7 +62,7 @@ class ResourceTest extends Specification:
         v <- AtomicVar(1)
         e <- IO.catchToEither:
           (for
-            _ <- Resource.use(IO(throw ex1), v.event(2))
+            _ <- Finalizer.use(IO(throw ex1), v.event(2))
             _ <- v.event(3)
           yield ())
           .finalized
@@ -77,7 +77,7 @@ class ResourceTest extends Specification:
         v <- AtomicVar(1)
         e <- IO.catchToEither:
           (for
-            _ <- Resource.use(v.event(2), IO(throw ex1))
+            _ <- Finalizer.use(v.event(2), IO(throw ex1))
             _ <- v.event(3)
           yield ())
           .finalized
@@ -93,9 +93,9 @@ class ResourceTest extends Specification:
         v <- AtomicVar(1)
         e <- IO.snap:
           (for
-            _ <- Resource.use(v.event(2), IO(throw ex1))
+            _ <- Finalizer.use(v.event(2), IO(throw ex1))
             _ <- v.event(3)
-            _ <- Resource.use(v.event(4), IO(throw ex2))
+            _ <- Finalizer.use(v.event(4), IO(throw ex2))
             _ <- v.event(5)
           yield ())
           .finalized
@@ -112,11 +112,11 @@ class ResourceTest extends Specification:
       v <- AtomicVar(0L)
       _ <- 
         (for
-          _ <- Resource.use(v.event(1), v.event(2))
+          _ <- Finalizer.use(v.event(1), v.event(2))
           _ <- v.event(3)
           _ <- 
             (for
-              _ <- Resource.use(v.event(4), v.event(5))
+              _ <- Finalizer.use(v.event(4), v.event(5))
               _ <- v.event(6)
             yield ())
             .finalized
@@ -130,12 +130,12 @@ class ResourceTest extends Specification:
   }
 
   "parallel" >> {
-    def parRF(v: AtomicVar[Long], g1: Gate, g2: Gate, acq: Int, rel: Int) =
+    def parRes(v: AtomicVar[Long], g1: Gate, g2: Gate, acq: Int, rel: Int) =
       def stuff(g: Gate, n: Int) = v.event(n) &&! g.enter &&! v.event(n + 1)
-      ResourceFactory[Unit, IO](stuff(g1, acq), _ => stuff(g2, rel))
+      Resource[Unit, IO](stuff(g1, acq), _ => stuff(g2, rel))
 
-    def seqRF(v: AtomicVar[Long], acq: Int, rel: Int) =
-      ResourceFactory[Unit, IO](v.event(acq), _ => v.event(rel))
+    def seqRes(v: AtomicVar[Long], acq: Int, rel: Int) =
+      Resource[Unit, IO](v.event(acq), _ => v.event(rel))
 
     def mkClock(v: AtomicVar[Long], g1: Gate, g2: Gate) =
       IO.sleep(100) &&! g1.open &&!
@@ -146,12 +146,12 @@ class ResourceTest extends Specification:
         v <- AtomicVar(0L)
         g1 <- Gate(1)
         g2 <- Gate(1)
-        rf = parRF(v, g1, g2, 1, 3)
+        res = parRes(v, g1, g2, 1, 3)
         clock = mkClock(v, g1, g2)
         _ <-
           (for
             _ <- clock.fork
-            _ <- Resource.use(rf) *! Resource.use(rf)
+            _ <- Finalizer.use(res) *! Finalizer.use(res)
             _ <- v.event(0)
           yield ())
           .finalized
@@ -167,16 +167,16 @@ class ResourceTest extends Specification:
         v <- AtomicVar(0L)
         g1 <- Gate(1)
         g2 <- Gate(1)
-        rf1 = seqRF(v, 1, 2)
-        rf2 = parRF(v, g1, g2, 3, 5)
-        rf3 = seqRF(v, 7, 8)
+        res1 = seqRes(v, 1, 2)
+        res2 = parRes(v, g1, g2, 3, 5)
+        res3 = seqRes(v, 7, 8)
         clock = mkClock(v, g1, g2)
         _ <-
           (for
-            _ <- Resource.use(rf1)
+            _ <- Finalizer.use(res1)
             _ <- clock.fork
-            _ <- Resource.use(rf2) *! Resource.use(rf2)
-            _ <- Resource.use(rf3)
+            _ <- Finalizer.use(res2) *! Finalizer.use(res2)
+            _ <- Finalizer.use(res3)
             _ <- v.event(0)
           yield ())
           .finalized

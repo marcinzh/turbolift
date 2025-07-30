@@ -4,7 +4,7 @@ import turbolift.effects.UnsafeIO
 import turbolift.data.{Cause, Snap}
 
 
-/** Internal state of [[turbolift.effects.Resource]] effect's default handler. */
+/** Internal state of [[turbolift.effects.Finalizer]] effect's default handler. */
 opaque type Trail[-U] = Snap[Unit] !! U
 
 object Trail:

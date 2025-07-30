@@ -4,7 +4,7 @@ import org.specs2.execute.Typecheck
 import org.specs2.matcher.TypecheckMatchers._
 import turbolift.!!
 import turbolift.Extensions._
-import turbolift.effects.{Reader, Writer, State, Error, Resource}
+import turbolift.effects.{Reader, Writer, State, Error, Finalizer}
 import turbolift.mode.ST
 
 
@@ -83,7 +83,7 @@ class EffectTest extends Specification:
   }
 
 
-  "Resource" >>{
+  "Finalizer" >>{
     case object S1 extends StateEffect[Int]
     case object S2 extends StateEffect[Int]
     type S1 = S1.type
@@ -93,8 +93,8 @@ class EffectTest extends Specification:
     val prog =
       IO.catchToEither:
         (for
-          _ <- Resource.register(S1.modify(_ + 1))
-          _ <- Resource.register(S2.modify(_ + 1))
+          _ <- Finalizer.register(S1.modify(_ + 1))
+          _ <- Finalizer.register(S2.modify(_ + 1))
           _ <- IO(throw E)
         yield ())
       .finalized
