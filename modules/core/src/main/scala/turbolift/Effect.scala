@@ -84,7 +84,7 @@ object Effect:
    * Macro generating "the boilerplate" part.
    * For each abstract method defined in the signature
    * a `final override` method is generated,
-   * with body consisting of [[perform]] call.
+   * with body consisting of [[turbolift.Effect.perform perform]] call.
    *
    * Usage:
    * {{{

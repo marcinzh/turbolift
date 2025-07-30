@@ -45,6 +45,7 @@ lazy val core = project
   .in(file("modules/core"))
   .settings(name := "turbolift-core")
   .settings(Compile / scalacOptions += "-Yexplicit-nulls")
+  .settings(Compile / doc / scalacOptions += "-skip-by-regex:turbolift\\.(internals|ComputationCases\\$)")
   .settings(Test / parallelExecution := false)
   .settings(Test / logBuffered := false)
   .settings(publish / skip := false)

@@ -412,6 +412,7 @@ object Computation:
 
   //---------- Syntax ----------
 
+  /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
   final class HandleWithSyntax[A, U, V](thiz: A !! U):
     def apply[F[+_], G[+_], L, N](h: Handler[F, G, L, N])(using ev1: A =:= F[A], ev2: (L & V) <:< U): G[A] !! (N & V) =
       h.doHandle(thiz.cast[F[A], L & V])
