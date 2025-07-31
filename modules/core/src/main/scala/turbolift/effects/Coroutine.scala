@@ -29,9 +29,9 @@ trait CoroutineEffect[I, O, R] extends Effect[CoroutineSignature[I, O, R]] with 
   final override def yeld(value: O): I !! this.type = perform(_.yeld(value))
   final override def exit(value: R): Nothing !! this.type = perform(_.exit(value))
 
-  final def handler[U]: Handler[Const[R], Const[Step[I, O, R, U & enclosing.type]], enclosing.type, Any] =
+  final def handler[U]: Handler[Const[R], Const[Step[I, O, R, U & enclosing.type]], enclosing.type, U] =
     type SS = Step[I, O, R, U & enclosing.type]
-    new impl.Stateless[Const[R], Const[SS], Any] with impl.Sequential with CoroutineSignature[I, O, R]:
+    new impl.Stateless[Const[R], Const[SS], U] with impl.Sequential with CoroutineSignature[I, O, R]:
       override def captureHint = true
       override def onReturn(r: R) = Step.Exit(r).pure_!!
       override def yeld(o: O) = Control.capture0(k => !!.pure(Step.Yield(o, i => Control.strip(k(i)))))
