@@ -20,7 +20,7 @@ private[engine] object OpSplit:
           //// Also at the upper boundary, if `truncate`.
           var stackHi: Stack = null.asInstanceOf[Stack]
           var storeHi: Store = null.asInstanceOf[Store]
-          val stepMid = todoStack.aside.nn
+          val stepMid = todoStack.aside
           val stackLo = todoStack.tail
           val storeLo = todoStore.tail
           if truncate then

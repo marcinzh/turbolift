@@ -133,6 +133,7 @@ private sealed abstract class Engine0 extends Runnable:
   //-------------------------------------------------------------------
 
 
+  @annotation.nowarn("msg=already not null") // for cross compiling LTS & Next
   @tailrec private final def innerLoop(tag: Tag, payload: Any, step: Step, stack: Stack, store: Store, hasShadow: Boolean): Tag =
     inline def innerLoopStep(payload: Any, step: Step, store: Store): Tag =
       innerLoop(step.tag, payload, step, stack, store, hasShadow)
@@ -395,9 +396,12 @@ private sealed abstract class Engine0 extends Runnable:
 
 
   private final def endOfLoop(completion: Int, payload: Any): Tag =
-    currentFiber.doFinalize(completion, payload) match
-      case null => Tag.Retire
-      case fiber2 => become(fiber2.nn); Tag.Become
+    val fiber2 = currentFiber.doFinalize(completion, payload)
+    if fiber2 == null then
+      Tag.Retire
+    else
+      become(fiber2)
+      Tag.Become
 
 
   private final def dispatchNotify(tag: Tag): Tag =
@@ -788,7 +792,7 @@ private sealed abstract class Engine0 extends Runnable:
     val stack = savedStack
     val store = savedStore
     //-------------------
-    val warp = if warp0 != null then warp0.nn.asImpl else currentEnv.currentWarp.nn
+    val warp = if warp0 != null then warp0.asImpl else currentEnv.currentWarp.nn
     val stackFork = stack.lazyFork
     val (storeDown, storeFork) = OpCascaded.fork1(stack, store, stackFork)
     val child = FiberImpl.createExplicit(stackFork, warp, name, callback)

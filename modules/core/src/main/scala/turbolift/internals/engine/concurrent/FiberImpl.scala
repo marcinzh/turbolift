@@ -672,7 +672,7 @@ private[turbolift] object FiberImpl:
     def call(): Unit =
       if callback != null then
         if fiber.isExplicit then
-          callback.nn(fiber.suspendedPayload)
+          callback(fiber.suspendedPayload)
         else
           //// Must be the root fiber, bcoz implicit fibers dont have `Extra`
-          callback.nn(fiber.makeOutcome)
+          callback(fiber.makeOutcome)

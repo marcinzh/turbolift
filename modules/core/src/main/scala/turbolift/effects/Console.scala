@@ -47,8 +47,8 @@ trait ConsoleEffect extends Effect[ConsoleSignature] with ConsoleSignature with 
     def blocking: Handler[Identity, Identity, enclosing.type, IO] =
       IO(new BufferedReader(new InputStreamReader(JConsole.in))).flatMapHandler: breader =>
         new impl.Proxy[IO] with ConsoleSignature:
-          override def readChar: Option[Char] !! ThisEffect = IO.blocking { val n = breader.nn.read(); Option.when(n >= 0)(n.toChar) }
-          override def readLine: String !! ThisEffect = IO.blocking(breader.nn.readLine().nn)
+          override def readChar: Option[Char] !! ThisEffect = IO.blocking { val n = breader.read(); Option.when(n >= 0)(n.toChar) }
+          override def readLine: String !! ThisEffect = IO.blocking(breader.readLine().nn)
           override def print(text: String): Unit !! ThisEffect = IO.blocking(JConsole.out.nn.print(text))
           override def printErr(text: String): Unit !! ThisEffect = IO.blocking(JConsole.err.nn.print(text))
           override def printLine(text: String): Unit !! ThisEffect = IO.blocking(JConsole.out.nn.println(text))
@@ -59,8 +59,8 @@ trait ConsoleEffect extends Effect[ConsoleSignature] with ConsoleSignature with 
     def nonBlocking: Handler[Identity, Identity, enclosing.type, IO] =
       IO(new BufferedReader(new InputStreamReader(JConsole.in))).flatMapHandler: breader =>
         new impl.Proxy[IO] with ConsoleSignature:
-          override def readChar: Option[Char] !! ThisEffect = IO { val n = breader.nn.read(); Option.when(n >= 0)(n.toChar) }
-          override def readLine: String !! ThisEffect = IO(breader.nn.readLine().nn)
+          override def readChar: Option[Char] !! ThisEffect = IO { val n = breader.read(); Option.when(n >= 0)(n.toChar) }
+          override def readLine: String !! ThisEffect = IO(breader.readLine().nn)
           override def print(text: String): Unit !! ThisEffect = IO(JConsole.out.nn.print(text))
           override def printErr(text: String): Unit !! ThisEffect = IO(JConsole.err.nn.print(text))
           override def printLine(text: String): Unit !! ThisEffect = IO(JConsole.out.nn.println(text))

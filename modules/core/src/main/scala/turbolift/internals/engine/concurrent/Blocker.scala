@@ -44,6 +44,7 @@ private[engine] object Blocker:
   final class Interruptible(fiber: FiberImpl, thunk: () => Any, isEither: Boolean) extends AtomicReference[Thread | Done | Null] with Blocker with Runnable:
     def block(): Unit = Pool.instance.execute(this)
 
+    @annotation.nowarn("msg=already not null") // for cross compiling LTS & Next
     override def run: Unit =
       val thread = Thread.currentThread.nn
       if compareAndSet(null, thread) then
@@ -57,7 +58,7 @@ private[engine] object Blocker:
           set(Done)
 
         if isEither then
-          val value2 = if throwable == null then Right(value) else Left(throwable.nn)
+          val value2 = if throwable == null then Right(value) else Left(throwable)
           fiber.resumeWaiterAsSuccess(value2)
         else
           if throwable == null then
