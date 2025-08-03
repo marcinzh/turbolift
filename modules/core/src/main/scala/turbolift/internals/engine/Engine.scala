@@ -744,7 +744,7 @@ private sealed abstract class Engine0 extends Runnable:
     val stack = savedStack
     val store = savedStore
     //-------------------
-    val (stack2, store2) = OpPush.pushGuard(stack, store, step)
+    val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, currentEnv, FrameKind.guard)
     loopComp(body, Step.Pop, stack2, store2)
 
 
@@ -857,7 +857,7 @@ private sealed abstract class Engine0 extends Runnable:
     //-------------------
     val warp = new WarpImpl(currentFiber, currentEnv.currentWarp, name, exitMode)
     val env2 = currentEnv.copy(currentWarp = warp)
-    val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, env2.asLocal, FrameKind.warp)
+    val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, env2, FrameKind.warp)
     this.currentEnv = env2
     loopComp(body, Step.Pop, stack2, store2)
 
@@ -929,7 +929,7 @@ private sealed abstract class Engine0 extends Runnable:
       loopComp(body(oldValue), step, stack, store)
     else
       val env2 = currentEnv.copy(isCancellable = newValue)
-      val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, env2.asLocal, FrameKind.suppress)
+      val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, env2, FrameKind.suppress)
       this.currentEnv = env2
       loopComp(body(oldValue), Step.Pop, stack2, store2)
 
@@ -943,7 +943,7 @@ private sealed abstract class Engine0 extends Runnable:
       loopComp(body, step, stack, store)
     else
       val env2 = currentEnv.copy(executor = exec)
-      val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, env2.asLocal, FrameKind.exec)
+      val (stack2, store2) = OpPush.pushNestedIO(stack, store, step, env2, FrameKind.exec)
       currentFiber.suspendComp(body, Step.Pop, stack2, store2)
       currentFiber.resume()
       ThreadDisowned

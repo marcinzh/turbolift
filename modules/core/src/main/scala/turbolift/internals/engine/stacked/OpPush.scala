@@ -13,7 +13,7 @@ private[engine] object OpPush:
 
 
   def pushBase(stack: Stack, store: Store, step: Step, prompt: Prompt, local: Local): (Stack, Store) =
-    if stack.promptCount <= Location.MAX_SEGMENT_SIZE && !prompt.captureHint then
+    if stack.promptCount < Location.MAX_SEGMENT_SIZE && !prompt.captureHint then
       val newStack = stack.pushBase(prompt, step, localIndex = store.nextStoreIndex)
       val newStore = if prompt.isStateful then store.push(local) else store
       (newStack, newStore)
@@ -36,17 +36,13 @@ private[engine] object OpPush:
       newTopSegment(stack, store, step, prompt, local, isNested = true, kind)
 
 
-  def pushNestedIO(stack: Stack, store: Store, step: Step, local: Local, kind: FrameKind): (Stack, Store) =
+  def pushNestedIO(stack: Stack, store: Store, step: Step, env: Env, kind: FrameKind): (Stack, Store) =
     val location = stack.locateIO
-    pushNested(stack, store, step, Prompt.IO, location, local, kind)
-
-
-  def pushGuard(stack: Stack, store: Store, step: Step): (Stack, Store) =
-    pushNestedIO(stack, store, step, Local.void, FrameKind.guard)
+    pushNested(stack, store, step, Prompt.IO, location, env.asLocal, kind)
 
 
   def pushEnv(stack: Stack, store: Store, step: Step, env: Env): (Stack, Store) =
-    pushNestedIO(stack, store, step, env.asLocal, FrameKind.plain)
+    pushNestedIO(stack, store, step, env, FrameKind.plain)
 
 
   private def newTopSegment(stack: Stack, store: Store, step: Step, prompt: Prompt, local: Local, isNested: Boolean, kind: FrameKind): (Stack, Store) =
