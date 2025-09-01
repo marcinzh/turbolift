@@ -385,12 +385,12 @@ object Computation:
     def handleWith[V]: HandleWithSyntax[A, U, V] = new HandleWithSyntax[A, U, V](thiz)
 
 
-  extension [F[+_], G[+_], L, N](thiz: Computation[Handler[F, G, L, N], N])
+  extension [F[+_], G[+_], L, N, N2 <: N](thiz: Computation[Handler[F, G, L, N], N2])
     /** Simplifies effectful creation of handlers.
      * 
      *  Same as `computation.flatMapHandler(handler => handler)`.
      */
-    def flattenHandler: Handler[F, G, L, N] = Handler.flatHandle(thiz)
+    def flattenHandler: Handler[F, G, L, N2] = Handler.flatHandle(thiz)
 
 
   extension [A, B, U](thiz: Computation[(A, B), U])
