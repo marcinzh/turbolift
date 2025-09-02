@@ -117,10 +117,10 @@ trait WriterEffectExt[W, W1] extends Effect[WriterSignature[W, W1]] with WriterS
         .mapEffK([A] => (a: A) => avar.get.map((a, _)))
 
 
-    /** Lile [[local]], but accumulate with given function instead of typeclass. */
+    /** Like [[local]], but accumulate with given function instead of typeclass. */
     def localFold(using W =:= W1)(zero: W, plus: (W, W1) => W): Handler[Identity, (_, W), enclosing.type, Any] = local(using AccumZero.instanceEq(zero, plus))
 
-    /** Lile [[shared]], but accumulate with given function instead of typeclass. */
+    /** Like [[shared]], but accumulate with given function instead of typeclass. */
     def sharedFold(using W =:= W1)(zero: W, plus: (W, W1) => W): Handler[Identity, (_, W), enclosing.type, IO] = shared(using AccumZero.instanceEq(zero, plus))
 
 
@@ -205,11 +205,11 @@ abstract class PolyWriterEffect extends Effect.Polymorphic_-[WriterEffect, Any](
     def local[W](using W: PlusZero[W]): Handler[Identity, (_, W), @@[W], Any] = polymorphize[W].handler(_.handlers.local)
     def shared[W](using W: PlusZero[W]): Handler[Identity, (_, W), @@[W], IO] = polymorphize[W].handler(_.handlers.shared)
 
-    /** Lile [[local]], but accumulate with given function instead of typeclass. */
-    def localFold[W](zero: W, plus: (W, W) => W): Handler[Identity, (_, W), @@[W], Any] = local(using PlusZero.instance(zero, plus))
+    /** Like [[local]], but accumulate with given function instead of typeclass. */
+    def localFold[W](zero: W, plus: (W, W) => W): Handler[Identity, (_, W), @@[W], Any] = polymorphize[W].handler(_.handlers.localFold(zero, plus))
 
-    /** Lile [[shared]], but accumulate with given function instead of typeclass. */
-    def sharedFold[W](zero: W, plus: (W, W) => W): Handler[Identity, (_, W), @@[W], IO] = shared(using PlusZero.instance(zero, plus))
+    /** Like [[shared]], but accumulate with given function instead of typeclass. */
+    def sharedFold[W](zero: W, plus: (W, W) => W): Handler[Identity, (_, W), @@[W], IO] = polymorphize[W].handler(_.handlers.sharedFold(zero, plus))
 
 
 object PolyWriterEffect:

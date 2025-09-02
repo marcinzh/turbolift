@@ -102,7 +102,7 @@ trait ErrorEffectExt[E, E1] extends Effect[ErrorSignature[E, E1]] with ErrorSign
         override def catchToEither[A, U <: ThisEffect](body: A !! U): Either[E, A] !! U = Control.delimit(body)
       .toHandler
 
-    /** Lile [[all]], but accumulate with given function instead of typeclass. */
+    /** Like [[all]], but accumulate with given function instead of typeclass. */
     def allReduce(using E =:= E1)(plus: (E, E1) => E): Handler[Identity, Either[E, _], enclosing.type, Any] =
       all(using Accum.instanceEq( plus))
 
@@ -165,9 +165,9 @@ abstract class PolyErrorEffect extends Effect.Polymorphic_-[ErrorEffect, Any](ne
   final def catchSome[E] = new CatchSomeApply[E]
   final def catchSomeEff[E] = new CatchSomeEffApply[E]
 
-  final def fromOption[A, E](x: Option[A])(e: => E): A !! @@[E] = x.fold(raise(e))(!!.pure)
-  final def fromEither[A, E](x: Either[E, A]): A !! @@[E] = x.fold(raise, !!.pure)
-  final def fromTry[A, E](x: Try[A])(using ev: Throwable <:< E): A !! @@[E] = x.fold(e => raise(ev(e)), !!.pure)
+  final def raiseFromOption[A, E](x: Option[A])(e: => E): A !! @@[E] = polymorphize[E].perform(_.raiseFromOption(x)(e))
+  final def raiseFromEither[A, E](x: Either[E, A]): A !! @@[E] = polymorphize[E].perform(_.raiseFromEither(x))
+  final def raiseFromTry[A, E](x: Try[A])(using ev: Throwable <:< E): A !! @@[E] = polymorphize[E].perform(_.raiseFromTry(x))
 
   /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
   final class CatchToEitherApply[E]:
