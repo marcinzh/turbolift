@@ -1,6 +1,7 @@
 package turbolift.effects
 import turbolift.{!!, Signature, Effect, Handler}
 import turbolift.Extensions._
+import turbolift.data.Resource
 
 
 /** Signature of [[ReaderEffect]]. */
@@ -52,6 +53,43 @@ trait ReaderEffect[R] extends Effect[ReaderSignature[R]] with ReaderSignature[R]
         override def localModify[A, U <: ThisEffect](f: R => R)(body: A !! U): A !! U = Control.delimitModify(body, f)
         override def localModifyEff[A, U <: ThisEffect](f: R => R !! U)(body: A !! U): A !! U = Local.getsEff(f).flatMap(Control.delimitPut(body, _))
       .toHandler
+
+
+    /** Auxiliary handler for [[fromLazyResource]]. */
+    def lazily[V](acquire: R !! V): Handler[Identity, Identity, enclosing.type, V] =
+      new impl.Stateful[Identity, Identity, V] with impl.Parallel.Trivial with ReaderSignature[R]:
+        override type Local = Option[R]
+        override def onInitial = !!.none
+        override def onReturn(x: Unknown, r: Local) = x.pure_!!
+
+        override val ask: R !! ThisEffect = force
+        override def asksEff[A, U <: ThisEffect](f: R => A !! U): A !! U = ask.flatMap(f)
+        override def asks[A](f: R => A): A !! ThisEffect = ask.map(f)
+        override def localPut[A, U <: ThisEffect](r: R)(body: A !! U): A !! U = localModify(_ => r)(body)
+        override def localPutEff[A, U <: ThisEffect](r: R !! U)(body: A !! U): A !! U = localModifyEff(_ => r)(body)
+        override def localModify[A, U <: ThisEffect](f: R => R)(body: A !! U): A !! U = localModifyEff(r => f(r).pure_!!)(body)
+        override def localModifyEff[A, U <: ThisEffect](f: R => R !! U)(body: A !! U): A !! U = force.flatMap(f).flatMap(r => Control.delimitPut(body, Some(r)))
+
+        val force: R !! ThisEffect =
+          Local.getsEff:
+            case Some(r) => r.pure_!!
+            case None => acquire.tapEff(r => Local.put(Some(r)))
+
+      .toHandler
+
+
+    def fromResource[V](resource: Resource[R, V]): Handler.IdId[enclosing.type, V] =
+      Handler.fromFunction:
+        [A, U] => (comp: A !! (enclosing.type & U)) =>
+          resource.use: r =>
+            comp.handleWith(default(r))
+
+
+    def fromLazyResource[V <: IO](resource: Resource[R, V]): Handler.IdId[enclosing.type, V] =
+      Handler.fromFunction:
+        [A, U] => (comp: A !! (enclosing.type & U)) =>
+          resource.useLazily: getter =>
+            comp.handleWith(lazily(getter))
 
 
 object ReaderEffect:
@@ -127,8 +165,10 @@ abstract class PolyReaderEffect extends Effect.Polymorphic_+(new ReaderEffect[An
 
   /** Predefined handlers for this effect. */
   object handlers:
-    def default[R](initial: R): Handler[Identity, Identity, @@[R], Any] =
-      polymorphize[R].handler(_.handlers.default(initial))
+    def default[R](initial: R): Handler.IdId[@@[R], Any] = polymorphize[R].handler(_.handlers.default(initial))
+    def lazily[R, V](acquire: R !! V): Handler.IdId[@@[R], V] = polymorphize[R].handler(_.handlers.lazily(acquire))
+    def fromResource[R, V](resource: Resource[R, V]): Handler.IdId[@@[R], V] = polymorphize[R].handler(_.handlers.fromResource(resource))
+    def fromLazyResource[R, V <: IO](resource: Resource[R, V]): Handler.IdId[@@[R], V] = polymorphize[R].handler(_.handlers.fromLazyResource(resource))
 
 
 object PolyReaderEffect:
