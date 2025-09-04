@@ -14,3 +14,11 @@ import turbolift.effects.Each
 
   extension [A](thiz: Iterator[A])
     def each_!! : A !! Each = Each.choose(thiz.toVector)
+
+  extension [A](thiz: Option[A])
+    def getOrElseEff[A2 >: A, U](comp: => A2 !! U): A2 !! U =
+      thiz.fold(comp)(!!.pure)
+
+  extension [A, E](thiz: Either[E, A])
+    def getOrElseEff[A2 >: A, U](comp: E => A2 !! U): A2 !! U =
+      thiz.fold(comp, !!.pure)

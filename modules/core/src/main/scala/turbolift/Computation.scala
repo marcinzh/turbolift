@@ -140,6 +140,28 @@ sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift]
   //@#@OLD
   // final override def toString = s"turbolift.Computation@${hashCode.toHexString}"
 
+  //---------- misc ----------
+
+
+  def when[U2 <: U](cond: A => Boolean)(comp: Unit !! U2): A !! U2 =
+    tapEff(a => if cond(a) then comp else !!.unit )
+
+  def whenEff[U2 <: U](cond: A => Boolean !! U2)(comp: Unit !! U2): A !! U2 =
+    tapEff(a => cond(a).flatMap(if _ then comp else !!.unit))
+
+  def ifThen[U2 <: U](cond: A => Boolean)(comp: => Unit !! U2): Unit !! U2 =
+    flatMap(a => if cond(a) then comp else !!.unit)
+
+  def ifThenEff[U2 <: U](cond: A => Boolean !! U2)(comp: => Unit !! U2): Unit !! U2 =
+    flatMap(cond).flatMap(if _ then comp else !!.unit)
+
+  def ifThenElse[B, U2 <: U](cond: A => Boolean)(comp1: => B !! U2)(comp2: => B !! U2): B !! U2 =
+    flatMap(a => if cond(a) then comp1 else comp2)
+
+  def ifThenElseEff[B, U2 <: U](cond: A => Boolean !! U2)(comp1: => B !! U2)(comp2: => B !! U2): B !! U2 =
+    flatMap(cond).flatMap(if _ then comp1 else comp2)
+
+
 
   //---------- postfix syntax ----------
 
