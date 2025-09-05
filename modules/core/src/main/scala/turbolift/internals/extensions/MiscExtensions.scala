@@ -1,6 +1,6 @@
 package turbolift.internals.extensions
 import turbolift.!!
-import turbolift.effects.Each
+import turbolift.effects.{Error, Each}
 
 
 /** No need to use this trait directly, because it's inherited by [[turbolift.Extensions Extensions]] object. */
@@ -8,6 +8,7 @@ import turbolift.effects.Each
   extension [A](thiz: A)
     /** Postfix alias of `pure(_)` */
     def pure_!! : A !! Any = !!.pure(thiz)
+    def raiseError: Nothing !! Error[A] = Error.raise(thiz)
 
   extension [A](thiz: Iterable[A])
     def each_!! : A !! Each = Each.choose(thiz)

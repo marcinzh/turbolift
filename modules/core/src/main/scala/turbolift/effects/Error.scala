@@ -169,6 +169,9 @@ abstract class PolyErrorEffect extends Effect.Polymorphic_-[ErrorEffect, Any](ne
   final def raiseFromEither[A, E](x: Either[E, A]): A !! @@[E] = polymorphize[E].perform(_.raiseFromEither(x))
   final def raiseFromTry[A, E](x: Try[A])(using ev: Throwable <:< E): A !! @@[E] = polymorphize[E].perform(_.raiseFromTry(x))
 
+  final def mapError[E] = new MapErrorApply[E]
+  final def mapErrorEff[E] = new MapErrorEffApply[E]
+
   /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
   final class CatchToEitherApply[E]:
     def apply[A, U <: @@[E]](body: A !! U): Either[E, A] !! U = polymorphize[E].perform(_.catchToEither(body))
@@ -188,6 +191,22 @@ abstract class PolyErrorEffect extends Effect.Polymorphic_-[ErrorEffect, Any](ne
   /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
   final class CatchSomeEffApply[E]:
     def apply[A, U <: @@[E]](body: A !! U)(f: PartialFunction[E, A !! U]): A !! U = polymorphize[E].perform(_.catchSomeEff(body)(f))
+
+  /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
+  final class MapErrorApply[E]:
+    def apply[A, E2, U](body: A !! (@@[E] & U))(f: E => E2): A !! (@@[E2] & U) =
+      new MapErrorEffApply[E].apply(body)(f andThen !!.pure)
+
+  /** Helper class for partial type application. Won't be needed in future Scala (SIP-47). */
+  final class MapErrorEffApply[E]:
+    def apply[A, E2, U](body: A !! (@@[E] & U))(f: E => E2 !! U): A !! (@@[E2] & U) =
+      catchToEither[E](body)
+      .cast[Either[E, A], U] //// Eliminates `@@[E]` in cheaper way than with `handle`
+      //// typesafer alternative:
+      // handlers.default[E].handle(body)
+      .flatMap:
+          case Left(e) => f(e).flatMap(raise)
+          case Right(a) => !!.pure(a)
 
 
   /** Predefined handlers for this effect. */

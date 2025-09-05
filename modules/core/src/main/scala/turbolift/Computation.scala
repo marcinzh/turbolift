@@ -1,7 +1,7 @@
 package turbolift
 import scala.annotation.nowarn
 import scala.concurrent.duration.FiniteDuration
-import turbolift.effects.{ChoiceSignature, Alternative, IO, UnsafeIO, Each, Finalizer, FinalizerIO}
+import turbolift.effects.{ChoiceSignature, Alternative, IO, UnsafeIO, Each, Finalizer, FinalizerIO, Error}
 import turbolift.internals.auxx.CanPartiallyHandle
 import turbolift.internals.executor.Executor
 import turbolift.interpreter.Prompt
@@ -430,6 +430,14 @@ object Computation:
     /** Like `if` statement, but the condition and the body are computations. */
     def ifEff[U2 <: U](thenBody: => Unit !! U2)(elseBody: => Unit !! U2): Unit !! U2 =
       thiz.flatMap(if _ then thenBody else elseBody)
+
+
+  extension [A, U, E](thiz: A !! (Error[E] & U))
+    /** postfix version of `Error.mapError` */
+    def mapError[E2](f: E => E2): A !! (Error[E2] & U) = Error.mapError(thiz)(f)
+
+    /** postfix version of `Error.mapErrorEff` */
+    def mapErrorEff[E2, U2 <: U](f: E => E2 !! U2): A !! (Error[E2] & U2) = Error.mapErrorEff(thiz)(f)
 
 
   //---------- Syntax ----------
