@@ -51,6 +51,7 @@ sealed trait AtomicVar[S] extends AtomicVar.Get[S] with AtomicVar.Put[S]:
 
   def isLocked: Boolean !! IO
   def unsafeIsLocked(): Boolean
+  def unsafeCompareAndSet(a: S, b: S): Boolean
 
 
 object AtomicVar:
@@ -112,11 +113,10 @@ object AtomicVar:
 
 
   private sealed trait Lockless[S] extends AtomicVar[S]:
+    def unsafeSwap(s: S): S
+
     final override def isLocked: Boolean !! IO = !!.pure(false)
     final override def unsafeIsLocked(): Boolean = false
-
-    def unsafeSwap(s: S): S
-    def unsafeCompareAndSet(a: S, b: S): Boolean
 
     final def swap(s: S): S !! IO = !!.impure(unsafeSwap(s))
     final def modify(f: S => S): Unit !! IO = op(f, s => s, (_, _) => ())
@@ -219,6 +219,20 @@ object AtomicVar:
 
     override def unsafeGet: S = currentValue
     override def unsafePut(s: S): Unit = currentValue = s
+
+    //// Just to make `AtomicVar.unsafeCompareAndSet` public
+    override def unsafeCompareAndSet(a: S, b: S): Boolean =
+      if lock.unsafeTryAcquire() then
+        try
+          if currentValue == a then
+            currentValue = b
+            true
+          else
+            false
+        finally
+          lock.unsafeRelease()
+      else
+        false
 
     override def swap(s: S): S !! IO = op(_ => s, s => s, (s, _) => s)
     override def modify(f: S => S): Unit !! IO = op(f, s => s, (_, _) => ())
