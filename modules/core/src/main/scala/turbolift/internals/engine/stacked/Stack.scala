@@ -2,6 +2,7 @@ package turbolift.internals.engine.stacked
 import scala.annotation.tailrec
 import turbolift.Signature
 import turbolift.interpreter.{Features, Interpreter}
+import turbolift.internals.engine.concurrent.atomic.AtomicRefVH
 
 
 private[engine] final class Stack private (
@@ -12,8 +13,7 @@ private[engine] final class Stack private (
   val headFeatures: Features,
   private var tailVar: Stack | Null,
   private var asideVar: Step | Null,
-) extends Cloneable:
-  private var forkVar: Stack | Null = null
+) extends AtomicRefVH[Stack | Null](null) with Cloneable:
   val accumFeatures: Features = if isTailless then headFeatures else headFeatures | tail.accumFeatures
 
   def isTailless: Boolean = !hasTail
@@ -171,7 +171,7 @@ private[engine] final class Stack private (
       tailVar = tailVar,
       asideVar = asideVar,
     )
-    that.forkVar = forkVar
+    that.copyForkFrom(this)
     that
 
 
@@ -181,13 +181,23 @@ private[engine] final class Stack private (
 
 
   def lazyFork: Stack =
-    //// harmless race
-    if forkVar == null then
-      forkVar = makeFork
-    forkVar.nn
+    val currentForkStack = getVH
+    if currentForkStack == null then
+      val newForkStack = makeFork()
+      val oldForkStack = caxVH(null, newForkStack)
+      if oldForkStack == null then
+        newForkStack
+      else
+        oldForkStack
+    else
+      currentForkStack
 
 
-  private def makeFork: Stack =
+  def selfFork(): Unit = setVH(this)
+  def copyForkFrom(that: Stack): Unit = setVH(that.getVH)
+
+
+  private def makeFork(): Stack =
     var forkPromptCount = 0
     var forkSigCount = 0
     var forkLocalCount = 0
@@ -236,7 +246,7 @@ private[engine] final class Stack private (
         tailVar = if hasTail then tail.lazyFork else null,
         asideVar = Step.Pop,
       )
-      forkStack.forkVar = forkStack
+      forkStack.selfFork()
       forkStack
 
 
@@ -333,7 +343,7 @@ private[engine] object Stack:
       tail = null.asInstanceOf[Stack],
       aside = null,
     )
-    stack.forkVar = stack
+    stack.selfFork()
     stack
 
 
