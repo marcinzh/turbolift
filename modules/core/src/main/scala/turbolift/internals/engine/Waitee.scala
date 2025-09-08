@@ -1,6 +1,6 @@
-package turbolift.internals.engine.concurrent
-import turbolift.internals.engine.concurrent.atomic.AtomicBoolVH
+package turbolift.internals.engine
 import scala.annotation.tailrec
+import turbolift.internals.engine.concurrent.atomic.AtomicBoolVH
 
 
 /** Either Fiber, Warp, Queque or OnceVar */
@@ -163,7 +163,7 @@ private[engine] abstract class Waitee extends AtomicBoolVH(false):
       waiter.removeWaiterAtSelf()
 
 
-private[concurrent] object Waitee:
+private[engine] object Waitee:
   private def notifyAllWaiters(first: FiberImpl): Unit =
     @tailrec def loop(waiter: FiberImpl): Unit =
       val next = waiter.nextWaiter.nn.asFiber

@@ -1,6 +1,7 @@
-package turbolift.internals.engine.concurrent.util
+package turbolift.internals.engine.concurrent
 import turbolift.io.CountDownLatch
-import turbolift.internals.engine.concurrent.{Bits, Waitee, FiberImpl}
+import turbolift.internals.engine.{Waitee, FiberImpl}
+import turbolift.internals.engine.Bits
 
 
 private[turbolift] final class CountDownLatchImpl(private var counter: Int) extends Waitee with CountDownLatch.Unsealed:

@@ -1,7 +1,7 @@
 package turbolift.io
 import turbolift.{!!, ComputationCases => CC}
 import turbolift.effects.IO
-import turbolift.internals.engine.concurrent.util.OnceVarImpl
+import turbolift.internals.engine.concurrent.OnceVarImpl
 
 
 /** Variable writable once.

@@ -1,8 +1,9 @@
-package turbolift.internals.engine.concurrent.util
+package turbolift.internals.engine.concurrent
 import turbolift.!!
 import turbolift.io.{EffectfulVar, Zipper}
 import turbolift.effects.Broken
-import turbolift.internals.engine.concurrent.{Bits, Waitee, FiberImpl}
+import turbolift.internals.engine.{Waitee, FiberImpl}
+import turbolift.internals.engine.Bits
 import turbolift.internals.engine.Misc.AnyComp
 
 

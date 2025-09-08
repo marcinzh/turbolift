@@ -2,8 +2,7 @@ package turbolift.internals.executor
 import scala.annotation.tailrec
 import turbolift.Computation
 import turbolift.data.Outcome
-import turbolift.internals.engine.{Engine, Halt}
-import turbolift.internals.engine.concurrent.{FiberImpl, WaiterLink}
+import turbolift.internals.engine.{Engine, FiberImpl, WaiterLink, Halt}
 
 
 private[internals] final class ZeroThreadedExecutor extends WaiterLink.Queue with Executor:

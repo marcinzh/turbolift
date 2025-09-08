@@ -8,8 +8,7 @@ import turbolift.io.{Fiber, Zipper, Warp, OnceVar, EffectfulVar, CountDownLatch,
 import turbolift.interpreter.{Interpreter, Continuation, Prompt}
 import turbolift.internals.executor.Executor
 import turbolift.internals.engine.stacked.{Stack, Store, Entry, Local, Location, FrameKind, OpPush, OpSplit, OpCascaded}
-import turbolift.internals.engine.concurrent.{Bits, Blocker, Waitee, FiberImpl, WarpImpl}
-import turbolift.internals.engine.concurrent.util.{OnceVarImpl, EffectfulVarImpl, CountDownLatchImpl, CyclicBarrierImpl, ReentrantLockImpl, SemaphoreImpl, ChannelImpl}
+import turbolift.internals.engine.concurrent.{OnceVarImpl, EffectfulVarImpl, CountDownLatchImpl, CyclicBarrierImpl, ReentrantLockImpl, SemaphoreImpl, ChannelImpl}
 import Tag.{Retire => ThreadDisowned}
 import Local.Syntax._
 import Cause.{Cancelled => CancelPayload}

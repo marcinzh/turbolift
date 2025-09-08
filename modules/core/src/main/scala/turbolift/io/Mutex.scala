@@ -1,7 +1,7 @@
 package turbolift.io
 import turbolift.{!!, ComputationCases => CC}
 import turbolift.effects.IO
-import turbolift.internals.engine.concurrent.util.MutexImpl
+import turbolift.internals.engine.concurrent.MutexImpl
 
 
 sealed trait Mutex:

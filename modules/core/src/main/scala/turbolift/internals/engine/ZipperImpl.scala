@@ -1,4 +1,4 @@
-package turbolift.internals.engine.concurrent
+package turbolift.internals.engine
 import turbolift.!!
 import turbolift.effects.IO
 import turbolift.data.{Outcome, Cause, Snap}

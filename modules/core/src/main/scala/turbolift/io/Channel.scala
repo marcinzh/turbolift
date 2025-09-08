@@ -1,7 +1,7 @@
 package turbolift.io
 import turbolift.{!!, ComputationCases => CC}
 import turbolift.effects.IO
-import turbolift.internals.engine.concurrent.util.ChannelImpl
+import turbolift.internals.engine.concurrent.ChannelImpl
 
 
 sealed trait Channel[A] extends Channel.Get[A] with Channel.Put[A]:

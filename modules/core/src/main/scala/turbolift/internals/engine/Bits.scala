@@ -1,7 +1,8 @@
-package turbolift.internals.engine.concurrent
+package turbolift.internals.engine
 
 
-private[engine] object Bits:
+//@#@ public bcoz inline problems
+object Bits:
   
   //// Common: (UNSHIFTED)
 

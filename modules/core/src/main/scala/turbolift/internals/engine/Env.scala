@@ -2,7 +2,6 @@ package turbolift.internals.engine
 import turbolift.Signature
 import turbolift.interpreter.Interpreter
 import turbolift.internals.executor.Executor
-import turbolift.internals.engine.concurrent.WarpImpl
 
 
 private[turbolift] final class Env(

@@ -1,7 +1,6 @@
 package turbolift.internals.engine
 import turbolift.io.{Fiber, Zipper, Warp}
 import turbolift.interpreter.Continuation
-import turbolift.internals.engine.concurrent.{FiberImpl, WarpImpl, ZipperImpl}
 
 
 extension (thiz: Continuation[?, ?, ?, ?])

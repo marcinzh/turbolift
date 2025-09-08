@@ -1,7 +1,8 @@
-package turbolift.internals.engine.concurrent.util
+package turbolift.internals.engine.concurrent
 import turbolift.data.Exceptions
 import turbolift.io.OnceVar
-import turbolift.internals.engine.concurrent.{Bits, Waitee, FiberImpl}
+import turbolift.internals.engine.{Waitee, FiberImpl}
+import turbolift.internals.engine.Bits
 import OnceVarImpl.Empty
 
 

@@ -1,6 +1,7 @@
-package turbolift.internals.engine.concurrent.util
+package turbolift.internals.engine.concurrent
 import turbolift.io.{ReentrantLock, Fiber}
-import turbolift.internals.engine.concurrent.{Bits, Waitee, FiberImpl}
+import turbolift.internals.engine.{Waitee, FiberImpl}
+import turbolift.internals.engine.Bits
 import turbolift.internals.engine.{asImpl}
 
 

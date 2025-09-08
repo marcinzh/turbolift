@@ -5,7 +5,7 @@ import turbolift.effects.{ChoiceSignature, Alternative, IO, UnsafeIO, Each, Fina
 import turbolift.internals.auxx.CanPartiallyHandle
 import turbolift.internals.executor.Executor
 import turbolift.interpreter.Prompt
-import turbolift.internals.engine.{Env, Engine, Tag}
+import turbolift.internals.engine.{Tag, Env, Engine}
 import turbolift.data.Outcome
 import turbolift.io.{Fiber, Warp}
 import turbolift.mode.Mode

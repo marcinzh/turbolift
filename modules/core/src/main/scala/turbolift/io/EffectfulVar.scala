@@ -1,7 +1,7 @@
 package turbolift.io
 import turbolift.{!!, ComputationCases => CC}
 import turbolift.effects.{IO, Broken}
-import turbolift.internals.engine.concurrent.util.EffectfulVarImpl
+import turbolift.internals.engine.concurrent.EffectfulVarImpl
 
 
 /** Variable writable once.

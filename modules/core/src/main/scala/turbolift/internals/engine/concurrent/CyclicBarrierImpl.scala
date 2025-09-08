@@ -1,7 +1,8 @@
-package turbolift.internals.engine.concurrent.util
+package turbolift.internals.engine.concurrent
 import scala.annotation.tailrec
 import turbolift.io.CyclicBarrier
-import turbolift.internals.engine.concurrent.{Bits, Waitee, FiberImpl}
+import turbolift.internals.engine.{Waitee, FiberImpl}
+import turbolift.internals.engine.Bits
 
 
 private[turbolift] final class CyclicBarrierImpl(private val capacity: Int) extends Waitee with CyclicBarrier.Unsealed:

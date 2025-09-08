@@ -1,10 +1,9 @@
-package turbolift.internals.engine.concurrent
+package turbolift.internals.engine
 import scala.annotation.{tailrec, switch}
 import turbolift.{Computation, Signature}
 import turbolift.data.{Snap, Outcome, Cause, Exceptions}
 import turbolift.io.{Fiber, Zipper, Warp, OnceVar}
 import turbolift.internals.executor.Executor
-import turbolift.internals.engine.{Env, Tag, Step}
 import turbolift.internals.engine.Misc._
 import turbolift.internals.engine.stacked.{Stack, Store, OpCascaded, OpPush}
 import Cause.{Cancelled => CancelPayload}
@@ -179,7 +178,7 @@ private[turbolift] final class FiberImpl private (
   //// - doesn't subscribe the `canceller`
   //// - doesn't initiate `deepCancelLoop`
   //// - returns first pending racer, instead of Int code
-  private[concurrent] override def deepCancelDown(): ChildLink | Null =
+  private[engine] override def deepCancelDown(): ChildLink | Null =
     var savedLeftRacer: WaiterLink | Null = null
     var savedRightRacer: WaiterLink | Null = null
     var savedWaiteeOrBlocker: Waitee | Blocker | Null = null
@@ -204,7 +203,7 @@ private[turbolift] final class FiberImpl private (
       null
 
 
-  private[concurrent] override def deepCancelRight(): ChildLink | Null =
+  private[engine] override def deepCancelRight(): ChildLink | Null =
     if whichRacerAmI == Bits.Racer_Left then
       getArbiter.tryGetRightRacer
     else
@@ -221,7 +220,7 @@ private[turbolift] final class FiberImpl private (
     }
 
 
-  private[concurrent] override def deepCancelUp(): ChildLink =
+  private[engine] override def deepCancelUp(): ChildLink =
     theParentOrExtra match
       case fiber: FiberImpl => fiber
       case extra: Extra => extra.warp
