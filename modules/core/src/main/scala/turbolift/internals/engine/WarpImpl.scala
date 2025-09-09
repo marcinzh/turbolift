@@ -138,7 +138,7 @@ private[turbolift] final class WarpImpl private[engine] (
             willFinalize = true
             Bits.WaiteeAlreadyCompleted
           else
-            if !isCancelled then
+            if !isCancellationSignalled then
               varyingBits = (varyingBits | Bits.Warp_Shutdown | Bits.Warp_Cancelled).toByte
               willDescend = true
             subscribeWaiterUnsync(canceller)
@@ -171,7 +171,7 @@ private[turbolift] final class WarpImpl private[engine] (
           varyingBits = (varyingBits | Bits.Warp_Completed).toByte
           willFinalize = true
         else
-          if !isCancelled then
+          if !isCancellationSignalled then
             varyingBits = (varyingBits | Bits.Warp_Shutdown | Bits.Warp_Cancelled).toByte
             willDescend = true
     }

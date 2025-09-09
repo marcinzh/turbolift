@@ -153,7 +153,7 @@ private[turbolift] final class FiberImpl private (
     val result =
       atomicallyBoth(canceller, isCancellerCancellable) {
         if isPending then
-          if !isCancelled then
+          if !isCancellationSignalled then
             varyingBits = (varyingBits | Bits.Cancellation_Signal).toByte
             willDescend = true
             savedLeftRacer = prevWaiter
@@ -254,16 +254,18 @@ private[turbolift] final class FiberImpl private (
 
   
   //// Called by the ARBITER on itself
-  private[engine] def tryStartRace(leftRacer: FiberImpl, rightRacer: FiberImpl, isCancellable: Boolean): Boolean =
-    tryStartRaceExt(leftRacer, rightRacer, isCancellable, Bits.Racer_Both)
-
-  private[engine] def tryStartRaceOfOne(leftRacer: FiberImpl, isCancellable: Boolean): Boolean =
-    tryStartRaceExt(leftRacer, null, isCancellable, Bits.Racer_Left)
-
-  private def tryStartRaceExt(leftRacer: FiberImpl, rightRacer: FiberImpl | Null, isCancellable: Boolean, awaitingBits: Int): Boolean =
+  private[engine] def tryStartRaceOfTwo(leftRacer: FiberImpl, rightRacer: FiberImpl, isCancellable: Boolean): Boolean =
     atomicallyTry(isCancellable) {
-      varyingBits = (varyingBits | awaitingBits).toByte
+      varyingBits = (varyingBits | Bits.Racer_Both).toByte
       setRacers(leftRacer, rightRacer)
+    }
+
+
+  //// Called by the ARBITER on itself
+  private[engine] def tryStartRaceOfOne(leftRacer: FiberImpl, isCancellable: Boolean): Boolean =
+    atomicallyTry(isCancellable) {
+      varyingBits = (varyingBits | Bits.Racer_Left).toByte
+      setRacers(leftRacer, null)
     }
 
 

@@ -667,7 +667,7 @@ private sealed abstract class Engine0 extends Runnable:
     if stack.accumFeatures.isParallel && currentEnv.isParallelismRequested then
       val fiberLeft = currentFiber.createChild(Bits.ZipPar_Left)
       val fiberRight = currentFiber.createChild(Bits.ZipPar_Right)
-      if currentFiber.tryStartRace(fiberLeft, fiberRight, currentEnv.isCancellable) then
+      if currentFiber.tryStartRaceOfTwo(fiberLeft, fiberRight, currentEnv.isCancellable) then
         val stack2 = stack.lazyFork
         val (storeDown, storeLeft, storeRight) = OpCascaded.fork2(stack, store, stack2)
         currentFiber.suspendForRace(fun, step, stack, storeDown)
@@ -692,7 +692,7 @@ private sealed abstract class Engine0 extends Runnable:
     if stack.accumFeatures.isParallel && currentEnv.isParallelismRequested then
       val fiberLeft = currentFiber.createChild(Bits.OrPar_Left)
       val fiberRight = currentFiber.createChild(Bits.OrPar_Right)
-      if currentFiber.tryStartRace(fiberLeft, fiberRight, currentEnv.isCancellable) then
+      if currentFiber.tryStartRaceOfTwo(fiberLeft, fiberRight, currentEnv.isCancellable) then
         val stack2 = stack.lazyFork
         val (storeDown, storeLeft, storeRight) = OpCascaded.fork2(stack, store, stack2)
         currentFiber.suspendForRace(null, step, stack, storeDown)

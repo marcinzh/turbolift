@@ -16,7 +16,7 @@ private[engine] abstract class Waitee extends AtomicBoolVH(false):
 
 
   private[engine] final def isPending: Boolean = Bits.isPending(varyingBits)
-  private[engine] final def isCancelled: Boolean = Bits.isCancellationSignalled(varyingBits)
+  private[engine] final def isCancellationSignalled: Boolean = Bits.isCancellationSignalled(varyingBits)
   private[engine] final def isPendingAndNotCancelled: Boolean = Bits.isPendingAndNotCancelled(varyingBits)
   private[engine] final def isCancellationUnlatched: Boolean = Bits.isCancellationUnlatched(varyingBits)
 
