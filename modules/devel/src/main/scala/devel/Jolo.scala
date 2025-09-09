@@ -8,7 +8,6 @@ object Jolo:
     println(VM.current.nn.details)
     """
       turbolift.internals.engine.FiberImpl
-      turbolift.internals.engine.FiberImpl$Extra
       turbolift.internals.engine.WarpImpl
       turbolift.internals.engine.concurrent.OnceVarImpl
       turbolift.internals.engine.concurrent.EffectfulVarImpl

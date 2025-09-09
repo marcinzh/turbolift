@@ -665,8 +665,8 @@ private sealed abstract class Engine0 extends Runnable:
     //-------------------
     //@#@TODO Too conservative? Should check for `features.isParallel` at `mark`, instead of at stack top
     if stack.accumFeatures.isParallel && currentEnv.isParallelismRequested then
-      val fiberLeft = currentFiber.createChild(Bits.ZipPar_Left)
-      val fiberRight = currentFiber.createChild(Bits.ZipPar_Right)
+      val fiberLeft = currentFiber.createImplicit(Bits.ZipPar_Left)
+      val fiberRight = currentFiber.createImplicit(Bits.ZipPar_Right)
       if currentFiber.tryStartRaceOfTwo(fiberLeft, fiberRight, currentEnv.isCancellable) then
         val stack2 = stack.lazyFork
         val (storeDown, storeLeft, storeRight) = OpCascaded.fork2(stack, store, stack2)
@@ -690,8 +690,8 @@ private sealed abstract class Engine0 extends Runnable:
     val store = savedStore
     //-------------------
     if stack.accumFeatures.isParallel && currentEnv.isParallelismRequested then
-      val fiberLeft = currentFiber.createChild(Bits.OrPar_Left)
-      val fiberRight = currentFiber.createChild(Bits.OrPar_Right)
+      val fiberLeft = currentFiber.createImplicit(Bits.OrPar_Left)
+      val fiberRight = currentFiber.createImplicit(Bits.OrPar_Right)
       if currentFiber.tryStartRaceOfTwo(fiberLeft, fiberRight, currentEnv.isCancellable) then
         val stack2 = stack.lazyFork
         val (storeDown, storeLeft, storeRight) = OpCascaded.fork2(stack, store, stack2)
@@ -714,7 +714,7 @@ private sealed abstract class Engine0 extends Runnable:
     val stack = savedStack
     val store = savedStore
     //-------------------
-    val fiberLeft = currentFiber.createChild(Bits.OrSeq)
+    val fiberLeft = currentFiber.createImplicit(Bits.OrSeq)
     if currentFiber.tryStartRaceOfOne(fiberLeft, currentEnv.isCancellable) then
       val stack2 = stack.lazyFork
       val (storeDown, storeFork) = OpCascaded.fork1(stack, store, stack2)
