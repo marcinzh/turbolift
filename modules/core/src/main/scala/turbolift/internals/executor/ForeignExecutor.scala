@@ -3,17 +3,12 @@ import java.util.concurrent.{Executors, Executor => JExecutor, ArrayBlockingQueu
 import scala.concurrent.ExecutionContext
 import turbolift.Computation
 import turbolift.data.Outcome
-import turbolift.internals.engine.{Engine, FiberImpl, Halt}
+import turbolift.internals.engine.FiberImpl
 
 
 private[turbolift] final class ForeignExecutor(val underlying: ExecutionContext) extends Executor:
   private[turbolift] override def resume(fiber: FiberImpl): Unit =
-    underlying.execute:
-      new Engine(fiber):
-        override def run(): Unit =
-          runCurrent() match
-            case Halt.Yield => resume(getCurrentFiber)
-            case _ => ()
+    underlying.execute(fiber)
 
 
   override def runSync[A](comp: Computation[A, ?], name: String): Outcome[A] =

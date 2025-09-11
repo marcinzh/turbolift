@@ -15,13 +15,18 @@ private[turbolift] final class FiberImpl private (
   private[engine] var theName: String,
   private[engine] val theJoinStack: Stack | Null,
   private[engine] val theCallback: (Any => Unit) | Null,
-) extends ChildLink with Fiber.Unsealed with Function1[Either[Throwable, Any], Unit]:
+  private[engine] var theCurrentEnv: Env,
+) extends ChildLink with Fiber.Unsealed with Engine with Function1[Either[Throwable, Any], Unit]:
   private[engine] var theWaiteeOrBlocker: Waitee | Blocker | Null = null
   private[engine] var suspendedTag: Byte = 0
   private[engine] var suspendedPayload: Any = null
   private[engine] var suspendedStep: Step | Null = null
   private[engine] var suspendedStack: Stack | Null = null
   private[engine] var suspendedStore: Store | Null = null
+
+  private[engine] var theCurrentTickLow: Int = 0
+  private[engine] var theCurrentTickHigh: Int = 0
+  private[engine] var theFiberToBecome: FiberImpl | Null = null
 
 
   //-------------------------------------------------------------------
@@ -416,8 +421,7 @@ private[turbolift] final class FiberImpl private (
 
   def resume(): Unit =
     assert(isSuspended)
-    val env = OpPush.findTopmostEnv(suspendedStack.nn, suspendedStore.nn)
-    env.executor.resume(this)
+    theCurrentEnv.executor.resume(this)
 
 
   private[engine] def standbyWaiterPure(value: Any): Unit =
@@ -483,7 +487,8 @@ private[turbolift] final class FiberImpl private (
     stack: Stack,
     store: Store,
   ): Unit =
-    assert(!isSuspended)
+    //@#@OLD
+    // assert(!isSuspended)
     suspendedTag     = tag.toByte
     suspendedPayload = payload
     suspendedStep    = step
@@ -649,6 +654,7 @@ private[turbolift] final class FiberImpl private (
       theName = "",
       theJoinStack = null,
       theCallback = null,
+      theCurrentEnv = theCurrentEnv.fork,
     )
 
 
@@ -662,24 +668,26 @@ private[turbolift] object FiberImpl:
   def createRoot(comp: Computation[?, ?], executor: Executor, name: String, isReentry: Boolean, callback: Callback): FiberImpl =
     val reentryBit = if isReentry then Bits.Const_Reentry else 0
     val constantBits = (Bits.Tree_Root | reentryBit).toByte
+    val env = Env.initial(executor)
     val fiber = new FiberImpl(
       constantBits = constantBits,
       theParent = WarpImpl.root,
       theName = name,
       theJoinStack = Stack.initial, //// can't be null, as long as callback takes Zipper
       theCallback = callback.asInstanceOf[(Any => Unit) | Null],
+      theCurrentEnv = env,
     )
     WarpImpl.root.tryAddFiber(fiber)
-    val env = Env.initial(executor)
     fiber.suspendInitial(comp.untyped, env)
     fiber
 
 
-  def createExplicit(joinStack: Stack, parentWarp: WarpImpl, name: String, callback: (ZipperImpl => Unit) | Null): FiberImpl =
+  def createExplicit(joinStack: Stack, parentWarp: WarpImpl, env: Env, name: String, callback: (ZipperImpl => Unit) | Null): FiberImpl =
     new FiberImpl(
       constantBits = Bits.Tree_Explicit.toByte,
       theParent = parentWarp,
       theName = name,
       theJoinStack = joinStack,
       theCallback = callback.asInstanceOf[(Any => Unit) | Null],
+      theCurrentEnv = env,
     )

@@ -31,6 +31,23 @@ private[turbolift] final class Env(
     isCancellable = isCancellable,
   )
 
+  //@#@TODO temporary solution, until new layout of FiberImpl
+  def fork: Env =
+    val ok = (
+      isCancellable &&
+      (currentWarp == null) &&
+      shadowMap.isEmpty
+    )
+    if ok then
+      this
+    else
+      copy(
+        isCancellable = true,
+        currentWarp = null,
+        shadowMap = ShadowMap.empty,
+      )
+
+
   def par(x: Boolean): Env =
     if isParallelismRequested == x then
       this

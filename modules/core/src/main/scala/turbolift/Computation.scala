@@ -4,8 +4,8 @@ import scala.concurrent.duration.FiniteDuration
 import turbolift.effects.{ChoiceSignature, Alternative, IO, UnsafeIO, Each, Finalizer, FinalizerIO, Error}
 import turbolift.internals.auxx.CanPartiallyHandle
 import turbolift.internals.executor.Executor
+import turbolift.internals.engine.{Tag, Env, FiberImpl, Halt}
 import turbolift.interpreter.Prompt
-import turbolift.internals.engine.{Tag, Env, Engine}
 import turbolift.data.Outcome
 import turbolift.io.{Fiber, Warp}
 import turbolift.mode.Mode
@@ -469,7 +469,7 @@ object ComputationCases:
   sealed abstract class PureMap[A, B, U](val comp: A !! U) extends Computation[B, U](Tag.PureMap) with Function1[A, B]
   sealed abstract class Impure[A]() extends Computation[A, Any](Tag.Impure) with Function0[A]
   sealed abstract class Sync[A, B](val isAttempt: Boolean) extends Computation[B, IO](Tag.Sync) with Function0[A]
-  sealed abstract class Intrinsic[A, U] extends Computation[A, U](Tag.Intrinsic) with Function[Engine, Tag]
+  sealed abstract class Intrinsic[A, U] extends Computation[A, U](Tag.Intrinsic) with Function[FiberImpl, Halt]
   sealed abstract class Perform[A, U, Z <: Signature](val sig: Signature) extends Computation[A, U](Tag.Perform) with Function1[Z, A !! U]
   sealed abstract class LocalGetsEff[A, U, S](val prompt: Prompt) extends Computation[A, U](Tag.LocalGetsEff) with Function1[S, A !! U]
   sealed abstract class LocalModify[S](val prompt: Prompt) extends Computation[Unit, Any](Tag.LocalModify) with Function1[S, S]
@@ -483,9 +483,9 @@ object ComputationCases:
       override def apply(): A = thunk
 
   @nowarn("msg=anonymous class definition")
-  private[turbolift] inline def intrinsic[A, U](f: Engine => Tag): A !! U =
+  private[turbolift] inline def intrinsic[A, U](f: FiberImpl => Halt): A !! U =
     new CC.Intrinsic[A, U]:
-      override def apply(engine: Engine): Tag = f(engine)
+      override def apply(fiber: FiberImpl): Halt = f(fiber)
 
   @nowarn("msg=anonymous class definition")
   private[turbolift] inline def perform[A, U, Z <: Signature](sig: Signature, inline f: Z => A !! U): A !! U =

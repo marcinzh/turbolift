@@ -4,7 +4,7 @@ import java.util.concurrent.ArrayBlockingQueue
 import scala.annotation.tailrec
 import turbolift.Computation
 import turbolift.data.Outcome
-import turbolift.internals.engine.{Engine, FiberImpl, WaiterLink, Halt}
+import turbolift.internals.engine.{FiberImpl, WaiterLink}
 
 
 
@@ -47,40 +47,33 @@ private[turbolift] final class ReentrantExecutor(maxBusyThreads: Int) extends Wa
     Pool.instance.execute(new Run(initial))
 
 
-  private final class Run(initial: FiberImpl) extends Engine(initial):
+  @annotation.nowarn("msg=already not null") // for cross compiling LTS & Next
+  //// LTS compiler doesn't infer non-null of `currentFiber`. Weird, same code in ZeroThreadExecutor compiles
+  private final class Run(initialFiber: FiberImpl) extends Runnable:
     override def run(): Unit =
+      var currentFiber: FiberImpl | Null = initialFiber
       ReentrantExecutor.currentVar.set(enclosing)
-      var keepGoing = true
-      while keepGoing do
-        runCurrent() match
-          case Halt.Yield =>
-            val last = getCurrentFiber
-            val next =
+      while currentFiber != null do
+        currentFiber =
+          currentFiber.nn.runUntilYields() match
+            case yielder: FiberImpl => 
               enclosing.atomically {
                 if !isEmpty then
-                  enqueue(last)
+                  enqueue(yielder)
                   dequeue()
                 else
                   null
-              }
-            if next != null then
-              become(next)
+                }
 
-          case _ =>
-            val next =
+            case wasReentry: Boolean =>
               enclosing.atomically {
                 if isEmpty then
-                  if !getCurrentFiber.isReentry then
+                  if !wasReentry then
                     idleCounter = idleCounter + 1
                   null
                 else
                   dequeue()
               }
-            if next != null then
-              become(next)
-            else
-              becomeClear()
-              keepGoing = false
 
 
 private[turbolift] object ReentrantExecutor:
