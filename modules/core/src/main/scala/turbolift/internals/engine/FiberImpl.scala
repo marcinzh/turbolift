@@ -9,24 +9,35 @@ import turbolift.internals.engine.stacked.{Stack, Store, OpCascaded, OpPush}
 import Cause.{Cancelled => CancelPayload}
 
 
+private[turbolift] sealed abstract class FiberImplPart1 extends ChildLink with Fiber.Unsealed with Function1[Either[Throwable, Any], Unit]:
+  private[engine] var theWaiteeOrBlocker: Waitee | Blocker | Null = null
+  private[engine] val pad1_S1: Short = 0
+  private[engine] val pad1_L1: Long = 0
+  private[engine] val pad1_L2: Long = 0
+  private[engine] val pad1_L3: Long = 0
+
+
+private[turbolift] sealed abstract class FiberImplPart2 extends FiberImplPart1:
+  private[engine] var suspendedTag: Byte = 0
+  private[engine] var suspendedPayload: Any = null
+  private[engine] var suspendedStep: Step | Null = null
+  private[engine] var suspendedStack: Stack | Null = null
+  private[engine] var suspendedStore: Store | Null = null
+  private[engine] var theCurrentTickLow: Int = 0
+  private[engine] var theCurrentEnv: Env = null.asInstanceOf[Env]
+
+
 private[turbolift] final class FiberImpl private (
   private[engine] val constantBits: Byte,
   private[engine] var theParent: FiberImpl | WarpImpl,
   private[engine] var theName: String,
   private[engine] val theJoinStack: Stack | Null,
   private[engine] val theCallback: (Any => Unit) | Null,
-  private[engine] var theCurrentEnv: Env,
-) extends ChildLink with Fiber.Unsealed with Engine with Function1[Either[Throwable, Any], Unit]:
-  private[engine] var theWaiteeOrBlocker: Waitee | Blocker | Null = null
-  private[engine] var suspendedTag: Byte = 0
-  private[engine] var suspendedPayload: Any = null
-  private[engine] var suspendedStep: Step | Null = null
-  private[engine] var suspendedStack: Stack | Null = null
-  private[engine] var suspendedStore: Store | Null = null
-
-  private[engine] var theCurrentTickLow: Int = 0
+) extends FiberImplPart2 with Engine:
   private[engine] var theCurrentTickHigh: Int = 0
   private[engine] var theFiberToBecome: FiberImpl | Null = null
+  private[engine] val pad3_I1: Int = 0
+  private[engine] val pad3_L1: Long = 0
 
 
   //-------------------------------------------------------------------
@@ -648,14 +659,15 @@ private[turbolift] final class FiberImpl private (
     nextWaiter = right
 
   def createImplicit(bits: Byte): FiberImpl =
-    new FiberImpl(
+    val that = new FiberImpl(
       constantBits = bits,
       theParent = this,
       theName = "",
       theJoinStack = null,
       theCallback = null,
-      theCurrentEnv = theCurrentEnv.fork,
     )
+    that.theCurrentEnv = theCurrentEnv.fork
+    that
 
 
   private[engine] def payloadAs[T]: T = suspendedPayload.asInstanceOf[T]
@@ -675,19 +687,20 @@ private[turbolift] object FiberImpl:
       theName = name,
       theJoinStack = Stack.initial, //// can't be null, as long as callback takes Zipper
       theCallback = callback.asInstanceOf[(Any => Unit) | Null],
-      theCurrentEnv = env,
     )
-    WarpImpl.root.tryAddFiber(fiber)
+    fiber.theCurrentEnv = env
     fiber.suspendInitial(comp.untyped, env)
+    WarpImpl.root.tryAddFiber(fiber)
     fiber
 
 
   def createExplicit(joinStack: Stack, parentWarp: WarpImpl, env: Env, name: String, callback: (ZipperImpl => Unit) | Null): FiberImpl =
-    new FiberImpl(
+    val fiber = new FiberImpl(
       constantBits = Bits.Tree_Explicit.toByte,
       theParent = parentWarp,
       theName = name,
       theJoinStack = joinStack,
       theCallback = callback.asInstanceOf[(Any => Unit) | Null],
-      theCurrentEnv = env,
     )
+    fiber.theCurrentEnv = env
+    fiber
