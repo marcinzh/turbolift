@@ -428,11 +428,6 @@ private trait Engine extends Runnable:
         this.suspendedPayload = fiber.getOrMakeZipper
         this.suspendedTag = suspendedStep.nn.tag.toByte
 
-      case Tag.NotifyUnit =>
-        //@#@TODO with new layout, no needed for this hack anymore
-        this.suspendedPayload = ()
-        this.suspendedTag = suspendedStep.nn.tag.toByte
-
       case Tag.NotifyEither =>
         suspendedPayload.asInstanceOf[Either[Throwable, Any]] match
           case Right(a) =>
@@ -821,8 +816,10 @@ private trait Engine extends Runnable:
     //-------------------
     val waitee = fiber.asImpl
     if waitee != this then
-      val notifyTag = if isVoid then Tag.NotifyUnit else Tag.NotifyZipper
-      this.suspend(notifyTag, waitee, step, stack, store)
+      if isVoid then
+        this.suspendStep((), step, stack, store)
+      else
+        this.suspend(Tag.NotifyZipper, waitee, step, stack, store)
       val tried =
         if isCancel
         then waitee.tryGetCancelledBy(this, theCurrentEnv.isCancellable)
@@ -1082,7 +1079,8 @@ private trait Engine extends Runnable:
     val stack = suspendedStack.nn
     val store = suspendedStore.nn
     //-------------------
-    this.suspend(Tag.NotifyUnit, count, step, stack, store)
+    this.suspendStep((), step, stack, store)
+    this.theWaiterStateLong = count
     semaphore.asImpl.tryGetAcquiredBy(this, theCurrentEnv.isCancellable, count) match
       case Bits.WaiterSubscribed => ThreadDisowned
       case Bits.WaiterAlreadyCancelled =>
@@ -1115,14 +1113,17 @@ private trait Engine extends Runnable:
     val stack = suspendedStack.nn
     val store = suspendedStore.nn
     //-------------------
-    this.suspend(Tag.NotifyUnit, value, step, stack, store)
+    this.suspendStep((), step, stack, store)
+    this.theWaiterStateAny = value
     channel.asImpl.tryPutBy(this, theCurrentEnv.isCancellable) match
       case Bits.WaiterSubscribed => ThreadDisowned
       case Bits.WaiterAlreadyCancelled =>
         this.clearSuspension()
+        this.theWaiterStateAny = null
         loopCancel(stack, store)
       case Bits.WaiteeAlreadyCompleted =>
         this.clearSuspension()
+        this.theWaiterStateAny = null
         loopStep((), step, stack, store)
 
 

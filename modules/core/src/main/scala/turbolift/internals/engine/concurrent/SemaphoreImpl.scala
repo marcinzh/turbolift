@@ -44,7 +44,7 @@ private[turbolift] final class SemaphoreImpl(private var permits: Long) extends 
         permits += count
         val x = firstWaiter
         if x != null then
-          val n = permits - x.payloadAs[Long]
+          val n = permits - x.theWaiterStateLong
           if n >= 0 then
             permits = n
             savedWaiter = x

@@ -7,18 +7,18 @@ import turbolift.internals.engine.Bits
 
 private[turbolift] final class CyclicBarrierImpl(private val capacity: Int) extends Waitee with CyclicBarrier.Unsealed:
   private var counter = capacity
-  private var clock = 0
+  private var clock = 0L
 
 
   def tryGetAwaitedBy(waiter: FiberImpl, isWaiterCancellable: Boolean): Int =
-    var staleClock = 0
+    var staleClock = 0L
 
     val result =
       atomicallyBoth(waiter, isWaiterCancellable) {
         val n = counter - 1
         if n > 0 then
           counter = n
-          waiter.payloadAs_=[Int](clock)
+          waiter.theWaiterStateLong = clock
           subscribeWaiterUnsync(waiter)
           Bits.WaiterSubscribed
         else
@@ -33,13 +33,13 @@ private[turbolift] final class CyclicBarrierImpl(private val capacity: Int) exte
     result
 
 
-  @tailrec private def release(staleClock: Int): Unit =
+  @tailrec private def release(staleClock: Long): Unit =
     var savedWaiter: FiberImpl | Null = null
   
     val keepGoing =
       atomically {
         val x = firstWaiter
-        if x != null && x.payloadAs[Int] == staleClock then
+        if x != null && x.theWaiterStateLong == staleClock then
           savedWaiter = x
           removeFirstWaiter()
           x.standbyWaiterPure(())

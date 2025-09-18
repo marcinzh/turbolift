@@ -11,10 +11,11 @@ import Cause.{Cancelled => CancelPayload}
 
 private[turbolift] sealed abstract class FiberImplPart1 extends ChildLink with Fiber.Unsealed with Function1[Either[Throwable, Any], Unit]:
   private[engine] var theWaiteeOrBlocker: Waitee | Blocker | Null = null
+  private[engine] var theWaiterStateAny: Any = null
+  private[engine] var theWaiterStateLong: Long = 0
   private[engine] val pad1_S1: Short = 0
-  private[engine] val pad1_L1: Long = 0
+  private[engine] val pad1_I1: Int = 0
   private[engine] val pad1_L2: Long = 0
-  private[engine] val pad1_L3: Long = 0
 
 
 private[turbolift] sealed abstract class FiberImplPart2 extends FiberImplPart1:
@@ -572,6 +573,23 @@ private[turbolift] final class FiberImpl private (
 
 
   //-------------------------------------------------------------------
+  // Waiter State
+  //-------------------------------------------------------------------
+
+
+  private[engine] inline def takeWaiterState(): Any =
+    val x = theWaiterStateAny
+    theWaiterStateAny = null
+    x
+
+
+  private[engine] inline def takeWaiterStateAs[T](): T =
+    val x = theWaiterStateAny.asInstanceOf[T]
+    theWaiterStateAny = null
+    x
+
+
+  //-------------------------------------------------------------------
   // Public API
   //-------------------------------------------------------------------
 
@@ -668,10 +686,6 @@ private[turbolift] final class FiberImpl private (
     )
     that.theCurrentEnv = theCurrentEnv.fork
     that
-
-
-  private[engine] def payloadAs[T]: T = suspendedPayload.asInstanceOf[T]
-  private[engine] def payloadAs_=[T](value: T): Unit = suspendedPayload = value
 
 
 private[turbolift] object FiberImpl:
