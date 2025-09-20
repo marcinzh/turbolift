@@ -42,7 +42,7 @@ private[turbolift] final class CyclicBarrierImpl(private val capacity: Int) exte
         if x != null && x.theWaiterStateLong == staleClock then
           savedWaiter = x
           removeFirstWaiter()
-          x.standbyWaiterPure(())
+          x.standbyWaiter()
           true
         else
           false

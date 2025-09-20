@@ -435,13 +435,19 @@ private[turbolift] final class FiberImpl private (
     assert(isSuspended)
     theCurrentEnv.executor.resume(this)
 
+  //// Called only from `atomically` block.
+  private[engine] inline def standbyWaiter(): Unit =
+    theWaiteeOrBlocker = null
 
-  private[engine] def standbyWaiterPure(value: Any): Unit =
+
+  //// Called only from `atomically` block.
+  private[engine] inline def standbyWaiterPure(value: Any): Unit =
     theWaiteeOrBlocker = null
     suspendedPayload = value
 
 
-  private[engine] def standbyWaiterComp(comp: AnyComp): Unit =
+  //// Called only from `atomically` block.
+  private[engine] inline def standbyWaiterComp(comp: AnyComp): Unit =
     theWaiteeOrBlocker = null
     suspendedPayload = comp
     suspendedTag = comp.tag.toByte

@@ -58,7 +58,7 @@ private[turbolift] final class ReentrantLockImpl extends Waitee with ReentrantLo
             lockedBy = x
             savedWaiter = x
             removeFirstWaiter()
-            x.standbyWaiterPure(())
+            x.standbyWaiter()
     }
 
     if savedWaiter != null then
