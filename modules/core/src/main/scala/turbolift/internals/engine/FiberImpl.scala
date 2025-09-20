@@ -134,8 +134,20 @@ private[turbolift] final class FiberImpl private (
   //-------------------------------------------------------------------
 
 
-  private[engine] def tryGetBlocked(blocker: Blocker, isCancellable: Boolean): Boolean =
-    atomicallyTry(isCancellable) {
+  inline def atomicallyTry[A](inline body: => Unit): Boolean =
+    val isCancellable = theCurrentEnv.isCancellable
+    atomically {
+      if isCancellable && isCancellationUnlatched then
+        setCancellationLatch()
+        false
+      else
+        body
+        true
+    }
+
+
+  private[engine] def tryGetBlocked(blocker: Blocker): Boolean =
+    atomicallyTry {
       theWaiteeOrBlocker = blocker
     }
 
@@ -155,9 +167,15 @@ private[turbolift] final class FiberImpl private (
   //-------------------------------------------------------------------
 
 
-  private[engine] def cancellationCheck(isCancellable: Boolean): Boolean =
-    if isCancellable then
-      !atomicallyTry(true) {}
+  private[engine] def cancellationCheck(): Boolean =
+    if theCurrentEnv.isCancellable then
+      atomically {
+        if isCancellationUnlatched then
+          setCancellationLatch()
+          true
+        else
+          false
+      }
     else
       false
 
@@ -281,7 +299,7 @@ private[turbolift] final class FiberImpl private (
   
   //// Called by the ARBITER on itself
   private[engine] def tryStartRaceOfTwo(leftRacer: FiberImpl, rightRacer: FiberImpl): Boolean =
-    atomicallyTry(theCurrentEnv.isCancellable) {
+    atomicallyTry {
       varyingBits = (varyingBits | Bits.Racer_Both).toByte
       setRacers(leftRacer, rightRacer)
     }
@@ -289,7 +307,7 @@ private[turbolift] final class FiberImpl private (
 
   //// Called by the ARBITER on itself
   private[engine] def tryStartRaceOfOne(leftRacer: FiberImpl): Boolean =
-    atomicallyTry(theCurrentEnv.isCancellable) {
+    atomicallyTry {
       varyingBits = (varyingBits | Bits.Racer_Left).toByte
       setRacers(leftRacer, null)
     }

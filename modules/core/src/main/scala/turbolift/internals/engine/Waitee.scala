@@ -45,17 +45,6 @@ private[engine] abstract class Waitee extends AtomicBoolVH(false):
     a
 
 
-  inline final def atomicallyTry[A](isCancellable: Boolean)(inline body: => Unit): Boolean =
-    atomically {
-      if isCancellable && isCancellationUnlatched then
-        setCancellationLatch()
-        false
-      else
-        body
-        true
-    }
-
-
   //// Assumes it's called (indirectly) from the `fiber` itself.
   inline final def atomicallyBoth(fiber: FiberImpl)(inline body: => Int): Int =
     if spinAcquireBoth(fiber) then

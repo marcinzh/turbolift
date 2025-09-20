@@ -31,7 +31,7 @@ private trait Engine extends Runnable:
     this.theCurrentTickLow = theCurrentEnv.tickLow
     this.theCurrentTickHigh = theCurrentEnv.tickHigh
     this.theWaiteeOrBlocker = null //// for those resumed by `finallyResumeAllWaiters`
-    if cancellationCheck() then
+    if this.cancellationCheck() then
       this.suspendAsCancelled()
     outerLoop()
 
@@ -103,7 +103,7 @@ private trait Engine extends Runnable:
       if theCurrentTickHigh > 0 then
         theCurrentTickHigh -= 1
         theCurrentTickLow = theCurrentEnv.tickLow
-        if cancellationCheck() then
+        if this.cancellationCheck() then
           this.suspendAsCancelled()
         middleLoop()
       else
@@ -486,7 +486,7 @@ private trait Engine extends Runnable:
 
           case FrameKind.SUPPRESS =>
             refreshEnv(stack2, store2)
-            if cancellationCheck() then
+            if this.cancellationCheck() then
               loopCancel(stack2, store2)
             else
               loopStep(payload, fallthrough, stack2, store2)
@@ -841,7 +841,7 @@ private trait Engine extends Runnable:
       else
         val zombie = new Blocker.Zombie(this)
         this.suspendStep(null, step, stack, store)
-        if this.tryGetBlocked(zombie, theCurrentEnv.isCancellable) then
+        if this.tryGetBlocked(zombie) then
           ThreadDisowned
         else
           this.clearSuspension()
@@ -904,7 +904,7 @@ private trait Engine extends Runnable:
     //-------------------
     val blocker = new Blocker.Interruptible(this, thunk, isAttempt)
     this.suspendStep(null, step, stack, store)
-    if this.tryGetBlocked(blocker, theCurrentEnv.isCancellable) then
+    if this.tryGetBlocked(blocker) then
       blocker.block()
       ThreadDisowned
     else
@@ -919,7 +919,7 @@ private trait Engine extends Runnable:
     //-------------------
     val blocker = new Blocker.Sleeper(this)
     this.suspendStep((), step, stack, store)
-    if this.tryGetBlocked(blocker, theCurrentEnv.isCancellable) then
+    if this.tryGetBlocked(blocker) then
       blocker.sleep(length, unit)
       ThreadDisowned
     else
@@ -1134,10 +1134,6 @@ private trait Engine extends Runnable:
 
   private final def refreshEnv(stack: Stack, store: Store): Unit =
     this.theCurrentEnv = OpPush.findTopmostEnv(stack, store)
-
-
-  private final def cancellationCheck(): Boolean =
-    cancellationCheck(theCurrentEnv.isCancellable)
 
 
   private final def findEntryBySignature(sig: Signature, stack: Stack, hasShadow: Boolean): Entry =
