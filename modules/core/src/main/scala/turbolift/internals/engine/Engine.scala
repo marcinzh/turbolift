@@ -671,7 +671,7 @@ private trait Engine extends Runnable:
     if stack.accumFeatures.isParallel && theCurrentEnv.isParallelismRequested then
       val fiberLeft = this.createImplicit(Bits.ZipPar_Left)
       val fiberRight = this.createImplicit(Bits.ZipPar_Right)
-      if this.tryStartRaceOfTwo(fiberLeft, fiberRight, theCurrentEnv.isCancellable) then
+      if this.tryStartRaceOfTwo(fiberLeft, fiberRight) then
         val stack2 = stack.lazyFork
         val (storeDown, storeLeft, storeRight) = OpCascaded.fork2(stack, store, stack2)
         this.suspendForRace(fun, step, stack, storeDown)
@@ -696,7 +696,7 @@ private trait Engine extends Runnable:
     if stack.accumFeatures.isParallel && theCurrentEnv.isParallelismRequested then
       val fiberLeft = this.createImplicit(Bits.OrPar_Left)
       val fiberRight = this.createImplicit(Bits.OrPar_Right)
-      if this.tryStartRaceOfTwo(fiberLeft, fiberRight, theCurrentEnv.isCancellable) then
+      if this.tryStartRaceOfTwo(fiberLeft, fiberRight) then
         val stack2 = stack.lazyFork
         val (storeDown, storeLeft, storeRight) = OpCascaded.fork2(stack, store, stack2)
         this.suspendForRace(null, step, stack, storeDown)
@@ -719,7 +719,7 @@ private trait Engine extends Runnable:
     val store = suspendedStore.nn
     //-------------------
     val fiberLeft = this.createImplicit(Bits.OrSeq)
-    if this.tryStartRaceOfOne(fiberLeft, theCurrentEnv.isCancellable) then
+    if this.tryStartRaceOfOne(fiberLeft) then
       val stack2 = stack.lazyFork
       val (storeDown, storeFork) = OpCascaded.fork1(stack, store, stack2)
       this.suspendForRace(rhsFun, step, stack, storeDown)

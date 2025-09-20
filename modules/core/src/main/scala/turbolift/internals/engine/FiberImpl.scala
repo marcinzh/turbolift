@@ -280,16 +280,16 @@ private[turbolift] final class FiberImpl private (
 
   
   //// Called by the ARBITER on itself
-  private[engine] def tryStartRaceOfTwo(leftRacer: FiberImpl, rightRacer: FiberImpl, isCancellable: Boolean): Boolean =
-    atomicallyTry(isCancellable) {
+  private[engine] def tryStartRaceOfTwo(leftRacer: FiberImpl, rightRacer: FiberImpl): Boolean =
+    atomicallyTry(theCurrentEnv.isCancellable) {
       varyingBits = (varyingBits | Bits.Racer_Both).toByte
       setRacers(leftRacer, rightRacer)
     }
 
 
   //// Called by the ARBITER on itself
-  private[engine] def tryStartRaceOfOne(leftRacer: FiberImpl, isCancellable: Boolean): Boolean =
-    atomicallyTry(isCancellable) {
+  private[engine] def tryStartRaceOfOne(leftRacer: FiberImpl): Boolean =
+    atomicallyTry(theCurrentEnv.isCancellable) {
       varyingBits = (varyingBits | Bits.Racer_Left).toByte
       setRacers(leftRacer, null)
     }
