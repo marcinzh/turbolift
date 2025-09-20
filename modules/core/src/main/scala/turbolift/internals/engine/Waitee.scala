@@ -3,7 +3,7 @@ import scala.annotation.tailrec
 import turbolift.internals.engine.concurrent.atomic.AtomicBoolVH
 
 
-/** Either Fiber, Warp, Queque or OnceVar */
+/** Either Fiber, Warp, Queque or anything from `turbolift.internals.engine.concurrent.*` */
 
 private[engine] abstract class Waitee extends AtomicBoolVH(false):
   protected var firstWaiter: FiberImpl | Null = null
@@ -56,8 +56,9 @@ private[engine] abstract class Waitee extends AtomicBoolVH(false):
     }
 
 
-  inline final def atomicallyBoth(fiber: FiberImpl, isFiberCancellable: Boolean)(inline body: => Int): Int =
-    if spinAcquireBoth(fiber, isFiberCancellable) then
+  //// Assumes it's called (indirectly) from the `fiber` itself.
+  inline final def atomicallyBoth(fiber: FiberImpl)(inline body: => Int): Int =
+    if spinAcquireBoth(fiber) then
       val a = body
       spinReleaseBoth(fiber)
       a
@@ -65,10 +66,18 @@ private[engine] abstract class Waitee extends AtomicBoolVH(false):
       Bits.WaiterAlreadyCancelled
 
 
-  final private def spinAcquireBoth(fiber: FiberImpl, isFiberCancellable: Boolean): Boolean =
+  final private def spinAcquireBoth(fiber: FiberImpl): Boolean =
+    if fiber.theCurrentEnv.isCancellable then
+      spinAcquireBothCancellable(fiber)
+    else
+      spinAcquireBothUncancellable(fiber)
+      true
+
+
+  inline final private def spinAcquireBothCancellable(fiber: FiberImpl): Boolean =
     @tailrec def loop(): Boolean =
       if fiber.spinAcquire() then
-        if isFiberCancellable && fiber.isCancellationUnlatched then
+        if fiber.isCancellationUnlatched then
           fiber.setCancellationLatch()
           fiber.spinRelease()
           false
@@ -78,6 +87,19 @@ private[engine] abstract class Waitee extends AtomicBoolVH(false):
           else
             fiber.spinRelease()
             loop()
+      else
+        loop()
+    loop()
+
+
+  inline final private def spinAcquireBothUncancellable(fiber: FiberImpl): Unit =
+    @tailrec def loop(): Unit =
+      if fiber.spinAcquire() then
+        if spinAcquire() then
+          ()
+        else
+          fiber.spinRelease()
+          loop()
       else
         loop()
     loop()

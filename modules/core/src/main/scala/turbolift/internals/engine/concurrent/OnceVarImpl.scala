@@ -17,8 +17,8 @@ private[turbolift] final class OnceVarImpl extends Waitee with OnceVar.Unsealed 
     if Empty != theContent then x else throw new Exceptions.TieTheKnot
 
 
-  def tryGetAwaitedBy(waiter: FiberImpl, isWaiterCancellable: Boolean): Int =
-    atomicallyBoth(waiter, isWaiterCancellable) {
+  def tryGetAwaitedBy(waiter: FiberImpl): Int =
+    atomicallyBoth(waiter) {
       if isPending then
         subscribeWaiterUnsync(waiter)
         Bits.WaiterSubscribed

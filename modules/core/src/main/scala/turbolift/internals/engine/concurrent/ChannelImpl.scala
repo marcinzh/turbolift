@@ -11,12 +11,12 @@ private[turbolift] final class ChannelImpl(val currCapacity: Int) extends Waitee
   private var kindOfWaiters: Int = 0 //// meaningless when waiter list is empty
 
 
-  def tryGetBy(waiter: FiberImpl, isWaiterCancellable: Boolean): (Int, Any) =
+  def tryGetBy(waiter: FiberImpl): (Int, Any) =
     var savedValue: Any = null
     var savedWaiter: FiberImpl | Null = null
 
     val result =
-      atomicallyBoth(waiter, isWaiterCancellable) {
+      atomicallyBoth(waiter) {
         val x = firstWaiter
         if x == null then
           if currSize == 0 then
@@ -75,11 +75,11 @@ private[turbolift] final class ChannelImpl(val currCapacity: Int) extends Waitee
     if ok then Some(savedValue) else None
 
 
-  def tryPutBy(waiter: FiberImpl, isWaiterCancellable: Boolean): Int =
+  def tryPutBy(waiter: FiberImpl): Int =
     var savedWaiter: FiberImpl | Null = null
 
     val result =
-      atomicallyBoth(waiter, isWaiterCancellable) {
+      atomicallyBoth(waiter) {
         val x = firstWaiter
         if x == null then
           if currSize == currCapacity then

@@ -10,8 +10,8 @@ private[turbolift] final class CountDownLatchImpl(private var counter: Int) exte
       setCompletionToSuccess()
   }
 
-  def tryGetAwaitedBy(waiter: FiberImpl, isWaiterCancellable: Boolean): Int =
-    atomicallyBoth(waiter, isWaiterCancellable) {
+  def tryGetAwaitedBy(waiter: FiberImpl): Int =
+    atomicallyBoth(waiter) {
       if isPending then
         subscribeWaiterUnsync(waiter)
         Bits.WaiterSubscribed

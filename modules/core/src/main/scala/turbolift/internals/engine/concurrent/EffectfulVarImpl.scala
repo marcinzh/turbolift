@@ -16,11 +16,11 @@ private[turbolift] final class EffectfulVarImpl extends Waitee with EffectfulVar
   def getNextShot: AnyComp = theNextShot.nn
 
 
-  def tryGetAwaitedBy(waiter: FiberImpl, isWaiterCancellable: Boolean): (Int, AnyComp | Null) =
+  def tryGetAwaitedBy(waiter: FiberImpl): (Int, AnyComp | Null) =
     var waiterWillRun: AnyComp | Null = null
 
     val waiterCode =
-      atomicallyBoth(waiter, isWaiterCancellable) {
+      atomicallyBoth(waiter) {
         if isPending then
           subscribeWaiterUnsync(waiter)
           Bits.WaiterSubscribed

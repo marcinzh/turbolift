@@ -8,8 +8,8 @@ private[turbolift] final class MutexImpl extends Waitee with Mutex.Unsealed:
   private var locked: Boolean = false
 
 
-  def tryGetAcquiredBy(waiter: FiberImpl, isWaiterCancellable: Boolean): Int =
-    atomicallyBoth(waiter, isWaiterCancellable) {
+  def tryGetAcquiredBy(waiter: FiberImpl): Int =
+    atomicallyBoth(waiter) {
       if locked then
         subscribeWaiterUnsync(waiter)
         Bits.WaiterSubscribed

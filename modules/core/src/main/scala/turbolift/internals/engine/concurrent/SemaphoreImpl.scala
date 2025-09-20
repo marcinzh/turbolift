@@ -6,8 +6,8 @@ import turbolift.internals.engine.Bits
 
 
 private[turbolift] final class SemaphoreImpl(private var permits: Long) extends Waitee with Semaphore.Unsealed:
-  def tryGetAcquiredBy(waiter: FiberImpl, isWaiterCancellable: Boolean, count: Long): Int =
-    atomicallyBoth(waiter, isWaiterCancellable) {
+  def tryGetAcquiredBy(waiter: FiberImpl, count: Long): Int =
+    atomicallyBoth(waiter) {
       if firstWaiter == null then
         val n = permits - count
         if n >= 0 then

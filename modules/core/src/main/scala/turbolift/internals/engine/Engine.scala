@@ -468,8 +468,8 @@ private trait Engine extends Runnable:
             this.suspendStep(payload, fallthrough, stack2, store2)
             val warp = theCurrentEnv.currentWarp.nn
             val tried = warp.exitMode match
-              case Warp.ExitMode.Cancel => warp.tryGetCancelledBy(this, theCurrentEnv.isCancellable)
-              case Warp.ExitMode.Await => warp.tryGetAwaitedBy(this, theCurrentEnv.isCancellable)
+              case Warp.ExitMode.Cancel => warp.tryGetCancelledBy(this)
+              case Warp.ExitMode.Await => warp.tryGetAwaitedBy(this)
               case null => impossible //// this is a scoped warp, so it must have ExitMode
             tried match
               case Bits.WaiterSubscribed => ThreadDisowned
@@ -822,8 +822,8 @@ private trait Engine extends Runnable:
         this.suspend(Tag.NotifyZipper, waitee, step, stack, store)
       val tried =
         if isCancel
-        then waitee.tryGetCancelledBy(this, theCurrentEnv.isCancellable)
-        else waitee.tryGetAwaitedBy(this, theCurrentEnv.isCancellable)
+        then waitee.tryGetCancelledBy(this)
+        else waitee.tryGetAwaitedBy(this)
       tried match
         case Bits.WaiterSubscribed => ThreadDisowned
         case Bits.WaiterAlreadyCancelled =>
@@ -877,8 +877,8 @@ private trait Engine extends Runnable:
     this.suspendStep((), step, stack, store)
     val tried =
       if isCancel
-      then warp.tryGetCancelledBy(this, theCurrentEnv.isCancellable)
-      else warp.tryGetAwaitedBy(this, theCurrentEnv.isCancellable)
+      then warp.tryGetCancelledBy(this)
+      else warp.tryGetAwaitedBy(this)
     tried match
       case Bits.WaiterSubscribed => ThreadDisowned
       case Bits.WaiterAlreadyCancelled =>
@@ -978,7 +978,7 @@ private trait Engine extends Runnable:
       loopStep(value, step, stack, store)
     else
       this.suspend(Tag.NotifyOnceVar, ovar, step, stack, store)
-      ovar.tryGetAwaitedBy(this, theCurrentEnv.isCancellable) match
+      ovar.tryGetAwaitedBy(this) match
         case Bits.WaiterSubscribed => ThreadDisowned
         case Bits.WaiterAlreadyCancelled =>
           this.clearSuspension()
@@ -999,7 +999,7 @@ private trait Engine extends Runnable:
       loopComp(evar.getNextShot, step, stack, store)
     else
       this.suspend(Tag.NotifyEffectfulVar, evar, step, stack, store)
-      val (code, comp2) = evar.tryGetAwaitedBy(this, theCurrentEnv.isCancellable)
+      val (code, comp2) = evar.tryGetAwaitedBy(this)
       code match
         case Bits.WaiterSubscribed => ThreadDisowned
         case Bits.WaiterAlreadyCancelled =>
@@ -1016,7 +1016,7 @@ private trait Engine extends Runnable:
     val store = suspendedStore.nn
     //-------------------
     this.suspendStep((), step, stack, store)
-    latch.asImpl.tryGetAwaitedBy(this, theCurrentEnv.isCancellable) match
+    latch.asImpl.tryGetAwaitedBy(this) match
       case Bits.WaiterSubscribed => ThreadDisowned
       case Bits.WaiterAlreadyCancelled =>
         this.clearSuspension()
@@ -1032,7 +1032,7 @@ private trait Engine extends Runnable:
     val store = suspendedStore.nn
     //-------------------
     this.suspendStep((), step, stack, store)
-    barrier.asImpl.tryGetAwaitedBy(this, theCurrentEnv.isCancellable) match
+    barrier.asImpl.tryGetAwaitedBy(this) match
       case Bits.WaiterSubscribed => ThreadDisowned
       case Bits.WaiterAlreadyCancelled =>
         this.clearSuspension()
@@ -1048,7 +1048,7 @@ private trait Engine extends Runnable:
     val store = suspendedStore.nn
     //-------------------
     this.suspendStep((), step, stack, store)
-    lock.asImpl.tryGetAcquiredBy(this, theCurrentEnv.isCancellable) match
+    lock.asImpl.tryGetAcquiredBy(this) match
       case Bits.WaiterSubscribed => ThreadDisowned
       case Bits.WaiterAlreadyCancelled =>
         this.clearSuspension()
@@ -1064,7 +1064,7 @@ private trait Engine extends Runnable:
     val store = suspendedStore.nn
     //-------------------
     this.suspendStep((), step, stack, store)
-    mutex.asImpl.tryGetAcquiredBy(this, theCurrentEnv.isCancellable) match
+    mutex.asImpl.tryGetAcquiredBy(this) match
       case Bits.WaiterSubscribed => ThreadDisowned
       case Bits.WaiterAlreadyCancelled =>
         this.clearSuspension()
@@ -1081,7 +1081,7 @@ private trait Engine extends Runnable:
     //-------------------
     this.suspendStep((), step, stack, store)
     this.theWaiterStateLong = count
-    semaphore.asImpl.tryGetAcquiredBy(this, theCurrentEnv.isCancellable, count) match
+    semaphore.asImpl.tryGetAcquiredBy(this, count) match
       case Bits.WaiterSubscribed => ThreadDisowned
       case Bits.WaiterAlreadyCancelled =>
         this.clearSuspension()
@@ -1097,7 +1097,7 @@ private trait Engine extends Runnable:
     val store = suspendedStore.nn
     //-------------------
     this.suspendStep(null, step, stack, store)
-    val (code, value) = channel.asImpl.tryGetBy(this, theCurrentEnv.isCancellable)
+    val (code, value) = channel.asImpl.tryGetBy(this)
     code match
       case Bits.WaiterSubscribed => ThreadDisowned
       case Bits.WaiterAlreadyCancelled =>
@@ -1115,7 +1115,7 @@ private trait Engine extends Runnable:
     //-------------------
     this.suspendStep((), step, stack, store)
     this.theWaiterStateAny = value
-    channel.asImpl.tryPutBy(this, theCurrentEnv.isCancellable) match
+    channel.asImpl.tryPutBy(this) match
       case Bits.WaiterSubscribed => ThreadDisowned
       case Bits.WaiterAlreadyCancelled =>
         this.clearSuspension()

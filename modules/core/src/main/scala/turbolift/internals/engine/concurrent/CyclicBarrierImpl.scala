@@ -10,11 +10,11 @@ private[turbolift] final class CyclicBarrierImpl(private val capacity: Int) exte
   private var clock = 0L
 
 
-  def tryGetAwaitedBy(waiter: FiberImpl, isWaiterCancellable: Boolean): Int =
+  def tryGetAwaitedBy(waiter: FiberImpl): Int =
     var staleClock = 0L
 
     val result =
-      atomicallyBoth(waiter, isWaiterCancellable) {
+      atomicallyBoth(waiter) {
         val n = counter - 1
         if n > 0 then
           counter = n

@@ -10,8 +10,8 @@ private[turbolift] final class ReentrantLockImpl extends Waitee with ReentrantLo
   private var reentryCount: Int = 0
 
 
-  def tryGetAcquiredBy(waiter: FiberImpl, isWaiterCancellable: Boolean): Int =
-    atomicallyBoth(waiter, isWaiterCancellable) {
+  def tryGetAcquiredBy(waiter: FiberImpl): Int =
+    atomicallyBoth(waiter) {
       if reentryCount == 0 then
         lockedBy = waiter
         reentryCount = 1

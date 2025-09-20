@@ -76,11 +76,11 @@ private[turbolift] final class WarpImpl private[engine] (
   //-------------------------------------------------------------------
 
 
-  def tryGetAwaitedBy(waiter: FiberImpl, isWaiterCancellable: Boolean): Int =
+  def tryGetAwaitedBy(waiter: FiberImpl): Int =
     var willFinalize = false
 
     val result =
-      atomicallyBoth(waiter, isWaiterCancellable) {
+      atomicallyBoth(waiter) {
         if isPending then
           if isChildless then
             varyingBits = (varyingBits | Bits.Warp_Completed).toByte
@@ -126,12 +126,12 @@ private[turbolift] final class WarpImpl private[engine] (
   //-------------------------------------------------------------------
 
 
-  def tryGetCancelledBy(canceller: FiberImpl, isCancellerCancellable: Boolean): Int =
+  def tryGetCancelledBy(canceller: FiberImpl): Int =
     var willFinalize = false
     var willDescend = false
 
     val result =
-      atomicallyBoth(canceller, isCancellerCancellable) {
+      atomicallyBoth(canceller) {
         if isPending then
           if isChildless then
             varyingBits = (varyingBits | Bits.Warp_Completed).toByte

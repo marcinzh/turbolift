@@ -140,8 +140,8 @@ private[turbolift] final class FiberImpl private (
     }
 
 
-  private[engine] def tryGetAwaitedBy(waiter: FiberImpl, isWaiterCancellable: Boolean): Int =
-    atomicallyBoth(waiter, isWaiterCancellable) {
+  private[engine] def tryGetAwaitedBy(waiter: FiberImpl): Int =
+    atomicallyBoth(waiter) {
       if isPending then
         subscribeWaiterUnsync(waiter)
         Bits.WaiterSubscribed
@@ -172,7 +172,7 @@ private[turbolift] final class FiberImpl private (
     deepCancelLoop(this)
 
 
-  private[engine] def tryGetCancelledBy(canceller: FiberImpl, isCancellerCancellable: Boolean): Int =
+  private[engine] def tryGetCancelledBy(canceller: FiberImpl): Int =
     var savedLeftRacer: WaiterLink | Null = null
     var savedRightRacer: WaiterLink | Null = null
     var savedWaiteeOrBlocker: Waitee | Blocker | Null = null
@@ -180,7 +180,7 @@ private[turbolift] final class FiberImpl private (
     var willDescend = false
 
     val result =
-      atomicallyBoth(canceller, isCancellerCancellable) {
+      atomicallyBoth(canceller) {
         if isPending then
           if !isCancellationSignalled then
             varyingBits = (varyingBits | Bits.Cancellation_Signal).toByte
