@@ -1097,13 +1097,14 @@ private trait Engine extends Runnable:
     val store = suspendedStore.nn
     //-------------------
     this.suspendStep(null, step, stack, store)
-    val (code, value) = channel.asImpl.tryGetBy(this)
-    code match
+    channel.asImpl.tryGetBy(this) match
       case Bits.WaiterSubscribed => ThreadDisowned
       case Bits.WaiterAlreadyCancelled =>
         this.clearSuspension()
         loopCancel(stack, store)
       case Bits.WaiteeAlreadyCompleted =>
+        //@#@TODO temp solution in preparation for more rework
+        val value = this.suspendedPayload
         this.clearSuspension()
         loopStep(value, step, stack, store)
 

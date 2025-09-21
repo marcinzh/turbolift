@@ -11,8 +11,7 @@ private[turbolift] final class ChannelImpl(val currCapacity: Int) extends Waitee
   private var kindOfWaiters: Int = 0 //// meaningless when waiter list is empty
 
 
-  def tryGetBy(waiter: FiberImpl): (Int, Any) =
-    var savedValue: Any = null
+  def tryGetBy(waiter: FiberImpl): Int =
     var savedWaiter: FiberImpl | Null = null
 
     val result =
@@ -25,11 +24,11 @@ private[turbolift] final class ChannelImpl(val currCapacity: Int) extends Waitee
             Bits.WaiterSubscribed
           else
             currSize -= 1
-            savedValue = removeFirst()
+            waiter.suspendedPayload = removeFirst()
             Bits.WaiteeAlreadyCompleted
         else
           if kindOfWaiters == OVERFLOW then
-            savedValue = insertLastAndRemoveFirst(x.takeWaiterState().asElement)
+            waiter.suspendedPayload = insertLastAndRemoveFirst(x.takeWaiterState().asElement)
             savedWaiter = x
             removeFirstWaiter()
             x.standbyWaiter()
@@ -41,7 +40,8 @@ private[turbolift] final class ChannelImpl(val currCapacity: Int) extends Waitee
 
     if savedWaiter != null then
       savedWaiter.nn.resume()
-    (result, savedValue)
+
+    result
 
 
   //// Same as `tryGetBy` but without subscribing the waiter
