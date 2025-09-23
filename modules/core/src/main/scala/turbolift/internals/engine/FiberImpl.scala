@@ -575,7 +575,7 @@ private[turbolift] final class FiberImpl private (
     suspendedPayload = value
 
 
-  private def suspendAsSuccessComp(comp: AnyComp): Unit =
+  private[engine] def suspendAsSuccessComp(comp: AnyComp): Unit =
     suspendedTag = comp.tag.toByte
     suspendedPayload = comp
 

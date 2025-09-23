@@ -999,15 +999,16 @@ private trait Engine extends Runnable:
       loopComp(evar.getNextShot, step, stack, store)
     else
       this.suspend(Tag.NotifyEffectfulVar, evar, step, stack, store)
-      val (code, comp2) = evar.tryGetAwaitedBy(this)
-      code match
+      evar.tryGetAwaitedBy(this) match
         case Bits.WaiterSubscribed => ThreadDisowned
         case Bits.WaiterAlreadyCancelled =>
           this.clearSuspension()
           loopCancel(stack, store)
         case Bits.WaiteeAlreadyCompleted =>
+          //@#@TODO temp solution in preparation for more rework
+          val comp2 = this.suspendedPayload.asInstanceOf[AnyComp]
           this.clearSuspension()
-          loopComp(comp2.nn, step, stack, store)
+          loopComp(comp2, step, stack, store)
 
 
   final def intrinsicAwaitCountDownLatch(latch: CountDownLatch): Halt =
