@@ -34,7 +34,7 @@ private[turbolift] final class EffectfulVarImpl extends Waitee with EffectfulVar
       }
 
     if savedComp != null then
-      waiter.suspendAsSuccessComp(savedComp.nn)
+      waiter.willContinueEff(savedComp.nn)
 
     result
 

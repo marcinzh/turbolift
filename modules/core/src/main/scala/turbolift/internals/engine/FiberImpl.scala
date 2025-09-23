@@ -19,11 +19,11 @@ private[turbolift] sealed abstract class FiberImplPart1 extends ChildLink with F
 
 
 private[turbolift] sealed abstract class FiberImplPart2 extends FiberImplPart1:
-  private[engine] var suspendedTag: Byte = 0
-  private[engine] var suspendedPayload: Any = null
-  private[engine] var suspendedStep: Step | Null = null
-  private[engine] var suspendedStack: Stack | Null = null
-  private[engine] var suspendedStore: Store | Null = null
+  private[engine] var theCurrentTag: Byte = 0
+  private[engine] var theCurrentPayload: Any = null
+  private[engine] var theCurrentStep: Step = null.asInstanceOf[Step]
+  private[engine] var theCurrentStack: Stack = null.asInstanceOf[Stack]
+  private[engine] var theCurrentStore: Store = null.asInstanceOf[Store]
   private[engine] var theCurrentTickLow: Int = 0
   private[engine] var theCurrentEnv: Env = null.asInstanceOf[Env]
 
@@ -46,12 +46,9 @@ private[turbolift] final class FiberImpl private (
   //-------------------------------------------------------------------
 
 
-  private[engine] def doFinalize(completion: Int, initialPayload: Any): FiberImpl | Null =
-    val payload =
-      if isExplicit then
-        ZipperImpl.make(theJoinStack, initialPayload, completion)
-      else
-        initialPayload
+  private[engine] def doFinalize(completion: Int): FiberImpl | Null =
+    if isExplicit then
+      theCurrentPayload = ZipperImpl.make(theJoinStack, theCurrentPayload, completion)
 
     val cancelPayload =
       if isExplicit then
@@ -63,10 +60,9 @@ private[turbolift] final class FiberImpl private (
       if isCancellationUnlatched then
         //// If cancellation was signalled before reaching completion, it overrides the completion.
         varyingBits = (varyingBits | Bits.Completion_Cancelled /*| Bits.Cancellation_Latch*/).toByte
-        suspendedPayload = cancelPayload
+        theCurrentPayload = cancelPayload
       else
         varyingBits = (varyingBits | completion).toByte
-        suspendedPayload = payload
     }
 
     //// As a RACER:
@@ -95,7 +91,7 @@ private[turbolift] final class FiberImpl private (
     //// Call the callback
     if theCallback != null then
       if isExplicit then
-        theCallback(suspendedPayload)
+        theCallback(theCurrentPayload)
       else
         //// Must be the root fiber, bcoz implicit fibers dont get callbacks
         assert(isRoot)
@@ -110,21 +106,21 @@ private[turbolift] final class FiberImpl private (
 
   private def makeOutcome[A](void: Boolean): Outcome[A] =
     getCompletion match
-      case Bits.Completion_Success   => Outcome.Success((if void then null else suspendedPayload).asInstanceOf[A])
-      case Bits.Completion_Failure   => Outcome.Failure(suspendedPayload.asInstanceOf[Cause])
+      case Bits.Completion_Success   => Outcome.Success((if void then null else theCurrentPayload).asInstanceOf[A])
+      case Bits.Completion_Failure   => Outcome.Failure(theCurrentPayload.asInstanceOf[Cause])
       case Bits.Completion_Cancelled => Outcome.Cancelled
 
 
   private[engine] def getOrMakeZipper: ZipperImpl =
     if isExplicit then
-      suspendedPayload.asInstanceOf[ZipperImpl]
+      theCurrentPayload.asInstanceOf[ZipperImpl]
     else
-      ZipperImpl.make(null, suspendedPayload, getCompletion)
+      ZipperImpl.make(null, theCurrentPayload, getCompletion)
 
 
   private def getOrMakeZipper(payload: Any, completion: Int): ZipperImpl =
     if isExplicit then
-      suspendedPayload.asInstanceOf[ZipperImpl]
+      theCurrentPayload.asInstanceOf[ZipperImpl]
     else
       ZipperImpl.make(null, payload, completion)
 
@@ -366,8 +362,8 @@ private[turbolift] final class FiberImpl private (
     val racerRight = getRightRacer
     val completionLeft = racerLeft.getCompletion
     val completionRight = racerRight.getCompletion
-    val payloadLeft = racerLeft.suspendedPayload
-    val payloadRight = racerRight.suspendedPayload
+    val payloadLeft = racerLeft.theCurrentPayload
+    val payloadRight = racerRight.theCurrentPayload
     clearRacers()
     (Bits.makeRacedPair(completionLeft, completionRight): @switch) match
       case Bits.Raced_SS => endRaceWithSuccessBoth(payloadLeft, payloadRight)
@@ -381,8 +377,8 @@ private[turbolift] final class FiberImpl private (
     val racerRight = getRightRacer
     val completionLeft = racerLeft.getCompletion
     val completionRight = racerRight.getCompletion
-    val payloadLeft = racerLeft.suspendedPayload
-    val payloadRight = racerRight.suspendedPayload
+    val payloadLeft = racerLeft.theCurrentPayload
+    val payloadRight = racerRight.theCurrentPayload
     clearRacers()
     (Bits.makeRacedPair(completionLeft, completionRight): @switch) match
       case Bits.Raced_SC => endRaceWithSuccessOne(payloadLeft)
@@ -395,7 +391,7 @@ private[turbolift] final class FiberImpl private (
   private def endRaceForOrSeq(): Unit =
     val racerLeft = getLeftRacer
     val completionLeft = racerLeft.getCompletion
-    val payloadLeft = racerLeft.suspendedPayload
+    val payloadLeft = racerLeft.theCurrentPayload
     clearRacers()
     completionLeft match
       case Bits.Completion_Success => endRaceWithSuccessOne(payloadLeft)
@@ -405,34 +401,34 @@ private[turbolift] final class FiberImpl private (
 
   private def endRaceWithSuccessBoth(payloadLeft: Any, payloadRight: Any): Unit =
     val comp = OpCascaded.zipAndRestart(
-      stack = suspendedStack.nn,
+      stack = theCurrentStack,
       ftorLeft = payloadLeft,
       ftorRight = payloadRight,
-      fun = suspendedPayload.asInstanceOf[(Any, Any) => Any]
+      fun = theCurrentPayload.asInstanceOf[(Any, Any) => Any]
     )
-    suspendAsSuccessComp(comp)
+    willContinueEff(comp)
 
 
   private def endRaceWithSuccessOne(payload: Any): Unit =
     val comp = OpCascaded.restart(
-      stack = suspendedStack.nn,
+      stack = theCurrentStack,
       ftor = payload,
     )
-    suspendAsSuccessComp(comp)
+    willContinueEff(comp)
 
 
   private def endRaceWithSuccess2nd(): Unit =
-    val comp = suspendedPayload.asInstanceOf[() => AnyComp]()
-    suspendAsSuccessComp(comp)
+    val comp = theCurrentPayload.asInstanceOf[() => AnyComp]()
+    willContinueEff(comp)
 
 
   private def endRaceWithCancelled(): Unit =
     cancelBySelf()
-    suspendAsCancelled()
+    willContinueAsCancelled()
 
 
   private def endRaceWithFailure(payload: Any): Unit =
-    suspendAsFailure(payload.asInstanceOf[Cause])
+    willContinueAsFailure(payload.asInstanceOf[Cause])
 
 
   //-------------------------------------------------------------------
@@ -442,16 +438,15 @@ private[turbolift] final class FiberImpl private (
 
   //// `this` == callback for IO.async
   override def apply(ee: Either[Throwable, Any]): Unit =
-    suspendedPayload = ee
+    theCurrentPayload = ee
     // ee match
-    //   case Right(a) => suspendedPayload = a
+    //   case Right(a) => theCurrentPayload = a
     //   case Left(e) => suspendAsFailure(e)
     resume()
 
 
-  def resume(): Unit =
-    assert(isSuspended)
-    theCurrentEnv.executor.resume(this)
+  def resume(): Unit = theCurrentEnv.executor.resume(this)
+
 
   //// Called only from `atomically` block.
   private[engine] inline def standbyWaiter(): Unit =
@@ -461,139 +456,123 @@ private[turbolift] final class FiberImpl private (
   //// Called only from `atomically` block.
   private[engine] inline def standbyWaiterPure(value: Any): Unit =
     theWaiteeOrBlocker = null
-    suspendedPayload = value
+    theCurrentPayload = value
 
 
   //// Called only from `atomically` block.
   private[engine] inline def standbyWaiterComp(comp: AnyComp): Unit =
     theWaiteeOrBlocker = null
-    suspendedPayload = comp
-    suspendedTag = comp.tag.toByte
-
-
-  private[engine] def resumeWaiter(): Unit =
-    theWaiteeOrBlocker = null
-    resume()
-
-
-  private[engine] def resumeWaiterAsSuccess(value: Any): Unit =
-    theWaiteeOrBlocker = null
-    suspendedPayload = value
-    resume()
-
-
-  private[engine] def resumeWaiterAsCancelled(): Unit =
-    theWaiteeOrBlocker = null
-    suspendAsCancelled()
-    resume()
-
-
-  private[engine] def resumeWaiterAsFailure(cause: Cause): Unit =
-    theWaiteeOrBlocker = null
-    suspendAsFailure(cause)
-    resume()
-
-
-  private[engine] def resumeWaiterAsFailure(throwable: Throwable): Unit =
-    theWaiteeOrBlocker = null
-    suspendAsFailure(throwable)
-    resume()
+    theCurrentPayload = comp
+    theCurrentTag = comp.tag.toByte
 
 
   //-------------------------------------------------------------------
-  // Suspend
+  // Will Continue
   //-------------------------------------------------------------------
 
 
-  private def isSuspended: Boolean = suspendedStack != null
+  final inline def willContinueTag(tag: Int, payload: Any): Unit =
+    this.theCurrentTag = tag.toByte
+    this.theCurrentPayload = payload
 
 
-  private def suspendInitial(comp: AnyComp, env: Env): Unit =
-    suspendedTag     = comp.tag.toByte
-    suspendedPayload = comp
-    suspendedStep    = Step.Pop
-    suspendedStack   = Stack.initial
-    suspendedStore   = Store.initial(env)
+  final inline def willContinueStep(step: Step): Unit =
+    this.theCurrentTag = step.tag.toByte
+    this.theCurrentStep = step
 
 
-  private[engine] def suspend(
-    tag: Tag,
-    payload: Any,
-    step: Step,
-    stack: Stack,
-    store: Store,
-  ): Unit =
-    //@#@OLD
-    // assert(!isSuspended)
-    suspendedTag     = tag.toByte
-    suspendedPayload = payload
-    suspendedStep    = step
-    suspendedStack   = stack
-    suspendedStore   = store
+  final inline def willContinueStepStack(step: Step, stack: Stack, store: Store): Unit =
+    this.theCurrentTag = step.tag.toByte
+    this.theCurrentStep = step
+    this.theCurrentStack = stack
+    this.theCurrentStore = store
 
 
-  private[engine] def suspendStep(
-    payload: Any,
-    step: Step,
-    stack: Stack,
-    store: Store,
-  ): Unit =
-    suspend(step.tag, payload, step, stack, store)
+  final inline def willContinuePure(value: Any): Unit =
+    this.theCurrentTag = this.theCurrentStep.tag.toByte
+    this.theCurrentPayload = value
 
 
-  private[engine] def suspendComp(
-    comp: Computation[?, ?],
-    step: Step,
-    stack: Stack,
-    store: Store,
-  ): Unit =
-    suspend(comp.tag, comp, step, stack, store)
+  final inline def willContinuePureStore(value: Any, store: Store): Unit =
+    this.theCurrentTag = this.theCurrentStep.tag.toByte
+    this.theCurrentPayload = value
+    this.theCurrentStore = store
 
 
-  private[engine] def clearSuspension(): Unit =
-    suspendedTag     = 0
-    suspendedPayload = null
-    suspendedStep    = null
-    suspendedStack   = null
-    suspendedStore   = null
+  final inline def willContinuePureStep(value: Any, step: Step): Unit =
+    this.theCurrentTag = step.tag.toByte
+    this.theCurrentPayload = value
+    this.theCurrentStep = step
 
 
-  private[engine] def suspendForRace(
-    payload: Any,
-    step: Step,
-    stack: Stack,
-    store: Store,
-  ): Unit =
-    suspendedPayload = payload
-    suspendedStep    = step
-    suspendedStack   = stack
-    suspendedStore   = store
+  final inline def willContinuePureStack(value: Any, step: Step, stack: Stack, store: Store): Unit =
+    this.theCurrentTag = step.tag.toByte
+    this.theCurrentPayload = value
+    this.theCurrentStep = step
+    this.theCurrentStack = stack
+    this.theCurrentStore = store
 
 
-  private[engine] def suspendAsSuccessPure(value: Any): Unit =
-    suspendedTag = suspendedStep.nn.tag.toByte //@#@NNEC? call sites
-    suspendedPayload = value
+  final inline def willContinueEff(comp: AnyComp): Unit =
+    this.theCurrentTag = comp.tag.toByte
+    this.theCurrentPayload = comp
 
 
-  private[engine] def suspendAsSuccessComp(comp: AnyComp): Unit =
-    suspendedTag = comp.tag.toByte
-    suspendedPayload = comp
+  final inline def willContinueEffStep(comp: AnyComp, step: Step): Unit =
+    this.theCurrentTag = comp.tag.toByte
+    this.theCurrentPayload = comp
+    this.theCurrentStep = step
 
 
-  private[engine] def suspendAsCancelled(): Unit =
-    suspendedTag = Step.Cancel.tag.toByte
-    suspendedStep = Step.Cancel
-    suspendedPayload = CancelPayload
+  final inline def willContinueEffStack(comp: AnyComp, step: Step, stack: Stack, store: Store): Unit =
+    this.theCurrentTag = comp.tag.toByte
+    this.theCurrentPayload = comp
+    this.theCurrentStep = step
+    this.theCurrentStack = stack
+    this.theCurrentStore = store
 
 
-  private[engine] def suspendAsFailure(cause: Cause): Unit =
-    suspendedTag = Step.Throw.tag.toByte
-    suspendedStep = Step.Throw
-    suspendedPayload = cause
+  final inline def willContinueEffStackEnv(comp: AnyComp, step: Step, stack: Stack, store: Store, env: Env): Unit =
+    this.theCurrentTag = comp.tag.toByte
+    this.theCurrentPayload = comp
+    this.theCurrentStep = step
+    this.theCurrentStack = stack
+    this.theCurrentStore = store
+    this.theCurrentEnv = env
 
 
-  private[engine] def suspendAsFailure(throwable: Throwable): Unit =
-    suspendAsFailure(Cause(throwable))
+  final inline def willContinueStack(stack: Stack, store: Store): Unit =
+    this.theCurrentStack = stack
+    this.theCurrentStore = store
+
+
+  final inline def willContinueStack(step: Step, stack: Stack, store: Store): Unit =
+    this.theCurrentStep = step
+    this.theCurrentStack = stack
+    this.theCurrentStore = store
+
+
+  final inline def willContinueStackEnv(step: Step, stack: Stack, store: Store, env: Env): Unit =
+    this.theCurrentStep = step
+    this.theCurrentStack = stack
+    this.theCurrentStore = store
+    this.theCurrentEnv = env
+
+
+  final inline def willContinueAsCancelled(): Unit =
+    this.theCurrentTag = Step.Cancel.tag.toByte
+    this.theCurrentStep = Step.Cancel
+    this.theCurrentPayload = CancelPayload
+
+
+  final inline def willContinueAsFailure(cause: Cause): Unit =
+    this.theCurrentTag = Step.Throw.tag.toByte
+    this.theCurrentStep = Step.Throw
+    this.theCurrentPayload = cause
+
+
+  final inline def willContinueAsFailure(throwable: Throwable): Unit =
+    willContinueAsFailure(Cause(throwable))
 
 
   //-------------------------------------------------------------------
@@ -672,7 +651,7 @@ private[turbolift] final class FiberImpl private (
     var savedPayload: Any = null
     atomically {
       savedBits = varyingBits
-      savedPayload = suspendedPayload
+      savedPayload = theCurrentPayload
     }
     Bits.getCompletion(savedBits) match
       case Bits.Completion_Pending => None
@@ -726,8 +705,13 @@ private[turbolift] object FiberImpl:
       theJoinStack = Stack.initial, //// can't be null, as long as callback takes Zipper
       theCallback = callback.asInstanceOf[(Any => Unit) | Null],
     )
-    fiber.theCurrentEnv = env
-    fiber.suspendInitial(comp.untyped, env)
+    fiber.willContinueEffStackEnv(
+      comp = comp.untyped,
+      step = Step.Pop,
+      stack = Stack.initial,
+      store = Store.initial(env),
+      env = env,
+    )
     WarpImpl.root.tryAddFiber(fiber)
     fiber
 

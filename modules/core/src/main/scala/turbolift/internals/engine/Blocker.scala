@@ -16,7 +16,7 @@ private[engine] object Blocker:
 
 
   final class Zombie(fiber: FiberImpl) extends Blocker:
-    override def unblock(): Unit = fiber.resumeWaiter()
+    override def unblock(): Unit = fiber.resume()
 
 
   final class Sleeper(fiber: FiberImpl) extends AtomicReference[Future[?] | Done | Null] with Blocker with Runnable:
@@ -31,13 +31,13 @@ private[engine] object Blocker:
     override def run: Unit =
       getAndSet(Done) match
         case Done => ()
-        case _ => fiber.resumeWaiter()
+        case _ => fiber.resume()
 
 
     override def unblock(): Unit =
       compareAndExchange(null, Done) match
         case null => fiber.resume()
-        case future: Future[?] => future.cancel(true); fiber.resumeWaiter()
+        case future: Future[?] => future.cancel(true); fiber.resume()
         case Done => ()
 
 
@@ -59,14 +59,13 @@ private[engine] object Blocker:
 
         if isEither then
           val value2 = if throwable == null then Right(value) else Left(throwable)
-          fiber.resumeWaiterAsSuccess(value2)
+          fiber.willContinuePure(value2)
         else
           if throwable == null then
-            fiber.resumeWaiterAsSuccess(value)
+            fiber.willContinuePure(value)
           else
-            fiber.resumeWaiterAsFailure(throwable.nn)
-      else
-        fiber.resumeWaiter()
+            fiber.willContinueAsFailure(throwable.nn)
+      fiber.resume()
 
 
     override def unblock(): Unit =
