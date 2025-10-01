@@ -76,7 +76,7 @@ private[turbolift] final class WarpImpl private[engine] (
   //-------------------------------------------------------------------
 
 
-  def tryGetAwaitedBy(waiter: FiberImpl): Int =
+  def tryGetAwaitedBy(waiter: FiberImpl): Halt =
     var willFinalize = false
 
     val result =
@@ -85,13 +85,13 @@ private[turbolift] final class WarpImpl private[engine] (
           if isChildless then
             varyingBits = (varyingBits | Bits.Warp_Completed).toByte
             willFinalize = true
-            Bits.WaiteeAlreadyCompleted
+            Halt.Continue
           else
             varyingBits = (varyingBits | Bits.Warp_Shutdown).toByte
             subscribeWaiterUnsync(waiter)
-            Bits.WaiterSubscribed
+            Halt.Retire
         else
-          Bits.WaiteeAlreadyCompleted
+          Halt.Continue
       }
 
     if willFinalize then
@@ -102,7 +102,7 @@ private[turbolift] final class WarpImpl private[engine] (
   //// Same as `tryGetAwaitedBy(waiter)`, except:
   //// - doesn't synchronize on the `waiter`
   //// - doesn't subscribe the `waiter`
-  //// - returns Unit, instead of Int code
+  //// - returns Unit, instead of `Halt`
   def doShutdownAndForget(): Unit =
     val willFinalize =
       atomically {
@@ -126,25 +126,25 @@ private[turbolift] final class WarpImpl private[engine] (
   //-------------------------------------------------------------------
 
 
-  def tryGetCancelledBy(canceller: FiberImpl): Int =
+  def tryGetCancelledBy(canceller: FiberImpl): Halt =
     var willFinalize = false
     var willDescend = false
 
-    val result =
+    val halt =
       atomicallyBoth(canceller) {
         if isPending then
           if isChildless then
             varyingBits = (varyingBits | Bits.Warp_Completed).toByte
             willFinalize = true
-            Bits.WaiteeAlreadyCompleted
+            Halt.Continue
           else
             if !isCancellationSignalled then
               varyingBits = (varyingBits | Bits.Warp_Shutdown | Bits.Warp_Cancelled).toByte
               willDescend = true
             subscribeWaiterUnsync(canceller)
-            Bits.WaiterSubscribed
+            Halt.Retire
         else
-          Bits.WaiteeAlreadyCompleted
+          Halt.Continue
       }
 
     if willFinalize then
@@ -152,15 +152,14 @@ private[turbolift] final class WarpImpl private[engine] (
     else
       if willDescend then
         doDescend(deep = true)
-    result
-
+    halt
 
 
   //// Same as `tryGetCancelledBy`, except:
   //// - doesn't synchronize on the `canceller`
   //// - doesn't subscribe the `canceller`
   //// - doesn't initiate `deepCancelLoop`
-  //// - returns first child, instead of Int code
+  //// - returns first child, instead of `Halt`
   private[engine] override def deepCancelDown(): ChildLink | Null =
     var willFinalize = false
     var willDescend = false

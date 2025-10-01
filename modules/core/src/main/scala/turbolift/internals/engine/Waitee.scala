@@ -46,13 +46,13 @@ private[engine] abstract class Waitee extends AtomicBoolVH(false):
 
 
   //// Assumes it's called (indirectly) from the `fiber` itself.
-  inline final def atomicallyBoth(fiber: FiberImpl)(inline body: => Int): Int =
+  inline final def atomicallyBoth(fiber: FiberImpl)(inline body: => Halt): Halt =
     if spinAcquireBoth(fiber) then
       val a = body
       spinReleaseBoth(fiber)
       a
     else
-      Bits.WaiterAlreadyCancelled
+      Halt.Cancel
 
 
   final private def spinAcquireBoth(fiber: FiberImpl): Boolean =

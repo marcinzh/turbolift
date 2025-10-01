@@ -148,13 +148,13 @@ private[turbolift] final class FiberImpl private (
     }
 
 
-  private[engine] def tryGetAwaitedBy(waiter: FiberImpl): Int =
+  private[engine] def tryGetAwaitedBy(waiter: FiberImpl): Halt =
     atomicallyBoth(waiter) {
       if isPending then
         subscribeWaiterUnsync(waiter)
-        Bits.WaiterSubscribed
+        Halt.Retire
       else
-        Bits.WaiteeAlreadyCompleted
+        Halt.Continue
     }
 
 
@@ -186,14 +186,14 @@ private[turbolift] final class FiberImpl private (
     deepCancelLoop(this)
 
 
-  private[engine] def tryGetCancelledBy(canceller: FiberImpl): Int =
+  private[engine] def tryGetCancelledBy(canceller: FiberImpl): Halt =
     var savedLeftRacer: WaiterLink | Null = null
     var savedRightRacer: WaiterLink | Null = null
     var savedWaiteeOrBlocker: Waitee | Blocker | Null = null
     var savedVaryingBits: Byte = 0
     var willDescend = false
 
-    val result =
+    val halt =
       atomicallyBoth(canceller) {
         if isPending then
           if !isCancellationSignalled then
@@ -204,23 +204,23 @@ private[turbolift] final class FiberImpl private (
             savedWaiteeOrBlocker = theWaiteeOrBlocker
             savedVaryingBits = varyingBits
           subscribeWaiterUnsync(canceller)
-          Bits.WaiterSubscribed
+          Halt.Retire
         else
-          Bits.WaiteeAlreadyCompleted
+          Halt.Continue
       }
 
     if willDescend then
       val racer = doDescend(savedLeftRacer, savedRightRacer, savedWaiteeOrBlocker, savedVaryingBits)
       if racer != null then
         racer.deepCancelLoop(this)
-    result
+    halt
 
 
   //// Same as `tryGetCancelledBy(canceller)`, except:
   //// - doesn't synchronize on the `canceller`
   //// - doesn't subscribe the `canceller`
   //// - doesn't initiate `deepCancelLoop`
-  //// - returns first pending racer, instead of Int code
+  //// - returns first pending racer, instead of `Halt`
   private[engine] override def deepCancelDown(): ChildLink | Null =
     var savedLeftRacer: WaiterLink | Null = null
     var savedRightRacer: WaiterLink | Null = null

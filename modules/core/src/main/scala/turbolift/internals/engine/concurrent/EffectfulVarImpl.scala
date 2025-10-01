@@ -1,8 +1,7 @@
 package turbolift.internals.engine.concurrent
 import turbolift.!!
 import turbolift.io.{EffectfulVar, Zipper}
-import turbolift.internals.engine.{Waitee, FiberImpl}
-import turbolift.internals.engine.Bits
+import turbolift.internals.engine.{Waitee, FiberImpl, Halt}
 import turbolift.internals.engine.Misc.AnyComp
 
 
@@ -15,14 +14,14 @@ private[turbolift] final class EffectfulVarImpl extends Waitee with EffectfulVar
   def getNextShot: AnyComp = theNextShot.nn
 
 
-  def tryGetAwaitedBy(waiter: FiberImpl): Int =
+  def tryGetAwaitedBy(waiter: FiberImpl): Halt =
     var savedComp: AnyComp | Null = null
 
     val result =
       atomicallyBoth(waiter) {
         if isPending then
           subscribeWaiterUnsync(waiter)
-          Bits.WaiterSubscribed
+          Halt.Retire
         else
           if theFirstShot != null then
             savedComp = theFirstShot
@@ -30,7 +29,7 @@ private[turbolift] final class EffectfulVarImpl extends Waitee with EffectfulVar
             isReady = true
           else
             savedComp = theNextShot
-          Bits.WaiteeAlreadyCompleted
+          Halt.Continue
       }
 
     if savedComp != null then

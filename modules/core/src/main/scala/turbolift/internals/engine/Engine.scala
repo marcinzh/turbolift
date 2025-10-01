@@ -462,14 +462,10 @@ private trait Engine extends Runnable:
 
           case FrameKind.WARP =>
             val warp = oldEnv.currentWarp.nn
-            val tried = warp.exitMode match
+            warp.exitMode match
               case Warp.ExitMode.Cancel => warp.tryGetCancelledBy(this)
               case Warp.ExitMode.Await => warp.tryGetAwaitedBy(this)
               case null => impossible //// this is a scoped warp, so it must have ExitMode
-            tried match
-              case Bits.WaiterSubscribed => Halt.Retire
-              case Bits.WaiteeAlreadyCompleted => Halt.Continue
-              case Bits.WaiterAlreadyCancelled => impossible //// Latch is set
 
           case FrameKind.EXEC =>
             this.resume()
@@ -723,17 +719,13 @@ private trait Engine extends Runnable:
         this.willContinuePure(())
       else
         this.willContinueTag(Tag.NotifyZipper, waitee)
-      val tried =
+      val halt =
         if isCancel
         then waitee.tryGetCancelledBy(this)
         else waitee.tryGetAwaitedBy(this)
-      tried match
-        case Bits.WaiterSubscribed => Halt.Retire
-        case Bits.WaiterAlreadyCancelled => Halt.Cancel
-        case Bits.WaiteeAlreadyCompleted =>
-          if !isVoid then
-            this.willContinuePure(waitee.getOrMakeZipper)
-          Halt.Continue
+      if halt == Halt.Continue && !isVoid then
+        this.willContinuePure(waitee.getOrMakeZipper)
+      halt
     else
       //// Ignoring `isCancellable` bcoz cancelling is by-self
       if isCancel then
@@ -764,14 +756,10 @@ private trait Engine extends Runnable:
   final def intrinsicAwaitWarp(warp0: Warp, isCancel: Boolean): Halt =
     this.willContinuePure(())
     val warp = warp0.asImpl
-    val tried =
-      if isCancel
-      then warp.tryGetCancelledBy(this)
-      else warp.tryGetAwaitedBy(this)
-    tried match
-      case Bits.WaiterSubscribed => Halt.Retire
-      case Bits.WaiteeAlreadyCompleted => Halt.Continue
-      case Bits.WaiterAlreadyCancelled => Halt.Cancel
+    if isCancel then
+      warp.tryGetCancelledBy(this)
+    else
+      warp.tryGetAwaitedBy(this)
 
 
   final def intrinsicAsync[A](callback: (Either[Throwable, A] => Unit) => Unit, isAttempt: Boolean): Halt =
@@ -835,12 +823,10 @@ private trait Engine extends Runnable:
       Halt.Continue
     else
       this.willContinueTag(Tag.NotifyOnceVar, ovar)
-      ovar.tryGetAwaitedBy(this) match
-        case Bits.WaiterSubscribed => Halt.Retire
-        case Bits.WaiteeAlreadyCompleted =>
-          this.willContinuePure(ovar.theContent)
-          Halt.Continue
-        case Bits.WaiterAlreadyCancelled => Halt.Cancel
+      val halt = ovar.tryGetAwaitedBy(this)
+      if halt == Halt.Continue then
+        this.willContinuePure(ovar.theContent)
+      halt
 
 
   final def intrinsicAwaitEffectfulVar[A, U <: IO](evar0: EffectfulVar.Get[A, U]): Halt =
@@ -850,72 +836,47 @@ private trait Engine extends Runnable:
       Halt.Continue
     else
       this.willContinueTag(Tag.NotifyEffectfulVar, evar)
-      evar.tryGetAwaitedBy(this) match
-        case Bits.WaiterSubscribed => Halt.Retire
-        case Bits.WaiteeAlreadyCompleted => Halt.Continue
-        case Bits.WaiterAlreadyCancelled => Halt.Cancel
+      evar.tryGetAwaitedBy(this)
 
 
   final def intrinsicAwaitCountDownLatch(latch: CountDownLatch): Halt =
     this.willContinuePure(())
-    latch.asImpl.tryGetAwaitedBy(this) match
-      case Bits.WaiterSubscribed => Halt.Retire
-      case Bits.WaiteeAlreadyCompleted => Halt.Continue
-      case Bits.WaiterAlreadyCancelled => Halt.Cancel
+    latch.asImpl.tryGetAwaitedBy(this)
 
 
   final def intrinsicAwaitCyclicBarrier(barrier: CyclicBarrier): Halt =
     this.willContinuePure(())
-    barrier.asImpl.tryGetAwaitedBy(this) match
-      case Bits.WaiterSubscribed => Halt.Retire
-      case Bits.WaiteeAlreadyCompleted => Halt.Continue
-      case Bits.WaiterAlreadyCancelled => Halt.Cancel
+    barrier.asImpl.tryGetAwaitedBy(this)
 
 
   final def intrinsicAcquireReentrantLock(lock: ReentrantLock): Halt =
     this.willContinuePure(())
-    lock.asImpl.tryGetAcquiredBy(this) match
-      case Bits.WaiterSubscribed => Halt.Retire
-      case Bits.WaiteeAlreadyCompleted => Halt.Continue
-      case Bits.WaiterAlreadyCancelled => Halt.Cancel
+    lock.asImpl.tryGetAcquiredBy(this)
 
 
   final def intrinsicAcquireMutex(mutex: Mutex): Halt =
     this.willContinuePure(())
-    mutex.asImpl.tryGetAcquiredBy(this) match
-      case Bits.WaiterSubscribed => Halt.Retire
-      case Bits.WaiteeAlreadyCompleted => Halt.Continue
-      case Bits.WaiterAlreadyCancelled => Halt.Cancel
+    mutex.asImpl.tryGetAcquiredBy(this)
 
 
   final def intrinsicAcquireSemaphore(semaphore: Semaphore, count: Long): Halt =
     this.willContinuePure(())
     this.theWaiterStateLong = count
-    semaphore.asImpl.tryGetAcquiredBy(this, count) match
-      case Bits.WaiterSubscribed => Halt.Retire
-      case Bits.WaiteeAlreadyCompleted => Halt.Continue
-      case Bits.WaiterAlreadyCancelled => Halt.Cancel
+    semaphore.asImpl.tryGetAcquiredBy(this, count)
 
 
   final def intrinsicGetChannel[A](channel: Channel.Get[A]): Halt =
     this.willContinuePure(null)
-    channel.asImpl.tryGetBy(this) match
-      case Bits.WaiterSubscribed => Halt.Retire
-      case Bits.WaiteeAlreadyCompleted => Halt.Continue
-      case Bits.WaiterAlreadyCancelled => Halt.Cancel
+    channel.asImpl.tryGetBy(this)
 
 
   final def intrinsicPutChannel[A](channel: Channel.Put[A], value: A): Halt =
     this.willContinuePure(())
     this.theWaiterStateAny = value
-    channel.asImpl.tryPutBy(this) match
-      case Bits.WaiterSubscribed => Halt.Retire
-      case Bits.WaiteeAlreadyCompleted =>
-        this.theWaiterStateAny = null
-        Halt.Continue
-      case Bits.WaiterAlreadyCancelled =>
-        this.theWaiterStateAny = null
-        Halt.Cancel
+    val halt = channel.asImpl.tryPutBy(this)
+    if halt != Halt.Retire then
+      this.theWaiterStateAny = null
+    halt
 
 
   //-------------------------------------------------------------------

@@ -1,8 +1,7 @@
 package turbolift.internals.engine.concurrent
 import turbolift.data.Exceptions
 import turbolift.io.OnceVar
-import turbolift.internals.engine.{Waitee, FiberImpl}
-import turbolift.internals.engine.Bits
+import turbolift.internals.engine.{Waitee, FiberImpl, Halt}
 import OnceVarImpl.Empty
 
 
@@ -17,13 +16,13 @@ private[turbolift] final class OnceVarImpl extends Waitee with OnceVar.Unsealed 
     if Empty != theContent then x else throw new Exceptions.TieTheKnot
 
 
-  def tryGetAwaitedBy(waiter: FiberImpl): Int =
+  def tryGetAwaitedBy(waiter: FiberImpl): Halt =
     atomicallyBoth(waiter) {
       if isPending then
         subscribeWaiterUnsync(waiter)
-        Bits.WaiterSubscribed
+        Halt.Retire
       else
-        Bits.WaiteeAlreadyCompleted
+        Halt.Continue
     }
 
 

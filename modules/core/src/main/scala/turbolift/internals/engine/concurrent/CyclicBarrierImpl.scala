@@ -1,8 +1,7 @@
 package turbolift.internals.engine.concurrent
 import scala.annotation.tailrec
 import turbolift.io.CyclicBarrier
-import turbolift.internals.engine.{Waitee, FiberImpl}
-import turbolift.internals.engine.Bits
+import turbolift.internals.engine.{Waitee, FiberImpl, Halt}
 
 
 private[turbolift] final class CyclicBarrierImpl(private val capacity: Int) extends Waitee with CyclicBarrier.Unsealed:
@@ -10,7 +9,7 @@ private[turbolift] final class CyclicBarrierImpl(private val capacity: Int) exte
   private var clock = 0L
 
 
-  def tryGetAwaitedBy(waiter: FiberImpl): Int =
+  def tryGetAwaitedBy(waiter: FiberImpl): Halt =
     var staleClock = 0L
 
     val result =
@@ -20,15 +19,15 @@ private[turbolift] final class CyclicBarrierImpl(private val capacity: Int) exte
           counter = n
           waiter.theWaiterStateLong = clock
           subscribeWaiterUnsync(waiter)
-          Bits.WaiterSubscribed
+          Halt.Retire
         else
           counter = capacity
           staleClock = clock
           clock += 1 //// wrap around
-          Bits.WaiteeAlreadyCompleted
+          Halt.Continue
       }
 
-    if result == Bits.WaiteeAlreadyCompleted then
+    if result == Halt.Continue then
       release(staleClock)
     result
 

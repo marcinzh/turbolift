@@ -1,7 +1,6 @@
 package turbolift.internals.engine.concurrent
 import turbolift.io.{ReentrantLock, Fiber}
-import turbolift.internals.engine.{Waitee, FiberImpl}
-import turbolift.internals.engine.Bits
+import turbolift.internals.engine.{Waitee, FiberImpl, Halt}
 import turbolift.internals.engine.{asImpl}
 
 
@@ -10,19 +9,19 @@ private[turbolift] final class ReentrantLockImpl extends Waitee with ReentrantLo
   private var reentryCount: Int = 0
 
 
-  def tryGetAcquiredBy(waiter: FiberImpl): Int =
+  def tryGetAcquiredBy(waiter: FiberImpl): Halt =
     atomicallyBoth(waiter) {
       if reentryCount == 0 then
         lockedBy = waiter
         reentryCount = 1
-        Bits.WaiteeAlreadyCompleted
+        Halt.Continue
       else
         if lockedBy == waiter then
           reentryCount += 1
-          Bits.WaiteeAlreadyCompleted
+          Halt.Continue
         else
           subscribeWaiterUnsync(waiter)
-          Bits.WaiterSubscribed
+          Halt.Retire
     }
 
 

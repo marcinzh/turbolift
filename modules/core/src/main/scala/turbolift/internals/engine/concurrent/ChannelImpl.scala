@@ -1,7 +1,6 @@
 package turbolift.internals.engine.concurrent
 import turbolift.io.Channel
-import turbolift.internals.engine.{Waitee, FiberImpl}
-import turbolift.internals.engine.Bits
+import turbolift.internals.engine.{Waitee, FiberImpl, Halt}
 import ChannelImpl.{Buffer, Element, asElement, OVERFLOW, UNDERFLOW}
 
 
@@ -11,7 +10,7 @@ private[turbolift] final class ChannelImpl(val currCapacity: Int) extends Waitee
   private var kindOfWaiters: Int = 0 //// meaningless when waiter list is empty
 
 
-  def tryGetBy(waiter: FiberImpl): Int =
+  def tryGetBy(waiter: FiberImpl): Halt =
     var savedWaiter: FiberImpl | Null = null
 
     val result =
@@ -21,21 +20,21 @@ private[turbolift] final class ChannelImpl(val currCapacity: Int) extends Waitee
           if currSize == 0 then
             kindOfWaiters = UNDERFLOW
             subscribeFirstWaiterUnsync(waiter)
-            Bits.WaiterSubscribed
+            Halt.Retire
           else
             currSize -= 1
             waiter.willContinuePure(removeFirst())
-            Bits.WaiteeAlreadyCompleted
+            Halt.Continue
         else
           if kindOfWaiters == OVERFLOW then
             waiter.willContinuePure(insertLastAndRemoveFirst(x.takeWaiterState().asElement))
             savedWaiter = x
             removeFirstWaiter()
             x.standbyWaiter()
-            Bits.WaiteeAlreadyCompleted
+            Halt.Continue
           else
             subscribeWaiterUnsync(waiter)
-            Bits.WaiterSubscribed
+            Halt.Retire
       }
 
     if savedWaiter != null then
@@ -75,7 +74,7 @@ private[turbolift] final class ChannelImpl(val currCapacity: Int) extends Waitee
     if ok then Some(savedValue) else None
 
 
-  def tryPutBy(waiter: FiberImpl): Int =
+  def tryPutBy(waiter: FiberImpl): Halt =
     var savedWaiter: FiberImpl | Null = null
 
     val result =
@@ -85,20 +84,20 @@ private[turbolift] final class ChannelImpl(val currCapacity: Int) extends Waitee
           if currSize == currCapacity then
             kindOfWaiters = OVERFLOW
             subscribeFirstWaiterUnsync(waiter)
-            Bits.WaiterSubscribed
+            Halt.Retire
           else
             currSize += 1
             insertLast(waiter.takeWaiterState().asElement)
-            Bits.WaiteeAlreadyCompleted
+            Halt.Continue
         else
           if kindOfWaiters == UNDERFLOW then
             savedWaiter = x
             removeFirstWaiter()
             x.standbyWaiterPure(waiter.takeWaiterState())
-            Bits.WaiteeAlreadyCompleted
+            Halt.Continue
           else
             subscribeWaiterUnsync(waiter)
-            Bits.WaiterSubscribed
+            Halt.Retire
       }
 
     if savedWaiter != null then

@@ -94,13 +94,6 @@ object Bits:
     a + b * 3 
 
 
-  //// Waiter & Waitee
-
-  inline val WaiterSubscribed = 0
-  final val WaiterAlreadyCancelled = 1 //@#@ no `inline val` bcoz compiler bug
-  inline val WaiteeAlreadyCompleted = 2
-
-
   //// Warp
 
   inline val Warp_Pending   = Completion_Pending

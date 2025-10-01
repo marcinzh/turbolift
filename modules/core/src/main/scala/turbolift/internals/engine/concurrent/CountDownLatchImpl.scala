@@ -1,7 +1,6 @@
 package turbolift.internals.engine.concurrent
 import turbolift.io.CountDownLatch
-import turbolift.internals.engine.{Waitee, FiberImpl}
-import turbolift.internals.engine.Bits
+import turbolift.internals.engine.{Waitee, FiberImpl, Halt}
 
 
 private[turbolift] final class CountDownLatchImpl(private var counter: Int) extends Waitee with CountDownLatch.Unsealed:
@@ -10,13 +9,13 @@ private[turbolift] final class CountDownLatchImpl(private var counter: Int) exte
       setCompletionToSuccess()
   }
 
-  def tryGetAwaitedBy(waiter: FiberImpl): Int =
+  def tryGetAwaitedBy(waiter: FiberImpl): Halt =
     atomicallyBoth(waiter) {
       if isPending then
         subscribeWaiterUnsync(waiter)
-        Bits.WaiterSubscribed
+        Halt.Retire
       else
-        Bits.WaiteeAlreadyCompleted
+        Halt.Continue
     }
 
 

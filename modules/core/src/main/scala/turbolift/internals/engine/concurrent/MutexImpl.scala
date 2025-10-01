@@ -1,21 +1,20 @@
 package turbolift.internals.engine.concurrent
 import turbolift.io.Mutex
-import turbolift.internals.engine.{Waitee, FiberImpl}
-import turbolift.internals.engine.Bits
+import turbolift.internals.engine.{Waitee, FiberImpl, Halt}
 
 
 private[turbolift] final class MutexImpl extends Waitee with Mutex.Unsealed:
   private var locked: Boolean = false
 
 
-  def tryGetAcquiredBy(waiter: FiberImpl): Int =
+  def tryGetAcquiredBy(waiter: FiberImpl): Halt =
     atomicallyBoth(waiter) {
       if locked then
         subscribeWaiterUnsync(waiter)
-        Bits.WaiterSubscribed
+        Halt.Retire
       else
         locked = true
-        Bits.WaiteeAlreadyCompleted
+        Halt.Continue
     }
 
 
