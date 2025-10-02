@@ -1,12 +1,19 @@
 package turbolift.io
 import turbolift.{!!, ComputationCases => CC}
 import turbolift.effects.IO
+import turbolift.internals.engine.{FiberImpl, Halt}
 import turbolift.internals.engine.concurrent.ChannelImpl
 
 
 sealed trait Channel[A] extends Channel.Get[A] with Channel.Put[A]:
   final def asGet: Channel.Get[A] = this
   final def asPut: Channel.Put[A] = this
+  
+  private[turbolift] def intrinsicGet(waiter: FiberImpl): Halt
+  private[turbolift] def intrinsicPut(waiter: FiberImpl, value: A): Halt
+
+  final override def put(value: A): Unit !! IO = CC.intrinsic(intrinsicPut(_, value))
+  final override def get: A !! IO = CC.intrinsic(intrinsicGet(_))
 
 
 object Channel:
@@ -43,14 +50,14 @@ object Channel:
 
 
   sealed trait Get[A] extends Base:
-    final def get: A !! IO = CC.intrinsic(_.intrinsicGetChannel(this))
+    def get: A !! IO
     final def tryGet: Option[A] !! IO = !!.impure(unsafeTryGet())
 
     def unsafeTryGet(): Option[A]
 
 
   sealed trait Put[A] extends Base:
-    final def put(value: A): Unit !! IO = CC.intrinsic(_.intrinsicPutChannel(this, value))
+    def put(value: A): Unit !! IO
     final def tryPut(value: A): Boolean !! IO = !!.impure(unsafeTryPut(value))
 
     def unsafeTryPut(value: A): Boolean

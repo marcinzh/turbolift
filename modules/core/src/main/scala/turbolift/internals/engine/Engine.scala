@@ -8,7 +8,7 @@ import turbolift.io.{Fiber, Zipper, Warp, OnceVar, EffectfulVar, CountDownLatch,
 import turbolift.interpreter.{Interpreter, Continuation, Prompt}
 import turbolift.internals.executor.Executor
 import turbolift.internals.engine.stacked.{Stack, Store, Entry, Local, Location, FrameKind, OpPush, OpSplit, OpCascaded}
-import turbolift.internals.engine.concurrent.{OnceVarImpl, EffectfulVarImpl, CountDownLatchImpl, CyclicBarrierImpl, ReentrantLockImpl, SemaphoreImpl, ChannelImpl}
+import turbolift.internals.engine.concurrent.{OnceVarImpl, EffectfulVarImpl}
 import Local.Syntax._
 import Misc._
 
@@ -463,8 +463,8 @@ private trait Engine extends Runnable:
           case FrameKind.WARP =>
             val warp = oldEnv.currentWarp.nn
             warp.exitMode match
-              case Warp.ExitMode.Cancel => warp.tryGetCancelledBy(this)
-              case Warp.ExitMode.Await => warp.tryGetAwaitedBy(this)
+              case Warp.ExitMode.Cancel => warp.cancelBy(this)
+              case Warp.ExitMode.Await => warp.awaitBy(this)
               case null => impossible //// this is a scoped warp, so it must have ExitMode
 
           case FrameKind.EXEC =>
@@ -753,15 +753,6 @@ private trait Engine extends Runnable:
     Halt.Continue
 
 
-  final def intrinsicAwaitWarp(warp0: Warp, isCancel: Boolean): Halt =
-    this.willContinuePure(())
-    val warp = warp0.asImpl
-    if isCancel then
-      warp.tryGetCancelledBy(this)
-    else
-      warp.tryGetAwaitedBy(this)
-
-
   final def intrinsicAsync[A](callback: (Either[Throwable, A] => Unit) => Unit, isAttempt: Boolean): Halt =
     this.willContinueTag(if isAttempt then this.theCurrentStep.tag else Tag.NotifyEither, null)
     callback(this)
@@ -813,70 +804,6 @@ private trait Engine extends Runnable:
   final def intrinsicYield: Halt =
     this.willContinuePure(())
     Halt.Yield
-
-
-  final def intrinsicAwaitOnceVar[A](ovar0: OnceVar.Get[A]): Halt =
-    val ovar = ovar0.asImpl
-    val value = ovar.theContent
-    if OnceVarImpl.Empty != value then
-      this.willContinuePure(value)
-      Halt.Continue
-    else
-      this.willContinueTag(Tag.NotifyOnceVar, ovar)
-      val halt = ovar.tryGetAwaitedBy(this)
-      if halt == Halt.Continue then
-        this.willContinuePure(ovar.theContent)
-      halt
-
-
-  final def intrinsicAwaitEffectfulVar[A, U <: IO](evar0: EffectfulVar.Get[A, U]): Halt =
-    val evar = evar0.asImpl
-    if evar.isReady then
-      this.willContinueEff(evar.getNextShot)
-      Halt.Continue
-    else
-      this.willContinueTag(Tag.NotifyEffectfulVar, evar)
-      evar.tryGetAwaitedBy(this)
-
-
-  final def intrinsicAwaitCountDownLatch(latch: CountDownLatch): Halt =
-    this.willContinuePure(())
-    latch.asImpl.tryGetAwaitedBy(this)
-
-
-  final def intrinsicAwaitCyclicBarrier(barrier: CyclicBarrier): Halt =
-    this.willContinuePure(())
-    barrier.asImpl.tryGetAwaitedBy(this)
-
-
-  final def intrinsicAcquireReentrantLock(lock: ReentrantLock): Halt =
-    this.willContinuePure(())
-    lock.asImpl.tryGetAcquiredBy(this)
-
-
-  final def intrinsicAcquireMutex(mutex: Mutex): Halt =
-    this.willContinuePure(())
-    mutex.asImpl.tryGetAcquiredBy(this)
-
-
-  final def intrinsicAcquireSemaphore(semaphore: Semaphore, count: Long): Halt =
-    this.willContinuePure(())
-    this.theWaiterStateLong = count
-    semaphore.asImpl.tryGetAcquiredBy(this, count)
-
-
-  final def intrinsicGetChannel[A](channel: Channel.Get[A]): Halt =
-    this.willContinuePure(null)
-    channel.asImpl.tryGetBy(this)
-
-
-  final def intrinsicPutChannel[A](channel: Channel.Put[A], value: A): Halt =
-    this.willContinuePure(())
-    this.theWaiterStateAny = value
-    val halt = channel.asImpl.tryPutBy(this)
-    if halt != Halt.Retire then
-      this.theWaiterStateAny = null
-    halt
 
 
   //-------------------------------------------------------------------

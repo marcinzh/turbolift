@@ -7,7 +7,9 @@ private[turbolift] final class MutexImpl extends Waitee with Mutex.Unsealed:
   private var locked: Boolean = false
 
 
-  def tryGetAcquiredBy(waiter: FiberImpl): Halt =
+  override def intrinsicAcquire(waiter: FiberImpl): Halt =
+    waiter.willContinuePure(())
+
     atomicallyBoth(waiter) {
       if locked then
         subscribeWaiterUnsync(waiter)
@@ -35,17 +37,17 @@ private[turbolift] final class MutexImpl extends Waitee with Mutex.Unsealed:
 
 
   override def unsafeRelease(): Unit =
-    var savedWaiter: FiberImpl | Null = null
+    var waiterToResume: FiberImpl | Null = null
 
     atomically {
       val x = firstWaiter
       if x == null then
         locked = false
       else
-        savedWaiter = x
+        waiterToResume = x
         removeFirstWaiter()
         x.standbyWaiter()
     }
 
-    if savedWaiter != null then
-      savedWaiter.nn.resume()
+    if waiterToResume != null then
+      waiterToResume.nn.resume()

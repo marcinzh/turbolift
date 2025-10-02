@@ -5,7 +5,10 @@ import turbolift.internals.engine.{Waitee, FiberImpl, Halt}
 
 
 private[turbolift] final class SemaphoreImpl(private var permits: Long) extends Waitee with Semaphore.Unsealed:
-  def tryGetAcquiredBy(waiter: FiberImpl, count: Long): Halt =
+  override def intrinsicAcquire(waiter: FiberImpl, count: Long): Halt =
+    waiter.willContinuePure(())
+    waiter.theWaiterStateLong = count 
+
     atomicallyBoth(waiter) {
       if firstWaiter == null then
         val n = permits - count
@@ -36,7 +39,7 @@ private[turbolift] final class SemaphoreImpl(private var permits: Long) extends 
 
 
   @tailrec override def unsafeRelease(count: Long): Unit =
-    var savedWaiter: FiberImpl | Null = null
+    var waiterToResume: FiberImpl | Null = null
 
     val keepGoing =
       atomically {
@@ -46,7 +49,7 @@ private[turbolift] final class SemaphoreImpl(private var permits: Long) extends 
           val n = permits - x.theWaiterStateLong
           if n >= 0 then
             permits = n
-            savedWaiter = x
+            waiterToResume = x
             removeFirstWaiter()
             x.standbyWaiter()
           n > 0
@@ -54,8 +57,8 @@ private[turbolift] final class SemaphoreImpl(private var permits: Long) extends 
           false
       }
 
-    if savedWaiter != null then
-      savedWaiter.nn.resume()
+    if waiterToResume != null then
+      waiterToResume.nn.resume()
 
     if keepGoing then
       unsafeRelease(0)

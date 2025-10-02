@@ -1,7 +1,7 @@
 package turbolift.internals.engine.concurrent
 import turbolift.!!
 import turbolift.io.{EffectfulVar, Zipper}
-import turbolift.internals.engine.{Waitee, FiberImpl, Halt}
+import turbolift.internals.engine.{Waitee, FiberImpl, Halt, Tag}
 import turbolift.internals.engine.Misc.AnyComp
 
 
@@ -11,32 +11,36 @@ private[turbolift] final class EffectfulVarImpl extends Waitee with EffectfulVar
   private var theNextShot: AnyComp | Null = null
 
 
+  //// only used when handling Tag.NotifyEffectfulVar
   def getNextShot: AnyComp = theNextShot.nn
 
 
-  def tryGetAwaitedBy(waiter: FiberImpl): Halt =
-    var savedComp: AnyComp | Null = null
+  override def intrinsicGetOption(waiter: FiberImpl): Halt =
+    if isReady then
+      waiter.willContinueEff(theNextShot.nn)
+      Halt.Continue
+    else
+      waiter.willContinueTag(Tag.NotifyEffectfulVar, this)
+      var savedComp: AnyComp | Null = null
 
-    val result =
-      atomicallyBoth(waiter) {
-        if isPending then
-          subscribeWaiterUnsync(waiter)
-          Halt.Retire
-        else
-          if theFirstShot != null then
-            savedComp = theFirstShot
-            theFirstShot = null
-            isReady = true
+      val halt =
+        atomicallyBoth(waiter) {
+          if isPending then
+            subscribeWaiterUnsync(waiter)
+            Halt.Retire
           else
-            savedComp = theNextShot
-          Halt.Continue
-      }
+            if theFirstShot != null then
+              savedComp = theFirstShot
+              theFirstShot = null
+              isReady = true
+            else
+              savedComp = theNextShot
+            Halt.Continue
+        }
 
-    if savedComp != null then
-      waiter.willContinueEff(savedComp.nn)
-
-    result
-
+      if savedComp != null then
+        waiter.willContinueEff(savedComp.nn)
+      halt
 
 
   override def unsafeTryPut(zipper: Zipper.Untyped): Boolean =

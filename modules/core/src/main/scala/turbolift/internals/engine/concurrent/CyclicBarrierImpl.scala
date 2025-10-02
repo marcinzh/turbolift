@@ -9,10 +9,11 @@ private[turbolift] final class CyclicBarrierImpl(private val capacity: Int) exte
   private var clock = 0L
 
 
-  def tryGetAwaitedBy(waiter: FiberImpl): Halt =
+  override def intrinsicAwait(waiter: FiberImpl): Halt =
+    waiter.willContinuePure(())
     var staleClock = 0L
 
-    val result =
+    val halt =
       atomicallyBoth(waiter) {
         val n = counter - 1
         if n > 0 then
@@ -27,19 +28,19 @@ private[turbolift] final class CyclicBarrierImpl(private val capacity: Int) exte
           Halt.Continue
       }
 
-    if result == Halt.Continue then
+    if halt == Halt.Continue then
       release(staleClock)
-    result
+    halt
 
 
   @tailrec private def release(staleClock: Long): Unit =
-    var savedWaiter: FiberImpl | Null = null
+    var waiterToResume: FiberImpl | Null = null
   
     val keepGoing =
       atomically {
         val x = firstWaiter
         if x != null && x.theWaiterStateLong == staleClock then
-          savedWaiter = x
+          waiterToResume = x
           removeFirstWaiter()
           x.standbyWaiter()
           true
@@ -47,8 +48,8 @@ private[turbolift] final class CyclicBarrierImpl(private val capacity: Int) exte
           false
       }
 
-    if savedWaiter != null then
-      savedWaiter.nn.resume()
+    if waiterToResume != null then
+      waiterToResume.nn.resume()
 
     if keepGoing then
       release(staleClock)

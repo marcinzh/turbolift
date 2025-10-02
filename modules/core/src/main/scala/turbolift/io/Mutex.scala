@@ -1,11 +1,14 @@
 package turbolift.io
 import turbolift.{!!, ComputationCases => CC}
 import turbolift.effects.IO
+import turbolift.internals.engine.{FiberImpl, Halt}
 import turbolift.internals.engine.concurrent.MutexImpl
 
 
 sealed trait Mutex:
-  final def acquire: Unit !! IO = CC.intrinsic(_.intrinsicAcquireMutex(this))
+  private[turbolift] def intrinsicAcquire(waiter: FiberImpl): Halt
+
+  final def acquire: Unit !! IO = CC.intrinsic(intrinsicAcquire(_))
 
   final def tryAcquire: Boolean !! IO = !!.impure(unsafeTryAcquire())
 

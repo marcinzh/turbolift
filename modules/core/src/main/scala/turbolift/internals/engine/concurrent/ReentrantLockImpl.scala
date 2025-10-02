@@ -9,7 +9,9 @@ private[turbolift] final class ReentrantLockImpl extends Waitee with ReentrantLo
   private var reentryCount: Int = 0
 
 
-  def tryGetAcquiredBy(waiter: FiberImpl): Halt =
+  override def intrinsicAcquire(waiter: FiberImpl): Halt =
+    waiter.willContinuePure(())
+
     atomicallyBoth(waiter) {
       if reentryCount == 0 then
         lockedBy = waiter
@@ -43,7 +45,7 @@ private[turbolift] final class ReentrantLockImpl extends Waitee with ReentrantLo
 
 
   override def unsafeRelease(): Unit =
-    var savedWaiter: FiberImpl | Null = null
+    var waiterToResume: FiberImpl | Null = null
 
     atomically {
       if reentryCount > 0 then
@@ -55,13 +57,13 @@ private[turbolift] final class ReentrantLockImpl extends Waitee with ReentrantLo
           else
             reentryCount = 1
             lockedBy = x
-            savedWaiter = x
+            waiterToResume = x
             removeFirstWaiter()
             x.standbyWaiter()
     }
 
-    if savedWaiter != null then
-      savedWaiter.nn.resume()
+    if waiterToResume != null then
+      waiterToResume.nn.resume()
 
 
   def unsafeStatus(): ReentrantLock.Status =

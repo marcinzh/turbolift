@@ -1,5 +1,7 @@
 package turbolift.internals.engine
 import scala.annotation.tailrec
+import turbolift.{!!, ComputationCases => CC}
+import turbolift.effects.IO
 import turbolift.io.{Fiber, Warp}
 
 
@@ -76,7 +78,11 @@ private[turbolift] final class WarpImpl private[engine] (
   //-------------------------------------------------------------------
 
 
-  def tryGetAwaitedBy(waiter: FiberImpl): Halt =
+  def intrinsicAwait(waiter: FiberImpl): Halt =
+    waiter.willContinuePure(())
+    awaitBy(waiter)
+
+  def awaitBy(waiter: FiberImpl): Halt =
     var willFinalize = false
 
     val result =
@@ -126,7 +132,12 @@ private[turbolift] final class WarpImpl private[engine] (
   //-------------------------------------------------------------------
 
 
-  def tryGetCancelledBy(canceller: FiberImpl): Halt =
+  def intrinsicCancel(canceller: FiberImpl): Halt =
+    canceller.willContinuePure(())
+    cancelBy(canceller)
+
+
+  def cancelBy(canceller: FiberImpl): Halt =
     var willFinalize = false
     var willDescend = false
 
@@ -266,6 +277,8 @@ private[turbolift] final class WarpImpl private[engine] (
     array.asInstanceOf[Array[T]].take(count)
 
 
+  override def cancel: Unit !! IO = CC.intrinsic(intrinsicCancel(_))
+  override def await: Unit !! IO = CC.intrinsic(intrinsicAwait(_))
   override def unsafeShutdownAndForget(): Unit = doShutdownAndForget()
   override def unsafeCancelAndForget(): Unit = doCancelAndForget()
 

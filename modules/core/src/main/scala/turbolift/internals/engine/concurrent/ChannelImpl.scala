@@ -1,4 +1,5 @@
 package turbolift.internals.engine.concurrent
+import turbolift.effects.IO
 import turbolift.io.Channel
 import turbolift.internals.engine.{Waitee, FiberImpl, Halt}
 import ChannelImpl.{Buffer, Element, asElement, OVERFLOW, UNDERFLOW}
@@ -10,10 +11,11 @@ private[turbolift] final class ChannelImpl(val currCapacity: Int) extends Waitee
   private var kindOfWaiters: Int = 0 //// meaningless when waiter list is empty
 
 
-  def tryGetBy(waiter: FiberImpl): Halt =
-    var savedWaiter: FiberImpl | Null = null
+  override def intrinsicGet(waiter: FiberImpl): Halt =
+    waiter.willContinuePure(null)
+    var waiterToResume: FiberImpl | Null = null
 
-    val result =
+    val halt =
       atomicallyBoth(waiter) {
         val x = firstWaiter
         if x == null then
@@ -28,7 +30,7 @@ private[turbolift] final class ChannelImpl(val currCapacity: Int) extends Waitee
         else
           if kindOfWaiters == OVERFLOW then
             waiter.willContinuePure(insertLastAndRemoveFirst(x.takeWaiterState().asElement))
-            savedWaiter = x
+            waiterToResume = x
             removeFirstWaiter()
             x.standbyWaiter()
             Halt.Continue
@@ -37,16 +39,16 @@ private[turbolift] final class ChannelImpl(val currCapacity: Int) extends Waitee
             Halt.Retire
       }
 
-    if savedWaiter != null then
-      savedWaiter.nn.resume()
+    if waiterToResume != null then
+      waiterToResume.nn.resume()
 
-    result
+    halt
 
 
-  //// Same as `tryGetBy` but without subscribing the waiter
+  //// Same as `intrinsicGet` but without subscribing the waiter
   override def unsafeTryGet(): Option[Any] =
     var savedValue: Any = null
-    var savedWaiter: FiberImpl | Null = null
+    var waiterToResume: FiberImpl | Null = null
 
     val ok =
       atomically {
@@ -61,7 +63,7 @@ private[turbolift] final class ChannelImpl(val currCapacity: Int) extends Waitee
         else
           if kindOfWaiters == OVERFLOW then
             savedValue = insertLastAndRemoveFirst(x.takeWaiterState().asElement)
-            savedWaiter = x
+            waiterToResume = x
             removeFirstWaiter()
             x.standbyWaiter()
             true
@@ -69,45 +71,50 @@ private[turbolift] final class ChannelImpl(val currCapacity: Int) extends Waitee
             false
       }
 
-    if savedWaiter != null then
-      savedWaiter.nn.resume()
+    if waiterToResume != null then
+      waiterToResume.nn.resume()
+
     if ok then Some(savedValue) else None
 
 
-  def tryPutBy(waiter: FiberImpl): Halt =
-    var savedWaiter: FiberImpl | Null = null
+  override def intrinsicPut(waiter: FiberImpl, value: Any): Halt =
+    waiter.willContinuePure(())
+    var waiterToResume: FiberImpl | Null = null
 
-    val result =
+    val halt =
       atomicallyBoth(waiter) {
         val x = firstWaiter
         if x == null then
           if currSize == currCapacity then
             kindOfWaiters = OVERFLOW
+            waiter.theWaiterStateAny = value
             subscribeFirstWaiterUnsync(waiter)
             Halt.Retire
           else
             currSize += 1
-            insertLast(waiter.takeWaiterState().asElement)
+            insertLast(value.asElement)
             Halt.Continue
         else
           if kindOfWaiters == UNDERFLOW then
-            savedWaiter = x
+            waiterToResume = x
             removeFirstWaiter()
-            x.standbyWaiterPure(waiter.takeWaiterState())
+            x.standbyWaiterPure(value)
             Halt.Continue
           else
+            waiter.theWaiterStateAny = value
             subscribeWaiterUnsync(waiter)
             Halt.Retire
       }
 
-    if savedWaiter != null then
-      savedWaiter.nn.resume()
-    result
+    if waiterToResume != null then
+      waiterToResume.nn.resume()
+
+    halt
 
 
-  //// Same as `tryPutBy` but without subscribing the waiter
+  //// Same as `intrinsicPut` but without subscribing the waiter
   override def unsafeTryPut(value: Any): Boolean =
-    var savedWaiter: FiberImpl | Null = null
+    var waiterToResume: FiberImpl | Null = null
 
     val ok =
       atomically {
@@ -121,7 +128,7 @@ private[turbolift] final class ChannelImpl(val currCapacity: Int) extends Waitee
             true
         else
           if kindOfWaiters == UNDERFLOW then
-            savedWaiter = x
+            waiterToResume = x
             removeFirstWaiter()
             x.standbyWaiterPure(value)
             true
@@ -129,8 +136,9 @@ private[turbolift] final class ChannelImpl(val currCapacity: Int) extends Waitee
             false
       }
 
-    if savedWaiter != null then
-      savedWaiter.nn.resume()
+    if waiterToResume != null then
+      waiterToResume.nn.resume()
+
     ok
 
 

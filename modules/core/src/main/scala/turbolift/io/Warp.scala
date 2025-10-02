@@ -34,13 +34,13 @@ sealed trait Warp:
   final def status: Warp.Status !! IO = IO(unsafeStatus())
 
   /** Complete this warp, by cancelling all its children and waiting for their completion. */
-  final def cancel: Unit !! IO = CC.intrinsic(_.intrinsicAwaitWarp(this, isCancel = true))
+  def cancel: Unit !! IO
 
   /** Like [[cancel]], but without waiting for the completion. */
   final def cancelAndForget: Unit !! IO = IO(unsafeCancelAndForget())
 
   /** Complete this warp, by waiting until it becomes childless. */
-  final def await: Unit !! IO = CC.intrinsic(_.intrinsicAwaitWarp(this, isCancel = false))
+  def await: Unit !! IO
 
   /** Trigger completion of this warp as soon it becomes childless.
     *

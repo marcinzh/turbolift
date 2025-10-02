@@ -1,11 +1,14 @@
 package turbolift.io
 import turbolift.{!!, ComputationCases => CC}
 import turbolift.effects.IO
+import turbolift.internals.engine.{FiberImpl, Halt}
 import turbolift.internals.engine.concurrent.CyclicBarrierImpl
 
 
 sealed trait CyclicBarrier:
-  final def await: Unit !! IO = CC.intrinsic(_.intrinsicAwaitCyclicBarrier(this))
+  private[turbolift] def intrinsicAwait(waiter: FiberImpl): Halt
+
+  final def await: Unit !! IO = CC.intrinsic(intrinsicAwait(_))
 
   private[turbolift] final def asImpl: CyclicBarrierImpl = asInstanceOf[CyclicBarrierImpl]
 

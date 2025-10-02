@@ -9,7 +9,10 @@ private[turbolift] final class CountDownLatchImpl(private var counter: Int) exte
       setCompletionToSuccess()
   }
 
-  def tryGetAwaitedBy(waiter: FiberImpl): Halt =
+
+  override def intrinsicAwait(waiter: FiberImpl): Halt =
+    waiter.willContinuePure(())
+
     atomicallyBoth(waiter) {
       if isPending then
         subscribeWaiterUnsync(waiter)
