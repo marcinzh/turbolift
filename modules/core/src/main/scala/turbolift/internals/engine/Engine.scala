@@ -815,14 +815,14 @@ private trait Engine extends Runnable:
     this.theCurrentEnv = OpPush.findTopmostEnv(theCurrentStack, theCurrentStore)
 
 
-  private final def findEntryBySignature(sig: Signature, stack: Stack, hasShadow: Boolean): Entry =
+  private final inline def findEntryBySignature(sig: Signature, stack: Stack, hasShadow: Boolean): Entry =
     if !hasShadow then
       stack.findEntryBySignature(sig)
     else
       stack.findEntryBySignatureWithShadow(sig, theCurrentEnv.shadowMap.get(sig))
 
 
-  private final def findEntryByPrompt(prompt: Prompt, stack: Stack, hasShadow: Boolean): Entry =
+  private final inline def findEntryByPrompt(prompt: Prompt, stack: Stack, hasShadow: Boolean): Entry =
     if !hasShadow then
       stack.findEntryByPrompt(prompt)
     else

@@ -1,7 +1,7 @@
 package turbolift.internals.engine.concurrent
 import turbolift.io.{ReentrantLock, Fiber}
 import turbolift.internals.engine.{Waitee, FiberImpl, Halt}
-import turbolift.internals.engine.{asImpl}
+import turbolift.internals.engine.Misc.asImpl
 
 
 private[turbolift] final class ReentrantLockImpl extends Waitee with ReentrantLock.Unsealed:
