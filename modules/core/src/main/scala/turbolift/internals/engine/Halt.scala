@@ -12,4 +12,4 @@ object Halt:
   inline val Reset          = 3
   inline val Become         = 4
   inline val Yield          = 5
-  inline val Retire         = 8
+  inline val Retire         = 6
