@@ -2,7 +2,7 @@ val ScalaLTS = "3.3.6"
 val ScalaNext = "3.7.2"
 
 ThisBuild / organization := "io.github.marcinzh"
-ThisBuild / version := "0.122.0"
+ThisBuild / version := "0.123.0-SNAPSHOT"
 ThisBuild / scalaVersion := ScalaLTS
 ThisBuild / crossScalaVersions := Seq(ScalaLTS, ScalaNext)
 ThisBuild / scalacOptions ++= Seq(
