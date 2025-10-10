@@ -1,20 +1,22 @@
-package turbolift.internals.engine.concurrent.util
+package turbolift.internals.engine.concurrent
 import turbolift.io.Mutex
-import turbolift.internals.engine.concurrent.{Bits, Waitee, FiberImpl}
+import turbolift.internals.engine.{Waitee, FiberImpl, Halt}
 
 
 private[turbolift] final class MutexImpl extends Waitee with Mutex.Unsealed:
   private var locked: Boolean = false
 
 
-  def tryGetAcquiredBy(waiter: FiberImpl, isWaiterCancellable: Boolean): Int =
-    atomicallyBoth(waiter, isWaiterCancellable) {
+  override def intrinsicAcquire(waiter: FiberImpl): Halt =
+    waiter.willContinuePure(())
+
+    atomicallyBoth(waiter) {
       if locked then
         subscribeWaiterUnsync(waiter)
-        Bits.WaiterSubscribed
+        Halt.Retire
       else
         locked = true
-        Bits.WaiteeAlreadyCompleted
+        Halt.Continue
     }
 
 
@@ -35,17 +37,17 @@ private[turbolift] final class MutexImpl extends Waitee with Mutex.Unsealed:
 
 
   override def unsafeRelease(): Unit =
-    var savedWaiter: FiberImpl | Null = null
+    var waiterToResume: FiberImpl | Null = null
 
     atomically {
       val x = firstWaiter
       if x == null then
         locked = false
       else
-        savedWaiter = x
+        waiterToResume = x
         removeFirstWaiter()
-        x.standbyWaiterPure(())
+        x.standbyWaiter()
     }
 
-    if savedWaiter != null then
-      savedWaiter.nn.resume()
+    if waiterToResume != null then
+      waiterToResume.nn.resume()

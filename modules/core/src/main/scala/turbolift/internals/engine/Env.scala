@@ -2,7 +2,6 @@ package turbolift.internals.engine
 import turbolift.Signature
 import turbolift.interpreter.Interpreter
 import turbolift.internals.executor.Executor
-import turbolift.internals.engine.concurrent.WarpImpl
 
 
 private[turbolift] final class Env(
@@ -31,6 +30,23 @@ private[turbolift] final class Env(
     isParallelismRequested = isParallelismRequested,
     isCancellable = isCancellable,
   )
+
+  //@#@TODO temporary solution, until new layout of FiberImpl
+  def fork: Env =
+    val ok = (
+      isCancellable &&
+      (currentWarp == null) &&
+      shadowMap.isEmpty
+    )
+    if ok then
+      this
+    else
+      copy(
+        isCancellable = true,
+        currentWarp = null,
+        shadowMap = ShadowMap.empty,
+      )
+
 
   def par(x: Boolean): Env =
     if isParallelismRequested == x then

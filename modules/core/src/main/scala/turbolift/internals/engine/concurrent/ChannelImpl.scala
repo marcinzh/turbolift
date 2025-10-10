@@ -1,6 +1,7 @@
-package turbolift.internals.engine.concurrent.util
+package turbolift.internals.engine.concurrent
+import turbolift.effects.IO
 import turbolift.io.Channel
-import turbolift.internals.engine.concurrent.{Bits, Waitee, FiberImpl}
+import turbolift.internals.engine.{Waitee, FiberImpl, Halt}
 import ChannelImpl.{Buffer, Element, asElement, OVERFLOW, UNDERFLOW}
 
 
@@ -10,43 +11,44 @@ private[turbolift] final class ChannelImpl(val currCapacity: Int) extends Waitee
   private var kindOfWaiters: Int = 0 //// meaningless when waiter list is empty
 
 
-  def tryGetBy(waiter: FiberImpl, isWaiterCancellable: Boolean): (Int, Any) =
-    var savedValue: Any = null
-    var savedWaiter: FiberImpl | Null = null
+  override def intrinsicGet(waiter: FiberImpl): Halt =
+    waiter.willContinuePure(null)
+    var waiterToResume: FiberImpl | Null = null
 
-    val result =
-      atomicallyBoth(waiter, isWaiterCancellable) {
+    val halt =
+      atomicallyBoth(waiter) {
         val x = firstWaiter
         if x == null then
           if currSize == 0 then
             kindOfWaiters = UNDERFLOW
             subscribeFirstWaiterUnsync(waiter)
-            Bits.WaiterSubscribed
+            Halt.Retire
           else
             currSize -= 1
-            savedValue = removeFirst()
-            Bits.WaiteeAlreadyCompleted
+            waiter.willContinuePure(removeFirst())
+            Halt.Continue
         else
           if kindOfWaiters == OVERFLOW then
-            savedValue = insertLastAndRemoveFirst(x.suspendedPayload.asElement)
-            savedWaiter = x
+            waiter.willContinuePure(insertLastAndRemoveFirst(x.takeWaiterState().asElement))
+            waiterToResume = x
             removeFirstWaiter()
-            x.standbyWaiterPure(())
-            Bits.WaiteeAlreadyCompleted
+            x.standbyWaiter()
+            Halt.Continue
           else
             subscribeWaiterUnsync(waiter)
-            Bits.WaiterSubscribed
+            Halt.Retire
       }
 
-    if savedWaiter != null then
-      savedWaiter.nn.resume()
-    (result, savedValue)
+    if waiterToResume != null then
+      waiterToResume.nn.resume()
+
+    halt
 
 
-  //// Same as `tryGetBy` but without subscribing the waiter
+  //// Same as `intrinsicGet` but without subscribing the waiter
   override def unsafeTryGet(): Option[Any] =
     var savedValue: Any = null
-    var savedWaiter: FiberImpl | Null = null
+    var waiterToResume: FiberImpl | Null = null
 
     val ok =
       atomically {
@@ -60,54 +62,59 @@ private[turbolift] final class ChannelImpl(val currCapacity: Int) extends Waitee
             true
         else
           if kindOfWaiters == OVERFLOW then
-            savedValue = insertLastAndRemoveFirst(x.suspendedPayload.asElement)
-            savedWaiter = x
+            savedValue = insertLastAndRemoveFirst(x.takeWaiterState().asElement)
+            waiterToResume = x
             removeFirstWaiter()
-            x.standbyWaiterPure(())
+            x.standbyWaiter()
             true
           else
             false
       }
 
-    if savedWaiter != null then
-      savedWaiter.nn.resume()
+    if waiterToResume != null then
+      waiterToResume.nn.resume()
+
     if ok then Some(savedValue) else None
 
 
-  def tryPutBy(waiter: FiberImpl, isWaiterCancellable: Boolean): Int =
-    var savedWaiter: FiberImpl | Null = null
+  override def intrinsicPut(waiter: FiberImpl, value: Any): Halt =
+    waiter.willContinuePure(())
+    var waiterToResume: FiberImpl | Null = null
 
-    val result =
-      atomicallyBoth(waiter, isWaiterCancellable) {
+    val halt =
+      atomicallyBoth(waiter) {
         val x = firstWaiter
         if x == null then
           if currSize == currCapacity then
             kindOfWaiters = OVERFLOW
+            waiter.theWaiterStateAny = value
             subscribeFirstWaiterUnsync(waiter)
-            Bits.WaiterSubscribed
+            Halt.Retire
           else
             currSize += 1
-            insertLast(waiter.suspendedPayload.asElement)
-            Bits.WaiteeAlreadyCompleted
+            insertLast(value.asElement)
+            Halt.Continue
         else
           if kindOfWaiters == UNDERFLOW then
-            savedWaiter = x
+            waiterToResume = x
             removeFirstWaiter()
-            x.standbyWaiterPure(waiter.suspendedPayload)
-            Bits.WaiteeAlreadyCompleted
+            x.standbyWaiterPure(value)
+            Halt.Continue
           else
+            waiter.theWaiterStateAny = value
             subscribeWaiterUnsync(waiter)
-            Bits.WaiterSubscribed
+            Halt.Retire
       }
 
-    if savedWaiter != null then
-      savedWaiter.nn.resume()
-    result
+    if waiterToResume != null then
+      waiterToResume.nn.resume()
+
+    halt
 
 
-  //// Same as `tryPutBy` but without subscribing the waiter
+  //// Same as `intrinsicPut` but without subscribing the waiter
   override def unsafeTryPut(value: Any): Boolean =
-    var savedWaiter: FiberImpl | Null = null
+    var waiterToResume: FiberImpl | Null = null
 
     val ok =
       atomically {
@@ -121,7 +128,7 @@ private[turbolift] final class ChannelImpl(val currCapacity: Int) extends Waitee
             true
         else
           if kindOfWaiters == UNDERFLOW then
-            savedWaiter = x
+            waiterToResume = x
             removeFirstWaiter()
             x.standbyWaiterPure(value)
             true
@@ -129,8 +136,9 @@ private[turbolift] final class ChannelImpl(val currCapacity: Int) extends Waitee
             false
       }
 
-    if savedWaiter != null then
-      savedWaiter.nn.resume()
+    if waiterToResume != null then
+      waiterToResume.nn.resume()
+
     ok
 
 

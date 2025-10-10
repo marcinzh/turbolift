@@ -1,11 +1,14 @@
 package turbolift.io
 import turbolift.{!!, ComputationCases => CC}
 import turbolift.effects.IO
-import turbolift.internals.engine.concurrent.util.CountDownLatchImpl
+import turbolift.internals.engine.{FiberImpl, Halt}
+import turbolift.internals.engine.concurrent.CountDownLatchImpl
 
 
 sealed trait CountDownLatch:
-  final def await: Unit !! IO = CC.intrinsic(_.intrinsicAwaitCountDownLatch(this))
+  private[turbolift] def intrinsicAwait(waiter: FiberImpl): Halt
+
+  final def await: Unit !! IO = CC.intrinsic(intrinsicAwait(_))
 
   final def release: Unit !! IO = !!.impure(unsafeRelease())
 

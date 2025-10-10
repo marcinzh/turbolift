@@ -1,7 +1,8 @@
 package turbolift.io
 import turbolift.{!!, ComputationCases => CC}
 import turbolift.effects.IO
-import turbolift.internals.engine.concurrent.util.OnceVarImpl
+import turbolift.internals.engine.{FiberImpl, Halt}
+import turbolift.internals.engine.concurrent.OnceVarImpl
 
 
 /** Variable writable once.
@@ -13,7 +14,7 @@ import turbolift.internals.engine.concurrent.util.OnceVarImpl
 sealed trait OnceVar[A] extends OnceVar.Get[A] with OnceVar.Put[A]:
   final def asGet: OnceVar.Get[A] = this
   final def asPut: OnceVar.Put[A] = this
-
+  final override def get: A !! IO = CC.intrinsic(intrinsicGet(_))
 
 
 object OnceVar:
@@ -22,7 +23,8 @@ object OnceVar:
 
 
   sealed trait Get[A]:
-    final def get: A !! IO = CC.intrinsic(_.intrinsicAwaitOnceVar(this))
+    private[turbolift] def intrinsicGet(waiter: FiberImpl): Halt
+    def get: A !! IO
     final def tryGet: Option[A] !! IO = !!.impure(unsafeTryGet)
     def unsafeTryGet: Option[A]
     def unsafeAsThunk: () => A

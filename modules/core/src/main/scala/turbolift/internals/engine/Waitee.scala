@@ -1,9 +1,9 @@
-package turbolift.internals.engine.concurrent
-import turbolift.internals.engine.concurrent.atomic.AtomicBoolVH
+package turbolift.internals.engine
 import scala.annotation.tailrec
+import turbolift.internals.engine.concurrent.atomic.AtomicBoolVH
 
 
-/** Either Fiber, Warp, Queque or OnceVar */
+/** Either Fiber, Warp, Queque or anything from `turbolift.internals.engine.concurrent.*` */
 
 private[engine] abstract class Waitee extends AtomicBoolVH(false):
   protected var firstWaiter: FiberImpl | Null = null
@@ -16,7 +16,7 @@ private[engine] abstract class Waitee extends AtomicBoolVH(false):
 
 
   private[engine] final def isPending: Boolean = Bits.isPending(varyingBits)
-  private[engine] final def isCancelled: Boolean = Bits.isCancellationSignalled(varyingBits)
+  private[engine] final def isCancellationSignalled: Boolean = Bits.isCancellationSignalled(varyingBits)
   private[engine] final def isPendingAndNotCancelled: Boolean = Bits.isPendingAndNotCancelled(varyingBits)
   private[engine] final def isCancellationUnlatched: Boolean = Bits.isCancellationUnlatched(varyingBits)
 
@@ -45,30 +45,28 @@ private[engine] abstract class Waitee extends AtomicBoolVH(false):
     a
 
 
-  inline final def atomicallyTry[A](isCancellable: Boolean)(inline body: => Unit): Boolean =
-    atomically {
-      if isCancellable && isCancellationUnlatched then
-        setCancellationLatch()
-        false
-      else
-        body
-        true
-    }
-
-
-  inline final def atomicallyBoth(fiber: FiberImpl, isFiberCancellable: Boolean)(inline body: => Int): Int =
-    if spinAcquireBoth(fiber, isFiberCancellable) then
+  //// Assumes it's called (indirectly) from the `fiber` itself.
+  inline final def atomicallyBoth(fiber: FiberImpl)(inline body: => Halt): Halt =
+    if spinAcquireBoth(fiber) then
       val a = body
       spinReleaseBoth(fiber)
       a
     else
-      Bits.WaiterAlreadyCancelled
+      Halt.Cancel
 
 
-  final private def spinAcquireBoth(fiber: FiberImpl, isFiberCancellable: Boolean): Boolean =
+  final private def spinAcquireBoth(fiber: FiberImpl): Boolean =
+    if fiber.theCurrentEnv.isCancellable then
+      spinAcquireBothCancellable(fiber)
+    else
+      spinAcquireBothUncancellable(fiber)
+      true
+
+
+  inline final private def spinAcquireBothCancellable(fiber: FiberImpl): Boolean =
     @tailrec def loop(): Boolean =
       if fiber.spinAcquire() then
-        if isFiberCancellable && fiber.isCancellationUnlatched then
+        if fiber.isCancellationUnlatched then
           fiber.setCancellationLatch()
           fiber.spinRelease()
           false
@@ -78,6 +76,19 @@ private[engine] abstract class Waitee extends AtomicBoolVH(false):
           else
             fiber.spinRelease()
             loop()
+      else
+        loop()
+    loop()
+
+
+  inline final private def spinAcquireBothUncancellable(fiber: FiberImpl): Unit =
+    @tailrec def loop(): Unit =
+      if fiber.spinAcquire() then
+        if spinAcquire() then
+          ()
+        else
+          fiber.spinRelease()
+          loop()
       else
         loop()
     loop()
@@ -163,7 +174,7 @@ private[engine] abstract class Waitee extends AtomicBoolVH(false):
       waiter.removeWaiterAtSelf()
 
 
-private[concurrent] object Waitee:
+private[engine] object Waitee:
   private def notifyAllWaiters(first: FiberImpl): Unit =
     @tailrec def loop(waiter: FiberImpl): Unit =
       val next = waiter.nextWaiter.nn.asFiber

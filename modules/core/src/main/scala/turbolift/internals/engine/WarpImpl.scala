@@ -1,5 +1,7 @@
-package turbolift.internals.engine.concurrent
+package turbolift.internals.engine
 import scala.annotation.tailrec
+import turbolift.{!!, ComputationCases => CC}
+import turbolift.effects.IO
 import turbolift.io.{Fiber, Warp}
 
 
@@ -76,22 +78,26 @@ private[turbolift] final class WarpImpl private[engine] (
   //-------------------------------------------------------------------
 
 
-  def tryGetAwaitedBy(waiter: FiberImpl, isWaiterCancellable: Boolean): Int =
+  def intrinsicAwait(waiter: FiberImpl): Halt =
+    waiter.willContinuePure(())
+    awaitBy(waiter)
+
+  def awaitBy(waiter: FiberImpl): Halt =
     var willFinalize = false
 
     val result =
-      atomicallyBoth(waiter, isWaiterCancellable) {
+      atomicallyBoth(waiter) {
         if isPending then
           if isChildless then
             varyingBits = (varyingBits | Bits.Warp_Completed).toByte
             willFinalize = true
-            Bits.WaiteeAlreadyCompleted
+            Halt.Continue
           else
             varyingBits = (varyingBits | Bits.Warp_Shutdown).toByte
             subscribeWaiterUnsync(waiter)
-            Bits.WaiterSubscribed
+            Halt.Retire
         else
-          Bits.WaiteeAlreadyCompleted
+          Halt.Continue
       }
 
     if willFinalize then
@@ -102,7 +108,7 @@ private[turbolift] final class WarpImpl private[engine] (
   //// Same as `tryGetAwaitedBy(waiter)`, except:
   //// - doesn't synchronize on the `waiter`
   //// - doesn't subscribe the `waiter`
-  //// - returns Unit, instead of Int code
+  //// - returns Unit, instead of `Halt`
   def doShutdownAndForget(): Unit =
     val willFinalize =
       atomically {
@@ -126,25 +132,30 @@ private[turbolift] final class WarpImpl private[engine] (
   //-------------------------------------------------------------------
 
 
-  def tryGetCancelledBy(canceller: FiberImpl, isCancellerCancellable: Boolean): Int =
+  def intrinsicCancel(canceller: FiberImpl): Halt =
+    canceller.willContinuePure(())
+    cancelBy(canceller)
+
+
+  def cancelBy(canceller: FiberImpl): Halt =
     var willFinalize = false
     var willDescend = false
 
-    val result =
-      atomicallyBoth(canceller, isCancellerCancellable) {
+    val halt =
+      atomicallyBoth(canceller) {
         if isPending then
           if isChildless then
             varyingBits = (varyingBits | Bits.Warp_Completed).toByte
             willFinalize = true
-            Bits.WaiteeAlreadyCompleted
+            Halt.Continue
           else
-            if !isCancelled then
+            if !isCancellationSignalled then
               varyingBits = (varyingBits | Bits.Warp_Shutdown | Bits.Warp_Cancelled).toByte
               willDescend = true
             subscribeWaiterUnsync(canceller)
-            Bits.WaiterSubscribed
+            Halt.Retire
         else
-          Bits.WaiteeAlreadyCompleted
+          Halt.Continue
       }
 
     if willFinalize then
@@ -152,16 +163,15 @@ private[turbolift] final class WarpImpl private[engine] (
     else
       if willDescend then
         doDescend(deep = true)
-    result
-
+    halt
 
 
   //// Same as `tryGetCancelledBy`, except:
   //// - doesn't synchronize on the `canceller`
   //// - doesn't subscribe the `canceller`
   //// - doesn't initiate `deepCancelLoop`
-  //// - returns first child, instead of Int code
-  private[concurrent] override def deepCancelDown(): ChildLink | Null =
+  //// - returns first child, instead of `Halt`
+  private[engine] override def deepCancelDown(): ChildLink | Null =
     var willFinalize = false
     var willDescend = false
 
@@ -171,7 +181,7 @@ private[turbolift] final class WarpImpl private[engine] (
           varyingBits = (varyingBits | Bits.Warp_Completed).toByte
           willFinalize = true
         else
-          if !isCancelled then
+          if !isCancellationSignalled then
             varyingBits = (varyingBits | Bits.Warp_Shutdown | Bits.Warp_Cancelled).toByte
             willDescend = true
     }
@@ -186,9 +196,9 @@ private[turbolift] final class WarpImpl private[engine] (
         null
 
 
-  private[concurrent] override def deepCancelRight(): ChildLink | Null = nextChild
+  private[engine] override def deepCancelRight(): ChildLink | Null = nextChild
 
-  private[concurrent] override def deepCancelUp(): ChildLink = theParent.nn
+  private[engine] override def deepCancelUp(): ChildLink = theParent.nn
 
 
   //-------------------------------------------------------------------
@@ -267,6 +277,8 @@ private[turbolift] final class WarpImpl private[engine] (
     array.asInstanceOf[Array[T]].take(count)
 
 
+  override def cancel: Unit !! IO = CC.intrinsic(intrinsicCancel(_))
+  override def await: Unit !! IO = CC.intrinsic(intrinsicAwait(_))
   override def unsafeShutdownAndForget(): Unit = doShutdownAndForget()
   override def unsafeCancelAndForget(): Unit = doCancelAndForget()
 

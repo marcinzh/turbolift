@@ -1,11 +1,14 @@
 package turbolift.io
 import turbolift.{!!, ComputationCases => CC}
 import turbolift.effects.IO
-import turbolift.internals.engine.concurrent.util.SemaphoreImpl
+import turbolift.internals.engine.{FiberImpl, Halt}
+import turbolift.internals.engine.concurrent.SemaphoreImpl
 
 
 sealed trait Semaphore:
-  final def acquire(count: Long): Unit !! IO = CC.intrinsic(_.intrinsicAcquireSemaphore(this, count))
+  private[turbolift] def intrinsicAcquire(waiter: FiberImpl, count: Long): Halt
+
+  final def acquire(count: Long): Unit !! IO = CC.intrinsic(intrinsicAcquire(_, count))
 
   final def tryAcquire(count: Long): Boolean !! IO = !!.impure(unsafeTryAcquire(count))
 

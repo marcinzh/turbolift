@@ -1,7 +1,8 @@
-package turbolift.internals.engine.concurrent
+package turbolift.internals.engine
 
 
-private[engine] object Bits:
+//@#@ public bcoz inline problems
+object Bits:
   
   //// Common: (UNSHIFTED)
 
@@ -91,13 +92,6 @@ private[engine] object Bits:
     val a = (completionLeft >>> Completion_Shift) - 1
     val b = (completionRight >>> Completion_Shift) - 1
     a + b * 3 
-
-
-  //// Waiter & Waitee
-
-  inline val WaiterSubscribed = 0
-  final val WaiterAlreadyCancelled = 1 //@#@ no `inline val` bcoz compiler bug
-  inline val WaiteeAlreadyCompleted = 2
 
 
   //// Warp

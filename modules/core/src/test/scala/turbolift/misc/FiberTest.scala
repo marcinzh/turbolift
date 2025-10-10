@@ -291,7 +291,7 @@ class FiberTest extends Specification:
     }
   }
 
-  "getOrDie" >>{
+  "getOrDie" >> {
     "pending" >>{
       (for
         fib <- IO.sleep(100).fork

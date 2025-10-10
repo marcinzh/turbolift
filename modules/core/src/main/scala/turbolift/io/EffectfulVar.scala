@@ -1,7 +1,8 @@
 package turbolift.io
 import turbolift.{!!, ComputationCases => CC}
 import turbolift.effects.{IO, Broken}
-import turbolift.internals.engine.concurrent.util.EffectfulVarImpl
+import turbolift.internals.engine.{FiberImpl, Halt}
+import turbolift.internals.engine.concurrent.EffectfulVarImpl
 
 
 /** Variable writable once.
@@ -17,6 +18,7 @@ import turbolift.internals.engine.concurrent.util.EffectfulVarImpl
 sealed trait EffectfulVar[A, U <: IO] extends EffectfulVar.Get[A, U] with EffectfulVar.Put[A, U]:
   final def asGet: EffectfulVar.Get[A, U] = this
   final def asPut: EffectfulVar.Put[A, U] = this
+  final override def getOption: Option[A] !! U = CC.intrinsic(intrinsicGetOption(_))
 
 
 object EffectfulVar:
@@ -25,12 +27,14 @@ object EffectfulVar:
 
 
   sealed trait Get[A, U <: IO]:
+    private[turbolift] def intrinsicGetOption(waiter: FiberImpl): Halt
+
+    def getOption: Option[A] !! U
+
     final def get: A !! (U & Broken) =
       getOption.flatMap:
         case Some(a) => !!.pure(a)
         case None => Broken.empty
-
-    final def getOption: Option[A] !! U = CC.intrinsic(_.intrinsicAwaitEffectfulVar(this))
 
     final def getOrElse(e: => Nothing): A !! U = getOption.map(_.getOrElse(e))
 

@@ -1,11 +1,12 @@
 package turbolift.internals.engine
 
 
+//@#@ public bcoz inline problems
 type Tag = Int
 
-object Tag:
-  inline val TickReset      = 0x40
 
+//@#@ public bcoz inline problems
+object Tag:
   //// Handled at innerLoop:
   inline val FlatMap        = 0
   inline val PureMap        = 1
@@ -25,17 +26,11 @@ object Tag:
   inline val Intrinsic      = 13
   inline val Unwind         = 14
 
-  //// Handled at outerLoop: (`Become` MUST be first in this group)
-  inline val Become         = 15
-  inline val Yield          = 16
-  inline val Retire         = 17
-
   //// Handled at outerLoop once, after fiber switch:
-  inline val NotifyOnceVar       = 18
-  inline val NotifyEffectfulVar  = 19
-  inline val NotifyZipper        = 20
-  inline val NotifyUnit          = 21
-  inline val NotifyEither        = 22
+  inline val NotifyOnceVar       = 15
+  inline val NotifyEffectfulVar  = 16
+  inline val NotifyZipper        = 17
+  inline val NotifyEither        = 18
 
 
   def toStr(tag: Tag) =
@@ -55,13 +50,8 @@ object Tag:
       case Intrinsic          => "Intrinsic"
       case Unwind             => "Unwind"
 
-      case Become             => "Become"
-      case Yield              => "Yield"
-      case Retire             => "Retire"
-
       case NotifyOnceVar      => "NotifyOnceVar"
       case NotifyEffectfulVar => "NotifyEffectfulVar"
       case NotifyZipper       => "NotifyZipper"
-      case NotifyUnit         => "NotifyUnit"
       case NotifyEither       => "NotifyEither"
       case _                  => s"Tag($tag)"

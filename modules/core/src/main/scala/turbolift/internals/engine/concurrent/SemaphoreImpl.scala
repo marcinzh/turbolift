@@ -1,23 +1,26 @@
-package turbolift.internals.engine.concurrent.util
+package turbolift.internals.engine.concurrent
 import scala.annotation.tailrec
 import turbolift.io.Semaphore
-import turbolift.internals.engine.concurrent.{Bits, Waitee, FiberImpl}
+import turbolift.internals.engine.{Waitee, FiberImpl, Halt}
 
 
 private[turbolift] final class SemaphoreImpl(private var permits: Long) extends Waitee with Semaphore.Unsealed:
-  def tryGetAcquiredBy(waiter: FiberImpl, isWaiterCancellable: Boolean, count: Long): Int =
-    atomicallyBoth(waiter, isWaiterCancellable) {
+  override def intrinsicAcquire(waiter: FiberImpl, count: Long): Halt =
+    waiter.willContinuePure(())
+    waiter.theWaiterStateLong = count 
+
+    atomicallyBoth(waiter) {
       if firstWaiter == null then
         val n = permits - count
         if n >= 0 then
           permits = n
-          Bits.WaiteeAlreadyCompleted
+          Halt.Continue
         else
           subscribeFirstWaiterUnsync(waiter)
-          Bits.WaiterSubscribed
+          Halt.Retire
       else
         subscribeWaiterUnsync(waiter)
-        Bits.WaiterSubscribed
+        Halt.Retire
     }
 
 
@@ -36,26 +39,26 @@ private[turbolift] final class SemaphoreImpl(private var permits: Long) extends 
 
 
   @tailrec override def unsafeRelease(count: Long): Unit =
-    var savedWaiter: FiberImpl | Null = null
+    var waiterToResume: FiberImpl | Null = null
 
     val keepGoing =
       atomically {
         permits += count
         val x = firstWaiter
         if x != null then
-          val n = permits - x.payloadAs[Long]
+          val n = permits - x.theWaiterStateLong
           if n >= 0 then
             permits = n
-            savedWaiter = x
+            waiterToResume = x
             removeFirstWaiter()
-            x.standbyWaiterPure(())
+            x.standbyWaiter()
           n > 0
         else
           false
       }
 
-    if savedWaiter != null then
-      savedWaiter.nn.resume()
+    if waiterToResume != null then
+      waiterToResume.nn.resume()
 
     if keepGoing then
       unsafeRelease(0)

@@ -1,8 +1,8 @@
 package turbolift.internals.engine
 import turbolift.!!
-import turbolift.interpreter.Prompt
 import turbolift.{ComputationCases => CC}
-import Misc.AnyComp
+import turbolift.interpreter.Prompt
+import turbolift.internals.engine.Misc.AnyComp
 
 
 private[engine] sealed abstract class Step(val tag: Tag):

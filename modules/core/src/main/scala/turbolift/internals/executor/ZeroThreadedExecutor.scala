@@ -2,14 +2,12 @@ package turbolift.internals.executor
 import scala.annotation.tailrec
 import turbolift.Computation
 import turbolift.data.Outcome
-import turbolift.internals.engine.{Engine, Halt}
-import turbolift.internals.engine.concurrent.{FiberImpl, WaiterLink}
+import turbolift.internals.engine.{FiberImpl, WaiterLink}
 
 
 private[internals] final class ZeroThreadedExecutor extends WaiterLink.Queue with Executor:
   private var isDone: Boolean = false
   private var isIdle: Boolean = false
-  private val engine = new Engine { override def run() = () } //// `run` is not used by this executor
 
   override def toString = s"ZeroThreadedExecutor@${hashCode.toHexString}"
 
@@ -19,8 +17,8 @@ private[internals] final class ZeroThreadedExecutor extends WaiterLink.Queue wit
     def callback(o: Outcome[A]): Unit =
       outcome = o
       isDone = true
-    engine.become(FiberImpl.createRoot(comp, this, name, isReentry = false, callback))
-    drain()
+    val fiber = FiberImpl.createRoot(comp, this, name, isReentry = false, callback)
+    drain(fiber)
     outcome
 
 
@@ -37,25 +35,21 @@ private[internals] final class ZeroThreadedExecutor extends WaiterLink.Queue wit
     }
 
 
-  private def drain(): Unit =
-    var keepGoing = true
-    while keepGoing do
-      engine.runCurrent() match
-        case Halt.Yield =>
-          val last = engine.getCurrentFiber
-          val next =
+  private def drain(initialFiber: FiberImpl): Unit =
+    var currentFiber: FiberImpl | Null = initialFiber
+    while currentFiber != null do
+      currentFiber =
+        currentFiber.runUntilYields() match
+          case yielder: FiberImpl => 
             synchronized {
               if !isEmpty then
-                enqueue(last)
+                enqueue(yielder)
                 dequeue()
               else
-                null
+                yielder
             }
-          if next != null then
-            engine.become(next)
 
-        case _ =>
-          val next =
+          case _ => 
             synchronized {
               if isEmpty then
                 if !isDone then
@@ -67,8 +61,3 @@ private[internals] final class ZeroThreadedExecutor extends WaiterLink.Queue wit
               else
                 dequeue()
             }
-          if next != null then
-            engine.become(next)
-          else
-            engine.becomeClear()
-            keepGoing = false

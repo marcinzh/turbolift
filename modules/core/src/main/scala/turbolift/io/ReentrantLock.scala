@@ -1,12 +1,15 @@
 package turbolift.io
 import turbolift.{!!, ComputationCases => CC}
 import turbolift.effects.IO
-import turbolift.internals.engine.concurrent.util.ReentrantLockImpl
+import turbolift.internals.engine.{FiberImpl, Halt}
+import turbolift.internals.engine.concurrent.ReentrantLockImpl
 import ReentrantLock.Status
 
 
 sealed trait ReentrantLock:
-  final def acquire: Unit !! IO = CC.intrinsic(_.intrinsicAcquireReentrantLock(this))
+  private[turbolift] def intrinsicAcquire(waiter: FiberImpl): Halt
+
+  final def acquire: Unit !! IO = CC.intrinsic(intrinsicAcquire(_))
 
   final def tryAcquire: Boolean !! IO = Fiber.current.map(unsafeTryAcquire)
 

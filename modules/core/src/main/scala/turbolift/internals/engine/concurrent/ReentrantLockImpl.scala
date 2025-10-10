@@ -1,7 +1,7 @@
-package turbolift.internals.engine.concurrent.util
+package turbolift.internals.engine.concurrent
 import turbolift.io.{ReentrantLock, Fiber}
-import turbolift.internals.engine.concurrent.{Bits, Waitee, FiberImpl}
-import turbolift.internals.engine.{asImpl}
+import turbolift.internals.engine.{Waitee, FiberImpl, Halt}
+import turbolift.internals.engine.Misc.asImpl
 
 
 private[turbolift] final class ReentrantLockImpl extends Waitee with ReentrantLock.Unsealed:
@@ -9,19 +9,21 @@ private[turbolift] final class ReentrantLockImpl extends Waitee with ReentrantLo
   private var reentryCount: Int = 0
 
 
-  def tryGetAcquiredBy(waiter: FiberImpl, isWaiterCancellable: Boolean): Int =
-    atomicallyBoth(waiter, isWaiterCancellable) {
+  override def intrinsicAcquire(waiter: FiberImpl): Halt =
+    waiter.willContinuePure(())
+
+    atomicallyBoth(waiter) {
       if reentryCount == 0 then
         lockedBy = waiter
         reentryCount = 1
-        Bits.WaiteeAlreadyCompleted
+        Halt.Continue
       else
         if lockedBy == waiter then
           reentryCount += 1
-          Bits.WaiteeAlreadyCompleted
+          Halt.Continue
         else
           subscribeWaiterUnsync(waiter)
-          Bits.WaiterSubscribed
+          Halt.Retire
     }
 
 
@@ -43,7 +45,7 @@ private[turbolift] final class ReentrantLockImpl extends Waitee with ReentrantLo
 
 
   override def unsafeRelease(): Unit =
-    var savedWaiter: FiberImpl | Null = null
+    var waiterToResume: FiberImpl | Null = null
 
     atomically {
       if reentryCount > 0 then
@@ -55,13 +57,13 @@ private[turbolift] final class ReentrantLockImpl extends Waitee with ReentrantLo
           else
             reentryCount = 1
             lockedBy = x
-            savedWaiter = x
+            waiterToResume = x
             removeFirstWaiter()
-            x.standbyWaiterPure(())
+            x.standbyWaiter()
     }
 
-    if savedWaiter != null then
-      savedWaiter.nn.resume()
+    if waiterToResume != null then
+      waiterToResume.nn.resume()
 
 
   def unsafeStatus(): ReentrantLock.Status =

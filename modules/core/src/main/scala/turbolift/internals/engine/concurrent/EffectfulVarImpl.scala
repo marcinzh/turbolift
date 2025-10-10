@@ -1,8 +1,7 @@
-package turbolift.internals.engine.concurrent.util
+package turbolift.internals.engine.concurrent
 import turbolift.!!
 import turbolift.io.{EffectfulVar, Zipper}
-import turbolift.effects.Broken
-import turbolift.internals.engine.concurrent.{Bits, Waitee, FiberImpl}
+import turbolift.internals.engine.{Waitee, FiberImpl, Halt, Tag}
 import turbolift.internals.engine.Misc.AnyComp
 
 
@@ -12,28 +11,36 @@ private[turbolift] final class EffectfulVarImpl extends Waitee with EffectfulVar
   private var theNextShot: AnyComp | Null = null
 
 
+  //// only used when handling Tag.NotifyEffectfulVar
   def getNextShot: AnyComp = theNextShot.nn
 
 
-  def tryGetAwaitedBy(waiter: FiberImpl, isWaiterCancellable: Boolean): (Int, AnyComp | Null) =
-    var waiterWillRun: AnyComp | Null = null
+  override def intrinsicGetOption(waiter: FiberImpl): Halt =
+    if isReady then
+      waiter.willContinueEff(theNextShot.nn)
+      Halt.Continue
+    else
+      waiter.willContinueTag(Tag.NotifyEffectfulVar, this)
+      var savedComp: AnyComp | Null = null
 
-    val waiterCode =
-      atomicallyBoth(waiter, isWaiterCancellable) {
-        if isPending then
-          subscribeWaiterUnsync(waiter)
-          Bits.WaiterSubscribed
-        else
-          if theFirstShot != null then
-            waiterWillRun = theFirstShot
-            theFirstShot = null
-            isReady = true
+      val halt =
+        atomicallyBoth(waiter) {
+          if isPending then
+            subscribeWaiterUnsync(waiter)
+            Halt.Retire
           else
-            waiterWillRun = theNextShot
-          Bits.WaiteeAlreadyCompleted
-      }
+            if theFirstShot != null then
+              savedComp = theFirstShot
+              theFirstShot = null
+              isReady = true
+            else
+              savedComp = theNextShot
+            Halt.Continue
+        }
 
-    (waiterCode, waiterWillRun)
+      if savedComp != null then
+        waiter.willContinueEff(savedComp.nn)
+      halt
 
 
   override def unsafeTryPut(zipper: Zipper.Untyped): Boolean =
