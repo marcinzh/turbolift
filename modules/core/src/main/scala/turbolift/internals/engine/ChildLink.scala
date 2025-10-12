@@ -5,34 +5,99 @@ import scala.annotation.tailrec
 /** Either Fiber or Warp. */
 
 private abstract class ChildLink extends WaiterLink:
-  private[engine] var prevChild: ChildLink | Null = null
-  private[engine] var nextChild: ChildLink | Null = null
-
-  private[engine] final def insertChildBeforeSelf(that: ChildLink): Unit =
-    val prev = prevChild.nn
-    prev.linkChildWith(that)
-    that.linkChildWith(this)
-
-  private[engine] final def removeChildAtSelf(): Unit =
-    val prev = prevChild.nn
-    val next = nextChild.nn
-    prev.linkChildWith(next)
-
-  private final inline def linkChildWith(that: ChildLink): Unit =
-    this.nextChild = that
-    that.prevChild = this
-
-  private[engine] final inline def clearChildLink(): Unit =
-    this.prevChild = null
-    this.nextChild = null
-
-  private[engine] final def linkChildWithSelf(): Unit = linkChildWith(this)
-  private[engine] final def isChildLinkedWithSelf: Boolean = isChildLinkedWith(this)
-  private[engine] final def isChildLinkedWith(that: ChildLink): Boolean = this.nextChild == that
+  private var theFirstChild: ChildLink | Null = null
+  private var thePrevSibling: ChildLink | Null = null
+  private var theNextSibling: ChildLink | Null = null
 
 
   //-------------------------------------------------------------------
-  // Cancelling
+  // aux
+  //-------------------------------------------------------------------
+
+
+  private final inline def insertSiblingBeforeSelf(that: ChildLink): Unit =
+    val prev = thePrevSibling.nn
+    prev.linkSiblingWith(that)
+    that.linkSiblingWith(this)
+
+  private final inline def removeSelfFromSiblings(): Unit =
+    val prev = thePrevSibling.nn
+    val next = theNextSibling.nn
+    prev.linkSiblingWith(next)
+
+  private final inline def linkSiblingWith(that: ChildLink): Unit =
+    this.theNextSibling = that
+    that.thePrevSibling = this
+
+  private final inline def clearSiblingLink(): Unit =
+    this.thePrevSibling = null
+    this.theNextSibling = null
+
+  private final inline def linkSiblingWithSelf(): Unit = linkSiblingWith(this)
+
+
+  //-------------------------------------------------------------------
+  // public
+  //-------------------------------------------------------------------
+
+
+  //// Callable only from `atomically` blocks, or on a fresh Fiber/Warp
+  final def insertLastChild(child: ChildLink): Unit =
+    val that = theFirstChild
+    if that == null then
+      this.theFirstChild = child
+      child.linkSiblingWithSelf()
+    else
+      that.insertSiblingBeforeSelf(child)
+
+
+  //// Callable only from `atomically` blocks, or on a fresh Fiber/Warp
+  final def removeChildAnywhere(child: ChildLink): Unit =
+    val sibling = child.theNextSibling
+    if child == sibling then
+      //// child is the only child
+      this.theFirstChild = null
+    else
+      if child == theFirstChild then
+        this.theFirstChild = sibling
+      child.removeSelfFromSiblings()
+    child.clearSiblingLink()
+
+
+  final def collectChildren[T <: ChildLink](filter: ChildLink => Boolean): Array[T] =
+    val builder = scala.collection.mutable.ArrayBuilder.make[ChildLink]
+
+    @tailrec def loop(todo: ChildLink, limit: ChildLink): Unit =
+      if filter(todo) then
+        builder += todo
+      val more = todo.theNextSibling.nn
+      if more ne limit then
+        loop(more, limit)
+
+    atomically {
+      val x = theFirstChild
+      if isPending && (x != null) then
+        loop(x, x)
+    }
+
+    builder.result().asInstanceOf[Array[T]]
+
+
+  //@#@TEMP until rework of deepCancelLoop
+  final def getNextSibling: ChildLink | Null = theNextSibling
+
+
+  //@#@TEMP until rework of deepCancelLoop
+  final def removeAllChildrenAndBreakCycle(): ChildLink | Null =
+    val that = theFirstChild
+    if that != null then
+      this.theFirstChild = null
+      that.thePrevSibling.nn.theNextSibling = null
+    that
+
+
+  //-------------------------------------------------------------------
+  // Deep Cancel Loop
   //-------------------------------------------------------------------
 
 

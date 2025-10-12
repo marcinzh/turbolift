@@ -14,7 +14,6 @@ private[turbolift] sealed abstract class FiberImplPart1 extends ChildLink with F
   private[engine] var theWaiterStateAny: Any = null
   private[engine] var theWaiterStateLong: Long = 0
   private[engine] val pad1_S1: Short = 0
-  private[engine] val pad1_I1: Int = 0
   private[engine] val pad1_L2: Long = 0
 
 
@@ -251,7 +250,7 @@ private[turbolift] final class FiberImpl private (
       getArbiter.tryGetRightRacer
     else
       //// Equals null for the right RACER, bcoz racer's parent is a fiber, not a warp.
-      nextChild
+      getNextSibling
 
 
   private def tryGetRightRacer: FiberImpl | Null =
