@@ -11,9 +11,10 @@ private[turbolift] final class WarpImpl private[engine] (
   private var theName: String,
   val exitMode: Warp.ExitMode | Null,
 ) extends ChildLink with Warp.Unsealed:
-  private var packedChildCount: Long = 0
+  private var theFiberCount: Int = 0
+  private var theWarpCount: Int = 0
 
-  private def isChildless: Boolean = packedChildCount == 0L
+  private def isChildless: Boolean = (theFiberCount == 0) && (theWarpCount == 0)
   private def isShutdown: Boolean = Bits.isShutdown(varyingBits)
 
 
@@ -22,42 +23,70 @@ private[turbolift] final class WarpImpl private[engine] (
   //-------------------------------------------------------------------
 
 
-  def tryAddFiber(fiber: FiberImpl): Boolean = tryAddChild(fiber, WarpImpl.ONE_FIBER)
-  def tryAddWarp(warp: WarpImpl): Boolean = tryAddChild(warp, WarpImpl.ONE_WARP)
-  def removeFiber(fiber: FiberImpl): Unit = removeChild(fiber, WarpImpl.ONE_FIBER)
-  def removeWarp(warp: WarpImpl): Unit = removeChild(warp, WarpImpl.ONE_WARP)
-
-
-  private def tryAddChild(child: ChildLink, oneCount: Long): Boolean =
+  def tryAddFiber(fiber: FiberImpl): Boolean =
     atomically {
       //// If cancelled, do not modify child list, bcoz `deepCancelLoop` may be concurrently running.
       if isPendingAndNotCancelled then
-        insertLastChild(child)
-        packedChildCount += oneCount
+        insertLastChild(fiber)
+        //// the only difference tryAddFiber & tryAddWarp:
+        this.theFiberCount += 1
+        true
+      else
+        false
+    }
+
+  def tryAddWarp(warp: WarpImpl): Boolean =
+    atomically {
+      //// If cancelled, do not modify child list, bcoz `deepCancelLoop` may be concurrently running.
+      if isPendingAndNotCancelled then
+        insertLastChild(warp)
+        //// the only difference tryAddFiber & tryAddWarp:
+        this.theWarpCount += 1
         true
       else
         false
     }
 
 
-  //// Should be @tailrec, but inlining `doFinalize` causes problems
-  private def removeChild(child: ChildLink, oneCount: Long): Unit =
+  //// The mutual loop of removeFiber/Child + doFinalize could be rewritten as @tailrec
+  //// ...but inlining `doFinalize` causes compiler problems.
+
+  def removeFiber(fiber: FiberImpl): Unit =
     val willFinalize =
       atomically {
         //// If cancelled, do not modify child list, bcoz `deepCancelLoop` may be concurrently running.
         if isPendingAndNotCancelled then
-          removeChildAnywhere(child)
-
-        packedChildCount -= oneCount
-        if (packedChildCount == 0L) & isShutdown then
-          varyingBits = (varyingBits | Bits.Warp_Completed).toByte
-          true
-        else
-          false
+          removeChildAnywhere(fiber)
+        //// the only difference removeFiber & removeWarp:
+        this.theFiberCount -= 1
+        shutdownCheck()
       }
 
     if willFinalize then
       doFinalize()
+
+
+  def removeWarp(warp: WarpImpl): Unit =
+    val willFinalize =
+      atomically {
+        //// If cancelled, do not modify child list, bcoz `deepCancelLoop` may be concurrently running.
+        if isPendingAndNotCancelled then
+          removeChildAnywhere(warp)
+        //// the only difference removeFiber & removeWarp:
+        this.theWarpCount -= 1
+        shutdownCheck()
+      }
+
+    if willFinalize then
+      doFinalize()
+
+
+  private inline def shutdownCheck(): Boolean =
+    if isShutdown & isChildless then
+      varyingBits = (varyingBits | Bits.Warp_Completed).toByte
+      true
+    else
+      false
 
 
   //-------------------------------------------------------------------
@@ -248,15 +277,18 @@ private[turbolift] final class WarpImpl private[engine] (
 
   override def unsafeStatus(): Warp.Status =
     var savedVaryingBits: Byte = 0
-    var savedPackedChildCount: Long = 0L
+    var savedFiberCount: Int = 0
+    var savedWarpCount: Int = 0
+
     atomically {
       savedVaryingBits = varyingBits
-      savedPackedChildCount = packedChildCount
+      savedFiberCount = theFiberCount
+      savedWarpCount = theWarpCount
     }
     if Bits.isPending(savedVaryingBits) then
       Warp.Status.Pending(
-        fiberCount = WarpImpl.unpackFiberCount(savedPackedChildCount),
-        warpCount = WarpImpl.unpackWarpCount(savedPackedChildCount),
+        fiberCount = savedFiberCount,
+        warpCount = savedWarpCount,
         isShutdown = Bits.isShutdown(savedVaryingBits),
         isCancelled = Bits.isCancellationSignalled(savedVaryingBits),
       )
@@ -266,9 +298,3 @@ private[turbolift] final class WarpImpl private[engine] (
 
 private[turbolift] object WarpImpl:
   val root: WarpImpl = new WarpImpl(null, null, "RootWarp", null)
-  
-  private inline val ONE_FIBER = 1L
-  private inline val ONE_WARP = 1L << 32
-  private def unpackFiberCount(n: Long): Int = n.toInt
-  private def unpackWarpCount(n: Long): Int = (n >> 32).toInt
-  private def unpackChildCount(n: Long): Int = unpackFiberCount(n) + unpackWarpCount(n)
