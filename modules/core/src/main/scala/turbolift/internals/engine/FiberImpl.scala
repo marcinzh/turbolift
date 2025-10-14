@@ -5,7 +5,7 @@ import turbolift.data.{Snap, Outcome, Cause, Exceptions}
 import turbolift.io.{Fiber, Zipper, Warp, OnceVar}
 import turbolift.internals.executor.Executor
 import turbolift.internals.engine.Misc._
-import turbolift.internals.engine.stacked.{Stack, Store, OpCascaded, OpPush}
+import turbolift.internals.engine.stacked.{Stack, Store}
 import Cause.{Cancelled => CancelPayload}
 
 
@@ -15,8 +15,8 @@ private[turbolift] sealed abstract class FiberImplPart1 (
   private[engine] var theWaiteeOrBlocker: Waitee | Blocker | Null = null
   private[engine] var theWaiterStateAny: Any = null
   private[engine] var theWaiterStateLong: Long = 0
+  private[engine] var theRacerId: Int = 0
   private[engine] val pad1_S1: Short = 0
-  private[engine] val pad1_I1: Int = 0
 
 
 private[turbolift] sealed abstract class FiberImplPart2 (
@@ -192,8 +192,7 @@ private[turbolift] final class FiberImpl private (
 
 
   private[engine] def tryGetCancelledBy(canceller: FiberImpl): Halt =
-    var savedLeftRacer: WaiterLink | Null = null
-    var savedRightRacer: WaiterLink | Null = null
+    var savedFirstRacer: ChildLink | Null = null
     var savedWaiteeOrBlocker: Waitee | Blocker | Null = null
     var savedVaryingBits: Byte = 0
     var willDescend = false
@@ -204,8 +203,7 @@ private[turbolift] final class FiberImpl private (
           if !isCancellationSignalled then
             varyingBits = (varyingBits | Bits.Cancellation_Signal).toByte
             willDescend = true
-            savedLeftRacer = prevWaiter
-            savedRightRacer = nextWaiter
+            savedFirstRacer = getFirstChild
             savedWaiteeOrBlocker = theWaiteeOrBlocker
             savedVaryingBits = varyingBits
           subscribeWaiterUnsync(canceller)
@@ -215,7 +213,7 @@ private[turbolift] final class FiberImpl private (
       }
 
     if willDescend then
-      val racer = doDescend(savedLeftRacer, savedRightRacer, savedWaiteeOrBlocker, savedVaryingBits)
+      val racer = doDescend(savedFirstRacer, savedWaiteeOrBlocker, savedVaryingBits)
       if racer != null then
         racer.deepCancelLoop(this)
     halt
@@ -227,8 +225,7 @@ private[turbolift] final class FiberImpl private (
   //// - doesn't initiate `deepCancelLoop`
   //// - returns first pending racer, instead of `Halt`
   private[engine] override def deepCancelDown(): ChildLink | Null =
-    var savedLeftRacer: WaiterLink | Null = null
-    var savedRightRacer: WaiterLink | Null = null
+    var savedFirstRacer: ChildLink | Null = null
     var savedWaiteeOrBlocker: Waitee | Blocker | Null = null
     var savedVaryingBits: Byte = 0
 
@@ -236,8 +233,7 @@ private[turbolift] final class FiberImpl private (
       atomically {
         if isPendingAndNotCancelled then
           varyingBits = (varyingBits | Bits.Cancellation_Signal).toByte
-          savedLeftRacer = prevWaiter
-          savedRightRacer = nextWaiter
+          savedFirstRacer = getFirstChild
           savedWaiteeOrBlocker = theWaiteeOrBlocker
           savedVaryingBits = varyingBits
           true
@@ -246,43 +242,33 @@ private[turbolift] final class FiberImpl private (
       }
 
     if willDescend then
-      doDescend(savedLeftRacer, savedRightRacer, savedWaiteeOrBlocker, savedVaryingBits)
+      doDescend(savedFirstRacer, savedWaiteeOrBlocker, savedVaryingBits)
     else
       null
 
 
   private[engine] override def deepCancelRight(): ChildLink | Null =
-    if whichRacerAmI == Bits.Racer_Left then
-      getArbiter.tryGetRightRacer
-    else
-      //// Equals null for the right RACER, bcoz racer's parent is a fiber, not a warp.
-      getNextSibling
-
-
-  private def tryGetRightRacer: FiberImpl | Null =
-    atomically {
-      if isPending && (getArbiterBits == Bits.Arbiter_Right) then
-        getRightRacer
+    //@#@TEMP until rework of deepCancelLoop
+    if isRacer then
+      val x = getNextSibling
+      if x != getArbiter.getFirstChild then
+        x
       else
         null
-    }
+    else
+      getNextSibling
 
 
   private[engine] override def deepCancelUp(): ChildLink = getParent.nn
 
 
   private def doDescend(
-    savedLeftRacer: WaiterLink | Null,
-    savedRightRacer: WaiterLink | Null,
+    savedFirstRacer: ChildLink | Null,
     savedWaiteeOrBlocker: Waitee | Blocker | Null,
     savedVaryingBits: Byte,
   ): FiberImpl | Null =
     savedWaiteeOrBlocker match
-      case null =>
-        Bits.getArbiter(savedVaryingBits) match
-          case Bits.Arbiter_None => null
-          case Bits.Arbiter_Right => savedRightRacer.asInstanceOf[FiberImpl]
-          case _ => savedLeftRacer.asInstanceOf[FiberImpl]
+      case null => savedFirstRacer.asInstanceOf[FiberImpl]
 
       case waitee: Waitee =>
         waitee.unsubscribeWaiter(this)
@@ -297,143 +283,71 @@ private[turbolift] final class FiberImpl private (
   // Race
   //-------------------------------------------------------------------
 
-  
+
   //// Called by the ARBITER on itself
   private[engine] def tryStartRaceOfTwo(leftRacer: FiberImpl, rightRacer: FiberImpl): Boolean =
     atomicallyTry {
-      varyingBits = (varyingBits | Bits.Racer_Both).toByte
-      setRacers(leftRacer, rightRacer)
+      this.theWaiterStateLong = 2
+      emptyInsertTwoChildren(leftRacer, rightRacer)
     }
 
 
   //// Called by the ARBITER on itself
-  private[engine] def tryStartRaceOfOne(leftRacer: FiberImpl): Boolean =
+  private[engine] def tryStartRaceOfOne(racer: FiberImpl): Boolean =
     atomicallyTry {
-      varyingBits = (varyingBits | Bits.Racer_Left).toByte
-      setRacers(leftRacer, null)
+      emptyInsertOneChild(racer)
     }
+
+
+  //// Called by the RACER on itself, from `doFinalize`
+  private def endRace(): Boolean =
+    val arbiter = getArbiter
+    constantBits & Bits.Tree_Mask match
+      case Bits.Tree_RaceAll =>
+        if getCompletion != Bits.Completion_Success then
+          arbiter.tryWinRace(this)
+        arbiter.tryFinishRace()
+
+      case Bits.Tree_RaceFirst =>
+        if getCompletion != Bits.Completion_Cancelled then
+          arbiter.tryWinRace(this)
+        arbiter.tryFinishRace()
+
+      case Bits.Tree_RaceOther => true
 
 
   //// Called by the RACER on its ARBITER
-  private def tryWinRace(racerBit: Int): FiberImpl | Null =
-    //// If win, return the loser
-    atomically {
-      val newBits = varyingBits & ~racerBit
-      varyingBits = newBits.toByte
-      if (newBits & Bits.Racer_Mask) != 0 then
-        //// Win
-        if racerBit == Bits.Racer_Left then
-          getRightRacer
+  private def tryWinRace(racer: FiberImpl): Unit =
+    val isWinner =
+      atomically {
+        if theWaiterStateAny == null then
+          this.theWaiterStateAny = racer
+          true
         else
-          getLeftRacer
-      else
-        //// Loss, or there was no competitor
-        null
+          false
+      }
+    if isWinner then
+      cancelAllLosers(racer)
+
+
+  //// Called by the RACER on its ARBITER
+  private def tryFinishRace(): Boolean =
+    atomically {
+      this.theWaiterStateLong -= 1
+      theWaiterStateLong == 0
     }
 
 
-  //// Called by the RACER on itself
-  private def endRace(): Boolean =
-    val arbiter = getArbiter
-    val racerBit = whichRacerAmI
-    val loser = arbiter.tryWinRace(racerBit)
-    constantBits & Bits.Tree_Mask match
-      case Bits.Tree_ZipPar =>
-        if loser != null then
-          if getCompletion != Bits.Completion_Success then
-            loser.cancelByWinner()
-          false
-        else
-          arbiter.endRaceForZipPar()
-          true
-
-      case Bits.Tree_OrPar =>
-        if loser != null then
-          if getCompletion != Bits.Completion_Cancelled then
-            loser.cancelByWinner()
-          false
-        else
-          arbiter.endRaceForOrPar()
-          true
-
-      case Bits.Tree_OrSeq =>
-        arbiter.endRaceForOrSeq()
-        true
-
-
-  //// Called by the ARBITER on itself
-  private def endRaceForZipPar(): Unit =
-    val racerLeft = getLeftRacer
-    val racerRight = getRightRacer
-    val completionLeft = racerLeft.getCompletion
-    val completionRight = racerRight.getCompletion
-    val payloadLeft = racerLeft.theCurrentPayload
-    val payloadRight = racerRight.theCurrentPayload
-    clearRacers()
-    (Bits.makeRacedPair(completionLeft, completionRight): @switch) match
-      case Bits.Raced_SS => endRaceWithSuccessBoth(payloadLeft, payloadRight)
-      case Bits.Raced_FC | Bits.Raced_FS => endRaceWithFailure(payloadLeft)
-      case Bits.Raced_SF | Bits.Raced_CF => endRaceWithFailure(payloadRight)
-      case _ => endRaceWithCancelled()
-
-
-  private def endRaceForOrPar(): Unit =
-    val racerLeft = getLeftRacer
-    val racerRight = getRightRacer
-    val completionLeft = racerLeft.getCompletion
-    val completionRight = racerRight.getCompletion
-    val payloadLeft = racerLeft.theCurrentPayload
-    val payloadRight = racerRight.theCurrentPayload
-    clearRacers()
-    (Bits.makeRacedPair(completionLeft, completionRight): @switch) match
-      case Bits.Raced_SC => endRaceWithSuccessOne(payloadLeft)
-      case Bits.Raced_CS => endRaceWithSuccessOne(payloadRight)
-      case Bits.Raced_FC => endRaceWithFailure(payloadLeft)
-      case Bits.Raced_CF => endRaceWithFailure(payloadRight)
-      case _ => endRaceWithCancelled()
-
-
-  private def endRaceForOrSeq(): Unit =
-    val racerLeft = getLeftRacer
-    val completionLeft = racerLeft.getCompletion
-    val payloadLeft = racerLeft.theCurrentPayload
-    clearRacers()
-    completionLeft match
-      case Bits.Completion_Success => endRaceWithSuccessOne(payloadLeft)
-      case Bits.Completion_Failure => endRaceWithFailure(payloadLeft)
-      case Bits.Completion_Cancelled => endRaceWithSuccess2nd()
-
-
-  private def endRaceWithSuccessBoth(payloadLeft: Any, payloadRight: Any): Unit =
-    val comp = OpCascaded.zipAndRestart(
-      stack = theCurrentStack,
-      ftorLeft = payloadLeft,
-      ftorRight = payloadRight,
-      fun = theCurrentPayload.asInstanceOf[(Any, Any) => Any]
-    )
-    willContinueEff(comp)
-
-
-  private def endRaceWithSuccessOne(payload: Any): Unit =
-    val comp = OpCascaded.restart(
-      stack = theCurrentStack,
-      ftor = payload,
-    )
-    willContinueEff(comp)
-
-
-  private def endRaceWithSuccess2nd(): Unit =
-    val comp = theCurrentPayload.asInstanceOf[() => AnyComp]()
-    willContinueEff(comp)
-
-
-  private def endRaceWithCancelled(): Unit =
-    cancelBySelf()
-    willContinueAsCancelled()
-
-
-  private def endRaceWithFailure(payload: Any): Unit =
-    willContinueAsFailure(payload.asInstanceOf[Cause])
+  //// Called on the ARBITER
+  private def cancelAllLosers(winner: FiberImpl): Unit =
+    val limit = getFirstChild.asInstanceOf[FiberImpl]
+    @tailrec def loop(racer: FiberImpl): Unit =
+      if winner != racer then
+        racer.cancelByWinner()
+      val next = racer.getNextSibling
+      if next != limit then
+        loop(next.asInstanceOf[FiberImpl])
+    loop(limit)
 
 
   //-------------------------------------------------------------------
@@ -479,6 +393,12 @@ private[turbolift] final class FiberImpl private (
   final inline def willContinueTag(tag: Int, payload: Any): Unit =
     this.theCurrentTag = tag.toByte
     this.theCurrentPayload = payload
+
+
+  final inline def willContinueTagStore(tag: Int, payload: Any, store: Store): Unit =
+    this.theCurrentTag = tag.toByte
+    this.theCurrentPayload = payload
+    this.theCurrentStore = store
 
 
   final inline def willContinueStep(step: Step): Unit =
@@ -618,31 +538,32 @@ private[turbolift] final class FiberImpl private (
 
 
   override def unsafeStatus(): Fiber.Status =
-    var savedLeftLink: WaiterLink | Null = null
-    var savedRightLink: WaiterLink | Null = null
+    var savedFirstChild: ChildLink | Null = null
     var savedWaiteeOrBlocker: Waitee | Blocker | Null = null
     var savedVaryingBits: Byte = 0
 
     atomically {
-      savedLeftLink = prevWaiter
-      savedRightLink = nextWaiter
+      savedFirstChild = getFirstChild
       savedWaiteeOrBlocker = theWaiteeOrBlocker
       savedVaryingBits = varyingBits
     }
 
     if Bits.isPending(savedVaryingBits) then
       val role =
-        def l = savedLeftLink.nn.asFiber
-        def r = savedRightLink.nn.asFiber
         def w = savedWaiteeOrBlocker.asInstanceOf[Fiber.Untyped | Warp | OnceVar.Untyped]
         import Fiber.Role
         savedWaiteeOrBlocker match
           case null =>
-            Bits.getArbiter(savedVaryingBits) match
-              case Bits.Arbiter_None => if savedLeftLink == null then Role.Runner else Role.Standby
-              case Bits.Arbiter_Left => Role.Arbiter(List(l))
-              case Bits.Arbiter_Right => Role.Arbiter(List(r))
-              case Bits.Arbiter_Both => Role.Arbiter(List(l, r))
+            if savedFirstChild == null then
+              Role.Runner
+            else
+              //@#@TEMP must change API: Role.Arbiter(???)`
+              val l = savedFirstChild.asInstanceOf[FiberImpl]
+              if l.getNextSibling == l then
+                Role.Arbiter(List(l))
+              else
+                val r = l.getNextSibling.asInstanceOf[FiberImpl]
+                Role.Arbiter(List(l, r))
           case _: Waitee => Role.Waiter(w)
           case _: Blocker => Role.Blocker
       val isCancelled = Bits.isCancellationSignalled(savedVaryingBits)
@@ -670,19 +591,12 @@ private[turbolift] final class FiberImpl private (
 
   private def isRoot: Boolean = Bits.isRoot(constantBits)
   private def isExplicit: Boolean = Bits.isExplicit(constantBits)
+  private def isRacer: Boolean = Bits.isRacer(constantBits)
   private[internals] def isReentry: Boolean = Bits.isReentry(constantBits)
-  private def getCompletion: Int = Bits.getCompletion(varyingBits)
-  private def getArbiterBits: Int = Bits.getArbiter(varyingBits)
-
-  private def whichRacerAmI: Int = constantBits & Bits.Racer_Mask
-  private def isRacer: Boolean = whichRacerAmI != Bits.Racer_None
-  private def getArbiter: FiberImpl = getParent.asInstanceOf[FiberImpl]
-  private def getLeftRacer: FiberImpl = prevWaiter.asInstanceOf[FiberImpl]
-  private def getRightRacer: FiberImpl = nextWaiter.asInstanceOf[FiberImpl]
-  private def clearRacers(): Unit = clearWaiterLink()
-  private def setRacers(left: FiberImpl, right: FiberImpl | Null): Unit =
-    prevWaiter = left
-    nextWaiter = right
+  private[engine] def getCompletion: Int = Bits.getCompletion(varyingBits)
+  private[engine] def getArbiter: FiberImpl = getParent.asInstanceOf[FiberImpl]
+  private[engine] def getLeftRacer: FiberImpl = getFirstChild.asInstanceOf[FiberImpl]
+  private[engine] def getRightRacer: FiberImpl = getLeftRacer.getNextSibling.asInstanceOf[FiberImpl]
 
   def createImplicit(bits: Byte): FiberImpl =
     val that = new FiberImpl(

@@ -432,6 +432,10 @@ private trait Engine extends Runnable:
           case Right(a) => this.willContinuePure(a)
           case Left(e) => this.willContinueAsFailure(e)
 
+      case Tag.NotifyZipPar => arbitrageZipPar()
+      case Tag.NotifyOrPar => arbitrageOrPar()
+      case Tag.NotifyOrSeq => arbitrageOrSeq()
+
       case _ => ()
 
 
@@ -498,6 +502,78 @@ private trait Engine extends Runnable:
         case Step.UnwindKind.Throw  => Bits.Completion_Failure
         case _                      => impossible
       endOfLoop(completion)
+
+
+  //-------------------------------------------------------------------
+  // Arbitrage
+  //-------------------------------------------------------------------
+
+
+  private def arbitrageZipPar(): Unit =
+    if theWaiterStateAny != null then
+      val winner = theWaiterStateAny.asInstanceOf[FiberImpl]
+      this.theWaiterStateAny = null
+      arbitrageFailedRace()
+    else
+      val comp = OpCascaded.zipAndRestart(
+        stack = theCurrentStack,
+        ftorLeft = getLeftRacer.theCurrentPayload,
+        ftorRight = getRightRacer.theCurrentPayload,
+        fun = theCurrentPayload.asInstanceOf[(Any, Any) => Any]
+      )
+      willContinueEff(comp)
+    clearChildren()
+
+
+  private def arbitrageOrPar(): Unit =
+    if theWaiterStateAny != null then
+      val winner = theWaiterStateAny.asInstanceOf[FiberImpl]
+      this.theWaiterStateAny = null
+      winner.getCompletion match
+        case Bits.Completion_Success =>
+          val comp = OpCascaded.restart(theCurrentStack, winner.theCurrentPayload)
+          willContinueEff(comp)
+        case Bits.Completion_Cancelled => impossible
+        case Bits.Completion_Failure => arbitrageFailedRace()
+    else
+      arbitrageFailedRace()
+    clearChildren()
+
+
+  private def arbitrageOrSeq(): Unit =
+    val racer = getLeftRacer
+    racer.getCompletion match
+      case Bits.Completion_Success =>
+        val comp = OpCascaded.restart(theCurrentStack, racer.theCurrentPayload)
+        willContinueEff(comp)
+      case Bits.Completion_Cancelled =>
+        val comp = theCurrentPayload.asInstanceOf[() => AnyComp]()
+        willContinueEff(comp)
+      case Bits.Completion_Failure =>
+        val cause = racer.theCurrentPayload.asInstanceOf[Cause]
+        willContinueAsFailure(cause)
+    clearChildren()
+
+
+  private def arbitrageFailedRace(): Unit =
+    val limit = getFirstChild.asInstanceOf[FiberImpl]
+    @tailrec def loop(racer: FiberImpl, accum: Cause): Cause =
+      val accum2 =
+        if racer.getCompletion == Bits.Completion_Failure then
+          val cause = racer.theCurrentPayload.asInstanceOf[Cause]
+          accum match
+            case Cause.Cancelled => cause
+            case _ => Cause.Both(accum, cause)
+        else
+          accum
+      val next = racer.getNextSibling
+      if next != limit then
+        loop(next.asInstanceOf[FiberImpl], accum2)
+      else
+        accum2
+    loop(limit, Cause.Cancelled) match
+      case Cause.Cancelled => willContinueAsCancelled()
+      case cause => willContinueAsFailure(cause)
 
 
   //-------------------------------------------------------------------
@@ -599,12 +675,12 @@ private trait Engine extends Runnable:
 
   final def intrinsicZipPar[A, B, C, U](lhs: A !! U, rhs: B !! U, fun: (A, B) => C): Halt =
     if theCurrentStack.accumFeatures.isParallel && theCurrentEnv.isParallelismRequested then
-      val fiberLeft = this.createImplicit(Bits.ZipPar_Left)
-      val fiberRight = this.createImplicit(Bits.ZipPar_Right)
+      val fiberLeft = this.createImplicit(Bits.Tree_RaceAll)
+      val fiberRight = this.createImplicit(Bits.Tree_RaceAll)
       if this.tryStartRaceOfTwo(fiberLeft, fiberRight) then
         val stack2 = theCurrentStack.lazyFork
         val (storeDown, storeLeft, storeRight) = OpCascaded.fork2(theCurrentStack, theCurrentStore, stack2)
-        this.willContinuePureStore(fun, storeDown)
+        this.willContinueTagStore(Tag.NotifyZipPar, fun, storeDown)
         fiberLeft.willContinueEffStack(lhs, Step.Pop, stack2, storeLeft)
         fiberRight.willContinueEffStack(rhs, Step.Pop, stack2, storeRight)
         fiberRight.resume()
@@ -620,12 +696,12 @@ private trait Engine extends Runnable:
 
   final def intrinsicOrPar[A, U](lhs: A !! U, rhs: A !! U): Halt =
     if theCurrentStack.accumFeatures.isParallel && theCurrentEnv.isParallelismRequested then
-      val fiberLeft = this.createImplicit(Bits.OrPar_Left)
-      val fiberRight = this.createImplicit(Bits.OrPar_Right)
+      val fiberLeft = this.createImplicit(Bits.Tree_RaceFirst)
+      val fiberRight = this.createImplicit(Bits.Tree_RaceFirst)
       if this.tryStartRaceOfTwo(fiberLeft, fiberRight) then
         val stack2 = theCurrentStack.lazyFork
         val (storeDown, storeLeft, storeRight) = OpCascaded.fork2(theCurrentStack, theCurrentStore, stack2)
-        this.willContinuePureStore(null, storeDown)
+        this.willContinueTagStore(Tag.NotifyOrPar, null, storeDown)
         fiberLeft.willContinueEffStack(lhs, Step.Pop, stack2, storeLeft)
         fiberRight.willContinueEffStack(rhs, Step.Pop, stack2, storeRight)
         fiberRight.resume()
@@ -640,11 +716,11 @@ private trait Engine extends Runnable:
 
 
   final def intrinsicOrSeq[A, U](lhs: A !! U, rhsFun: () => A !! U): Halt =
-    val fiberLeft = this.createImplicit(Bits.OrSeq)
+    val fiberLeft = this.createImplicit(Bits.Tree_RaceOther)
     if this.tryStartRaceOfOne(fiberLeft) then
       val stack2 = theCurrentStack.lazyFork
       val (storeDown, storeFork) = OpCascaded.fork1(theCurrentStack, theCurrentStore, stack2)
-      this.willContinuePureStore(rhsFun, storeDown)
+      this.willContinueTagStore(Tag.NotifyOrSeq, rhsFun, storeDown)
       fiberLeft.willContinueEffStack(lhs, Step.Pop, stack2, storeFork)
       become(fiberLeft)
     else

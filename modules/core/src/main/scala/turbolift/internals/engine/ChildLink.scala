@@ -66,6 +66,23 @@ private abstract class ChildLink(
     child.clearSiblingLink()
 
 
+  //// Callable only from `atomically` blocks, or on a fresh Fiber/Warp
+  final def emptyInsertTwoChildren(left: ChildLink, right: ChildLink): Unit =
+    this.theFirstChild = left
+    left.linkSiblingWith(right)
+    right.linkSiblingWith(left)
+
+
+  //// Callable only from `atomically` blocks, or on a fresh Fiber/Warp
+  final def emptyInsertOneChild(child: ChildLink): Unit =
+    this.theFirstChild = child
+    child.linkSiblingWithSelf()
+
+
+  final def clearChildren(): Unit =
+    this.theFirstChild = null
+
+
   final def collectChildren[T <: ChildLink](filter: ChildLink => Boolean): Array[T] =
     val builder = scala.collection.mutable.ArrayBuilder.make[ChildLink]
 
@@ -86,6 +103,7 @@ private abstract class ChildLink(
 
 
   //@#@TEMP until rework of deepCancelLoop
+  final def getFirstChild: ChildLink | Null = theFirstChild
   final def getNextSibling: ChildLink | Null = theNextSibling
 
   //@#@TEMP until rework of deepCancelLoop
