@@ -6,11 +6,11 @@ import turbolift.io.{Fiber, Warp}
 
 
 private[turbolift] final class WarpImpl private[engine] (
-  private val theParent: WarpImpl | FiberImpl | Null,
+  _parent: ChildLink | Null,
   private val theOuter: WarpImpl | Null,
   private var theName: String,
   val exitMode: Warp.ExitMode | Null,
-) extends ChildLink with Warp.Unsealed:
+) extends ChildLink(_parent) with Warp.Unsealed:
   private var theFiberCount: Int = 0
   private var theWarpCount: Int = 0
 
@@ -215,7 +215,7 @@ private[turbolift] final class WarpImpl private[engine] (
 
   private[engine] override def deepCancelRight(): ChildLink | Null = getNextSibling
 
-  private[engine] override def deepCancelUp(): ChildLink = theParent.nn
+  private[engine] override def deepCancelUp(): ChildLink = getParent.nn
 
 
   //-------------------------------------------------------------------
@@ -226,7 +226,7 @@ private[turbolift] final class WarpImpl private[engine] (
   private def doFinalize(): Unit =
     finallyNotifyAllWaiters()
 
-    theParent match
+    getParent match
       case warp: WarpImpl => warp.removeWarp(this)
       case _ => ()
 
@@ -250,7 +250,7 @@ private[turbolift] final class WarpImpl private[engine] (
 
 
   override def toString: String = name
-  override def parent: Option[Warp | Fiber.Untyped] = if theParent == null then None else Some(theParent)
+  override def parent: Option[Warp | Fiber.Untyped] = if getParent == null then None else Some(getParent.asInstanceOf[Warp | Fiber.Untyped])
   override def outer: Option[Warp] = if theOuter == null then None else Some(theOuter)
   override def unsafeChildren(): Iterable[Fiber.Untyped | Warp] = collectChildren(_ => true)
   override def unsafeFibers(): Iterable[FiberImpl] = collectChildren(_.isInstanceOf[FiberImpl])

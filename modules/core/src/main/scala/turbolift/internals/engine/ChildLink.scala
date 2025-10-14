@@ -4,7 +4,9 @@ import scala.annotation.tailrec
 
 /** Either Fiber or Warp. */
 
-private abstract class ChildLink extends WaiterLink:
+private abstract class ChildLink(
+  private val theParent: ChildLink | Null
+) extends WaiterLink:
   private var theFirstChild: ChildLink | Null = null
   private var thePrevSibling: ChildLink | Null = null
   private var theNextSibling: ChildLink | Null = null
@@ -86,6 +88,8 @@ private abstract class ChildLink extends WaiterLink:
   //@#@TEMP until rework of deepCancelLoop
   final def getNextSibling: ChildLink | Null = theNextSibling
 
+  //@#@TEMP until rework of deepCancelLoop
+  final def getParent: ChildLink | Null = theParent
 
   //@#@TEMP until rework of deepCancelLoop
   final def removeAllChildrenAndBreakCycle(): ChildLink | Null =
