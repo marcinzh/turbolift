@@ -6,19 +6,19 @@ import turbolift.internals.engine.{Waitee, FiberImpl, Halt}
 
 private[turbolift] final class CyclicBarrierImpl(private val capacity: Int) extends Waitee with CyclicBarrier.Unsealed:
   private var counter = capacity
-  private var clock = 0L
+  private var clock = 0
 
 
   override def intrinsicAwait(waiter: FiberImpl): Halt =
     waiter.willContinuePure(())
-    var staleClock = 0L
+    var staleClock = 0
 
     val halt =
       atomicallyBoth(waiter) {
         val n = counter - 1
         if n > 0 then
           counter = n
-          waiter.theWaiterStateLong = clock
+          waiter.setWaiterStateInt(clock)
           subscribeWaiterUnsync(waiter)
           Halt.Retire
         else
@@ -33,13 +33,13 @@ private[turbolift] final class CyclicBarrierImpl(private val capacity: Int) exte
     halt
 
 
-  @tailrec private def release(staleClock: Long): Unit =
+  @tailrec private def release(staleClock: Int): Unit =
     var waiterToResume: FiberImpl | Null = null
   
     val keepGoing =
       atomically {
         val x = firstWaiter
-        if x != null && x.theWaiterStateLong == staleClock then
+        if x != null && x.getWaiterStateInt == staleClock then
           waiterToResume = x
           removeFirstWaiter()
           x.standbyWaiter()

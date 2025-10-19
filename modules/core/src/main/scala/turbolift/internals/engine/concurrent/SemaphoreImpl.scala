@@ -7,7 +7,7 @@ import turbolift.internals.engine.{Waitee, FiberImpl, Halt}
 private[turbolift] final class SemaphoreImpl(private var permits: Long) extends Waitee with Semaphore.Unsealed:
   override def intrinsicAcquire(waiter: FiberImpl, count: Long): Halt =
     waiter.willContinuePure(())
-    waiter.theWaiterStateLong = count 
+    waiter.setWaiterStateLong(count)
 
     atomicallyBoth(waiter) {
       if firstWaiter == null then
@@ -46,7 +46,7 @@ private[turbolift] final class SemaphoreImpl(private var permits: Long) extends 
         permits += count
         val x = firstWaiter
         if x != null then
-          val n = permits - x.theWaiterStateLong
+          val n = permits - x.getWaiterStateLong
           if n >= 0 then
             permits = n
             waiterToResume = x

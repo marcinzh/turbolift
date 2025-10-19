@@ -522,7 +522,7 @@ private trait Engine extends Runnable:
         fun = theCurrentPayload.asInstanceOf[(Any, Any) => Any]
       )
       willContinueEff(comp)
-    clearChildren()
+    clearAfterRace()
 
 
   private def arbitrageOrPar(): Unit =
@@ -537,7 +537,7 @@ private trait Engine extends Runnable:
         case Bits.Completion_Failure => arbitrageFailedRace()
     else
       arbitrageFailedRace()
-    clearChildren()
+    clearAfterRace()
 
 
   private def arbitrageOrSeq(): Unit =
@@ -552,7 +552,7 @@ private trait Engine extends Runnable:
       case Bits.Completion_Failure =>
         val cause = racer.theCurrentPayload.asInstanceOf[Cause]
         willContinueAsFailure(cause)
-    clearChildren()
+    clearAfterRace()
 
 
   private def arbitrageFailedRace(): Unit =

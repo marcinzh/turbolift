@@ -14,7 +14,8 @@ private[turbolift] sealed abstract class FiberImplPart1 (
 ) extends ChildLink(_parent) with Fiber.Unsealed with Function1[Either[Throwable, Any], Unit]:
   private[engine] var theWaiteeOrBlocker: Waitee | Blocker | Null = null
   private[engine] var theWaiterStateAny: Any = null
-  private[engine] var theWaiterStateLong: Long = 0
+  private[engine] var thePendingRacerCount: Int = 0
+  private[engine] var theTotalRacerCount: Int = 0
   private[engine] var theRacerId: Int = 0
   private[engine] val pad1_S1: Short = 0
 
@@ -276,7 +277,8 @@ private[turbolift] final class FiberImpl private (
   //// Called by the ARBITER on itself
   private[engine] def tryStartRaceOfTwo(leftRacer: FiberImpl, rightRacer: FiberImpl): Boolean =
     atomicallyTry {
-      this.theWaiterStateLong = 2
+      this.thePendingRacerCount = 2
+      this.theTotalRacerCount = 2
       emptyInsertTwoChildren(leftRacer, rightRacer)
     }
 
@@ -284,8 +286,16 @@ private[turbolift] final class FiberImpl private (
   //// Called by the ARBITER on itself
   private[engine] def tryStartRaceOfOne(racer: FiberImpl): Boolean =
     atomicallyTry {
+      this.thePendingRacerCount = 1
+      this.theTotalRacerCount = 1
       emptyInsertOneChild(racer)
     }
+
+
+  //// Called by the ARBITER on itself
+  private[engine] def clearAfterRace(): Unit =
+    this.theTotalRacerCount = 0
+    clearChildren()
 
 
   //// Called by the RACER on itself, from `doFinalize`
@@ -302,7 +312,9 @@ private[turbolift] final class FiberImpl private (
           arbiter.tryWinRace(this)
         arbiter.tryFinishRace()
 
-      case Bits.Tree_RaceOther => true
+      case Bits.Tree_RaceOther =>
+        //// always true
+        arbiter.tryFinishRace()
 
 
   //// Called by the RACER on its ARBITER
@@ -322,8 +334,8 @@ private[turbolift] final class FiberImpl private (
   //// Called by the RACER on its ARBITER
   private def tryFinishRace(): Boolean =
     atomically {
-      this.theWaiterStateLong -= 1
-      theWaiterStateLong == 0
+      this.thePendingRacerCount -= 1
+      thePendingRacerCount == 0
     }
 
 
@@ -504,6 +516,24 @@ private[turbolift] final class FiberImpl private (
     val x = theWaiterStateAny.asInstanceOf[T]
     theWaiterStateAny = null
     x
+
+
+  private[engine] inline def setWaiterStateInt(n: Int): Unit =
+    theTotalRacerCount = n
+
+
+  private[engine] inline def setWaiterStateLong(n: Long): Unit =
+    thePendingRacerCount = (n >>> 32).toInt
+    theTotalRacerCount = n.toInt
+
+
+  private[engine] inline def getWaiterStateInt: Int =
+    theTotalRacerCount
+
+
+  private[engine] inline def getWaiterStateLong: Long =
+    (thePendingRacerCount.toLong << 32) + theTotalRacerCount
+
 
 
   //-------------------------------------------------------------------
