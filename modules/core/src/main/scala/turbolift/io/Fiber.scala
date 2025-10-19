@@ -54,7 +54,7 @@ object Fiber:
   enum Role:
     case Runner
     case Standby
-    case Arbiter(racers: List[Fiber.Untyped])
+    case Arbiter(pending: Int, total: Int)
     case Waiter(waitee: Fiber.Untyped | Warp | OnceVar.Untyped)
     case Blocker
 

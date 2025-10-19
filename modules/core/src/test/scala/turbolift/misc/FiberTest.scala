@@ -87,12 +87,14 @@ class FiberTest extends Specification:
       (for
         g1 <- Gate(2)
         g2 <- Gate(1)
-        comp = g1.open &&! g2.enter
-        fib <- (comp *! comp).fork
+        comp1 = g1.open &&! g2.enter
+        comp2 = g1.open
+        fib <- (comp1 *! comp2).fork
         _ <- g1.enter
+        _ <- IO.sleep(10)
         s <- fib.status
         ok = s match
-          case Fiber.Status.Pending(Fiber.Role.Arbiter(List(_, _)), false, false) => true
+          case Fiber.Status.Pending(Fiber.Role.Arbiter(1, 2), false, false) => true
           case _ => false
         _ <- g2.open
       yield ok)

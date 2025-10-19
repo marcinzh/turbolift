@@ -557,12 +557,14 @@ private[turbolift] final class FiberImpl private (
 
 
   override def unsafeStatus(): Fiber.Status =
-    var savedFirstChild: ChildLink | Null = null
+    var savedIsArbiter: Boolean = false
+    var savedPendingRacerCount: Int = 0
     var savedWaiteeOrBlocker: Waitee | Blocker | Null = null
     var savedVaryingBits: Byte = 0
 
     atomically {
-      savedFirstChild = getFirstChild
+      savedIsArbiter = getFirstChild != null
+      savedPendingRacerCount = thePendingRacerCount
       savedWaiteeOrBlocker = theWaiteeOrBlocker
       savedVaryingBits = varyingBits
     }
@@ -573,16 +575,10 @@ private[turbolift] final class FiberImpl private (
         import Fiber.Role
         savedWaiteeOrBlocker match
           case null =>
-            if savedFirstChild == null then
-              Role.Runner
+            if savedIsArbiter then
+              Role.Arbiter(pending = savedPendingRacerCount, total = theTotalRacerCount)
             else
-              //@#@TEMP must change API: Role.Arbiter(???)`
-              val l = savedFirstChild.asInstanceOf[FiberImpl]
-              if l.getNextSibling == l then
-                Role.Arbiter(List(l))
-              else
-                val r = l.getNextSibling.asInstanceOf[FiberImpl]
-                Role.Arbiter(List(l, r))
+              Role.Runner
           case _: Waitee => Role.Waiter(w)
           case _: Blocker => Role.Blocker
       val isCancelled = Bits.isCancellationSignalled(savedVaryingBits)
