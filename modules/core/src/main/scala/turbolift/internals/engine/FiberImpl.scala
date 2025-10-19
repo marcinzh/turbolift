@@ -53,19 +53,8 @@ private[turbolift] final class FiberImpl private (
     if isExplicit then
       theCurrentPayload = ZipperImpl.make(theJoinStack, theCurrentPayload, completion)
 
-    val cancelPayload =
-      if isExplicit then
-        ZipperCases.Cancelled
-      else
-        CancelPayload
-
     atomically {
-      if isCancellationUnlatched then
-        //// If cancellation was signalled before reaching completion, it overrides the completion.
-        varyingBits = (varyingBits | Bits.Completion_Cancelled /*| Bits.Cancellation_Latch*/).toByte
-        theCurrentPayload = cancelPayload
-      else
-        varyingBits = (varyingBits | completion).toByte
+      varyingBits = (varyingBits | completion).toByte
     }
 
     //// As a RACER:

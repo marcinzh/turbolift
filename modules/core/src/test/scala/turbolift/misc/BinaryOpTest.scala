@@ -14,18 +14,27 @@ class BinaryOpTest extends Specification:
   val gx = new Exception("g")
   val f = Cause.Thrown(fx)
   val g = Cause.Thrown(gx)
-  val aw = !!.pure(a)
-  val bw = !!.pure(b)
-  val cw = IO.cancel
-  val fw = IO.raise(fx)
-  val gw = IO.raise(gx)
 
-  def lose[A](xx: A !! IO) = IO(Thread.sleep(1)) &&! IO.yeld &&! xx
-  val al = lose(aw)
-  val bl = lose(bw)
-  val cl = lose(cw)
-  val fl = lose(fw)
-  val gl = lose(gw)
+  val aa = !!.pure(a)
+  val bb = !!.pure(b)
+  val cc = IO.cancel
+  val ff = IO.raise(fx)
+  val gg = IO.raise(gx)
+
+  def win[A](xx: A !! IO) = IO(Thread.sleep(1)) &&! xx
+  def lose[A](xx: A !! IO) = IO(Thread.sleep(20)) &&! xx
+
+  val aw = win(aa)
+  val bw = win(bb)
+  val cw = win(cc)
+  val fw = win(ff)
+  val gw = win(gg)
+
+  val al = lose(aa)
+  val bl = lose(bb)
+  val cl = lose(cc)
+  val fl = lose(ff)
+  val gl = lose(gg)
 
 
   "sequential" >> {
@@ -75,10 +84,10 @@ class BinaryOpTest extends Specification:
         "success &! failure" >>{ (aw &! gl).unsafeRun === Outcome.Failure(g) }
         "cancel &! success"  >>{ (cw &! bl).unsafeRun === Outcome.Cancelled }
         "cancel &! cancel"   >>{ (cw &! cl).unsafeRun === Outcome.Cancelled }
-        "cancel &! failure"  >>{ (cw &! gl).unsafeRun === Outcome.Cancelled }
+        "cancel &! failure"  >>{ (cw &! gl).unsafeRun === Outcome.Failure(g) }
         "failure &! success" >>{ (fw &! bl).unsafeRun === Outcome.Failure(f) }
         "failure &! cancel"  >>{ (fw &! cl).unsafeRun === Outcome.Failure(f) }
-        "failure &! failure" >>{ (fw &! gl).unsafeRun === Outcome.Failure(f) }
+        "failure &! failure" >>{ (fw &! gl).unsafeRun === Outcome.Failure(f & g) }
       }
 
       "right wins" >> {
@@ -89,8 +98,8 @@ class BinaryOpTest extends Specification:
         "cancel &! cancel"   >>{ (cl &! cw).unsafeRun === Outcome.Cancelled }
         "cancel &! failure"  >>{ (cl &! gw).unsafeRun === Outcome.Failure(g) }
         "failure &! success" >>{ (fl &! bw).unsafeRun === Outcome.Failure(f) }
-        "failure &! cancel"  >>{ (fl &! cw).unsafeRun === Outcome.Cancelled }
-        "failure &! failure" >>{ (fl &! gw).unsafeRun === Outcome.Failure(g) }
+        "failure &! cancel"  >>{ (fl &! cw).unsafeRun === Outcome.Failure(f) }
+        "failure &! failure" >>{ (fl &! gw).unsafeRun === Outcome.Failure(f & g) }
       }
     }
 
@@ -104,7 +113,7 @@ class BinaryOpTest extends Specification:
         "cancel |! failure"  >>{ (cw |! gl).unsafeRun === Outcome.Failure(g) }
         "failure |! success" >>{ (fw |! bl).unsafeRun === Outcome.Failure(f) }
         "failure |! cancel"  >>{ (fw |! cl).unsafeRun === Outcome.Failure(f) }
-        "failure |! failure" >>{ (fw |! gl).unsafeRun === Outcome.Failure(f) }
+        "failure |! failure" >>{ (fw |! gl).unsafeRun === Outcome.Failure(f & g) }
       }
 
       "right wins" >> {
@@ -116,7 +125,7 @@ class BinaryOpTest extends Specification:
         "cancel |! failure"  >>{ (cl |! gw).unsafeRun === Outcome.Failure(g) }
         "failure |! success" >>{ (fl |! bw).unsafeRun === Outcome.Success(b) }
         "failure |! cancel"  >>{ (fl |! cw).unsafeRun === Outcome.Failure(f) }
-        "failure |! failure" >>{ (fl |! gw).unsafeRun === Outcome.Failure(g) }
+        "failure |! failure" >>{ (fl |! gw).unsafeRun === Outcome.Failure(f & g) }
       }
     }
   }
