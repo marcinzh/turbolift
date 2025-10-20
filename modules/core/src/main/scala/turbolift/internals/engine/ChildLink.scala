@@ -10,6 +10,7 @@ private abstract class ChildLink(
   private var theFirstChild: ChildLink | Null = null
   private var thePrevSibling: ChildLink | Null = null
   private var theNextSibling: ChildLink | Null = null
+  private var theFirstSiblingMarker: Boolean = false
 
 
   //-------------------------------------------------------------------
@@ -69,6 +70,7 @@ private abstract class ChildLink(
   //// Callable only from `atomically` blocks, or on a fresh Fiber/Warp
   final def emptyInsertTwoChildren(left: ChildLink, right: ChildLink): Unit =
     this.theFirstChild = left
+    left.theFirstSiblingMarker = true
     left.linkSiblingWith(right)
     right.linkSiblingWith(left)
 
@@ -76,6 +78,7 @@ private abstract class ChildLink(
   //// Callable only from `atomically` blocks, or on a fresh Fiber/Warp
   final def emptyInsertOneChild(child: ChildLink): Unit =
     this.theFirstChild = child
+    child.theFirstSiblingMarker = true
     child.linkSiblingWithSelf()
 
 
@@ -102,20 +105,15 @@ private abstract class ChildLink(
     builder.result().asInstanceOf[Array[T]]
 
 
-  //@#@TEMP until rework of deepCancelLoop
   final def getFirstChild: ChildLink | Null = theFirstChild
   final def getNextSibling: ChildLink | Null = theNextSibling
-
-  //@#@TEMP until rework of deepCancelLoop
   final def getParent: ChildLink | Null = theParent
 
-  //@#@TEMP until rework of deepCancelLoop
-  final def removeAllChildrenAndBreakCycle(): ChildLink | Null =
-    val that = theFirstChild
-    if that != null then
-      this.theFirstChild = null
-      that.thePrevSibling.nn.theNextSibling = null
-    that
+
+  //// Used only by Warp.
+  //// Fiber's doesn't need that, because its child list is immutable, so the mark is put at start of race.
+  //// Warps's child list starts as mutable, but becomes immutable on `shutdown` or `cancel`
+  final inline def markAsFirstChild(): Unit = theFirstSiblingMarker = true
 
 
   //-------------------------------------------------------------------
@@ -124,15 +122,14 @@ private abstract class ChildLink(
 
 
   private[engine] final def doCancelAndForget(): Unit =
-    val child = deepCancelDown()
+    val child = shallowCancel()
     if child != null then
       child.deepCancelLoop(this)
 
 
   //// Called only from `deepCancelLoop`
-  private[engine] def deepCancelDown(): ChildLink | Null
-  private[engine] def deepCancelRight(): ChildLink | Null
-  private[engine] def deepCancelUp(): ChildLink
+  //// Returns the first child IF cancellation signal was not set yet
+  private[engine] def shallowCancel(): ChildLink | Null
 
 
   //// Recursively cancel all children of `initial`, in "fire & forget" way (no awaiting for completion).
@@ -140,7 +137,7 @@ private abstract class ChildLink(
     //// If first time here, begin visiting children: cancel self and then return first child
     val child =
       if !backtracking then
-        deepCancelDown()
+        shallowCancel()
       else
         null
 
@@ -152,12 +149,12 @@ private abstract class ChildLink(
       if this == initial then
         () //// Ignore siblings of initial. End of loop.
       else
-        val sibling = deepCancelRight()
-        if sibling != null then
+        val sibling = getNextSibling.nn
+        if !sibling.theFirstSiblingMarker then
           sibling.deepCancelLoop(initial)
         else
           //// Either has no siblings, or has already visited all siblings. Backtrack to parent.
-          val parent = deepCancelUp()
+          val parent = theParent.nn
           parent.deepCancelLoop(initial, backtracking = true)
           // if parent == initial then
           //   () //// End of loop.

@@ -17,7 +17,7 @@ private[turbolift] sealed abstract class FiberImplPart1 (
   private[engine] var thePendingRacerCount: Int = 0
   private[engine] var theTotalRacerCount: Int = 0
   private[engine] var theRacerId: Int = 0
-  private[engine] val pad1_S1: Short = 0
+  private[engine] val pad1_B1: Byte = 0
 
 
 private[turbolift] sealed abstract class FiberImplPart2 (
@@ -214,7 +214,7 @@ private[turbolift] final class FiberImpl private (
   //// - doesn't subscribe the `canceller`
   //// - doesn't initiate `deepCancelLoop`
   //// - returns first pending racer, instead of `Halt`
-  private[engine] override def deepCancelDown(): ChildLink | Null =
+  private[engine] override def shallowCancel(): ChildLink | Null =
     var savedFirstRacer: ChildLink | Null = null
     var savedWaiteeOrBlocker: Waitee | Blocker | Null = null
     var savedVaryingBits: Byte = 0
@@ -235,21 +235,6 @@ private[turbolift] final class FiberImpl private (
       doDescend(savedFirstRacer, savedWaiteeOrBlocker, savedVaryingBits)
     else
       null
-
-
-  private[engine] override def deepCancelRight(): ChildLink | Null =
-    //@#@TEMP until rework of deepCancelLoop
-    if isRacer then
-      val x = getNextSibling
-      if x != getArbiter.getFirstChild then
-        x
-      else
-        null
-    else
-      getNextSibling
-
-
-  private[engine] override def deepCancelUp(): ChildLink = getParent.nn
 
 
   private def doDescend(

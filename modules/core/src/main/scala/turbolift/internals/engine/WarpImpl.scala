@@ -188,7 +188,7 @@ private[turbolift] final class WarpImpl private[engine] (
   //// - doesn't subscribe the `canceller`
   //// - doesn't initiate `deepCancelLoop`
   //// - returns first child, instead of `Halt`
-  private[engine] override def deepCancelDown(): ChildLink | Null =
+  private[engine] override def shallowCancel(): ChildLink | Null =
     var willFinalize = false
     var willDescend = false
 
@@ -213,11 +213,6 @@ private[turbolift] final class WarpImpl private[engine] (
         null
 
 
-  private[engine] override def deepCancelRight(): ChildLink | Null = getNextSibling
-
-  private[engine] override def deepCancelUp(): ChildLink = getParent.nn
-
-
   //-------------------------------------------------------------------
   // Finalize & Descend
   //-------------------------------------------------------------------
@@ -232,9 +227,11 @@ private[turbolift] final class WarpImpl private[engine] (
 
 
   private def doDescend(deep: Boolean): ChildLink | Null =
-    val firstChild = removeAllChildrenAndBreakCycle()
-    if firstChild != null && deep then
-      firstChild.deepCancelLoop(this)
+    val firstChild = getFirstChild
+    if firstChild != null then
+      firstChild.markAsFirstChild()
+      if deep then
+        firstChild.deepCancelLoop(this)
     firstChild
 
 
