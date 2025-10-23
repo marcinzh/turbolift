@@ -68,7 +68,7 @@ trait FinalizerEffect[U] extends Effect[FinalizerSignature[U]] with FinalizerSig
         override def register(release: Unit !! U): Unit !! ThisEffect = Local.modify(Trail(release) ++ _)
 
         override def use[A](acquire: A !! U, release: A => Unit !! U): A !! ThisEffect =
-          UnsafeIO.uncancellable:
+          IO.uncancellable:
             acquire.flatMap: a =>
               Local.modify(Trail(release(a)) ++ _).as(a)
 

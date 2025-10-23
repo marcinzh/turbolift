@@ -9,7 +9,7 @@ import turbolift.io.AtomicVar
 final case class Resource[A, -U](acquire: A !! U, release: A => Unit !! U):
   def use: A !! Finalizer[U] = Finalizer.use(this)
 
-  def use[B, V <: U](body: A => B !! V): B !! V = !!.bracket(acquire, release)(body)
+  def use[B, V <: U](body: A => B !! V): B !! V = IO.bracket(acquire, release)(body)
 
   def useLazily[B, V <: U & IO, W <: U & IO](body: (A !! V) => B !! W): B !! W =
     AtomicVar.createLockful[Option[A]](None).flatMap: avar =>

@@ -1,6 +1,6 @@
 package turbolift.data
 import turbolift.!!
-import turbolift.effects.UnsafeIO
+import turbolift.effects.IO
 import turbolift.data.{Cause, Snap}
 
 
@@ -9,10 +9,10 @@ opaque type Trail[-U] = Snap[Unit] !! U
 
 object Trail:
   val empty: Trail[Any] = !!.pure(Snap.unit)
-  def apply[U](comp: Unit !! U): Trail[U] = UnsafeIO.snap(comp)
+  def apply[U](comp: Unit !! U): Trail[U] = IO.snap(comp)
 
   extension [U](thiz: Trail[U])
-    def run: Unit !! U = thiz.flatMap(UnsafeIO.unsnap)
+    def run: Unit !! U = thiz.flatMap(IO.unsnap)
     def &(that: Trail[U]): Trail[U] = thiz.zipWithPar(that)(lift(_ & _))
     def ++(that: Trail[U]): Trail[U] = thiz.zipWith(that)(lift(_ ++ _))
 

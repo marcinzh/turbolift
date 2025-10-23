@@ -1,12 +1,12 @@
 package turbolift
 import scala.annotation.nowarn
 import scala.concurrent.duration.FiniteDuration
-import turbolift.effects.{ChoiceSignature, Alternative, IO, UnsafeIO, Each, Finalizer, FinalizerIO, Error}
+import turbolift.effects.{ChoiceSignature, Alternative, IO, Each, Finalizer, FinalizerIO, Error}
 import turbolift.internals.auxx.CanPartiallyHandle
 import turbolift.internals.executor.Executor
 import turbolift.internals.engine.{Tag, Env, FiberImpl, Halt}
 import turbolift.interpreter.Prompt
-import turbolift.data.Outcome
+import turbolift.data.{Outcome, Cause}
 import turbolift.io.{Fiber, Warp}
 import turbolift.mode.Mode
 import turbolift.{ComputationCases => CC}
@@ -143,22 +143,22 @@ sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift]
   //---------- misc ----------
 
 
-  def when[U2 <: U](cond: A => Boolean)(comp: Unit !! U2): A !! U2 =
+  final def when[U2 <: U](cond: A => Boolean)(comp: Unit !! U2): A !! U2 =
     tapEff(a => if cond(a) then comp else !!.unit )
 
-  def whenEff[U2 <: U](cond: A => Boolean !! U2)(comp: Unit !! U2): A !! U2 =
+  final def whenEff[U2 <: U](cond: A => Boolean !! U2)(comp: Unit !! U2): A !! U2 =
     tapEff(a => cond(a).flatMap(if _ then comp else !!.unit))
 
-  def ifThen[U2 <: U](cond: A => Boolean)(comp: => Unit !! U2): Unit !! U2 =
+  final def ifThen[U2 <: U](cond: A => Boolean)(comp: => Unit !! U2): Unit !! U2 =
     flatMap(a => if cond(a) then comp else !!.unit)
 
-  def ifThenEff[U2 <: U](cond: A => Boolean !! U2)(comp: => Unit !! U2): Unit !! U2 =
+  final def ifThenEff[U2 <: U](cond: A => Boolean !! U2)(comp: => Unit !! U2): Unit !! U2 =
     flatMap(cond).flatMap(if _ then comp else !!.unit)
 
-  def ifThenElse[B, U2 <: U](cond: A => Boolean)(comp1: => B !! U2)(comp2: => B !! U2): B !! U2 =
+  final def ifThenElse[B, U2 <: U](cond: A => Boolean)(comp1: => B !! U2)(comp2: => B !! U2): B !! U2 =
     flatMap(a => if cond(a) then comp1 else comp2)
 
-  def ifThenElseEff[B, U2 <: U](cond: A => Boolean !! U2)(comp1: => B !! U2)(comp2: => B !! U2): B !! U2 =
+  final def ifThenElseEff[B, U2 <: U](cond: A => Boolean !! U2)(comp1: => B !! U2)(comp2: => B !! U2): B !! U2 =
     flatMap(cond).flatMap(if _ then comp1 else comp2)
 
 
@@ -166,15 +166,17 @@ sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift]
   //---------- postfix syntax ----------
 
 
-  final def guarantee[U2 <: U](release: Unit !! U2): A !! U2 = !!.guarantee(release)(this)
+  final def guarantee[U2 <: U](release: Unit !! U2): A !! U2 = IO.guarantee(release)(this)
 
-  final def onSuccess[U2 <: U](f: A => Unit !! U2): A !! U2 = !!.onSuccess(this)(f)
+  final def onSuccess[U2 <: U](f: A => Unit !! U2): A !! U2 = IO.onSuccess(this)(f)
 
-  final def onAbort[U2 <: U](f: (Any, Prompt) => Unit !! U2): A !! U2 = !!.onAbort(this)(f)
+  final def onFailure[U2 <: U](f: Cause => Unit !! U2): A !! U2 = IO.onFailure(this)(f)
 
-  final def onFailure[U2 <: U](f: Throwable => Unit !! U2): A !! U2 = !!.onFailure(this)(f)
+  final def onException[U2 <: U](f: Throwable => Unit !! U2): A !! U2 = IO.onException(this)(f)
 
-  final def onCancel[U2 <: U](comp: Unit !! U2): A !! U2 = !!.onCancel(this)(comp)
+  final def onAbort[U2 <: U](f: (Any, Prompt) => Unit !! U2): A !! U2 = IO.onAbort(this)(f)
+
+  final def onCancel[U2 <: U](comp: Unit !! U2): A !! U2 = IO.onCancel(this)(comp)
 
 
   //---------- IO operations in postfix syntax ----------
@@ -331,22 +333,6 @@ object Computation:
   def sequentiallyIf[A, U](cond: Boolean)(body: A !! U): A !! U = parallellyIf(!cond)(body)
   def parallelly[A, U](body: A !! U): A !! U = parallellyIf(true)(body)
   def sequentially[A, U](body: A !! U): A !! U = parallellyIf(false)(body)
-
-
-  //---------- Bracket ----------
-
-
-  def guarantee[A, U](release: Unit !! U)(body: A !! U): A !! U = UnsafeIO.guarantee(release)(body)
-  def onSuccess[A, U](body: A !! U)(f: A => Unit !! U): A !! U = UnsafeIO.onSuccess(body)(f)
-  def onAbort[A, U](body: A !! U)(f: (Any, Prompt) => Unit !! U): A !! U = UnsafeIO.onAbort(body)(f)
-  def onFailure[A, U](body: A !! U)(f: Throwable => Unit !! U): A !! U = UnsafeIO.onFailure(body)(f)
-  def onCancel[A, U](body: A !! U)(comp: Unit !! U): A !! U = UnsafeIO.onCancel(body)(comp)
-
-  def bracket[A, B, U](acquire: A !! U, release: A => Unit !! U)(use: A => B !! U): B !! U =
-    UnsafeIO.bracket(acquire, release)(use)
-
-  def bracket[A, U](acquire: Unit !! U, release: Unit !! U)(use: A !! U): A !! U =
-    UnsafeIO.bracket(acquire, release)(use)
 
 
   //---------- Extensions ----------
