@@ -183,8 +183,14 @@ sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift]
   /** Run this computation in a new fiber. */
   final def fork: Fiber[A, U] !! (U & IO & Warp) = Fiber.fork(this)
 
+  /** Run this computation in a new fiber. */
+  final def fork(name: String): Fiber[A, U] !! (U & IO & Warp) = Fiber.fork(name)(this)
+
   /** Like [[fork]], but the fiber is created as a child of specific warp, rather than the current warp. */
   final def forkAt(warp: Warp): Fiber[A, U] !! (U & IO) = Fiber.forkAt(warp)(this)
+
+  /** Like [[fork]], but the fiber is created as a child of specific warp, rather than the current warp. */
+  final def forkAt(warp: Warp, name: String): Fiber[A, U] !! (U & IO) = Fiber.forkAt(warp, name)(this)
 
   final def executeOn[U2 <: U & IO](exec: Executor): A !! U2 = IO.executeOn(exec)(this)
 

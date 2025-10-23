@@ -67,8 +67,14 @@ object Fiber:
   /** Create a new fiber in the current [[Warp]]. */
   def fork[A, U](comp: A !! U): Fiber[A, U] !! (U & IO & Warp) = CC.intrinsic(_.intrinsicForkFiber(null, comp, ""))
 
+  /** Create a new fiber in the current [[Warp]]. */
+  def fork[A, U](name: String)(comp: A !! U): Fiber[A, U] !! (U & IO & Warp) = CC.intrinsic(_.intrinsicForkFiber(null, comp, name))
+
   /** Create a new fiber in specified [[Warp]]. */
   def forkAt[A, U](warp: Warp)(comp: A !! U): Fiber[A, U] !! (U & IO) = CC.intrinsic(_.intrinsicForkFiber(warp, comp, ""))
+
+  /** Create a new fiber in specified [[Warp]]. */
+  def forkAt[A, U](warp: Warp, name: String)(comp: A !! U): Fiber[A, U] !! (U & IO) = CC.intrinsic(_.intrinsicForkFiber(warp, comp, name))
 
   /** Experimental */
   def forkWithCallback[A, U](
