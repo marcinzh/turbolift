@@ -4,6 +4,7 @@ import scala.util.{Try, Success => TrySuccess, Failure => TryFailure}
 import scala.concurrent.duration._
 import turbolift.{!!, Signature, ComputationCases => CC}
 import turbolift.data.{Cause, Snap}
+import turbolift.io.{Zipper, Fiber, Warp, OnceVar}
 import turbolift.interpreter.Prompt
 import turbolift.internals.executor.Executor
 
@@ -197,6 +198,20 @@ case object IO extends IO:
       t1 = System.nanoTime()
       d = new FiniteDuration(t1 - t0, NANOSECONDS)
     yield (a, d)
+
+
+  //---------- Race ----------
+
+
+  def raceFibers[A, B, U, V](comp1: A !! U, comp2: B !! V): Either[(Zipper[A, U], Fiber[B, V]), (Fiber[A, U], Zipper[B, V])] !! (IO & Warp) =
+    for
+      ovar <- OnceVar.create[Either[(Zipper[A, U], Fiber[B, V]), (Fiber[A, U], Zipper[B, V])]]
+      fib1 <- Fiber.forkIdle[A, U](null, "Left")
+      fib2 <- Fiber.forkIdle[B, V](null, "Right")
+      _ = fib1.unsafeStart(comp1, zipp => ovar.unsafePut(Left((zipp, fib2))))
+      _ = fib2.unsafeStart(comp2, zipp => ovar.unsafePut(Right((fib1, zipp))))
+      x <- ovar.get
+    yield x
 
 
   //---------- Others ----------

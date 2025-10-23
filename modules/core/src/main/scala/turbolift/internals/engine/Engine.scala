@@ -774,17 +774,20 @@ private trait Engine extends Runnable:
     Halt.Continue
 
 
-  final def intrinsicForkFiber[A, U](warp0: Warp | Null, comp: A !! U, name: String, callback: (Zipper.Untyped => Unit) | Null = null): Halt =
+  final def intrinsicForkFiber[A, U](warp0: Warp | Null, comp: A !! U | Null, name: String, callback: (Zipper.Untyped => Unit) | Null = null): Halt =
     val warp = if warp0 != null then warp0.asImpl else theCurrentEnv.currentWarp.nn
     val stackFork = theCurrentStack.lazyFork
     val (storeDown, storeFork) = OpCascaded.fork1(theCurrentStack, theCurrentStore, stackFork)
     val child = FiberImpl.createExplicit(stackFork, warp, theCurrentEnv.fork, name, callback)
-    child.willContinueEffStack(comp, Step.Pop, stackFork, storeFork)
     this.willContinuePureStore(child, storeDown)
+    child.willContinuePureStack(null, Step.Pop, stackFork, storeFork)
     if warp.tryAddFiber(child) then
-      child.resume()
+      if comp != null then
+        child.willContinueEff(comp)
+        child.resume()
     else
-      child.willContinueAsCancelled()
+      if comp != null then
+        child.doFinalize(Bits.Completion_Cancelled)
     Halt.Continue
 
 

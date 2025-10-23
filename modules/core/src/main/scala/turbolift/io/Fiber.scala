@@ -39,6 +39,9 @@ sealed trait Fiber[+A, -U]:
   def unsafeStatus(): Fiber.Status
   def unsafePoll(): Option[Zipper[A, U]]
 
+  /** Starts a fiber created with [[forkIdle]]. */
+  def unsafeStart[A2 >: A, U2 <: U](comp: A2 !! U2, callback: Zipper[A2, U2] => Unit): Unit
+
   final def untyped: Fiber.Untyped = this
   final def cast[A2, U2]: Fiber[A2, U2] = asInstanceOf[Fiber[A2, U2]]
 
@@ -83,12 +86,19 @@ object Fiber:
     name: String = "",
   ): Fiber[A, U] !! (U & IO & Warp) = CC.intrinsic(_.intrinsicForkFiber(null, comp, name, callback.asInstanceOf[Zipper.Untyped => Unit]))
 
+  /** Experimental */
   def forkWithCallbackAt[A, U](
     warp: Warp,
     comp: A !! U,
     callback: Zipper[A, U] => Unit,
     name: String = "",
   ): Fiber[A, U] !! (U & IO) = CC.intrinsic(_.intrinsicForkFiber(warp, comp, name, callback.asInstanceOf[Zipper.Untyped => Unit]))
+
+  /** Experimental. Forks an incompletely initialized, non-running fiber.
+   *
+   * @see [[unsafeStart]]
+   */
+  def forkIdle[A, U](warp: Warp | Null, name: String = ""): Fiber[A, U] !! IO = CC.intrinsic(_.intrinsicForkFiber(warp, null, name))
 
   /** Syntax for creating new [[Fiber]] with a name. */
   def named(name: String) = new NamedSyntax(name)

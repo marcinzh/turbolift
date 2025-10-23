@@ -7,7 +7,7 @@ import turbolift.internals.executor.Executor
 import turbolift.internals.engine.{Tag, Env, FiberImpl, Halt}
 import turbolift.interpreter.Prompt
 import turbolift.data.{Outcome, Cause}
-import turbolift.io.{Fiber, Warp}
+import turbolift.io.{Fiber, Warp, Zipper}
 import turbolift.mode.Mode
 import turbolift.{ComputationCases => CC}
 
@@ -162,7 +162,6 @@ sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift]
     flatMap(cond).flatMap(if _ then comp1 else comp2)
 
 
-
   //---------- postfix syntax ----------
 
 
@@ -194,11 +193,15 @@ sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift]
   /** Like [[fork]], but the fiber is created as a child of specific warp, rather than the current warp. */
   final def forkAt(warp: Warp, name: String): Fiber[A, U] !! (U & IO) = Fiber.forkAt(warp, name)(this)
 
+  /** Postfix alias of `IO.raceFibers`. */
+  final def raceFibers[B, V](that: B !! V): Either[(Zipper[A, U], Fiber[B, V]), (Fiber[A, U], Zipper[B, V])] !! (IO & Warp) = IO.raceFibers(this, that)
+
   final def executeOn[U2 <: U & IO](exec: Executor): A !! U2 = IO.executeOn(exec)(this)
 
   final def delay[U2 <: U & IO](millis: Long): A !! U2 = IO.delay(millis)(this)
 
   final def delay[U2 <: U & IO](duration: FiniteDuration): A !! U2 = IO.delay(duration)(this)
+
 
   /** Syntax for giving names to fibers. */
   final def named[A2 >: A, U2 <: U](name: String) = new Computation.NamedSyntax[A2, U2](this, name)

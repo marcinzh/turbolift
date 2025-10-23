@@ -37,7 +37,7 @@ private[turbolift] final class FiberImpl private (
   private[engine] val constantBits: Byte,
   private[engine] var theName: String,
   private[engine] val theJoinStack: Stack | Null,
-  private[engine] val theCallback: (Any => Unit) | Null,
+  private[engine] var theCallback: (Any => Unit) | Null,
 ) extends FiberImplPart2(_parent) with Engine:
   private[engine] var theCurrentTickHigh: Int = 0
   private[engine] var theFiberToBecome: FiberImpl | Null = null
@@ -86,11 +86,11 @@ private[turbolift] final class FiberImpl private (
     //// Call the callback
     if theCallback != null then
       if isExplicit then
-        theCallback(theCurrentPayload)
+        theCallback.nn.apply(theCurrentPayload)
       else
         //// Must be the root fiber, bcoz implicit fibers dont get callbacks
         assert(isRoot)
-        theCallback(makeOutcome)
+        theCallback.nn.apply(makeOutcome)
 
     fiberToBecome
 
@@ -174,6 +174,12 @@ private[turbolift] final class FiberImpl private (
   private[engine] def cancelBySelf(): Unit =
     atomically {
       varyingBits = (varyingBits | Bits.Cancellation_Signal | Bits.Cancellation_Latch).toByte
+    }
+
+
+  private[engine] def cancelBeforeStarted(): Unit =
+    atomically {
+      varyingBits = (varyingBits | Bits.Cancellation_Signal).toByte
     }
 
 
@@ -582,6 +588,16 @@ private[turbolift] final class FiberImpl private (
     Bits.getCompletion(savedBits) match
       case Bits.Completion_Pending => None
       case completion => Some(getOrMakeZipper(savedPayload, completion))
+
+
+  override def unsafeStart[A2 >: Any, U2 <: Nothing](comp: Computation[A2, U2], callback: Zipper[A2, U2] => Unit): Unit =
+    this.theCallback = callback.asInstanceOf[Any => Unit]
+    val willRun = atomicallyTry {}
+    if willRun then
+      willContinueEff(comp)
+      resume()
+    else
+      doFinalize(Bits.Completion_Cancelled)
 
 
   //-------------------------------------------------------------------

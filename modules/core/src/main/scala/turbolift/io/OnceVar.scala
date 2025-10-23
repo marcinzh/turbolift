@@ -33,8 +33,9 @@ object OnceVar:
 
 
   sealed trait Put[A]:
-    final def put(value: A): Unit !! IO = !!.impure { val _ = unsafeTryPut(value) }
+    final def put(value: A): Unit !! IO = !!.impure(unsafePut(value))
     final def tryPut(value: A): Boolean !! IO = !!.impure(unsafeTryPut(value))
+    final def unsafePut(value: A): Unit = { val _ = unsafeTryPut(value) }
     def unsafeTryPut(value: A): Boolean
 
 
