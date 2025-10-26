@@ -31,10 +31,11 @@ object Tag:
   inline val NotifyEffectfulVar  = 16
   inline val NotifyZipper        = 17
   inline val NotifyEither        = 18
-  inline val NotifyZipPar        = 19
-  inline val NotifyOrPar         = 20
-  inline val NotifyOrSeq         = 21
-
+  inline val NotifyRaceBothWith  = 19
+  inline val NotifyRaceEither    = 20
+  inline val NotifyRaceFirst     = 21
+  inline val NotifyRaceAll       = 22
+  inline val NotifyRaceOne       = 23
 
   def toStr(tag: Tag) =
     tag match
@@ -57,9 +58,10 @@ object Tag:
       case NotifyEffectfulVar => "NotifyEffectfulVar"
       case NotifyZipper       => "NotifyZipper"
       case NotifyEither       => "NotifyEither"
-      case NotifyZipPar       => "NotifyZipPar"
-      case NotifyOrPar        => "NotifyOrPar"
-      case NotifyOrSeq        => "NotifyOrSeq"
-
+      case NotifyRaceBothWith => "NotifyRaceBothWith"
+      case NotifyRaceEither   => "NotifyRaceEither"
+      case NotifyRaceFirst    => "NotifyRaceFirst"
+      case NotifyRaceAll      => "NotifyRaceAll"
+      case NotifyRaceOne      => "NotifyRaceOne"
 
       case _                  => s"Tag($tag)"

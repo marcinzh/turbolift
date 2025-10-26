@@ -59,13 +59,13 @@ sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift]
    * being inherently sequential (e.g. `State.handlers.local` or `Error.handlers.first`).
    * In such case, `zipPar` behaves like `zip`.
    */
-  final def zipPar[B, U2 <: U](that: B !! U2): (A, B) !! U2 = zipWithPar(that)(Computation.pairCtorFun[A, B])
+  final def zipPar[B, U2 <: U](that: B !! U2): (A, B) !! U2 = IO.raceBoth(this, that)
 
   /** Like [[zip]], but followed by untupled `map`. */
   final def zipWith[B, C, U2 <: U](that: => B !! U2)(f: (A, B) => C): C !! U2 = flatMap(a => that.map(f(a, _)))
 
   /** Like [[zipPar]], but followed by untupled `map`. */
-  final def zipWithPar[B, C, U2 <: U](that: B !! U2)(f: (A, B) => C): C !! U2 = CC.intrinsic(_.intrinsicZipPar(this, that, f))
+  final def zipWithPar[B, C, U2 <: U](that: B !! U2)(f: (A, B) => C): C !! U2 = IO.raceBothWith(this, that)(f)
   
   /** Discards the result, and replaces it by given pure value. */
   final def as[B](value: B): B !! U = map(_ => value)
@@ -109,14 +109,14 @@ sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift]
    * Runs both computations parallelly, each in fresh fiber.
    * Once one of them finishes, the other is cancelled.
    */
-  final def |![A2 >: A, U2 <: U & IO](that: A2 !! U2): A2 !! U2 = CC.intrinsic(_.intrinsicOrPar(this, that))
+  final def |![A2 >: A, U2 <: U & IO](that: A2 !! U2): A2 !! U2 = IO.race(this, that)
 
   /** Sequential "or-else" operator.
    *
    * Runs the first computations in fresh fiber.
    * If it ends up cancelled, the second computation is run.
    */
-  final def ||![A2 >: A, U2 <: U & IO](that: => A2 !! U2): A2 !! U2 = CC.intrinsic(_.intrinsicOrSeq(this, () => that))
+  final def ||![A2 >: A, U2 <: U & IO](that: => A2 !! U2): A2 !! U2 = IO.orElse(this, that)
 
   /** Parallel version of `++!`. */
   final def +![A2 >: A, U2 <: U & ChoiceSignature](that: A2 !! U2): A2 !! U2 = Alternative.plusPar(this, that)

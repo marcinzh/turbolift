@@ -4,7 +4,8 @@ import turbolift.!!
 import Local.Syntax._
 
 
-private[engine] object OpCascaded:
+//@#@ public bcoz inline problems
+object OpCascaded:
   def restart(stack: Stack, ftor: Any): AnyComp =
     def loop(todo: Stack): AnyComp =
       val comp = 

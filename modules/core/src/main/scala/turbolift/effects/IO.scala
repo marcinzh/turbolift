@@ -7,6 +7,8 @@ import turbolift.data.{Cause, Snap}
 import turbolift.io.{Zipper, Fiber, Warp, OnceVar}
 import turbolift.interpreter.Prompt
 import turbolift.internals.executor.Executor
+import turbolift.io.Zipper
+import turbolift.Extensions._
 
 
 sealed trait IO extends Signature
@@ -203,6 +205,32 @@ case object IO extends IO:
   //---------- Race ----------
 
 
+  def race[A, B, U <: IO](lhs: A !! U, rhs: A !! U): A !! U = raceEither(lhs, rhs).map(_.merge)
+
+  def raceEither[A, B, U <: IO](lhs: A !! U, rhs: B !! U): Either[A, B] !! U = CC.intrinsic(_.intrinsicRaceEither(lhs, rhs))
+
+  def raceBoth[A, B, U](lhs: A !! U, rhs: B !! U): (A, B) !! U = raceBothWith(lhs, rhs)(pairCtorFun[A, B])
+
+  def raceBothWith[A, B, C, U](lhs: A !! U, rhs: B !! U)(f: (A, B) => C): C !! U = CC.intrinsic(_.intrinsicRaceBothWith(lhs, rhs, f))
+
+  def raceFirst[A, U <: IO](comps: Iterable[A !! U]): A !! U = CC.intrinsic(_.intrinsicRaceFirst(comps))
+
+  def raceAll[A, U](comps: Iterable[A !! U]): Vector[A] !! U = CC.intrinsic(_.intrinsicRaceAll(comps, isVoid = false))
+
+  def raceAllVoid[U](comps: Iterable[Unit !! U]): Unit !! U = CC.intrinsic(_.intrinsicRaceAll(comps, isVoid = true))
+
+  def raceOne[A, U <: IO](comp: A !! U): Option[A] !! U = CC.intrinsic(_.intrinsicRaceOne(comp))
+
+  def orElse[A, U <: IO](lhs: A !! U, rhs: => A !! U): A !! U =
+    IO.raceOne(lhs).flatMap:
+      case Some(a) => !!.pure(a)
+      case None => rhs
+
+  def either[A, B, U <: IO](lhs: A !! U, rhs: => B !! U): Either[A, B] !! U =
+    IO.raceOne(lhs).flatMap:
+      case Some(a) => !!.pure(Left(a))
+      case None => rhs.map(Right(_))
+
   def raceFibers[A, B, U, V](comp1: A !! U, comp2: B !! V): Either[(Zipper[A, U], Fiber[B, V]), (Fiber[A, U], Zipper[B, V])] !! (IO & Warp) =
     for
       ovar <- OnceVar.create[Either[(Zipper[A, U], Fiber[B, V]), (Fiber[A, U], Zipper[B, V])]]
@@ -212,6 +240,9 @@ case object IO extends IO:
       _ = fib2.unsafeStart(comp2, zipp => ovar.unsafePut(Right((fib1, zipp))))
       x <- ovar.get
     yield x
+
+  private def pairCtorFun[A, B]: (A, B) => (A, B) = pairCtorVal.asInstanceOf[(A, B) => (A, B)]
+  private val pairCtorVal: (Any, Any) => Any = (_, _)
 
 
   //---------- Others ----------

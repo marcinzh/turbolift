@@ -12,7 +12,7 @@ object Bits:
   inline val Tree_Explicit   = 1 << Tree_Shift
   inline val Tree_RaceAll    = 2 << Tree_Shift
   inline val Tree_RaceFirst  = 3 << Tree_Shift
-  inline val Tree_RaceOther  = 4 << Tree_Shift
+  inline val Tree_RaceOne    = 4 << Tree_Shift
   inline val Tree_Mask       = 0x7 << Tree_Shift
   inline val Tree_Shift      = 0
 

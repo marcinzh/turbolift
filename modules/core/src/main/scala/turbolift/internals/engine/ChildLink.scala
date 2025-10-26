@@ -28,7 +28,7 @@ private abstract class ChildLink(
     val next = theNextSibling.nn
     prev.linkSiblingWith(next)
 
-  private final inline def linkSiblingWith(that: ChildLink): Unit =
+  private[engine] final inline def linkSiblingWith(that: ChildLink): Unit =
     this.theNextSibling = that
     that.thePrevSibling = this
 
@@ -67,19 +67,11 @@ private abstract class ChildLink(
     child.clearSiblingLink()
 
 
+  //@#@NEW
   //// Callable only from `atomically` blocks, or on a fresh Fiber/Warp
-  final def emptyInsertTwoChildren(left: ChildLink, right: ChildLink): Unit =
-    this.theFirstChild = left
-    left.theFirstSiblingMarker = true
-    left.linkSiblingWith(right)
-    right.linkSiblingWith(left)
-
-
-  //// Callable only from `atomically` blocks, or on a fresh Fiber/Warp
-  final def emptyInsertOneChild(child: ChildLink): Unit =
+  final def emptySetFirstChild(child: ChildLink): Unit =
     this.theFirstChild = child
     child.theFirstSiblingMarker = true
-    child.linkSiblingWithSelf()
 
 
   final def clearChildren(): Unit =
@@ -105,9 +97,10 @@ private abstract class ChildLink(
     builder.result().asInstanceOf[Array[T]]
 
 
+  final def getParent: ChildLink | Null = theParent
   final def getFirstChild: ChildLink | Null = theFirstChild
   final def getNextSibling: ChildLink | Null = theNextSibling
-  final def getParent: ChildLink | Null = theParent
+  final def isFirstSibling: Boolean = theFirstSiblingMarker
 
 
   //// Used only by Warp.

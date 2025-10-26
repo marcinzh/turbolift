@@ -266,20 +266,11 @@ private[turbolift] final class FiberImpl private (
 
 
   //// Called by the ARBITER on itself
-  private[engine] def tryStartRaceOfTwo(leftRacer: FiberImpl, rightRacer: FiberImpl): Boolean =
+  private[engine] def tryStartRace(firstRacer: FiberImpl, racerCount: Int): Boolean =
     atomicallyTry {
-      this.thePendingRacerCount = 2
-      this.theTotalRacerCount = 2
-      emptyInsertTwoChildren(leftRacer, rightRacer)
-    }
-
-
-  //// Called by the ARBITER on itself
-  private[engine] def tryStartRaceOfOne(racer: FiberImpl): Boolean =
-    atomicallyTry {
-      this.thePendingRacerCount = 1
-      this.theTotalRacerCount = 1
-      emptyInsertOneChild(racer)
+      this.thePendingRacerCount = racerCount
+      this.theTotalRacerCount = racerCount
+      emptySetFirstChild(firstRacer)
     }
 
 
@@ -303,7 +294,7 @@ private[turbolift] final class FiberImpl private (
           arbiter.tryWinRace(this)
         arbiter.tryFinishRace()
 
-      case Bits.Tree_RaceOther =>
+      case Bits.Tree_RaceOne =>
         //// always true
         arbiter.tryFinishRace()
 
@@ -332,14 +323,34 @@ private[turbolift] final class FiberImpl private (
 
   //// Called on the ARBITER
   private def cancelAllLosers(winner: FiberImpl): Unit =
-    val limit = getFirstChild.asInstanceOf[FiberImpl]
     @tailrec def loop(racer: FiberImpl): Unit =
       if winner != racer then
         racer.cancelByWinner()
-      val next = racer.getNextSibling
-      if next != limit then
-        loop(next.asInstanceOf[FiberImpl])
-    loop(limit)
+      val next = racer.getNextSibling.asInstanceOf[FiberImpl]
+      if !next.isFirstSibling then
+        loop(next)
+    loop(getFirstChild.asInstanceOf[FiberImpl])
+
+
+  private[engine] final def createTwoChildren(kind: Byte): FiberImpl =
+    val leftChild = this.createImplicit(kind)
+    val rightChild = this.createImplicit(kind)
+    leftChild.linkSiblingWith(rightChild)
+    rightChild.linkSiblingWith(leftChild)
+    leftChild
+
+
+  private[engine] final def createManyChildren(count: Int, kind: Byte): FiberImpl =
+    val firstChild = this.createImplicit(kind)
+    def loop(i: Int, prevChild: FiberImpl): Unit =
+      if i < count then
+        val nextChild = this.createImplicit(kind)
+        prevChild.linkSiblingWith(nextChild)
+        loop(i + 1, nextChild)
+      else
+        prevChild.linkSiblingWith(firstChild)
+    loop(1, firstChild)
+    firstChild
 
 
   //-------------------------------------------------------------------
@@ -611,8 +622,9 @@ private[turbolift] final class FiberImpl private (
   private[internals] def isReentry: Boolean = Bits.isReentry(constantBits)
   private[engine] def getCompletion: Int = Bits.getCompletion(varyingBits)
   private[engine] def getArbiter: FiberImpl = getParent.asInstanceOf[FiberImpl]
-  private[engine] def getLeftRacer: FiberImpl = getFirstChild.asInstanceOf[FiberImpl]
-  private[engine] def getRightRacer: FiberImpl = getLeftRacer.getNextSibling.asInstanceOf[FiberImpl]
+  private[engine] def getFirstRacer: FiberImpl = getFirstChild.asInstanceOf[FiberImpl]
+  private[engine] def getSecondRacer: FiberImpl = getFirstRacer.getNextRacer
+  private[engine] def getNextRacer: FiberImpl = getNextSibling.asInstanceOf[FiberImpl]
 
   def createImplicit(bits: Byte): FiberImpl =
     val that = new FiberImpl(
