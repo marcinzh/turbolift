@@ -1,5 +1,6 @@
 package turbolift.effects
 import java.time.Instant
+import java.util.concurrent.TimeUnit
 import scala.util.{Try, Success => TrySuccess, Failure => TryFailure}
 import scala.concurrent.duration._
 import turbolift.{!!, Signature, ComputationCases => CC}
@@ -175,13 +176,31 @@ case object IO extends IO:
   //---------- Time ----------
 
 
-  def sleep(millis: Long): Unit !! IO = CC.intrinsic(_.intrinsicSleep(millis))
+  def sleep(millis: Long): Unit !! IO = CC.intrinsic(_.intrinsicSleep(millis, TimeUnit.MILLISECONDS))
 
   def sleep(duration: FiniteDuration): Unit !! IO = CC.intrinsic(_.intrinsicSleep(duration.length, duration.unit))
 
-  def delay[A, U <: IO](millis: Long)(comp: A !! U): A !! U = sleep(millis) &&! comp
+  def delay[A, U <: IO](comp: A !! U, millis: Long): A !! U = sleep(millis) &&! comp
 
-  def delay[A, U <: IO](duration: FiniteDuration)(comp: A !! U): A !! U = sleep(duration) &&! comp
+  def delay[A, U <: IO](comp: A !! U, duration: FiniteDuration): A !! U = sleep(duration) &&! comp
+
+  def timeout[A, U <: IO](comp: A !! U, millis: Long): Option[A] !! U =
+    CC.intrinsic(_.intrinsicRaceSleep(comp, millis, TimeUnit.MILLISECONDS))
+
+  def timeout[A, U <: IO](comp: A !! U, duration: FiniteDuration): Option[A] !! U =
+    CC.intrinsic(_.intrinsicRaceSleep(comp, duration.length, duration.unit))
+
+  def timeoutTo[A, U <: IO](comp: A !! U, millis: Long, fallback: => A): A !! U =
+    timeout(comp, millis).map(_.getOrElse(fallback))
+
+  def timeoutTo[A, U <: IO](comp: A !! U, duration: FiniteDuration, fallback: => A): A !! U =
+    timeout(comp, duration).map(_.getOrElse(fallback))
+
+  def timeoutToEff[A, U <: IO](comp: A !! U, millis: Long, fallback: => A !! U): A !! U =
+    timeout(comp, millis).flatMap(_.fold(fallback)(!!.pure))
+
+  def timeoutToEff[A, U <: IO](comp: A !! U, duration: FiniteDuration, fallback: => A !! U): A !! U =
+    timeout(comp, duration).flatMap(_.fold(fallback)(!!.pure))
 
   val nowRaw: Long !! IO = !!.impure(System.currentTimeMillis())
 

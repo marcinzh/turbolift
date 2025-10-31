@@ -196,12 +196,35 @@ sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift]
   /** Postfix alias of `IO.raceFibers`. */
   final def raceFibers[B, V](that: B !! V): Either[(Zipper[A, U], Fiber[B, V]), (Fiber[A, U], Zipper[B, V])] !! (IO & Warp) = IO.raceFibers(this, that)
 
+  /** Postfix alias of `IO.executeOn`. */
   final def executeOn[U2 <: U & IO](exec: Executor): A !! U2 = IO.executeOn(exec)(this)
 
-  final def delay[U2 <: U & IO](millis: Long): A !! U2 = IO.delay(millis)(this)
+  /** Postfix alias of `IO.delay`. */
+  final def delay[U2 <: U & IO](millis: Long): A !! U2 = IO.delay(this, millis)
 
-  final def delay[U2 <: U & IO](duration: FiniteDuration): A !! U2 = IO.delay(duration)(this)
+  /** Postfix alias of `IO.delay`. */
+  final def delay[U2 <: U & IO](duration: FiniteDuration): A !! U2 = IO.delay(this, duration)
 
+  /** Postfix alias of `IO.timeout`. */
+  final def timeout[U2 <: U & IO](millis: Long): Option[A] !! U2 = IO.timeout(this, millis)
+
+  /** Postfix alias of `IO.timeout`. */
+  final def timeout[U2 <: U & IO](duration: FiniteDuration): Option[A] !! U2 = IO.timeout(this, duration)
+
+  /** Postfix alias of `IO.timeoutTo`. */
+  final def timeoutTo[A2 >: A, U2 <: U & IO](millis: Long)(fallback: => A2): A2 !! U2 = IO.timeoutTo(this, millis, fallback)
+
+  /** Postfix alias of `IO.timeoutTo`. */
+  final def timeoutTo[A2 >: A, U2 <: U & IO](duration: FiniteDuration)(fallback: => A2): A2 !! U2 = IO.timeoutTo(this, duration, fallback)
+
+  /** Postfix alias of `IO.timeoutToEff`. */
+  final def timeoutToEff[A2 >: A, U2 <: U & IO](millis: Long)(fallback: => A2 !! U2): A2 !! U2 = IO.timeoutToEff(this, millis, fallback)
+
+  /** Postfix alias of `IO.timeoutToEff`. */
+  final def timeoutToEff[A2 >: A, U2 <: U & IO](duration: FiniteDuration)(fallback: => A2 !! U2): A2 !! U2 = IO.timeoutToEff(this, duration, fallback)
+
+  /** Postfix alias of `IO.timed`. */
+  final def timed[U2 <: U & IO]: (A, FiniteDuration) !! U2 = IO.timed(this)
 
   /** Syntax for giving names to fibers. */
   final def named[A2 >: A, U2 <: U](name: String) = new Computation.NamedSyntax[A2, U2](this, name)

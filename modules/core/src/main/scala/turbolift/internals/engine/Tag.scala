@@ -36,6 +36,7 @@ object Tag:
   inline val NotifyRaceFirst     = 21
   inline val NotifyRaceAll       = 22
   inline val NotifyRaceOne       = 23
+  inline val NotifyRaceSleep     = 24
 
   def toStr(tag: Tag) =
     tag match
@@ -63,5 +64,6 @@ object Tag:
       case NotifyRaceFirst    => "NotifyRaceFirst"
       case NotifyRaceAll      => "NotifyRaceAll"
       case NotifyRaceOne      => "NotifyRaceOne"
+      case NotifyRaceSleep    => "NotifyRaceSleep"
 
       case _                  => s"Tag($tag)"

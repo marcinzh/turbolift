@@ -437,6 +437,7 @@ private trait Engine extends Runnable:
       case Tag.NotifyRaceFirst => arbitrageRaceFirst()
       case Tag.NotifyRaceAll => arbitrageRaceAll()
       case Tag.NotifyRaceOne => arbitrageRaceOne()
+      case Tag.NotifyRaceSleep => arbitrageRaceSleep()
 
       case _ => ()
 
@@ -539,6 +540,25 @@ private trait Engine extends Runnable:
             then comp.map(Left(_))
             else comp.map(Right(_))
           willContinueEff(comp2)
+        case Bits.Completion_Cancelled => impossible
+        case Bits.Completion_Failure => arbitrageFailedRace()
+    else
+      arbitrageFailedRace()
+    clearAfterRace()
+
+
+  private def arbitrageRaceSleep(): Unit =
+    if theWaiterStateAny != null then
+      val winner = theWaiterStateAny.asInstanceOf[FiberImpl]
+      this.theWaiterStateAny = null
+      winner.getCompletion match
+        case Bits.Completion_Success =>
+          if winner == getFirstRacer then
+            val comp = OpCascaded.restart(theCurrentStack, winner.theCurrentPayload)
+            val comp2 = comp.map(Some(_))
+            willContinueEff(comp2)
+          else
+            willContinuePure(None)
         case Bits.Completion_Cancelled => impossible
         case Bits.Completion_Failure => arbitrageFailedRace()
     else
@@ -756,6 +776,24 @@ private trait Engine extends Runnable:
       Halt.Cancel
 
 
+  final def intrinsicRaceSleep[A, U](comp: A !! U, length: Long, unit: TimeUnit): Halt =
+    val leftRacer = this.createTwoChildren(Bits.Tree_RaceFirst)
+    if this.tryStartRace(leftRacer, 2) then
+      val rightRacer = leftRacer.getNextRacer
+      val stack2 = theCurrentStack.lazyFork
+      val (storeDown, storeFork) = OpCascaded.fork1(theCurrentStack, theCurrentStore, stack2)
+      this.willContinueTagStore(Tag.NotifyRaceSleep, null, storeDown)
+      leftRacer.willContinueEffStack(comp, Step.Pop, stack2, storeFork)
+      val env = leftRacer.theCurrentEnv
+      rightRacer.willContinueStackEnv(Step.Pop, Stack.initial, Store.initial(env), env)
+      val halt = rightRacer.intrinsicSleep(length, unit)
+      assert(halt == Halt.Retire)
+      become(leftRacer)
+    else
+      //// Must have been cancelled meanwhile
+      Halt.Cancel
+
+
   final def intrinsicRaceFirst[A, U <: IO](comps: Iterable[A !! U]): Halt =
     if comps.nonEmpty then
       raceMany(comps, Bits.Tree_RaceFirst, Tag.NotifyRaceFirst, null):
@@ -944,7 +982,7 @@ private trait Engine extends Runnable:
       Halt.Cancel
 
 
-  final def intrinsicSleep(length: Long, unit: TimeUnit = TimeUnit.MILLISECONDS): Halt =
+  final def intrinsicSleep(length: Long, unit: TimeUnit): Halt =
     this.willContinuePure(())
     val blocker = new Blocker.Sleeper(this)
     if this.tryGetBlocked(blocker) then
