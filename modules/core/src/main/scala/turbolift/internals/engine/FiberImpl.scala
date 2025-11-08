@@ -404,6 +404,13 @@ private[turbolift] final class FiberImpl private (
     this.theCurrentStore = store
 
 
+  final inline def willContinueTagStepStore(tag: Int, payload: Any, step: Step, store: Store): Unit =
+    this.theCurrentTag = tag.toByte
+    this.theCurrentPayload = payload
+    this.theCurrentStep = step
+    this.theCurrentStore = store
+
+
   final inline def willContinueStep(step: Step): Unit =
     this.theCurrentTag = step.tag.toByte
     this.theCurrentStep = step

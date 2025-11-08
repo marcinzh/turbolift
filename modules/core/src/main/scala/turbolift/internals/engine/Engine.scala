@@ -80,14 +80,12 @@ private trait Engine extends Runnable:
           val tag     = theCurrentTag
           val payload = theCurrentPayload
           val step    = theCurrentStep
-          val stack   = theCurrentStack
           val store   = theCurrentStore
           this.theCurrentTag = -1
           this.theCurrentPayload = null
           this.theCurrentStep = null.asInstanceOf[Step]
-          this.theCurrentStack = null.asInstanceOf[Stack]
           this.theCurrentStore = null.asInstanceOf[Store]
-          innerLoop(tag, payload, step, stack, store, !theCurrentEnv.shadowMap.isEmpty)
+          innerLoop(tag, payload, step, theCurrentStack, store, !theCurrentEnv.shadowMap.isEmpty)
 
         case Tag.Intrinsic =>
           val instr = theCurrentPayload.asInstanceOf[CC.Intrinsic[Any, Any]]
@@ -378,18 +376,10 @@ private trait Engine extends Runnable:
               innerLoopStep(Cause(throwable.nn), Step.Throw, store)
 
         case Tag.Intrinsic | Tag.Unwind =>
-          this.theCurrentTag     = tag.toByte
-          this.theCurrentPayload = payload
-          this.theCurrentStep    = step
-          this.theCurrentStack   = stack
-          this.theCurrentStore   = store
+          this.willContinueTagStepStore(tag, payload, step, store)
           Halt.ContinueNoTick
     else
-      this.theCurrentTag     = tag.toByte
-      this.theCurrentPayload = payload
-      this.theCurrentStep    = step
-      this.theCurrentStack   = stack
-      this.theCurrentStore   = store
+      this.willContinueTagStepStore(tag, payload, step, store)
       Halt.Reset
 
 
