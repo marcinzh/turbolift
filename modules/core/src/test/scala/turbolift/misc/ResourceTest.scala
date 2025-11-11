@@ -11,6 +11,8 @@ class ResourceTest extends Specification:
   sequential
 
   def basicRes(v: AtomicVar[Int], acq: Int, rel: Int) = Resource(v.event(acq), v.event(rel))
+  case object EX1 extends Exception { override val toString = productPrefix }
+  case object EX2 extends Exception { override val toString = productPrefix }
 
   "basic" >> {
     "one res" >>{
@@ -54,9 +56,6 @@ class ResourceTest extends Specification:
   }
 
   "with exceptions" >> {
-    val ex1 = new Exception("EX1")
-    val ex2 = new Exception("EX2")
-
     "in use" >>{
       (for
         v <- AtomicVar(1)
@@ -64,7 +63,7 @@ class ResourceTest extends Specification:
           (for
             _ <- Finalizer.use(v.event(2), v.event(3))
             _ <- v.event(4)
-            _ <- IO(throw ex1)
+            _ <- IO(throw EX1)
             _ <- v.event(5)
           yield ())
           .finalized
@@ -72,7 +71,7 @@ class ResourceTest extends Specification:
         n <- v.get
       yield (n, e))
       .runIO
-      .===(Outcome.Success((12436, Left(ex1))))
+      .===(Outcome.Success((12436, Left(EX1))))
     }
 
     "in acquire" >>{
@@ -80,14 +79,14 @@ class ResourceTest extends Specification:
         v <- AtomicVar(1)
         e <- IO.catchToEither:
           (for
-            _ <- Finalizer.use(IO(throw ex1), v.event(2))
+            _ <- Finalizer.use(IO(throw EX1), v.event(2))
             _ <- v.event(3)
           yield ())
           .finalized
         n <- v.get
       yield (n, e))
       .runIO
-      .===(Outcome.Success((1, Left(ex1))))
+      .===(Outcome.Success((1, Left(EX1))))
     }
 
     "in release" >>{
@@ -95,7 +94,7 @@ class ResourceTest extends Specification:
         v <- AtomicVar(1)
         e <- IO.catchToEither:
           (for
-            _ <- Finalizer.use(v.event(2), IO(throw ex1))
+            _ <- Finalizer.use(v.event(2), IO(throw EX1))
             _ <- v.event(3)
           yield ())
           .finalized
@@ -103,7 +102,7 @@ class ResourceTest extends Specification:
         n <- v.get
       yield (n, e))
       .runIO
-      .===(Outcome.Success((1234, Left(ex1))))
+      .===(Outcome.Success((1234, Left(EX1))))
     }
 
     "in release x2" >>{
@@ -111,9 +110,9 @@ class ResourceTest extends Specification:
         v <- AtomicVar(1)
         e <- IO.snap:
           (for
-            _ <- Finalizer.use(v.event(2), IO(throw ex1))
+            _ <- Finalizer.use(v.event(2), IO(throw EX1))
             _ <- v.event(3)
-            _ <- Finalizer.use(v.event(4), IO(throw ex2))
+            _ <- Finalizer.use(v.event(4), IO(throw EX2))
             _ <- v.event(5)
           yield ())
           .finalized
@@ -121,7 +120,7 @@ class ResourceTest extends Specification:
         n <- v.get
       yield (n, e))
       .runIO
-      .===(Outcome.Success((123456, Snap.Failure(Cause.Then(Cause.Thrown(ex2), Cause.Thrown(ex1))))))
+      .===(Outcome.Success((123456, Snap.Failure(Cause.Then(Cause.Thrown(EX2), Cause.Thrown(EX1))))))
     }
   }
 
@@ -206,8 +205,6 @@ class ResourceTest extends Specification:
     }
 
     "with exceptions" >>{
-      val ex1 = new Exception("EX1")
-
       (for
         v <- AtomicVar(0L)
         g1 <- Gate(1)
@@ -219,13 +216,13 @@ class ResourceTest extends Specification:
             _ <- clock.fork
             _ <- Finalizer.use(rf) *! Finalizer.use(rf)
             _ <- v.event(0)
-            _ <- IO(throw ex1)
+            _ <- IO(throw EX1)
           yield ())
           .finalized
         n <- v.get
       yield (n, e))
       .warp
       .runIO
-      .===(Outcome.Success((112203344L, Left(ex1))))
+      .===(Outcome.Success((112203344L, Left(EX1))))
     }
   }
