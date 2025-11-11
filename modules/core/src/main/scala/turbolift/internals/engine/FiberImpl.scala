@@ -34,7 +34,7 @@ private[turbolift] sealed abstract class FiberImplPart2 (
 
 private[turbolift] final class FiberImpl private (
   _parent: ChildLink,
-  private[engine] val constantBits: Byte,
+  private[engine] val theKind: Byte,
   private[engine] var theName: String,
   private[engine] val theJoinStack: Stack | Null,
   private[engine] var theCallback: (Any => Unit) | Null,
@@ -75,8 +75,8 @@ private[turbolift] final class FiberImpl private (
 
         case warp: WarpImpl =>
           warp.removeFiber(this)
-          //@#@THOV
-          // if isRoot then
+          //@#@TODO await or cancel or cancelAndForget?
+          // if isMain then
           //   extra.warp.unsafeCancelAndForget()
           null
 
@@ -88,7 +88,7 @@ private[turbolift] final class FiberImpl private (
       if isExplicit then
         theCallback.nn.apply(theCurrentPayload)
       else
-        //// Must be the root fiber, bcoz implicit fibers dont get callbacks
+        //// Must be a root fiber, bcoz implicit fibers dont get callbacks
         assert(isRoot)
         theCallback.nn.apply(makeOutcome)
 
@@ -283,18 +283,18 @@ private[turbolift] final class FiberImpl private (
   //// Called by the RACER on itself, from `doFinalize`
   private def endRace(): Boolean =
     val arbiter = getArbiter
-    constantBits & Bits.Tree_Mask match
-      case Bits.Tree_RaceAll =>
+    theKind match
+      case Bits.Kind_RaceAll =>
         if getCompletion != Bits.Completion_Success then
           arbiter.tryWinRace(this)
         arbiter.tryFinishRace()
 
-      case Bits.Tree_RaceFirst =>
+      case Bits.Kind_RaceFirst =>
         if getCompletion != Bits.Completion_Cancelled then
           arbiter.tryWinRace(this)
         arbiter.tryFinishRace()
 
-      case Bits.Tree_RaceOne =>
+      case Bits.Kind_RaceOne =>
         //// always true
         arbiter.tryFinishRace()
 
@@ -623,20 +623,21 @@ private[turbolift] final class FiberImpl private (
   //-------------------------------------------------------------------
 
 
-  private def isRoot: Boolean = Bits.isRoot(constantBits)
-  private def isExplicit: Boolean = Bits.isExplicit(constantBits)
-  private def isRacer: Boolean = Bits.isRacer(constantBits)
-  private[internals] def isReentry: Boolean = Bits.isReentry(constantBits)
+  private def isRoot: Boolean = Bits.isRoot(theKind)
+  private def isMain: Boolean = Bits.isMain(theKind)
+  private def isExplicit: Boolean = Bits.isExplicit(theKind)
+  private def isRacer: Boolean = Bits.isRacer(theKind)
+  private[internals] def isReentry: Boolean = Bits.isReentry(theKind)
   private[engine] def getCompletion: Int = Bits.getCompletion(varyingBits)
   private[engine] def getArbiter: FiberImpl = getParent.asInstanceOf[FiberImpl]
   private[engine] def getFirstRacer: FiberImpl = getFirstChild.asInstanceOf[FiberImpl]
   private[engine] def getSecondRacer: FiberImpl = getFirstRacer.getNextRacer
   private[engine] def getNextRacer: FiberImpl = getNextSibling.asInstanceOf[FiberImpl]
 
-  def createImplicit(bits: Byte): FiberImpl =
+  def createImplicit(kind: Byte): FiberImpl =
     val that = new FiberImpl(
       _parent = this,
-      constantBits = bits,
+      theKind = kind,
       theName = "",
       theJoinStack = null,
       theCallback = null,
@@ -649,12 +650,11 @@ private[turbolift] object FiberImpl:
   type Callback = Outcome[Nothing] => Unit
 
   def createRoot(comp: Computation[?, ?], executor: Executor, name: String, isReentry: Boolean, callback: Callback): FiberImpl =
-    val reentryBit = if isReentry then Bits.Const_Reentry else 0
-    val constantBits = (Bits.Tree_Root | reentryBit).toByte
+    val kind = (if isReentry then Bits.Kind_Reentry else Bits.Kind_Main).toByte
     val env = Env.initial(executor)
     val fiber = new FiberImpl(
       _parent = WarpImpl.root,
-      constantBits = constantBits,
+      theKind = kind,
       theName = name,
       theJoinStack = Stack.initial, //// can't be null, as long as callback takes Zipper
       theCallback = callback.asInstanceOf[(Any => Unit) | Null],
@@ -673,7 +673,7 @@ private[turbolift] object FiberImpl:
   def createExplicit(joinStack: Stack, parentWarp: WarpImpl, env: Env, name: String, callback: (ZipperImpl => Unit) | Null): FiberImpl =
     val fiber = new FiberImpl(
       _parent = parentWarp,
-      constantBits = Bits.Tree_Explicit.toByte,
+      theKind = Bits.Kind_Explicit,
       theName = name,
       theJoinStack = joinStack,
       theCallback = callback.asInstanceOf[(Any => Unit) | Null],

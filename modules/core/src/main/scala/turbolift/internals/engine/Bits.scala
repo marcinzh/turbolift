@@ -3,26 +3,18 @@ package turbolift.internals.engine
 
 //@#@ public bcoz inline problems
 object Bits:
-  //// constantBits:
-  ////     tree    = 3
-  ////     unused  = 4
-  ////     reentry = 1
+  inline val Kind_Main       = 0 //// isRoot
+  inline val Kind_Reentry    = 1 //// isRoot
+  inline val Kind_Explicit   = 2
+  inline val Kind_RaceAll    = 3 //// isRacer
+  inline val Kind_RaceFirst  = 4 //// isRacer
+  inline val Kind_RaceOne    = 5 //// isRacer
 
-  inline val Tree_Root       = 0 << Tree_Shift
-  inline val Tree_Explicit   = 1 << Tree_Shift
-  inline val Tree_RaceAll    = 2 << Tree_Shift
-  inline val Tree_RaceFirst  = 3 << Tree_Shift
-  inline val Tree_RaceOne    = 4 << Tree_Shift
-  inline val Tree_Mask       = 0x7 << Tree_Shift
-  inline val Tree_Shift      = 0
-
-  inline val Const_Reentry = 0x80
-
-
-  def isRoot(bits: Int): Boolean = (bits & Tree_Mask) == Tree_Root
-  def isExplicit(bits: Int): Boolean = (bits & Tree_Mask) == Tree_Explicit
-  def isRacer(bits: Int): Boolean = (bits & Tree_Mask) >= Tree_RaceAll
-  def isReentry(bits: Int): Boolean = (bits & Const_Reentry) != 0
+  inline def isMain(bits: Int): Boolean = bits == Kind_Main
+  inline def isRoot(bits: Int): Boolean = bits <= Kind_Reentry
+  inline def isRacer(bits: Int): Boolean = bits >= Kind_RaceAll
+  inline def isReentry(bits: Int): Boolean = bits == Kind_Reentry
+  inline def isExplicit(bits: Int): Boolean = bits == Kind_Explicit
 
 
   //// varyingBits:

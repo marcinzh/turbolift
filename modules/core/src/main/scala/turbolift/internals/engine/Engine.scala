@@ -744,17 +744,17 @@ private trait Engine extends Runnable:
 
 
   final def intrinsicRaceBothWith[A, B, C, U](lhs: A !! U, rhs: B !! U, fun: (A, B) => C): Halt =
-    raceTwo(lhs, rhs, Bits.Tree_RaceAll, Tag.NotifyRaceBothWith, fun):
+    raceTwo(lhs, rhs, Bits.Kind_RaceAll, Tag.NotifyRaceBothWith, fun):
       lhs.zipWith(rhs)(fun) //// Sequential fallback
 
 
   final def intrinsicRaceEither[A, U](lhs: A !! U, rhs: A !! U): Halt =
-    raceTwo(lhs, rhs, Bits.Tree_RaceFirst, Tag.NotifyRaceEither, null):
+    raceTwo(lhs, rhs, Bits.Kind_RaceFirst, Tag.NotifyRaceEither, null):
       IO.either(lhs, rhs) //// Sequential fallback
 
 
   final def intrinsicRaceOne[A, U](comp: A !! U): Halt =
-    val racer = this.createManyChildren(1, Bits.Tree_RaceOne)
+    val racer = this.createManyChildren(1, Bits.Kind_RaceOne)
     if this.tryStartRace(racer, 1) then
       val stack2 = theCurrentStack.lazyFork
       val (storeDown, storeFork) = OpCascaded.fork1(theCurrentStack, theCurrentStore, stack2)
@@ -767,7 +767,7 @@ private trait Engine extends Runnable:
 
 
   final def intrinsicRaceSleep[A, U](comp: A !! U, length: Long, unit: TimeUnit): Halt =
-    val leftRacer = this.createTwoChildren(Bits.Tree_RaceFirst)
+    val leftRacer = this.createTwoChildren(Bits.Kind_RaceFirst)
     if this.tryStartRace(leftRacer, 2) then
       val rightRacer = leftRacer.getNextRacer
       val stack2 = theCurrentStack.lazyFork
@@ -786,7 +786,7 @@ private trait Engine extends Runnable:
 
   final def intrinsicRaceFirst[A, U <: IO](comps: Iterable[A !! U]): Halt =
     if comps.nonEmpty then
-      raceMany(comps, Bits.Tree_RaceFirst, Tag.NotifyRaceFirst, null):
+      raceMany(comps, Bits.Kind_RaceFirst, Tag.NotifyRaceFirst, null):
         Engine.raceFirstSeq(comps)
     else
       this.cancelBySelf()
@@ -795,7 +795,7 @@ private trait Engine extends Runnable:
 
   final def intrinsicRaceAll[A, U <: IO](comps: Iterable[A !! U], isVoid: Boolean): Halt =
     if comps.nonEmpty then
-      raceMany(comps, Bits.Tree_RaceAll, Tag.NotifyRaceAll, isVoid):
+      raceMany(comps, Bits.Kind_RaceAll, Tag.NotifyRaceAll, isVoid):
         Engine.raceAllSeq(comps)
     else
       this.willContinuePure(Vector())
