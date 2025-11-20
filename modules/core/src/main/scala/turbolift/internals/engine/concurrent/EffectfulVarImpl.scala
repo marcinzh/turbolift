@@ -52,7 +52,7 @@ private[turbolift] final class EffectfulVarImpl extends Waitee with EffectfulVar
         if isPending then
           setCompletionToSuccess()
           theNextShot = nextShot
-          val x = firstWaiter
+          val x = theFirstWaiter
           if x == null then
             theFirstShot = firstShot
           else

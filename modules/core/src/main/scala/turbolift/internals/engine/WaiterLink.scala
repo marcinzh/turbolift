@@ -5,30 +5,30 @@ import scala.annotation.tailrec
 /** Either Fiber, Warp or Queque */
 
 private[engine] abstract class WaiterLink extends Waitee:
-  private[engine] var prevWaiter: WaiterLink | Null = null
-  private[engine] var nextWaiter: WaiterLink | Null = null
+  private[engine] var thePrevWaiter: WaiterLink | Null = null
+  private[engine] var theNextWaiter: WaiterLink | Null = null
 
   private[engine] final def insertWaiterBeforeSelf(that: WaiterLink): Unit =
-    val prev = prevWaiter.nn
+    val prev = thePrevWaiter.nn
     prev.linkWaiterWith(that)
     that.linkWaiterWith(this)
 
   private[engine] final def removeWaiterAtSelf(): Unit =
-    val prev = prevWaiter.nn
-    val next = nextWaiter.nn
+    val prev = thePrevWaiter.nn
+    val next = theNextWaiter.nn
     prev.linkWaiterWith(next)
 
   private final inline def linkWaiterWith(that: WaiterLink): Unit =
-    this.nextWaiter = that
-    that.prevWaiter = this
+    this.theNextWaiter = that
+    that.thePrevWaiter = this
 
   private[engine] final inline def clearWaiterLink(): Unit =
-    this.prevWaiter = null
-    this.nextWaiter = null
+    this.thePrevWaiter = null
+    this.theNextWaiter = null
 
   private[engine] final def linkWaiterWithSelf(): Unit = linkWaiterWith(this)
   private[engine] final def isWaiterLinkedWithSelf: Boolean = isWaiterLinkedWith(this)
-  private[engine] final def isWaiterLinkedWith(that: WaiterLink): Boolean = this.nextWaiter == that
+  private[engine] final def isWaiterLinkedWith(that: WaiterLink): Boolean = this.theNextWaiter == that
 
 
   //-------------------------------------------------------------------
@@ -37,25 +37,25 @@ private[engine] abstract class WaiterLink extends Waitee:
 
 
   private[engine] final def removeWaiterAfterSelf(): WaiterLink =
-    val firstNext = nextWaiter.nn
-    val secondNext = firstNext.nextWaiter.nn
+    val firstNext = theNextWaiter.nn
+    val secondNext = firstNext.theNextWaiter.nn
     linkWaiterWith(secondNext)
     firstNext.clearWaiterLink()
     firstNext
 
 
   private[engine] final def removeRangeOfWaitersAtSelf(last: WaiterLink): Unit =
-    val oldLast = prevWaiter.nn
-    val newFirst = last.nextWaiter.nn
+    val oldLast = thePrevWaiter.nn
+    val newFirst = last.theNextWaiter.nn
     oldLast.linkWaiterWith(newFirst)
 
 
   //@#@ unused
   private[engine] final def appendManyWaiters(that: WaiterLink): Unit =
     val leftFirst = this
-    val leftLast = this.prevWaiter.nn
+    val leftLast = this.thePrevWaiter.nn
     val rightFirst = that
-    val rightLast = that.prevWaiter.nn
+    val rightLast = that.thePrevWaiter.nn
     leftLast.linkWaiterWith(rightFirst)
     rightLast.linkWaiterWith(leftFirst)
 
@@ -91,8 +91,8 @@ private[internals] object WaiterLink:
         if curr == that then
           accum
         else if accum == maxCount then
-          assignManyWaiters(curr, that.prevWaiter.nn)
+          assignManyWaiters(curr, that.thePrevWaiter.nn)
           accum
         else
-          loop(curr.nextWaiter.nn, accum + 1)
-      loop(that.nextWaiter.nn, 1)
+          loop(curr.theNextWaiter.nn, accum + 1)
+      loop(that.theNextWaiter.nn, 1)

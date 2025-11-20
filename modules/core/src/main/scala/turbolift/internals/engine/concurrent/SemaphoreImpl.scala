@@ -10,7 +10,7 @@ private[turbolift] final class SemaphoreImpl(private var permits: Long) extends 
     waiter.setWaiterStateLong(count)
 
     atomicallyBoth(waiter) {
-      if firstWaiter == null then
+      if theFirstWaiter == null then
         val n = permits - count
         if n >= 0 then
           permits = n
@@ -26,7 +26,7 @@ private[turbolift] final class SemaphoreImpl(private var permits: Long) extends 
 
   override def unsafeTryAcquire(count: Long): Boolean =
     atomically {
-      if firstWaiter == null then
+      if theFirstWaiter == null then
         val n = permits - count
         if n >= 0 then
           permits = n
@@ -44,7 +44,7 @@ private[turbolift] final class SemaphoreImpl(private var permits: Long) extends 
     val keepGoing =
       atomically {
         permits += count
-        val x = firstWaiter
+        val x = theFirstWaiter
         if x != null then
           val n = permits - x.getWaiterStateLong
           if n >= 0 then

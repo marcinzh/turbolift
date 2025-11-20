@@ -38,7 +38,7 @@ private[turbolift] final class CyclicBarrierImpl(private val capacity: Int) exte
   
     val keepGoing =
       atomically {
-        val x = firstWaiter
+        val x = theFirstWaiter
         if x != null && x.getWaiterStateInt == staleClock then
           waiterToResume = x
           removeFirstWaiter()

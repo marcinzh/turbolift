@@ -40,7 +40,7 @@ private[turbolift] final class MutexImpl extends Waitee with Mutex.Unsealed:
     var waiterToResume: FiberImpl | Null = null
 
     atomically {
-      val x = firstWaiter
+      val x = theFirstWaiter
       if x == null then
         locked = false
       else

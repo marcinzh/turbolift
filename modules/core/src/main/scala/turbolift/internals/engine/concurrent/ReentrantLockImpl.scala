@@ -51,7 +51,7 @@ private[turbolift] final class ReentrantLockImpl extends Waitee with ReentrantLo
       if reentryCount > 0 then
         reentryCount -= 1
         if reentryCount == 0 then
-          val x = firstWaiter
+          val x = theFirstWaiter
           if x == null then
             lockedBy = null
           else

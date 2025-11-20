@@ -17,7 +17,7 @@ private[turbolift] final class ChannelImpl(val currCapacity: Int) extends Waitee
 
     val halt =
       atomicallyBoth(waiter) {
-        val x = firstWaiter
+        val x = theFirstWaiter
         if x == null then
           if currSize == 0 then
             kindOfWaiters = UNDERFLOW
@@ -52,7 +52,7 @@ private[turbolift] final class ChannelImpl(val currCapacity: Int) extends Waitee
 
     val ok =
       atomically {
-        val x = firstWaiter
+        val x = theFirstWaiter
         if x == null then
           if currSize == 0 then
             false
@@ -83,7 +83,7 @@ private[turbolift] final class ChannelImpl(val currCapacity: Int) extends Waitee
 
     val halt =
       atomicallyBoth(waiter) {
-        val x = firstWaiter
+        val x = theFirstWaiter
         if x == null then
           if currSize == currCapacity then
             kindOfWaiters = OVERFLOW
@@ -118,7 +118,7 @@ private[turbolift] final class ChannelImpl(val currCapacity: Int) extends Waitee
 
     val ok =
       atomically {
-        val x = firstWaiter
+        val x = theFirstWaiter
         if x == null then
           if currSize == currCapacity then
             false
@@ -150,7 +150,7 @@ private[turbolift] final class ChannelImpl(val currCapacity: Int) extends Waitee
     atomically {
       savedSize = currSize
       savedCapacity = currCapacity
-      savedIsBlocking = firstWaiter != null
+      savedIsBlocking = theFirstWaiter != null
     }
 
     Channel.Status(
