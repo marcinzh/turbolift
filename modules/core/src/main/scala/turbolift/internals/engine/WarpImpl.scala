@@ -15,7 +15,7 @@ private[turbolift] final class WarpImpl private[engine] (
   private var theWarpCount: Int = 0
 
   private def isChildless: Boolean = (theFiberCount == 0) && (theWarpCount == 0)
-  private def isShutdown: Boolean = Bits.isShutdown(varyingBits)
+  private def isShutdown: Boolean = theCancellation == Bits.Cancellation_Latched
 
 
   //-------------------------------------------------------------------
@@ -83,7 +83,7 @@ private[turbolift] final class WarpImpl private[engine] (
 
   private inline def shutdownCheck(): Boolean =
     if isShutdown & isChildless then
-      varyingBits = (varyingBits | Bits.Warp_Completed).toByte
+      this.theCompletion = Bits.Completion_Success
       true
     else
       false
@@ -106,11 +106,11 @@ private[turbolift] final class WarpImpl private[engine] (
       atomicallyBoth(waiter) {
         if isPending then
           if isChildless then
-            varyingBits = (varyingBits | Bits.Warp_Completed).toByte
+            this.theCompletion = Bits.Completion_Success
             willFinalize = true
             Halt.Continue
           else
-            varyingBits = (varyingBits | Bits.Warp_Shutdown).toByte
+            this.theCancellation = Bits.Cancellation_Latched
             subscribeWaiterUnsync(waiter)
             Halt.Retire
         else
@@ -131,10 +131,10 @@ private[turbolift] final class WarpImpl private[engine] (
       atomically {
         if isPending then
           if isChildless then
-            varyingBits = (varyingBits | Bits.Warp_Completed).toByte
+            this.theCompletion = Bits.Completion_Success
             true
           else
-            varyingBits = (varyingBits | Bits.Warp_Shutdown).toByte
+            this.theCancellation = Bits.Cancellation_Latched
             false
         else
           false
@@ -162,12 +162,12 @@ private[turbolift] final class WarpImpl private[engine] (
       atomicallyBoth(canceller) {
         if isPending then
           if isChildless then
-            varyingBits = (varyingBits | Bits.Warp_Completed).toByte
+            this.theCompletion = Bits.Completion_Success
             willFinalize = true
             Halt.Continue
           else
             if !isCancellationSignalled then
-              varyingBits = (varyingBits | Bits.Warp_Shutdown | Bits.Warp_Cancelled).toByte
+              this.theCancellation = Bits.Cancellation_Latched
               willDescend = true
             subscribeWaiterUnsync(canceller)
             Halt.Retire
@@ -195,11 +195,11 @@ private[turbolift] final class WarpImpl private[engine] (
     atomically {
       if isPending then
         if isChildless then
-          varyingBits = (varyingBits | Bits.Warp_Completed).toByte
+          this.theCompletion = Bits.Completion_Success
           willFinalize = true
         else
           if !isCancellationSignalled then
-            varyingBits = (varyingBits | Bits.Warp_Shutdown | Bits.Warp_Cancelled).toByte
+            this.theCancellation = Bits.Cancellation_Latched
             willDescend = true
     }
 
@@ -268,26 +268,28 @@ private[turbolift] final class WarpImpl private[engine] (
   override def unsafeSpawn(name: String): Warp =
     val child = new WarpImpl(this, null, name, null)
     if !tryAddWarp(child) then
-      child.varyingBits = Bits.Warp_Completed
+      this.theCompletion = Bits.Completion_Success
     child
 
 
   override def unsafeStatus(): Warp.Status =
-    var savedVaryingBits: Byte = 0
+    var savedCompletion: Byte = 0
+    var savedCancellation: Byte = 0
     var savedFiberCount: Int = 0
     var savedWarpCount: Int = 0
 
     atomically {
-      savedVaryingBits = varyingBits
+      savedCompletion = theCompletion
+      savedCancellation = theCancellation
       savedFiberCount = theFiberCount
       savedWarpCount = theWarpCount
     }
-    if Bits.isPending(savedVaryingBits) then
+    if theCompletion == Bits.Completion_Pending then
       Warp.Status.Pending(
         fiberCount = savedFiberCount,
         warpCount = savedWarpCount,
-        isShutdown = Bits.isShutdown(savedVaryingBits),
-        isCancelled = Bits.isCancellationSignalled(savedVaryingBits),
+        isShutdown = savedCancellation == Bits.Cancellation_Latched,
+        isCancelled = savedCancellation >= Bits.Cancellation_Signalled,
       )
     else
       Warp.Status.Completed

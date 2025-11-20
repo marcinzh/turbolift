@@ -7,26 +7,26 @@ import turbolift.internals.engine.concurrent.atomic.AtomicBoolVH
 
 private[engine] abstract class Waitee extends AtomicBoolVH(false):
   protected var theFirstWaiter: FiberImpl | Null = null
-  protected var varyingBits: Byte = 0
+  protected var theCancellation: Byte = 0
+  protected[engine] var theCompletion: Byte = 0
 
 
   //-------------------------------------------------------------------
   // bits
   //-------------------------------------------------------------------
 
-
-  private[engine] final def isPending: Boolean = Bits.isPending(varyingBits)
-  private[engine] final def isCancellationSignalled: Boolean = Bits.isCancellationSignalled(varyingBits)
-  private[engine] final def isPendingAndNotCancelled: Boolean = Bits.isPendingAndNotCancelled(varyingBits)
-  private[engine] final def isCancellationUnlatched: Boolean = Bits.isCancellationUnlatched(varyingBits)
+  private[engine] final def isPending: Boolean = theCompletion == Bits.Completion_Pending
+  private[engine] final def isPendingAndNotCancelled: Boolean = (theCompletion | theCancellation) == 0
+  private[engine] final def isCancellationSignalled: Boolean = theCancellation >= Bits.Cancellation_Signalled
+  private[engine] final def isCancellationUnlatched: Boolean = theCancellation == Bits.Cancellation_Signalled
 
 
   inline protected final def setCompletionToSuccess(): Unit =
-    varyingBits = (varyingBits | Bits.Completion_Success_bug).toByte
+    this.theCompletion = Bits.Completion_Success
 
   //// meaningful only in FiberImpl, but moved here for convenience
   inline protected final def setCancellationLatch(): Unit =
-    varyingBits = (varyingBits | Bits.Cancellation_Latch_Bug).toByte
+    this.theCancellation = Bits.Cancellation_Latched
 
 
   //-------------------------------------------------------------------

@@ -522,7 +522,7 @@ private trait Engine extends Runnable:
     if theWaiterStateAny != null then
       val winner = theWaiterStateAny.asInstanceOf[FiberImpl]
       this.theWaiterStateAny = null
-      winner.getCompletion match
+      winner.theCompletion match
         case Bits.Completion_Success =>
           val comp = OpCascaded.restart(theCurrentStack, winner.theCurrentPayload)
           val comp2 =
@@ -541,7 +541,7 @@ private trait Engine extends Runnable:
     if theWaiterStateAny != null then
       val winner = theWaiterStateAny.asInstanceOf[FiberImpl]
       this.theWaiterStateAny = null
-      winner.getCompletion match
+      winner.theCompletion match
         case Bits.Completion_Success =>
           if winner == getFirstRacer then
             val comp = OpCascaded.restart(theCurrentStack, winner.theCurrentPayload)
@@ -560,7 +560,7 @@ private trait Engine extends Runnable:
     if theWaiterStateAny != null then
       val winner = theWaiterStateAny.asInstanceOf[FiberImpl]
       this.theWaiterStateAny = null
-      winner.getCompletion match
+      winner.theCompletion match
         case Bits.Completion_Success =>
           val comp = OpCascaded.restart(theCurrentStack, winner.theCurrentPayload)
           willContinueEff(comp)
@@ -614,7 +614,7 @@ private trait Engine extends Runnable:
 
   private def arbitrageRaceOne(): Unit =
     val racer = getFirstRacer
-    racer.getCompletion match
+    racer.theCompletion match
       case Bits.Completion_Success =>
         val comp = OpCascaded.restart(theCurrentStack, racer.theCurrentPayload)
         val comp2 = comp.map(Some(_))
@@ -629,7 +629,7 @@ private trait Engine extends Runnable:
   private def arbitrageFailedRace(): Unit =
     @tailrec def loop(racer: FiberImpl, accum: Cause): Cause =
       val accum2 =
-        if racer.getCompletion == Bits.Completion_Failure then
+        if racer.theCompletion == Bits.Completion_Failure then
           val cause = racer.theCurrentPayload.asInstanceOf[Cause]
           accum match
             case Cause.Cancelled => cause

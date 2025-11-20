@@ -16,8 +16,7 @@ private[turbolift] sealed abstract class FiberImplPart1 (
   private[engine] var theWaiterStateAny: Any = null
   private[engine] var thePendingRacerCount: Int = 0
   private[engine] var theTotalRacerCount: Int = 0
-  private[engine] var theRacerId: Int = 0
-  private[engine] val pad1_B1: Byte = 0
+  private[engine] val pad1_I1: Int = 0
 
 
 private[turbolift] sealed abstract class FiberImplPart2 (
@@ -55,7 +54,7 @@ private[turbolift] final class FiberImpl private (
       theCurrentPayload = ZipperImpl.make(theJoinStack, theCurrentPayload, completion)
 
     atomically {
-      varyingBits = (varyingBits | completion).toByte
+      this.theCompletion = completion.toByte
     }
 
     //// As a RACER:
@@ -100,7 +99,7 @@ private[turbolift] final class FiberImpl private (
   
 
   private def makeOutcome[A](void: Boolean): Outcome[A] =
-    getCompletion match
+    theCompletion match
       case Bits.Completion_Success   => Outcome.Success((if void then null else theCurrentPayload).asInstanceOf[A])
       case Bits.Completion_Failure   => Outcome.Failure(theCurrentPayload.asInstanceOf[Cause])
       case Bits.Completion_Cancelled => Outcome.Cancelled
@@ -110,7 +109,7 @@ private[turbolift] final class FiberImpl private (
     if isExplicit then
       theCurrentPayload.asInstanceOf[ZipperImpl]
     else
-      ZipperImpl.make(null, theCurrentPayload, getCompletion)
+      ZipperImpl.make(null, theCurrentPayload, theCompletion)
 
 
   private def getOrMakeZipper(payload: Any, completion: Int): ZipperImpl =
@@ -173,13 +172,13 @@ private[turbolift] final class FiberImpl private (
 
   private[engine] def cancelBySelf(): Unit =
     atomically {
-      varyingBits = (varyingBits | Bits.Cancellation_Signal | Bits.Cancellation_Latch).toByte
+      this.theCancellation = Bits.Cancellation_Latched
     }
 
 
   private[engine] def cancelBeforeStarted(): Unit =
     atomically {
-      varyingBits = (varyingBits | Bits.Cancellation_Signal).toByte
+      this.theCancellation = Bits.Cancellation_Signalled
     }
 
 
@@ -190,18 +189,16 @@ private[turbolift] final class FiberImpl private (
   private[engine] def tryGetCancelledBy(canceller: FiberImpl): Halt =
     var savedFirstRacer: ChildLink | Null = null
     var savedWaiteeOrBlocker: Waitee | Blocker | Null = null
-    var savedVaryingBits: Byte = 0
     var willDescend = false
 
     val halt =
       atomicallyBoth(canceller) {
         if isPending then
           if !isCancellationSignalled then
-            varyingBits = (varyingBits | Bits.Cancellation_Signal).toByte
+            this.theCancellation = Bits.Cancellation_Signalled
             willDescend = true
             savedFirstRacer = getFirstChild
             savedWaiteeOrBlocker = theWaiteeOrBlocker
-            savedVaryingBits = varyingBits
           subscribeWaiterUnsync(canceller)
           Halt.Retire
         else
@@ -209,7 +206,7 @@ private[turbolift] final class FiberImpl private (
       }
 
     if willDescend then
-      val racer = doDescend(savedFirstRacer, savedWaiteeOrBlocker, savedVaryingBits)
+      val racer = doDescend(savedFirstRacer, savedWaiteeOrBlocker)
       if racer != null then
         racer.deepCancelLoop(this)
     halt
@@ -223,22 +220,20 @@ private[turbolift] final class FiberImpl private (
   private[engine] override def shallowCancel(): ChildLink | Null =
     var savedFirstRacer: ChildLink | Null = null
     var savedWaiteeOrBlocker: Waitee | Blocker | Null = null
-    var savedVaryingBits: Byte = 0
 
     val willDescend =
       atomically {
         if isPendingAndNotCancelled then
-          varyingBits = (varyingBits | Bits.Cancellation_Signal).toByte
+          this.theCancellation = Bits.Cancellation_Signalled
           savedFirstRacer = getFirstChild
           savedWaiteeOrBlocker = theWaiteeOrBlocker
-          savedVaryingBits = varyingBits
           true
         else
           false
       }
 
     if willDescend then
-      doDescend(savedFirstRacer, savedWaiteeOrBlocker, savedVaryingBits)
+      doDescend(savedFirstRacer, savedWaiteeOrBlocker)
     else
       null
 
@@ -246,7 +241,6 @@ private[turbolift] final class FiberImpl private (
   private def doDescend(
     savedFirstRacer: ChildLink | Null,
     savedWaiteeOrBlocker: Waitee | Blocker | Null,
-    savedVaryingBits: Byte,
   ): FiberImpl | Null =
     savedWaiteeOrBlocker match
       case null => savedFirstRacer.asInstanceOf[FiberImpl]
@@ -285,12 +279,12 @@ private[turbolift] final class FiberImpl private (
     val arbiter = getArbiter
     theKind match
       case Bits.Kind_RaceAll =>
-        if getCompletion != Bits.Completion_Success then
+        if theCompletion != Bits.Completion_Success then
           arbiter.tryWinRace(this)
         arbiter.tryFinishRace()
 
       case Bits.Kind_RaceFirst =>
-        if getCompletion != Bits.Completion_Cancelled then
+        if theCompletion != Bits.Completion_Cancelled then
           arbiter.tryWinRace(this)
         arbiter.tryFinishRace()
 
@@ -569,16 +563,18 @@ private[turbolift] final class FiberImpl private (
     var savedIsArbiter: Boolean = false
     var savedPendingRacerCount: Int = 0
     var savedWaiteeOrBlocker: Waitee | Blocker | Null = null
-    var savedVaryingBits: Byte = 0
+    var savedIsPending: Boolean = false
+    var savedIsCancelled: Boolean = false
 
     atomically {
       savedIsArbiter = getFirstChild != null
       savedPendingRacerCount = thePendingRacerCount
       savedWaiteeOrBlocker = theWaiteeOrBlocker
-      savedVaryingBits = varyingBits
+      savedIsPending = isPending
+      savedIsCancelled = isCancellationSignalled
     }
 
-    if Bits.isPending(savedVaryingBits) then
+    if savedIsPending then
       val role =
         def w = savedWaiteeOrBlocker.asInstanceOf[Fiber.Untyped | Warp | OnceVar.Untyped]
         import Fiber.Role
@@ -590,22 +586,22 @@ private[turbolift] final class FiberImpl private (
               Role.Runner
           case _: Waitee => Role.Waiter(w)
           case _: Blocker => Role.Blocker
-      val isCancelled = Bits.isCancellationSignalled(savedVaryingBits)
-      Fiber.Status.Pending(role, isCancelled = isCancelled, isRacer = isRacer)
+      Fiber.Status.Pending(role, isCancelled = isCancellationSignalled, isRacer = isRacer)
     else
       Fiber.Status.Completed(makeOutcome(void = true))
 
 
   override def unsafePoll(): Option[Zipper.Untyped] =
-    var savedBits: Int = 0
+    var savedCompletion: Byte = 0
     var savedPayload: Any = null
     atomically {
-      savedBits = varyingBits
+      savedCompletion = theCompletion
       savedPayload = theCurrentPayload
     }
-    Bits.getCompletion(savedBits) match
-      case Bits.Completion_Pending => None
-      case completion => Some(getOrMakeZipper(savedPayload, completion))
+    if savedCompletion == Bits.Completion_Pending then
+      None
+    else
+      Some(getOrMakeZipper(savedPayload, savedCompletion))
 
 
   override def unsafeStart[A2 >: Any, U2 <: Nothing](comp: Computation[A2, U2], callback: Zipper[A2, U2] => Unit): Unit =
@@ -628,7 +624,7 @@ private[turbolift] final class FiberImpl private (
   private def isExplicit: Boolean = Bits.isExplicit(theKind)
   private def isRacer: Boolean = Bits.isRacer(theKind)
   private[internals] def isReentry: Boolean = Bits.isReentry(theKind)
-  private[engine] def getCompletion: Int = Bits.getCompletion(varyingBits)
+  // private[engine] def getCompletion: Int = Bits.getCompletion(varyingBits)
   private[engine] def getArbiter: FiberImpl = getParent.asInstanceOf[FiberImpl]
   private[engine] def getFirstRacer: FiberImpl = getFirstChild.asInstanceOf[FiberImpl]
   private[engine] def getSecondRacer: FiberImpl = getFirstRacer.getNextRacer
