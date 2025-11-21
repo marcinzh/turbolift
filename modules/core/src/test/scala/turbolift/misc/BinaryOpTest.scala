@@ -87,7 +87,7 @@ class BinaryOpTest extends Specification:
         "cancel &! failure"  >>{ (cw &! gl).unsafeRun === Outcome.Failure(g) }
         "failure &! success" >>{ (fw &! bl).unsafeRun === Outcome.Failure(f) }
         "failure &! cancel"  >>{ (fw &! cl).unsafeRun === Outcome.Failure(f) }
-        "failure &! failure" >>{ (fw &! gl).unsafeRun === Outcome.Failure(f & g) }
+        "failure &! failure" >>{ (fw &! gl).unsafeRun === Outcome.Failure(f || g) }
       }
 
       "right wins" >> {
@@ -99,7 +99,7 @@ class BinaryOpTest extends Specification:
         "cancel &! failure"  >>{ (cl &! gw).unsafeRun === Outcome.Failure(g) }
         "failure &! success" >>{ (fl &! bw).unsafeRun === Outcome.Failure(f) }
         "failure &! cancel"  >>{ (fl &! cw).unsafeRun === Outcome.Failure(f) }
-        "failure &! failure" >>{ (fl &! gw).unsafeRun === Outcome.Failure(f & g) }
+        "failure &! failure" >>{ (fl &! gw).unsafeRun === Outcome.Failure(f || g) }
       }
     }
 
@@ -113,7 +113,7 @@ class BinaryOpTest extends Specification:
         "cancel |! failure"  >>{ (cw |! gl).unsafeRun === Outcome.Failure(g) }
         "failure |! success" >>{ (fw |! bl).unsafeRun === Outcome.Failure(f) }
         "failure |! cancel"  >>{ (fw |! cl).unsafeRun === Outcome.Failure(f) }
-        "failure |! failure" >>{ (fw |! gl).unsafeRun === Outcome.Failure(f & g) }
+        "failure |! failure" >>{ (fw |! gl).unsafeRun === Outcome.Failure(f || g) }
       }
 
       "right wins" >> {
@@ -125,7 +125,7 @@ class BinaryOpTest extends Specification:
         "cancel |! failure"  >>{ (cl |! gw).unsafeRun === Outcome.Failure(g) }
         "failure |! success" >>{ (fl |! bw).unsafeRun === Outcome.Success(b) }
         "failure |! cancel"  >>{ (fl |! cw).unsafeRun === Outcome.Failure(f) }
-        "failure |! failure" >>{ (fl |! gw).unsafeRun === Outcome.Failure(f & g) }
+        "failure |! failure" >>{ (fl |! gw).unsafeRun === Outcome.Failure(f || g) }
       }
     }
   }

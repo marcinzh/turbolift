@@ -26,6 +26,9 @@ private trait Engine extends Runnable:
   //// FiberImpl result means yield
   //// Boolean result means reentry
   final def runUntilYields(): FiberImpl | Boolean =
+    if theCompletion != Bits.Completion_Pending then
+      panic("Resuming completed fiber")
+
     this.theCurrentTickLow = theCurrentEnv.tickLow
     this.theCurrentTickHigh = theCurrentEnv.tickHigh
     this.theWaiteeOrBlocker = null //// for those resumed by `finallyResumeAllWaiters` or Blocker
@@ -93,7 +96,6 @@ private trait Engine extends Runnable:
 
         case Tag.Unwind =>
           doUnwind()
-
 
     inline def doTickHigh(): Halt =
       if theCurrentTickHigh > 0 then
@@ -450,8 +452,8 @@ private trait Engine extends Runnable:
           case FrameKind.GUARD =>
             val snap = instr.kind match
               case Step.UnwindKind.Pop    => Snap.Success(theCurrentPayload)
-              case Step.UnwindKind.Abort  => Snap.Aborted(theCurrentPayload, instr.prompt.nn)
-              case Step.UnwindKind.Cancel => Snap.Cancelled
+              case Step.UnwindKind.Abort  => Snap.Failure(Cause.Aborted(theCurrentPayload, instr.prompt.nn))
+              case Step.UnwindKind.Cancel => Snap.Failure(Cause.Cancelled)
               case Step.UnwindKind.Throw  => Snap.Failure(theCurrentPayload.asInstanceOf[Cause])
             //// Overwrite to stop unwinding, regardless `isPop`.
             this.willContinuePureStep(snap, step2)
@@ -872,16 +874,18 @@ private trait Engine extends Runnable:
       case Snap.Success(value) =>
         this.willContinuePure(value)
         Halt.Continue
-      case Snap.Failure(value) =>
-        this.willContinuePureStep(value, Step.Throw)
-        Halt.Continue
-      case Snap.Aborted(value, prompt) =>
-        this.willContinuePureStep(value, Step.abort(prompt))
-        Halt.Continue
-      case Snap.Cancelled =>
-        //@#@THOV It should be harmless to self-cancel a fiber, even when it's uncancellable?
-        this.cancelBySelf()
-        Halt.Cancel
+      case Snap.Failure(cause) => cause match
+        case c : Cause.Aborted =>
+          this.willContinuePureStep(c.value, Step.abort(c.prompt))
+          Halt.Continue
+        case Cause.Cancelled =>
+          //@#@THOV It should be harmless to self-cancel a fiber, even when it's uncancellable?
+          this.cancelBySelf()
+          Halt.Cancel
+        case _ =>
+          //@#@TEMP
+          this.willContinuePureStep(cause, Step.Throw)
+          Halt.Continue
 
 
   final def intrinsicEnvAsk[A](fun: Env => A): Halt =

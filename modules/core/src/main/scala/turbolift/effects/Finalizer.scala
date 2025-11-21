@@ -54,23 +54,23 @@ trait FinalizerEffect[U] extends Effect[FinalizerSignature[U]] with FinalizerSig
 
         override def onRestart(a_s: (Unknown, Local)): Unknown !! ThisEffect =
           val (a, s) = a_s
-          Local.modify(s ++ _).as(a)
+          Local.modify(s && _).as(a)
 
         override def onOnce(aa: (Unknown, Local)): Option[Unknown] = Some(aa._1)
 
         override def onZip[A, B, C](a_s: (A, Local), b_s: (B, Local), k: (A, B) => C): (C, Local) =
           val (a, s1) = a_s
           val (b, s2) = b_s
-          (k(a, b), s1 & s2)
+          (k(a, b), s1 || s2)
 
         override def onFork(s: Local): (Local, Local) = (s, Trail.empty)
 
-        override def register(release: Unit !! U): Unit !! ThisEffect = Local.modify(Trail(release) ++ _)
+        override def register(release: Unit !! U): Unit !! ThisEffect = Local.modify(Trail(release) && _)
 
         override def use[A](acquire: A !! U, release: A => Unit !! U): A !! ThisEffect =
           IO.uncancellable:
             acquire.flatMap: a =>
-              Local.modify(Trail(release(a)) ++ _).as(a)
+              Local.modify(Trail(release(a)) && _).as(a)
 
       .toHandler
 

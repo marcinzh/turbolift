@@ -47,8 +47,8 @@ case object IO extends IO:
   def attemptEff[A, U <: IO](body: A !! U): Either[Throwable, A] !! U =
     snap(body).flatMap:
       case Snap.Success(a) => !!.pure(Right(a))
-      case Snap.Failure(c) => !!.pure(c.toEither)
-      case aa: Snap.NotSuccess => unsnap(aa)
+      case Snap.Failure(Cause.Thrown(e)) => !!.pure(Left(e))
+      case s @ Snap.Failure(_) => unsnap(s)
 
   @deprecated("Use attemptBlocking")
   def blockingAttempt[A](thunk: => A): Either[Throwable, A] !! IO = CC.intrinsic(_.intrinsicBlocking(() => thunk, isAttempt = true))
@@ -73,16 +73,16 @@ case object IO extends IO:
 
   def catchToTry[A, U <: IO](body: A !! U): Try[A] !! U =
     snap(body).flatMap:
-      case Snap.Success(a) => !!.pure(TrySuccess(a)) 
-      case Snap.Failure(c) => !!.pure(c.toTry) 
-      case aa: Snap.NotSuccess => unsnap(aa)
+      case Snap.Success(a) => !!.pure(TrySuccess(a))
+      case Snap.Failure(Cause.Thrown(e)) => !!.pure(TryFailure(e))
+      case s @ Snap.Failure(_) => unsnap(s)
 
   def catchAll[A, U <: IO](body: A !! U)(f: Throwable => A): A !! U = catchAllEff(body)(f.andThen(!!.pure))
 
   def catchAllEff[A, U <: IO](body: A !! U)(f: Throwable => A !! U): A !! U =
     snap(body).flatMap:
-      case Snap.Failure(e) => f(e.last)
-      case aa => unsnap(aa)
+      case Snap.Failure(Cause.Thrown(e)) => f(e)
+      case s => unsnap(s)
 
   def catchSome[A, U <: IO](body: A !! U)(f: PartialFunction[Throwable, A]): A !! U = catchSomeEff(body)(f.andThen(!!.pure))
 
@@ -144,33 +144,30 @@ case object IO extends IO:
 
   def unsnap[A](aa: Snap[A]): A !! Any = CC.intrinsic(_.intrinsicUnsnap(aa))
 
-  def onSnapSome[A, U](body: A !! U)(f: PartialFunction[Snap[A], Unit !! U]) =
-    snap(body).flatMap(ss => f.lift(ss).getOrElse(!!.unit) &&! unsnap(ss))
-
   def onSuccess[A, U](body: A !! U)(f: A => Unit !! U): A !! U =
-    onSnapSome(body) { case Snap.Success(a) => f(a) }
-
-  def onNotSuccess[A, U](body: A !! U)(f: Cause => Unit !! U): A !! U =
-    onSnapSome(body): snap =>
-      val c = (snap: @unchecked) match
-        case Snap.Cancelled => (Cause.Cancelled)
-        case Snap.Failure(c) => c
-        case Snap.Aborted(x, p) => Cause.Aborted(x, p)
-      f(c)
-
-  def onAbort[A, U](body: A !! U)(f: (Any, Prompt) => Unit !! U): A !! U =
-    //@#@WTF unreachable case
-    // onSnapSome(body) { case Snap.Aborted(x, p) => f(x, p) }
-    onSnapSome(body) { case ss: Snap.Aborted => f(ss.value, ss.prompt) }
+    snap(body).flatMap:
+      case Snap.Success(a) => f(a).as(a)
+      case s => unsnap(s)
 
   def onFailure[A, U](body: A !! U)(f: Cause => Unit !! U): A !! U =
-    onSnapSome(body) { case Snap.Failure(c) => f(c) }
+    snap(body).flatMap:
+      case Snap.Success(a) => !!.pure(a)
+      case s @ Snap.Failure(c) => f(c) &&! unsnap(s)
+
+  def onSomeFailure[A, U](body: A !! U)(f: PartialFunction[Cause, Unit !! U]) =
+    snap(body).flatMap:
+      case Snap.Success(a) => !!.pure(a)
+      case s @ Snap.Failure(c) => f.lift(c).getOrElse(!!.unit) &&! unsnap(s)
+
+  def onAbort[A, U](body: A !! U)(f: (Any, Prompt) => Unit !! U): A !! U =
+    onSomeFailure(body) { case c: Cause.Aborted => f(c.value, c.prompt) }
 
   def onException[A, U](body: A !! U)(f: Throwable => Unit !! U): A !! U =
-    onSnapSome(body) { case Snap.Failure(c) => f(c.last) }
+    onSomeFailure(body) { case Cause.Thrown(e) => f(e) }
 
-  def onCancel[A, U](body: A !! U)(comp: Unit !! U): A !! U =
-    onSnapSome(body) { case Snap.Cancelled => comp }
+  def onCancel[A, U](body: A !! U)(comp: => Unit !! U): A !! U =
+    onSomeFailure(body) { case Cause.Cancelled => comp }
+
 
 
   //---------- Time ----------
@@ -271,7 +268,7 @@ case object IO extends IO:
 
   def executeOn[A, U <: IO](exec: Executor)(body: A !! U): A !! U = CC.intrinsic(_.intrinsicExecOn(exec, body))
 
-  val cancel: Nothing !! IO = unsnap(Snap.Cancelled)
+  val cancel: Nothing !! IO = unsnap(Snap.Failure(Cause.Cancelled))
 
   val yeld: Unit !! IO = CC.intrinsic(_.intrinsicYield)
 

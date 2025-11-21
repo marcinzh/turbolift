@@ -81,7 +81,6 @@ private[turbolift] final class FiberImpl private (
 
         case _ => impossible
 
-
     //// Call the callback
     if theCallback != null then
       if isExplicit then
@@ -101,8 +100,8 @@ private[turbolift] final class FiberImpl private (
   private def makeOutcome[A](void: Boolean): Outcome[A] =
     theCompletion match
       case Bits.Completion_Success   => Outcome.Success((if void then null else theCurrentPayload).asInstanceOf[A])
+      case Bits.Completion_Cancelled => Outcome.Failure(Cause.Cancelled)
       case Bits.Completion_Failure   => Outcome.Failure(theCurrentPayload.asInstanceOf[Cause])
-      case Bits.Completion_Cancelled => Outcome.Cancelled
 
 
   private[engine] def getOrMakeZipper: ZipperImpl =
