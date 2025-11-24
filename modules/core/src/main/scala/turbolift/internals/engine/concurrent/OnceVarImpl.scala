@@ -41,7 +41,7 @@ private[turbolift] final class OnceVarImpl extends Waitee with OnceVar.Unsealed 
     val willFinalize =
       atomically {
         if isPending then
-          setCompletionToSuccess()
+          setCompletion()
           theContent = value
           true
         else

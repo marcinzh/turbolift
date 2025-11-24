@@ -8,25 +8,20 @@ import turbolift.internals.engine.concurrent.atomic.AtomicBoolVH
 private[engine] abstract class Waitee extends AtomicBoolVH(false):
   protected var theFirstWaiter: FiberImpl | Null = null
   protected var theCancellation: Byte = 0
-  protected[engine] var theCompletion: Byte = 0
+  protected[engine] var theCompletion: Boolean = false
 
 
   //-------------------------------------------------------------------
   // bits
   //-------------------------------------------------------------------
 
-  private[engine] final def isPending: Boolean = theCompletion == Bits.Completion_Pending
-  private[engine] final def isPendingAndNotCancelled: Boolean = (theCompletion | theCancellation) == 0
+  private[engine] final def isPending: Boolean = !theCompletion
+  private[engine] final def isPendingAndNotCancelled: Boolean = !theCompletion & (theCancellation == 0)
   private[engine] final def isCancellationSignalled: Boolean = theCancellation >= Bits.Cancellation_Signalled
   private[engine] final def isCancellationUnlatched: Boolean = theCancellation == Bits.Cancellation_Signalled
 
-
-  inline protected final def setCompletionToSuccess(): Unit =
-    this.theCompletion = Bits.Completion_Success
-
-  //// meaningful only in FiberImpl, but moved here for convenience
-  inline protected final def setCancellationLatch(): Unit =
-    this.theCancellation = Bits.Cancellation_Latched
+  inline protected final def setCompletion(): Unit =
+    this.theCompletion = true
 
 
   //-------------------------------------------------------------------
@@ -67,7 +62,7 @@ private[engine] abstract class Waitee extends AtomicBoolVH(false):
     @tailrec def loop(): Boolean =
       if fiber.spinAcquire() then
         if fiber.isCancellationUnlatched then
-          fiber.setCancellationLatch()
+          this.theCancellation = Bits.Cancellation_Latched
           fiber.spinRelease()
           false
         else

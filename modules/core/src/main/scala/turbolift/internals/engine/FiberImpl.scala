@@ -6,7 +6,6 @@ import turbolift.io.{Fiber, Zipper, Warp, OnceVar}
 import turbolift.internals.executor.Executor
 import turbolift.internals.engine.Misc._
 import turbolift.internals.engine.stacked.{Stack, Store}
-import Cause.{Cancelled => CancelPayload}
 
 
 private[turbolift] sealed abstract class FiberImplPart1 (
@@ -39,9 +38,10 @@ private[turbolift] final class FiberImpl private (
   private[engine] var theCallback: (Any => Unit) | Null,
 ) extends FiberImplPart2(_parent) with Engine:
   private[engine] var theCurrentTickHigh: Int = 0
+  private[engine] var theCurrentCause: Cause | Null = null
   private[engine] var theFiberToBecome: FiberImpl | Null = null
+  private[engine] val pad3_I2: Int = 0
   private[engine] val pad3_L1: Long = 0
-  private[engine] val pad3_L2: Long = 0
 
 
   //-------------------------------------------------------------------
@@ -49,12 +49,12 @@ private[turbolift] final class FiberImpl private (
   //-------------------------------------------------------------------
 
 
-  private[engine] def doFinalize(completion: Int): FiberImpl | Null =
+  private[engine] def doFinalize(): FiberImpl | Null =
     if isExplicit then
-      theCurrentPayload = ZipperImpl.make(theJoinStack, theCurrentPayload, completion)
+      theCurrentPayload = ZipperImpl.make(theJoinStack, theCurrentPayload, theCurrentCause)
 
     atomically {
-      this.theCompletion = completion.toByte
+      this.theCompletion = true
     }
 
     //// As a RACER:
@@ -93,29 +93,26 @@ private[turbolift] final class FiberImpl private (
     fiberToBecome
 
 
+  private[engine] def doFinalizeAsCancelled(): FiberImpl | Null =
+    this.theCurrentCause = Cause.Cancelled
+    doFinalize()
+
 
   def makeOutcome[A]: Outcome[A] = makeOutcome(false)
   
 
   private def makeOutcome[A](void: Boolean): Outcome[A] =
-    theCompletion match
-      case Bits.Completion_Success   => Outcome.Success((if void then null else theCurrentPayload).asInstanceOf[A])
-      case Bits.Completion_Cancelled => Outcome.Failure(Cause.Cancelled)
-      case Bits.Completion_Failure   => Outcome.Failure(theCurrentPayload.asInstanceOf[Cause])
+    theCurrentCause match
+      case null => Outcome.Success((if void then null else theCurrentPayload).asInstanceOf[A])
+      case Cause.Cancelled => Outcome.Cancelled
+      case c: Cause => Outcome.Failure(c)
 
 
   private[engine] def getOrMakeZipper: ZipperImpl =
     if isExplicit then
       theCurrentPayload.asInstanceOf[ZipperImpl]
     else
-      ZipperImpl.make(null, theCurrentPayload, theCompletion)
-
-
-  private def getOrMakeZipper(payload: Any, completion: Int): ZipperImpl =
-    if isExplicit then
-      theCurrentPayload.asInstanceOf[ZipperImpl]
-    else
-      ZipperImpl.make(null, payload, completion)
+      ZipperImpl.make(null, theCurrentPayload, theCurrentCause)
 
 
   //-------------------------------------------------------------------
@@ -127,7 +124,7 @@ private[turbolift] final class FiberImpl private (
     val isCancellable = theCurrentEnv.isCancellable
     atomically {
       if isCancellable && isCancellationUnlatched then
-        setCancellationLatch()
+        this.theCancellation = Bits.Cancellation_Latched
         false
       else
         body
@@ -160,7 +157,7 @@ private[turbolift] final class FiberImpl private (
     if theCurrentEnv.isCancellable then
       atomically {
         if isCancellationUnlatched then
-          setCancellationLatch()
+          this.theCancellation = Bits.Cancellation_Latched
           true
         else
           false
@@ -278,12 +275,12 @@ private[turbolift] final class FiberImpl private (
     val arbiter = getArbiter
     theKind match
       case Bits.Kind_RaceAll =>
-        if theCompletion != Bits.Completion_Success then
+        if theCurrentCause != null then
           arbiter.tryWinRace(this)
         arbiter.tryFinishRace()
 
       case Bits.Kind_RaceFirst =>
-        if theCompletion != Bits.Completion_Cancelled then
+        if theCurrentCause != Cause.Cancelled then
           arbiter.tryWinRace(this)
         arbiter.tryFinishRace()
 
@@ -490,17 +487,19 @@ private[turbolift] final class FiberImpl private (
   final inline def willContinueAsCancelled(): Unit =
     this.theCurrentTag = Step.Cancel.tag.toByte
     this.theCurrentStep = Step.Cancel
-    this.theCurrentPayload = CancelPayload
+    this.theCurrentPayload = null
+    this.theCurrentCause = Cause.Cancelled
 
 
   final inline def willContinueAsFailure(cause: Cause): Unit =
     this.theCurrentTag = Step.Throw.tag.toByte
     this.theCurrentStep = Step.Throw
-    this.theCurrentPayload = cause
+    this.theCurrentPayload = null
+    this.theCurrentCause = cause
 
 
   final inline def willContinueAsFailure(throwable: Throwable): Unit =
-    willContinueAsFailure(Cause(throwable))
+    willContinueAsFailure(Cause.Thrown(throwable))
 
 
   //-------------------------------------------------------------------
@@ -591,16 +590,14 @@ private[turbolift] final class FiberImpl private (
 
 
   override def unsafePoll(): Option[Zipper.Untyped] =
-    var savedCompletion: Byte = 0
-    var savedPayload: Any = null
-    atomically {
-      savedCompletion = theCompletion
-      savedPayload = theCurrentPayload
-    }
-    if savedCompletion == Bits.Completion_Pending then
-      None
+    val savedCompletion =
+      atomically {
+        theCompletion
+      }
+    if savedCompletion then
+      Some(getOrMakeZipper)
     else
-      Some(getOrMakeZipper(savedPayload, savedCompletion))
+      None
 
 
   override def unsafeStart[A2 >: Any, U2 <: Nothing](comp: Computation[A2, U2], callback: Zipper[A2, U2] => Unit): Unit =
@@ -610,7 +607,7 @@ private[turbolift] final class FiberImpl private (
       willContinueEff(comp)
       resume()
     else
-      doFinalize(Bits.Completion_Cancelled)
+      doFinalizeAsCancelled()
 
 
   //-------------------------------------------------------------------

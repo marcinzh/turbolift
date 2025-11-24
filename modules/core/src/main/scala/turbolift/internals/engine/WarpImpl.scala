@@ -83,7 +83,7 @@ private[turbolift] final class WarpImpl private[engine] (
 
   private inline def shutdownCheck(): Boolean =
     if isShutdown & isChildless then
-      this.theCompletion = Bits.Completion_Success
+      this.theCompletion = true
       true
     else
       false
@@ -106,7 +106,7 @@ private[turbolift] final class WarpImpl private[engine] (
       atomicallyBoth(waiter) {
         if isPending then
           if isChildless then
-            this.theCompletion = Bits.Completion_Success
+            this.theCompletion = true
             willFinalize = true
             Halt.Continue
           else
@@ -131,7 +131,7 @@ private[turbolift] final class WarpImpl private[engine] (
       atomically {
         if isPending then
           if isChildless then
-            this.theCompletion = Bits.Completion_Success
+            this.theCompletion = true
             true
           else
             this.theCancellation = Bits.Cancellation_Latched
@@ -162,7 +162,7 @@ private[turbolift] final class WarpImpl private[engine] (
       atomicallyBoth(canceller) {
         if isPending then
           if isChildless then
-            this.theCompletion = Bits.Completion_Success
+            this.theCompletion = true
             willFinalize = true
             Halt.Continue
           else
@@ -195,7 +195,7 @@ private[turbolift] final class WarpImpl private[engine] (
     atomically {
       if isPending then
         if isChildless then
-          this.theCompletion = Bits.Completion_Success
+          this.theCompletion = true
           willFinalize = true
         else
           if !isCancellationSignalled then
@@ -268,12 +268,12 @@ private[turbolift] final class WarpImpl private[engine] (
   override def unsafeSpawn(name: String): Warp =
     val child = new WarpImpl(this, null, name, null)
     if !tryAddWarp(child) then
-      this.theCompletion = Bits.Completion_Success
+      this.theCompletion = true
     child
 
 
   override def unsafeStatus(): Warp.Status =
-    var savedCompletion: Byte = 0
+    var savedCompletion: Boolean = false
     var savedCancellation: Byte = 0
     var savedFiberCount: Int = 0
     var savedWarpCount: Int = 0
@@ -284,15 +284,15 @@ private[turbolift] final class WarpImpl private[engine] (
       savedFiberCount = theFiberCount
       savedWarpCount = theWarpCount
     }
-    if theCompletion == Bits.Completion_Pending then
+    if savedCompletion then
+      Warp.Status.Completed
+    else
       Warp.Status.Pending(
         fiberCount = savedFiberCount,
         warpCount = savedWarpCount,
         isShutdown = savedCancellation == Bits.Cancellation_Latched,
         isCancelled = savedCancellation >= Bits.Cancellation_Signalled,
       )
-    else
-      Warp.Status.Completed
 
 
 private[turbolift] object WarpImpl:

@@ -18,13 +18,6 @@ object Bits:
   inline def isReentry(bits: Int): Boolean = bits == Kind_Reentry
   inline def isExplicit(bits: Int): Boolean = bits == Kind_Explicit
 
-  //// Waitee.theCompletion
-
-  inline val Completion_Pending    = 0
-  inline val Completion_Success    = 1
-  inline val Completion_Cancelled  = 2
-  inline val Completion_Failure    = 3
-
   //// Waitee.theCancellation
 
   inline val Cancellation_None       = 0

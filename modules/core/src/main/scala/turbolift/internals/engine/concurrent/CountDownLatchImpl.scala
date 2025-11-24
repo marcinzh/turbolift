@@ -6,7 +6,7 @@ import turbolift.internals.engine.{Waitee, FiberImpl, Halt}
 private[turbolift] final class CountDownLatchImpl(private var counter: Int) extends Waitee with CountDownLatch.Unsealed:
   {
     if counter <= 0 then
-      setCompletionToSuccess()
+      setCompletion()
   }
 
 
@@ -28,7 +28,7 @@ private[turbolift] final class CountDownLatchImpl(private var counter: Int) exte
         if isPending then
           counter -= 1
           if counter == 0 then
-            setCompletionToSuccess()
+            setCompletion()
             true
           else
             false

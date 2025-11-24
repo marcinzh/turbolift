@@ -50,7 +50,7 @@ private[turbolift] final class EffectfulVarImpl extends Waitee with EffectfulVar
     val willFinalize =
       atomically {
         if isPending then
-          setCompletionToSuccess()
+          setCompletion()
           theNextShot = nextShot
           val x = theFirstWaiter
           if x == null then

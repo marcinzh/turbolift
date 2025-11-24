@@ -65,8 +65,7 @@ private object ZipperCases:
 
 
 private object ZipperImpl:
-  def make(stack: Stack | Null, payload: Any, completion: Int): ZipperImpl =
-    completion match
-      case Bits.Completion_Success => Functor(payload, if stack != null then stack else Stack.initial)
-      case Bits.Completion_Cancelled => Failure(Cause.Cancelled)
-      case Bits.Completion_Failure => Failure(payload.asInstanceOf[Cause])
+  def make(stack: Stack | Null, payload: Any, cause: Cause | Null): ZipperImpl =
+    cause match
+      case null => Functor(payload, if stack != null then stack else Stack.initial)
+      case cause: Cause => Failure(cause)

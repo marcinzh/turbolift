@@ -26,7 +26,7 @@ private trait Engine extends Runnable:
   //// FiberImpl result means yield
   //// Boolean result means reentry
   final def runUntilYields(): FiberImpl | Boolean =
-    if theCompletion != Bits.Completion_Pending then
+    if theCompletion then
       panic("Resuming completed fiber")
 
     this.theCurrentTickLow = theCurrentEnv.tickLow
@@ -51,8 +51,8 @@ private trait Engine extends Runnable:
       catch e =>
         // e.printStackTrace()
         val e2 = if e.isInstanceOf[Exceptions.Panic] then e else new Exceptions.Unhandled(e)
-        this.theCurrentPayload = Cause(e2)
-        endOfLoop(Bits.Completion_Failure)
+        this.theCurrentCause = Cause(e2)
+        endOfLoop()
 
     halt match
       case Halt.Become =>
@@ -390,8 +390,8 @@ private trait Engine extends Runnable:
   //-------------------------------------------------------------------
 
 
-  private final def endOfLoop(completion: Int): Halt =
-    val that = this.doFinalize(completion)
+  private final def endOfLoop(): Halt =
+    val that = this.doFinalize()
     if that == null then
       Halt.Retire
     else
@@ -454,7 +454,7 @@ private trait Engine extends Runnable:
               case Step.UnwindKind.Pop    => Snap.Success(theCurrentPayload)
               case Step.UnwindKind.Abort  => Snap.Failure(Cause.Aborted(theCurrentPayload, instr.prompt.nn))
               case Step.UnwindKind.Cancel => Snap.Failure(Cause.Cancelled)
-              case Step.UnwindKind.Throw  => Snap.Failure(theCurrentPayload.asInstanceOf[Cause])
+              case Step.UnwindKind.Throw  => Snap.Failure(theCurrentCause.nn)
             //// Overwrite to stop unwinding, regardless `isPop`.
             this.willContinuePureStep(snap, step2)
             Halt.Continue
@@ -491,12 +491,7 @@ private trait Engine extends Runnable:
             this.willContinueEffStep(comp, instr)
             Halt.Continue
     else //// canPop
-      val completion = instr.kind match
-        case Step.UnwindKind.Pop    => Bits.Completion_Success
-        case Step.UnwindKind.Cancel => Bits.Completion_Cancelled
-        case Step.UnwindKind.Throw  => Bits.Completion_Failure
-        case _                      => impossible
-      endOfLoop(completion)
+      endOfLoop()
 
 
   //-------------------------------------------------------------------
@@ -524,16 +519,16 @@ private trait Engine extends Runnable:
     if theWaiterStateAny != null then
       val winner = theWaiterStateAny.asInstanceOf[FiberImpl]
       this.theWaiterStateAny = null
-      winner.theCompletion match
-        case Bits.Completion_Success =>
+      winner.theCurrentCause match
+        case null =>
           val comp = OpCascaded.restart(theCurrentStack, winner.theCurrentPayload)
           val comp2 =
             if winner == getFirstRacer
             then comp.map(Left(_))
             else comp.map(Right(_))
           willContinueEff(comp2)
-        case Bits.Completion_Cancelled => impossible
-        case Bits.Completion_Failure => arbitrageFailedRace()
+        case Cause.Cancelled => impossible
+        case _ => arbitrageFailedRace()
     else
       arbitrageFailedRace()
     clearAfterRace()
@@ -543,16 +538,16 @@ private trait Engine extends Runnable:
     if theWaiterStateAny != null then
       val winner = theWaiterStateAny.asInstanceOf[FiberImpl]
       this.theWaiterStateAny = null
-      winner.theCompletion match
-        case Bits.Completion_Success =>
+      winner.theCurrentCause match
+        case null =>
           if winner == getFirstRacer then
             val comp = OpCascaded.restart(theCurrentStack, winner.theCurrentPayload)
             val comp2 = comp.map(Some(_))
             willContinueEff(comp2)
           else
             willContinuePure(None)
-        case Bits.Completion_Cancelled => impossible
-        case Bits.Completion_Failure => arbitrageFailedRace()
+        case Cause.Cancelled => impossible
+        case _ => arbitrageFailedRace()
     else
       arbitrageFailedRace()
     clearAfterRace()
@@ -562,12 +557,12 @@ private trait Engine extends Runnable:
     if theWaiterStateAny != null then
       val winner = theWaiterStateAny.asInstanceOf[FiberImpl]
       this.theWaiterStateAny = null
-      winner.theCompletion match
-        case Bits.Completion_Success =>
+      winner.theCurrentCause match
+        case null =>
           val comp = OpCascaded.restart(theCurrentStack, winner.theCurrentPayload)
           willContinueEff(comp)
-        case Bits.Completion_Cancelled => impossible
-        case Bits.Completion_Failure => arbitrageFailedRace()
+        case Cause.Cancelled => impossible
+        case _ => arbitrageFailedRace()
     else
       arbitrageFailedRace()
     clearAfterRace()
@@ -616,28 +611,23 @@ private trait Engine extends Runnable:
 
   private def arbitrageRaceOne(): Unit =
     val racer = getFirstRacer
-    racer.theCompletion match
-      case Bits.Completion_Success =>
+    racer.theCurrentCause match
+      case null =>
         val comp = OpCascaded.restart(theCurrentStack, racer.theCurrentPayload)
         val comp2 = comp.map(Some(_))
         willContinueEff(comp2)
-      case Bits.Completion_Cancelled => willContinuePure(None)
-      case Bits.Completion_Failure =>
-        val cause = racer.theCurrentPayload.asInstanceOf[Cause]
-        willContinueAsFailure(cause)
+      case Cause.Cancelled => willContinuePure(None)
+      case cause: Cause => willContinueAsFailure(cause)
     clearAfterRace()
 
 
   private def arbitrageFailedRace(): Unit =
     @tailrec def loop(racer: FiberImpl, accum: Cause): Cause =
-      val accum2 =
-        if racer.theCompletion == Bits.Completion_Failure then
-          val cause = racer.theCurrentPayload.asInstanceOf[Cause]
-          accum match
-            case Cause.Cancelled => cause
-            case _ => Cause.Both(accum, cause)
-        else
-          accum
+      val accum2 = racer.theCurrentCause match
+        case null | Cause.Cancelled => accum
+        case cause: Cause => accum match
+          case Cause.Cancelled => cause
+          case _ => Cause.Both(accum, cause)
       val next = racer.getNextRacer
       if !next.isFirstSibling then
         loop(next, accum2)
@@ -915,7 +905,7 @@ private trait Engine extends Runnable:
         child.resume()
     else
       if comp != null then
-        child.doFinalize(Bits.Completion_Cancelled)
+        child.doFinalizeAsCancelled()
     Halt.Continue
 
 
