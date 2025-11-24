@@ -141,7 +141,6 @@ private trait Engine extends Runnable:
     inline def innerLoopComp(comp: Computation[?, ?], step: Step, store: Store): Halt =
       innerLoop(comp.tag, comp, step, stack, store, hasShadow)
 
-
     if theCurrentTickLow > 0 then
       theCurrentTickLow -= 1
       (tag: @switch) match
@@ -375,7 +374,9 @@ private trait Engine extends Runnable:
             if instr.isAttempt then
               innerLoopStep(Left(throwable), step, store)
             else
-              innerLoopStep(Cause(throwable.nn), Step.Throw, store)
+              this.willContinueAsFailure(Cause(throwable.nn))
+              this.theCurrentStore = store
+              Halt.ContinueNoTick
 
         case Tag.Intrinsic | Tag.Unwind =>
           this.willContinueTagStepStore(tag, payload, step, store)
@@ -435,7 +436,6 @@ private trait Engine extends Runnable:
 
 
   private final def doUnwind(): Halt =
-    val instr = theCurrentStep.asInstanceOf[Step.Unwind]
     if theCurrentStack.canPop then
       val (stack2, store2, step2, prompt, frame, local) = OpPush.pop(theCurrentStack, theCurrentStore)
       //// Keep unwinding, by default. Retains current Tag/Payload/Step. Overwritten in some branches.
@@ -443,19 +443,21 @@ private trait Engine extends Runnable:
       if prompt.isIo then
         val oldEnv = theCurrentEnv
         refreshEnv()
-        //// Overwrite to stop unwinding.
-        if instr.isPop then
+        //// When no Failure, overwrite to stop unwinding after having done single `pop`.
+        if theCurrentCause == null then
           this.willContinueStep(step2)
         (frame.kind.unwrap: @switch) match
           case FrameKind.PLAIN => Halt.Continue
 
           case FrameKind.GUARD =>
-            val snap = instr.kind match
-              case Step.UnwindKind.Pop    => Snap.Success(theCurrentPayload)
-              case Step.UnwindKind.Abort  => Snap.Failure(Cause.Aborted(theCurrentPayload, instr.prompt.nn))
-              case Step.UnwindKind.Cancel => Snap.Failure(Cause.Cancelled)
-              case Step.UnwindKind.Throw  => Snap.Failure(theCurrentCause.nn)
-            //// Overwrite to stop unwinding, regardless `isPop`.
+            val snap =
+              if theCurrentCause == null then
+                Snap.Success(theCurrentPayload)
+              else
+                val snap = Snap.Failure(theCurrentCause.nn)
+                this.pushCurrentCause()
+                snap
+            //// Overwrite to stop unwinding, regardless `theCurrentCause == null`.
             this.willContinuePureStep(snap, step2)
             Halt.Continue
 
@@ -477,18 +479,20 @@ private trait Engine extends Runnable:
               Halt.Continue
         end match
       else //// isIo
-        if instr.isPop then
-          val comp = prompt.onReturn(theCurrentPayload, local)
-          this.willContinueEffStep(comp, step2)
-          Halt.Continue
-        else
-          if prompt == instr.prompt then
-            this.willContinueStep(step2)
+        theCurrentCause match
+          case null =>
+            val comp = prompt.onReturn(theCurrentPayload, local)
+            this.willContinueEffStep(comp, step2)
             Halt.Continue
-          else
-            //@#@TODO reconcile nested unwinds
-            val comp = prompt.onAbort(local).as(theCurrentPayload)
-            this.willContinueEffStep(comp, instr)
+          case cause: Cause.Aborted if cause.prompt == prompt =>
+            this.theCurrentCause = null
+            this.willContinuePureStep(cause.value, step2)
+            Halt.Continue
+          case cause: Cause =>
+            this.pushCurrentCause()
+            this.theCurrentCause = null
+            val comp = prompt.onAbort(local) &&! IO.restoreSuppressedCause
+            this.willContinueEff(comp)
             Halt.Continue
     else //// canPop
       endOfLoop()
@@ -659,8 +663,18 @@ private trait Engine extends Runnable:
 
 
   final def intrinsicAbort(prompt: Prompt, value: Any): Halt =
-    this.willContinuePureStep(value, Step.abort(prompt))
+    this.willContinueAsFailure(Cause.Aborted(value, prompt))
     Halt.Continue
+
+
+  final def intrinsicFail(cause: Cause): Halt =
+    this.willContinueAsFailure(cause)
+    Halt.Continue
+
+
+  final def intrinsicSelfCancel: Halt =
+    this.cancelBySelf()
+    Halt.Cancel
 
 
   final def intrinsicShadow[A, U](prompt: Prompt, body: A !! U): Halt =
@@ -861,21 +875,15 @@ private trait Engine extends Runnable:
 
   final def intrinsicUnsnap[A, U](snap: Snap[A]): Halt =
     (snap: @unchecked) match
-      case Snap.Success(value) =>
-        this.willContinuePure(value)
-        Halt.Continue
-      case Snap.Failure(cause) => cause match
-        case c : Cause.Aborted =>
-          this.willContinuePureStep(c.value, Step.abort(c.prompt))
-          Halt.Continue
-        case Cause.Cancelled =>
-          //@#@THOV It should be harmless to self-cancel a fiber, even when it's uncancellable?
-          this.cancelBySelf()
-          Halt.Cancel
-        case _ =>
-          //@#@TEMP
-          this.willContinuePureStep(cause, Step.Throw)
-          Halt.Continue
+      case Snap.Success(value) => this.willContinuePure(value)
+      case Snap.Failure(cause) => this.willContinueAsFailure(cause)
+    Halt.Continue
+
+
+  final def intrinsicRestoreSuppressedCause: Halt =
+    val cause = this.popSuppressedCause()
+    this.willContinueAsFailure(cause)
+    Halt.Continue
 
 
   final def intrinsicEnvAsk[A](fun: Env => A): Halt =

@@ -57,7 +57,7 @@ case object IO extends IO:
   //---------- Exceptions ----------
 
 
-  def fail(c: Cause): Nothing !! IO = unsnap(Snap.Failure(c))
+  def fail(c: Cause): Nothing !! IO = CC.intrinsic(_.intrinsicFail(c))
 
   def raise(e: Throwable): Nothing !! IO = fail(Cause.Thrown(e))
 
@@ -143,6 +143,9 @@ case object IO extends IO:
   def snap[A, U](body: A !! U): Snap[A] !! U = CC.intrinsic(_.intrinsicSnap(body))
 
   def unsnap[A](aa: Snap[A]): A !! Any = CC.intrinsic(_.intrinsicUnsnap(aa))
+
+  //@#@ experimental
+  val restoreSuppressedCause: Unit !! Any = CC.intrinsic(_.intrinsicRestoreSuppressedCause)
 
   def onSuccess[A, U](body: A !! U)(f: A => Unit !! U): A !! U =
     snap(body).flatMap:
@@ -268,7 +271,7 @@ case object IO extends IO:
 
   def executeOn[A, U <: IO](exec: Executor)(body: A !! U): A !! U = CC.intrinsic(_.intrinsicExecOn(exec, body))
 
-  val cancel: Nothing !! IO = unsnap(Snap.Failure(Cause.Cancelled))
+  val cancel: Nothing !! IO = CC.intrinsic(_.intrinsicSelfCancel)
 
   val yeld: Unit !! IO = CC.intrinsic(_.intrinsicYield)
 

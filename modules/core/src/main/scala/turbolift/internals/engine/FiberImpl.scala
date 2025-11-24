@@ -39,8 +39,8 @@ private[turbolift] final class FiberImpl private (
 ) extends FiberImplPart2(_parent) with Engine:
   private[engine] var theCurrentTickHigh: Int = 0
   private[engine] var theCurrentCause: Cause | Null = null
+  private[engine] var theSuppressedCause: Cause | Null = null
   private[engine] var theFiberToBecome: FiberImpl | Null = null
-  private[engine] val pad3_I2: Int = 0
   private[engine] val pad3_L1: Long = 0
 
 
@@ -485,21 +485,43 @@ private[turbolift] final class FiberImpl private (
 
 
   final inline def willContinueAsCancelled(): Unit =
-    this.theCurrentTag = Step.Cancel.tag.toByte
-    this.theCurrentStep = Step.Cancel
-    this.theCurrentPayload = null
-    this.theCurrentCause = Cause.Cancelled
+    willContinueAsFailure(Cause.Cancelled)
 
 
   final inline def willContinueAsFailure(cause: Cause): Unit =
-    this.theCurrentTag = Step.Throw.tag.toByte
-    this.theCurrentStep = Step.Throw
+    this.theCurrentTag = Tag.Unwind
+    this.theCurrentStep = null.asInstanceOf[Step]
     this.theCurrentPayload = null
     this.theCurrentCause = cause
 
 
   final inline def willContinueAsFailure(throwable: Throwable): Unit =
     willContinueAsFailure(Cause.Thrown(throwable))
+
+
+  //-------------------------------------------------------------------
+  // Cause
+  //-------------------------------------------------------------------
+
+
+  final def pushCurrentCause(): Unit =
+    this.theSuppressedCause =
+      if theSuppressedCause == null then
+        theCurrentCause
+      else
+        Cause.Then(theSuppressedCause.nn, theCurrentCause.nn)
+    this.theCurrentCause = null
+
+
+  final def popSuppressedCause(): Cause =
+    theSuppressedCause match
+      case null => impossible
+      case Cause.Then(a, b) =>
+        this.theSuppressedCause = a
+        b
+      case c: Cause =>
+        this.theSuppressedCause = null
+        c
 
 
   //-------------------------------------------------------------------

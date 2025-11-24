@@ -1,19 +1,26 @@
 package turbolift.misc
 import org.specs2.mutable._
 import turbolift.!!
-import turbolift.mode.ST
+import turbolift.effects.IO
+import turbolift.data.{Outcome, Cause}
+import turbolift.data.Exceptions.Unhandled
 
 
 class ExceptionTest extends Specification:
-  def bad = !!.impure(throw new Error("bad") { override def printStackTrace() = () } )
-  def ook = !!.pure(42)
+  case object E extends Exception { override def toString = productPrefix }
 
-  "Basic ops" >> {
-    bad.unsafeRun.isFailure === true
+  def bad1 = !!.impure(throw E)
+  def bad2 = IO.sync(throw E)
+  def bad3 = IO.raise(E)
+
+  "throw" >> {
+    "impure(throw)"  >>{bad1.runIO match { case Outcome.Failure(Cause.Thrown(_: Unhandled)) => success; case x => failure(x.toString) }}
+    "IO.sync(throw)" >>{bad2.runIO === Outcome.Failure(Cause.Thrown(E)) }
+    "IO.raise"       >>{bad3.runIO === Outcome.Failure(Cause.Thrown(E)) }
   }
 
-  "Par ops" >> {
-    (bad *! ook).unsafeRun.isFailure === true
-    (ook *! bad).unsafeRun.isFailure === true
-    (bad *! bad).unsafeRun.isFailure === true
+  "catchToEither" >> {
+    "pure"           >>{IO.catchToEither(!!.pure(42)).runIO === Outcome.Success(Right(42)) }
+    "IO.sync(throw)" >>{IO.catchToEither(bad2).runIO === Outcome.Success(Left(E)) }
+    "IO.raise"       >>{IO.catchToEither(bad3).runIO === Outcome.Success(Left(E)) }
   }

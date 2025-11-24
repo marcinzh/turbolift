@@ -13,14 +13,14 @@ private[engine] sealed abstract class Step(val tag: Tag):
 
   final def append(that: Step): Step =
     that match
-      case x: Step.Unwind if x.isPop => this
+      case Step.Pop => this
       case _ => appendLoop(that)
 
   private final def appendLoop(that: Step): Step =
     this match
       case thiz: Step.MoreFlat => new Step.MoreFlat(thiz.fun, thiz.next.appendLoop(that))
       case thiz: Step.MorePure => new Step.MorePure(thiz.fun, thiz.next.appendLoop(that))
-      case thiz: Step.Unwind => if thiz.isPop then that else this
+      case Step.Pop => that
 
 
 //@#@ public bcoz inline problem
@@ -29,26 +29,13 @@ private[engine] sealed abstract class Step(val tag: Tag):
 
   private[engine] final class MorePure(val fun: Any => Any, val next: Step) extends Step(Tag.MorePure)
 
-  private[engine] final class Unwind(val kind: Step.UnwindKind, val prompt: Prompt | Null) extends Step(Tag.Unwind):
-    def isPop = kind == Step.UnwindKind.Pop
+  private[engine] case object Pop extends Step(Tag.Unwind)
 
-  private[engine] val Pop: Step = new Unwind(UnwindKind.Pop, null)
-  private[engine] val Cancel: Step = new Unwind(UnwindKind.Cancel, null)
-  private[engine] val Throw: Step = new Unwind(UnwindKind.Throw, null)
-  private[engine] def abort(prompt: Prompt): Step = new Unwind(UnwindKind.Abort, prompt)
-
-  private[engine] enum UnwindKind:
-    case Pop
-    case Abort
-    case Cancel
-    case Throw
 
   private[engine] def toStr(step: Step): String =
     def loop(todo: Step, acc: Vector[String]): Vector[String] = 
       todo match
         case x: MoreFlat => loop(x.next, acc :+ s">>${todo.##.toHexString.takeRight(4)}")
         case x: MorePure => loop(x.next, acc :+ s">${todo.##.toHexString.takeRight(4)}")
-        case x: Unwind => x.kind.match
-          case UnwindKind.Abort => acc :+ s"Abort(${x.prompt})"
-          case k => acc :+ k.toString
+        case Pop => Vector("Pop")
     loop(step, Vector()).mkString("{", ";", "}")
