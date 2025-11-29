@@ -454,9 +454,7 @@ private trait Engine extends Runnable:
               if theCurrentCause == null then
                 Snap.Success(theCurrentPayload)
               else
-                val snap = Snap.Failure(theCurrentCause.nn)
-                this.pushCurrentCause()
-                snap
+                makeSnapFromFailure()
             //// Overwrite to stop unwinding, regardless `theCurrentCause == null`.
             this.willContinuePureStep(snap, step2)
             Halt.Continue
@@ -488,10 +486,9 @@ private trait Engine extends Runnable:
             this.theCurrentCause = null
             this.willContinuePureStep(cause.value, step2)
             Halt.Continue
-          case cause: Cause =>
-            this.pushCurrentCause()
-            this.theCurrentCause = null
-            val comp = prompt.onAbort(local) &&! IO.restoreSuppressedCause
+          case _ =>
+            val snap = makeSnapFromFailure()
+            val comp = prompt.onAbort(local) &&! IO.unsnap(snap)
             this.willContinueEff(comp)
             Halt.Continue
     else //// canPop
@@ -507,7 +504,7 @@ private trait Engine extends Runnable:
     if theWaiterStateAny != null then
       val winner = theWaiterStateAny.asInstanceOf[FiberImpl]
       this.theWaiterStateAny = null
-      arbitrageFailedRace()
+      arbitrageFailedRace(winner)
     else
       val comp = OpCascaded.zipAndRestart(
         stack = theCurrentStack,
@@ -515,8 +512,8 @@ private trait Engine extends Runnable:
         ftorRight = getSecondRacer.theCurrentPayload,
         fun = theCurrentPayload.asInstanceOf[(Any, Any) => Any]
       )
-      willContinueEff(comp)
-    clearAfterRace()
+      this.willContinueEff(comp)
+    this.clearAfterRace()
 
 
   private def arbitrageRaceEither(): Unit =
@@ -530,12 +527,13 @@ private trait Engine extends Runnable:
             if winner == getFirstRacer
             then comp.map(Left(_))
             else comp.map(Right(_))
-          willContinueEff(comp2)
+          this.willContinueEff(comp2)
         case Cause.Cancelled => impossible
-        case _ => arbitrageFailedRace()
+        case _ => arbitrageFailedRace(winner)
     else
-      arbitrageFailedRace()
-    clearAfterRace()
+      this.cancelBySelf()
+      this.willContinueAsCancelled()
+    this.clearAfterRace()
 
 
   private def arbitrageRaceSleep(): Unit =
@@ -547,14 +545,15 @@ private trait Engine extends Runnable:
           if winner == getFirstRacer then
             val comp = OpCascaded.restart(theCurrentStack, winner.theCurrentPayload)
             val comp2 = comp.map(Some(_))
-            willContinueEff(comp2)
+            this.willContinueEff(comp2)
           else
-            willContinuePure(None)
+            this.willContinuePure(None)
         case Cause.Cancelled => impossible
-        case _ => arbitrageFailedRace()
+        case _ => arbitrageFailedRace(winner)
     else
-      arbitrageFailedRace()
-    clearAfterRace()
+      this.cancelBySelf()
+      this.willContinueAsCancelled()
+    this.clearAfterRace()
 
 
   private def arbitrageRaceFirst(): Unit =
@@ -564,19 +563,20 @@ private trait Engine extends Runnable:
       winner.theCurrentCause match
         case null =>
           val comp = OpCascaded.restart(theCurrentStack, winner.theCurrentPayload)
-          willContinueEff(comp)
+          this.willContinueEff(comp)
         case Cause.Cancelled => impossible
-        case _ => arbitrageFailedRace()
+        case _ => arbitrageFailedRace(winner)
     else
-      arbitrageFailedRace()
-    clearAfterRace()
+      this.cancelBySelf()
+      this.willContinueAsCancelled()
+    this.clearAfterRace()
 
 
   private def arbitrageRaceAll(): Unit =
     if theWaiterStateAny != null then
       val winner = theWaiterStateAny.asInstanceOf[FiberImpl]
       this.theWaiterStateAny = null
-      arbitrageFailedRace()
+      arbitrageFailedRace(winner)
     else
       val isVoid = theCurrentPayload.asInstanceOf[Boolean]
       val comp =
@@ -609,8 +609,8 @@ private trait Engine extends Runnable:
 
           loop(getSecondRacer.getNextRacer, ftorInitial, if isVoid then Engine.zipToUnit else Engine.zipToVector2)
         end if
-      willContinueEff(comp)
-    clearAfterRace()
+      this.willContinueEff(comp)
+    this.clearAfterRace()
 
 
   private def arbitrageRaceOne(): Unit =
@@ -619,27 +619,86 @@ private trait Engine extends Runnable:
       case null =>
         val comp = OpCascaded.restart(theCurrentStack, racer.theCurrentPayload)
         val comp2 = comp.map(Some(_))
-        willContinueEff(comp2)
-      case Cause.Cancelled => willContinuePure(None)
-      case cause: Cause => willContinueAsFailure(cause)
-    clearAfterRace()
+        this.willContinueEff(comp2)
+      case Cause.Cancelled => this.willContinuePure(None)
+      case cause: Cause.Singular => this.willContinueAsFailure(cause)
+    this.clearAfterRace()
 
 
-  private def arbitrageFailedRace(): Unit =
-    @tailrec def loop(racer: FiberImpl, accum: Cause): Cause =
-      val accum2 = racer.theCurrentCause match
-        case null | Cause.Cancelled => accum
-        case cause: Cause => accum match
-          case Cause.Cancelled => cause
-          case _ => Cause.Both(accum, cause)
+  private def arbitrageFailedRace(winner: FiberImpl): Unit =
+    @tailrec def loop(racer: FiberImpl, accum: Cause | Null): Cause | Null =
+      val accum2 =
+        if racer == winner then
+          accum
+        else
+          racer.theCurrentCause match
+            //@#@TODO suppressed causes of cancelled losers are lost
+            case null | Cause.Cancelled => accum
+            case cause: Cause.Singular =>
+              val cause1 = cause +> racer.theSuppressedCause
+              accum match
+                case null => cause1
+                case cause2: Cause => cause1 || cause2
       val next = racer.getNextRacer
       if !next.isFirstSibling then
         loop(next, accum2)
       else
         accum2
-    loop(getFirstRacer, Cause.Cancelled) match
-      case Cause.Cancelled => willContinueAsCancelled()
-      case cause => willContinueAsFailure(cause)
+
+    val accum = loop(getFirstRacer, null)
+    winner.theCurrentCause match
+      case null | Cause.Cancelled =>
+        if accum == null then
+          this.cancelBySelf()
+          this.willContinueAsCancelled()
+        else
+          val (cause, supp) = accum.split
+          this.addSuppressedCauseOpt(supp)
+          this.willContinueAsFailure(cause)
+      case cause: Cause.Singular  =>
+        if accum != null then
+          this.addSuppressedCause(accum)
+        this.addSuppressedCauseOpt(winner.theSuppressedCause)
+        this.willContinueAsFailure(winner.theCurrentCause.nn)
+
+
+  //-------------------------------------------------------------------
+  // Cause
+  //-------------------------------------------------------------------
+
+
+  private def addSuppressedCause(cause: Cause): Unit =
+    this.theSuppressedCause = theSuppressedCause match
+      case None => Some(cause)
+      case Some(c) => Some(c && cause)
+
+
+  private def addSuppressedCauseOpt(causeOpt: Option[Cause]): Unit =
+    causeOpt match
+      case None => ()
+      case Some(c2) =>
+        this.theSuppressedCause = theSuppressedCause match
+          case None => causeOpt
+          case Some(c1) => Some(c1 && c2)
+
+
+  private def addSuppressedCauseOpt(causeOpt: Option[Cause], reset: Boolean): Unit =
+    if reset then
+      this.theSuppressedCause = causeOpt
+    else
+      causeOpt match
+        case None => ()
+        case Some(c2) =>
+          this.theSuppressedCause = theSuppressedCause match
+            case None => causeOpt
+            case Some(c1) => Some(c1 && c2)
+
+
+  private def makeSnapFromFailure[A](): Snap[A] =
+    val snap = Snap.Failure(theCurrentCause.nn, theSuppressedCause)
+    this.theSuppressedCause = Some(theCurrentCause.nn +> theSuppressedCause)
+    this.theCurrentCause = null
+    snap
 
 
   //-------------------------------------------------------------------
@@ -665,16 +724,6 @@ private trait Engine extends Runnable:
   final def intrinsicAbort(prompt: Prompt, value: Any): Halt =
     this.willContinueAsFailure(Cause.Aborted(value, prompt))
     Halt.Continue
-
-
-  final def intrinsicFail(cause: Cause): Halt =
-    this.willContinueAsFailure(cause)
-    Halt.Continue
-
-
-  final def intrinsicSelfCancel: Halt =
-    this.cancelBySelf()
-    Halt.Cancel
 
 
   final def intrinsicShadow[A, U](prompt: Prompt, body: A !! U): Halt =
@@ -873,17 +922,21 @@ private trait Engine extends Runnable:
     Halt.Continue
 
 
-  final def intrinsicUnsnap[A, U](snap: Snap[A]): Halt =
-    (snap: @unchecked) match
-      case Snap.Success(value) => this.willContinuePure(value)
-      case Snap.Failure(cause) => this.willContinueAsFailure(cause)
+  final def intrinsicSucceed[A](value: A, suppressed: Option[Cause], reset: Boolean): Halt =
+    this.addSuppressedCauseOpt(suppressed, reset)
+    this.willContinuePure(value)
     Halt.Continue
 
 
-  final def intrinsicRestoreSuppressedCause: Halt =
-    val cause = this.popSuppressedCause()
+  final def intrinsicFail(cause: Cause.Singular, suppressed: Option[Cause], reset: Boolean): Halt =
+    this.addSuppressedCauseOpt(suppressed, reset)
     this.willContinueAsFailure(cause)
     Halt.Continue
+
+
+  final def intrinsicSelfCancel: Halt =
+    this.cancelBySelf()
+    Halt.Cancel
 
 
   final def intrinsicEnvAsk[A](fun: Env => A): Halt =

@@ -38,8 +38,8 @@ private[turbolift] final class FiberImpl private (
   private[engine] var theCallback: (Any => Unit) | Null,
 ) extends FiberImplPart2(_parent) with Engine:
   private[engine] var theCurrentTickHigh: Int = 0
-  private[engine] var theCurrentCause: Cause | Null = null
-  private[engine] var theSuppressedCause: Cause | Null = null
+  private[engine] var theCurrentCause: Cause.Singular | Null = null
+  private[engine] var theSuppressedCause: Option[Cause] = None
   private[engine] var theFiberToBecome: FiberImpl | Null = null
   private[engine] val pad3_L1: Long = 0
 
@@ -51,7 +51,7 @@ private[turbolift] final class FiberImpl private (
 
   private[engine] def doFinalize(): FiberImpl | Null =
     if isExplicit then
-      theCurrentPayload = ZipperImpl.make(theJoinStack, theCurrentPayload, theCurrentCause)
+      theCurrentPayload = ZipperImpl.make(theJoinStack, theCurrentPayload, theCurrentCause, theSuppressedCause)
 
     atomically {
       this.theCompletion = true
@@ -104,15 +104,14 @@ private[turbolift] final class FiberImpl private (
   private def makeOutcome[A](void: Boolean): Outcome[A] =
     theCurrentCause match
       case null => Outcome.Success((if void then null else theCurrentPayload).asInstanceOf[A])
-      case Cause.Cancelled => Outcome.Cancelled
-      case c: Cause => Outcome.Failure(c)
+      case cause: Cause.Singular => Outcome.Failure(cause +> theSuppressedCause)
 
 
   private[engine] def getOrMakeZipper: ZipperImpl =
     if isExplicit then
       theCurrentPayload.asInstanceOf[ZipperImpl]
     else
-      ZipperImpl.make(null, theCurrentPayload, theCurrentCause)
+      ZipperImpl.make(null, theCurrentPayload, theCurrentCause, theSuppressedCause)
 
 
   //-------------------------------------------------------------------
@@ -488,7 +487,7 @@ private[turbolift] final class FiberImpl private (
     willContinueAsFailure(Cause.Cancelled)
 
 
-  final inline def willContinueAsFailure(cause: Cause): Unit =
+  final inline def willContinueAsFailure(cause: Cause.Singular): Unit =
     this.theCurrentTag = Tag.Unwind
     this.theCurrentStep = null.asInstanceOf[Step]
     this.theCurrentPayload = null
@@ -497,31 +496,6 @@ private[turbolift] final class FiberImpl private (
 
   final inline def willContinueAsFailure(throwable: Throwable): Unit =
     willContinueAsFailure(Cause.Thrown(throwable))
-
-
-  //-------------------------------------------------------------------
-  // Cause
-  //-------------------------------------------------------------------
-
-
-  final def pushCurrentCause(): Unit =
-    this.theSuppressedCause =
-      if theSuppressedCause == null then
-        theCurrentCause
-      else
-        Cause.Then(theSuppressedCause.nn, theCurrentCause.nn)
-    this.theCurrentCause = null
-
-
-  final def popSuppressedCause(): Cause =
-    theSuppressedCause match
-      case null => impossible
-      case Cause.Then(a, b) =>
-        this.theSuppressedCause = a
-        b
-      case c: Cause =>
-        this.theSuppressedCause = null
-        c
 
 
   //-------------------------------------------------------------------

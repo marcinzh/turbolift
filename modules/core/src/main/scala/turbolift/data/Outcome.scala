@@ -5,6 +5,11 @@ import scala.util.{Try, Success => TrySuccess, Failure => TryFailure}
 import Outcome.{Success, Failure}
 
 
+/** Represents a value computed by a *completed* fiber.
+ *
+ * Unlike [[Snap]], which refers to a *pending* fiber.
+ */
+
 sealed abstract class Outcome[+A]:
   final def map[B](f: A => B): Outcome[B] =
     this match
@@ -19,7 +24,7 @@ sealed abstract class Outcome[+A]:
   final def get: A =
     this match
       case Success(a) => a
-      case Failure(c) => throw c.toThrowable
+      case Failure(c) => throw c.last.toThrowable
 
   final def isSuccess: Boolean =
     this match
@@ -44,12 +49,12 @@ sealed abstract class Outcome[+A]:
   final def toTry: Try[A] =
     this match
       case Success(a) => TrySuccess(a)
-      case Failure(c) => TryFailure(c.toThrowable)
+      case Failure(c) => TryFailure(c.last.toThrowable)
 
   final def toEither: Either[Throwable, A] =
     this match
       case Success(a) => Right(a)
-      case Failure(c) => Left(c.toThrowable)
+      case Failure(c) => Left(c.last.toThrowable)
 
   final def toOption: Option[A] = toEither.toOption
     this match
@@ -59,17 +64,17 @@ sealed abstract class Outcome[+A]:
   final def toSnap: Snap[A] =
     this match
       case Success(a) => Snap.Success(a)
-      case Failure(c) => Snap.Failure(c)
+      case Failure(c) => c.toSnap
 
   final def run: A !! IO =
     this match
       case Success(a) => !!.pure(a)
-      case Failure(c) => IO.fail(c)
+      case Failure(c) => IO.failFromOutcome(c)
 
   final def flatRun[B, U](using ev: A <:< (B !! U)): B !! (U & IO) =
     this match
       case Success(a) => ev(a)
-      case Failure(c) => IO.fail(c)
+      case Failure(c) => IO.failFromOutcome(c)
 
 
 object Outcome:

@@ -37,7 +37,7 @@ class RaceTest extends Specification:
 
     "race many" >> {
       def sleep(n: Int) = IO.sleep(n).as(n)
-      case object E extends Exception("E")
+      case object E extends Exception { override def toString = productPrefix }
 
       "raceFirst" >> {
         "all succeed" >>{

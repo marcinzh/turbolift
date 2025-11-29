@@ -47,8 +47,8 @@ case object IO extends IO:
   def attemptEff[A, U <: IO](body: A !! U): Either[Throwable, A] !! U =
     snap(body).flatMap:
       case Snap.Success(a) => !!.pure(Right(a))
-      case Snap.Failure(Cause.Thrown(e)) => !!.pure(Left(e))
-      case s @ Snap.Failure(_) => unsnap(s)
+      case Snap.Failure(Cause.Thrown(e), _) => succeed(Left(e), None)
+      case Snap.Failure(c, s) => fail(c, s)
 
   @deprecated("Use attemptBlocking")
   def blockingAttempt[A](thunk: => A): Either[Throwable, A] !! IO = CC.intrinsic(_.intrinsicBlocking(() => thunk, isAttempt = true))
@@ -57,9 +57,21 @@ case object IO extends IO:
   //---------- Exceptions ----------
 
 
-  def fail(c: Cause): Nothing !! IO = CC.intrinsic(_.intrinsicFail(c))
+  /** Type-unsafe because of lack `IO` in the result type */
 
-  def raise(e: Throwable): Nothing !! IO = fail(Cause.Thrown(e))
+  //// experimental
+  def succeed[A](value: A, suppressed: Option[Cause]): A !! Any = CC.intrinsic(_.intrinsicSucceed(value, suppressed, reset = true))
+
+  //// experimental
+  def fail(cause: Cause.Singular, suppressed: Option[Cause]): Nothing !! Any = failExt(cause, suppressed, reset = true)
+
+  //// experimental
+  def failFromOutcome(cause: Cause): Nothing !! Any = { val (c, s) = cause.split; IO.failExt(c, s, reset = false) }
+
+  //// experimental
+  private def failExt(cause: Cause.Singular, suppressed: Option[Cause], reset: Boolean): Nothing !! Any = CC.intrinsic(_.intrinsicFail(cause, suppressed, reset))
+
+  def raise(e: Throwable): Nothing !! IO = failExt(Cause.Thrown(e), None, reset = false)
 
   def raiseFromOption[A](ee: Option[A])(e: => Throwable): A !! IO = ee.fold(raise(e))(!!.pure)
 
@@ -74,15 +86,16 @@ case object IO extends IO:
   def catchToTry[A, U <: IO](body: A !! U): Try[A] !! U =
     snap(body).flatMap:
       case Snap.Success(a) => !!.pure(TrySuccess(a))
-      case Snap.Failure(Cause.Thrown(e)) => !!.pure(TryFailure(e))
-      case s @ Snap.Failure(_) => unsnap(s)
+      case Snap.Failure(Cause.Thrown(e), _) => succeed(TryFailure(e), None)
+      case Snap.Failure(c, s) => fail(c, s)
 
   def catchAll[A, U <: IO](body: A !! U)(f: Throwable => A): A !! U = catchAllEff(body)(f.andThen(!!.pure))
 
   def catchAllEff[A, U <: IO](body: A !! U)(f: Throwable => A !! U): A !! U =
     snap(body).flatMap:
-      case Snap.Failure(Cause.Thrown(e)) => f(e)
-      case s => unsnap(s)
+      case Snap.Success(a) => !!.pure(a)
+      case Snap.Failure(Cause.Thrown(e), _) => f(e).flatMap(succeed(_, None))
+      case Snap.Failure(c, s) => fail(c, s)
 
   def catchSome[A, U <: IO](body: A !! U)(f: PartialFunction[Throwable, A]): A !! U = catchSomeEff(body)(f.andThen(!!.pure))
 
@@ -142,25 +155,25 @@ case object IO extends IO:
 
   def snap[A, U](body: A !! U): Snap[A] !! U = CC.intrinsic(_.intrinsicSnap(body))
 
-  def unsnap[A](aa: Snap[A]): A !! Any = CC.intrinsic(_.intrinsicUnsnap(aa))
-
-  //@#@ experimental
-  val restoreSuppressedCause: Unit !! Any = CC.intrinsic(_.intrinsicRestoreSuppressedCause)
+  def unsnap[A](snap: Snap[A]): A !! Any =
+    snap match
+      case Snap.Success(a) => !!.pure(a)
+      case Snap.Failure(c, s) => fail(c, s)
 
   def onSuccess[A, U](body: A !! U)(f: A => Unit !! U): A !! U =
     snap(body).flatMap:
       case Snap.Success(a) => f(a).as(a)
-      case s => unsnap(s)
+      case Snap.Failure(c, s) => fail(c, s)
 
   def onFailure[A, U](body: A !! U)(f: Cause => Unit !! U): A !! U =
     snap(body).flatMap:
       case Snap.Success(a) => !!.pure(a)
-      case s @ Snap.Failure(c) => f(c) &&! unsnap(s)
+      case Snap.Failure(c, s) => f(c) &&! fail(c, s)
 
   def onSomeFailure[A, U](body: A !! U)(f: PartialFunction[Cause, Unit !! U]) =
     snap(body).flatMap:
       case Snap.Success(a) => !!.pure(a)
-      case s @ Snap.Failure(c) => f.lift(c).getOrElse(!!.unit) &&! unsnap(s)
+      case Snap.Failure(c, s) => f.lift(c).getOrElse(!!.unit) &&! fail(c, s)
 
   def onAbort[A, U](body: A !! U)(f: (Any, Prompt) => Unit !! U): A !! U =
     onSomeFailure(body) { case c: Cause.Aborted => f(c.value, c.prompt) }
@@ -170,7 +183,6 @@ case object IO extends IO:
 
   def onCancel[A, U](body: A !! U)(comp: => Unit !! U): A !! U =
     onSomeFailure(body) { case Cause.Cancelled => comp }
-
 
 
   //---------- Time ----------

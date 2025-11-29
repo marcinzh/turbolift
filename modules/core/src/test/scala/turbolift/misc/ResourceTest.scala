@@ -120,7 +120,7 @@ class ResourceTest extends Specification:
         n <- v.get
       yield (n, e))
       .runIO
-      .===(Outcome.Success((123456, Snap.Failure(Cause.Then(Cause.Thrown(EX2), Cause.Thrown(EX1))))))
+      .===(Outcome.Success((123456, Snap.Failure(Cause.Thrown(EX1), Some(Cause.Thrown(EX2))))))
     }
   }
 

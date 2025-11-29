@@ -13,7 +13,7 @@ private[engine] sealed abstract class ZipperImpl extends Zipper.Unsealed:
     this match
       case Functor(payload, stack) => OpCascaded.restart(stack, payload)
       case Compute(comp) => comp
-      case Failure(c) => IO.fail(c)
+      case Failure(c) => IO.failFromOutcome(c)
 
 
   final override def toOption: Option[Any] =
@@ -65,7 +65,8 @@ private object ZipperCases:
 
 
 private object ZipperImpl:
-  def make(stack: Stack | Null, payload: Any, cause: Cause | Null): ZipperImpl =
-    cause match
-      case null => Functor(payload, if stack != null then stack else Stack.initial)
-      case cause: Cause => Failure(cause)
+  def make(stack: Stack | Null, payload: Any, cause: Cause.Singular | Null, suppressed: Option[Cause]): ZipperImpl =
+    if cause == null then
+      Functor(payload, if stack != null then stack else Stack.initial)
+    else
+      Failure(cause +> suppressed)

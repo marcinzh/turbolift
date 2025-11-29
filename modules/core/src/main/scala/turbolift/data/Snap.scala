@@ -7,11 +7,11 @@ import scala.util.{Try, Success => TrySuccess, Failure => TryFailure}
 import Snap.{Success, Failure}
 
 
-/** Like [[Outcome]], but the cause hase 1 extra case: `Aborted`.
+/** Represents a value computed by a pending fiber.
  *
- * [[Outcome]] is the final result of a completed fiber.
- * [[Snap]] is a "snapshot" of a pending fiber's execution:
- * it's either computing a value, or unwinding the stack.
+ * Unlike [[Outcome]], which refers to a *completed* fiber.
+ *
+ * [[Snap]] can be obtained with `IO.snap(computation)`.
  */
 
 sealed abstract class Snap[+A]:
@@ -28,7 +28,7 @@ sealed abstract class Snap[+A]:
   final def get: A =
     this match
       case Success(a) => a
-      case Failure(c) => throw c.toThrowable
+      case Failure(c, _) => throw c.toThrowable
 
   final def isSuccess: Boolean =
     this match
@@ -37,28 +37,28 @@ sealed abstract class Snap[+A]:
 
   final def isFailure: Boolean =
     this match
-      case Failure(_) => true
+      case Failure(_, _) => true
       case _ => false
 
   final def isCancelled: Boolean =
     this match
-      case Failure(Cause.Cancelled) => true
+      case Failure(Cause.Cancelled, _) => true
       case _ => false
 
   final def isThrown: Boolean =
     this match
-      case Failure(Cause.Thrown(_)) => true
+      case Failure(Cause.Thrown(_), _) => true
       case _ => false
 
   final def toTry: Try[A] =
     this match
       case Success(a) => TrySuccess(a)
-      case Failure(c) => TryFailure(c.toThrowable)
+      case Failure(c, _) => TryFailure(c.toThrowable)
 
   final def toEither: Either[Throwable, A] =
     this match
       case Success(a) => Right(a)
-      case Failure(c) => Left(c.toThrowable)
+      case Failure(c, _) => Left(c.toThrowable)
 
   final def toOption: Option[A] =
     this match
@@ -68,7 +68,7 @@ sealed abstract class Snap[+A]:
   final def toOutcome: Outcome[A] =
     this match
       case Success(a) => Outcome.Success(a)
-      case Failure(c) => Outcome.Failure(c)
+      case Failure(c, ot) => Outcome.Failure(c +> ot)
 
   final def run: A !! IO = IO.unsnap(this)
 
@@ -77,4 +77,9 @@ object Snap:
   val unit: Snap[Unit] = Snap.Success(())
 
   final case class Success[A](value: A) extends Snap[A]
-  final case class Failure(cause: Cause) extends Snap[Nothing]
+  final case class Failure(cause: Cause.Singular, suppressed: Option[Cause]) extends Snap[Nothing]
+
+  val Cancelled = Failure(Cause.Cancelled, None)
+
+  object Failure:
+    def apply(e: Throwable): Failure = Failure(Cause(e), None)
