@@ -8,8 +8,7 @@ type Halt = Int
 object Halt:
   inline val ContinueNoTick = 0
   inline val Continue       = 1
-  inline val Cancel         = 2
-  inline val Reset          = 3
-  inline val Become         = 4
-  inline val Yield          = 5
-  inline val Retire         = 6
+  inline val Reset          = 2
+  inline val Become         = 3
+  inline val Yield          = 4
+  inline val Retire         = 5

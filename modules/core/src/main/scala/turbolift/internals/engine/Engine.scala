@@ -118,11 +118,6 @@ private trait Engine extends Runnable:
         else
           doTickHigh()
 
-      case Halt.Cancel =>
-        //@#@TODO missing 1 tick
-        this.willContinueAsCancelled()
-        middleLoop()
-
       case Halt.Reset => doTickHigh()
 
       case _ => halt
@@ -472,9 +467,8 @@ private trait Engine extends Runnable:
 
           case FrameKind.SUPPRESS =>
             if this.cancellationCheck() then
-              Halt.Cancel
-            else
-              Halt.Continue
+              this.willContinueAsCancelled()
+            Halt.Continue
         end match
       else //// isIo
         theCurrentCause match
@@ -818,7 +812,8 @@ private trait Engine extends Runnable:
       become(racer)
     else
       //// Must have been cancelled meanwhile
-      Halt.Cancel
+      this.willContinueAsCancelled()
+      Halt.Continue
 
 
   final def intrinsicRaceSleep[A, U](comp: A !! U, length: Long, unit: TimeUnit): Halt =
@@ -836,7 +831,8 @@ private trait Engine extends Runnable:
       become(leftRacer)
     else
       //// Must have been cancelled meanwhile
-      Halt.Cancel
+      this.willContinueAsCancelled()
+      Halt.Continue
 
 
   final def intrinsicRaceFirst[A, U <: IO](comps: Iterable[A !! U]): Halt =
@@ -845,7 +841,8 @@ private trait Engine extends Runnable:
         Engine.raceFirstSeq(comps)
     else
       this.cancelBySelf()
-      Halt.Cancel
+      this.willContinueAsCancelled()
+      Halt.Continue
 
 
   final def intrinsicRaceAll[A, U <: IO](comps: Iterable[A !! U], isVoid: Boolean): Halt =
@@ -871,7 +868,8 @@ private trait Engine extends Runnable:
         become(leftRacer)
       else
         //// Must have been cancelled meanwhile
-        Halt.Cancel
+        this.willContinueAsCancelled()
+        Halt.Continue
     else
       //// Fallback to sequential
       this.willContinueEff(fallback)
@@ -900,7 +898,8 @@ private trait Engine extends Runnable:
         become(firstRacer)
       else
         //// Must have been cancelled meanwhile
-        Halt.Cancel
+        this.willContinueAsCancelled()
+        Halt.Continue
     else
       //// Fallback to sequential
       this.willContinueEff(fallback)
@@ -936,7 +935,8 @@ private trait Engine extends Runnable:
 
   final def intrinsicSelfCancel: Halt =
     this.cancelBySelf()
-    Halt.Cancel
+    this.willContinueAsCancelled()
+    Halt.Continue
 
 
   final def intrinsicEnvAsk[A](fun: Env => A): Halt =
@@ -988,14 +988,17 @@ private trait Engine extends Runnable:
       //// Ignoring `isCancellable` bcoz cancelling is by-self
       if isCancel then
         this.cancelBySelf()
-        Halt.Cancel
+        this.willContinueAsCancelled()
+        Halt.Continue
       else
         val zombie = new Blocker.Zombie(this)
         this.willContinuePure(null)
         if this.tryGetBlocked(zombie) then
           Halt.Retire
         else
-          Halt.Cancel
+          //// Must have been cancelled meanwhile
+          this.willContinueAsCancelled()
+          Halt.Continue
 
 
   final def intrinsicCurrentFiber(): Halt =
@@ -1024,7 +1027,9 @@ private trait Engine extends Runnable:
       blocker.block()
       Halt.Retire
     else
-      Halt.Cancel
+      //// Must have been cancelled meanwhile
+      this.willContinueAsCancelled()
+      Halt.Continue
 
 
   final def intrinsicSleep(length: Long, unit: TimeUnit): Halt =
@@ -1034,7 +1039,9 @@ private trait Engine extends Runnable:
       blocker.sleep(length, unit)
       Halt.Retire
     else
-      Halt.Cancel
+      //// Must have been cancelled meanwhile
+      this.willContinueAsCancelled()
+      Halt.Continue
 
 
   final def intrinsicSuppress[A, U](newValue: Boolean, body: Boolean => A !! U): Halt =

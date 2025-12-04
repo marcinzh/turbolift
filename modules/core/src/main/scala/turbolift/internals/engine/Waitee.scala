@@ -47,7 +47,8 @@ private[engine] abstract class Waitee extends AtomicBoolVH(false):
       spinReleaseBoth(fiber)
       a
     else
-      Halt.Cancel
+      fiber.willContinueAsCancelled()
+      Halt.Continue
 
 
   final private def spinAcquireBoth(fiber: FiberImpl): Boolean =
