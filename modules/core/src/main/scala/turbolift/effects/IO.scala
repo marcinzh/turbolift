@@ -119,12 +119,14 @@ case object IO extends IO:
 
 
   def guarantee[A, U](release: Unit !! U)(body: A !! U): A !! U =
-    guaranteeSnap[A, U](aa => release &&! unsnap(aa))(body)
+    uncancellableWith: restore =>
+      restore.snap(body).flatMap: s =>
+        release &&! unsnap(s)
 
-  def guaranteeSnap[A, U](release: Snap[A] => A !! U)(body: A !! U): A !! U =
-    uncancellable:
-      cancellableSnap(body)
-      .flatMap(release)
+  def guaranteeSnap[A, U](release: Snap[A] => Unit !! U)(body: A !! U): A !! U =
+    uncancellableWith: restore =>
+      restore.snap(body).flatMap: s =>
+        release(s) &&! unsnap(s)
 
   def bracket[A, B, U](acquire: A !! U, release: A => Unit !! U)(use: A => B !! U): B !! U =
     bracketSnap[A, B, U](acquire, (a, bb) => release(a) &&! unsnap(bb))(use)
@@ -133,9 +135,9 @@ case object IO extends IO:
     bracket(acquire, _ => release)(_ => use)
 
   def bracketSnap[A, B, U](acquire: A !! U, release: (A, Snap[B]) => B !! U)(use: A => B !! U): B !! U =
-    uncancellable:
+    uncancellableWith: restore =>
       acquire.flatMap: a =>
-        cancellableSnap(use(a))
+        restore.snap(use(a))
         .flatMap(release(a, _))
 
   def isCancellable: Boolean !! Any = !!.envAsk(_.isCancellable)
@@ -147,11 +149,12 @@ case object IO extends IO:
 
   def uncancellable[A, U](comp: A !! U): A !! U = CC.intrinsic(_.intrinsicSuppress(false, _ => comp))
 
-  def uncancellableWith[A, U](body: CancellabilityScope => A !! U): A !! U =
-    CC.intrinsic(_.intrinsicSuppress(false, x => body(CancellabilityScope(x))))
+  def uncancellableWith[A, U](body: RestoreCancellable => A !! U): A !! U =
+    CC.intrinsic(_.intrinsicSuppress(false, x => body(RestoreCancellable(x))))
 
-  final class CancellabilityScope(val wasCancellable: Boolean):
+  final class RestoreCancellable(val wasCancellable: Boolean):
     def apply[A, U](body: A !! U): A !! U = if wasCancellable then cancellable(body) else body
+    def snap[A, U](body: A !! U): Snap[A] !! U = if wasCancellable then cancellableSnap(body) else IO.snap(body)
 
   def snap[A, U](body: A !! U): Snap[A] !! U = CC.intrinsic(_.intrinsicSnap(body))
 

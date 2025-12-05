@@ -2,7 +2,7 @@ package turbolift.effects
 import java.io.{Closeable => JCloseable}
 import turbolift.{!!, Signature, Effect, Handler}
 import turbolift.Extensions._
-import turbolift.data.Resource
+import turbolift.data.{Resource, Snap}
 
 
 /** Signature of [[FinalizerEffect]].
@@ -40,9 +40,10 @@ trait FinalizerEffect[U] extends Effect[FinalizerSignature[U]] with FinalizerSig
   object handlers:
     def default[U]: Handler.IdId[enclosing.type, U] =
       Handler.fromFunction([A, V] => (comp: A !! (V & enclosing.type)) => {
-        underlying[U].handle(comp)
-        .onSuccess(_._2)
-        .map(_._1)
+        IO.uncancellableWith: restore =>
+          restore.snap(underlying[U].handle(comp)).flatMap:
+            case Snap.Success((a, s)) => s.as(a)
+            case Snap.Failure(c, s) => IO.fail(c, s)
       })
 
 
