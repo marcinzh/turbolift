@@ -1,5 +1,5 @@
 val ScalaLTS = "3.3.7"
-val ScalaNext = "3.7.2"
+val ScalaNext = "3.7.4"
 
 ThisBuild / organization := "io.github.marcinzh"
 ThisBuild / version := "0.123.0-SNAPSHOT"

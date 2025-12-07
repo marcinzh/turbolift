@@ -1,9 +1,9 @@
 package turbolift.internals.executor
-import java.util.concurrent.{Executors, ThreadFactory}
+import java.util.concurrent.{Executors, ScheduledExecutorService, ThreadFactory}
 
 
 private[internals] object Scheduler:
-  val instance = Executors.newSingleThreadScheduledExecutor(makeThreadFactory).nn
+  val instance: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor(makeThreadFactory).nn
 
   private def makeThreadFactory: ThreadFactory =
     new ThreadFactory:

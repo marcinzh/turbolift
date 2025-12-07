@@ -225,7 +225,7 @@ case object IO extends IO:
 
   val nanoTime: FiniteDuration !! IO = !!.impure(new FiniteDuration(System.nanoTime(), NANOSECONDS))
 
-  def instant: Instant !! IO = !!.impure(Instant.now().nn)
+  def instant: Instant !! IO = !!.impure[Instant](Instant.now().nn)
 
   def timed[A, U <: IO](comp: A !! U): (A, FiniteDuration) !! U =
     for
