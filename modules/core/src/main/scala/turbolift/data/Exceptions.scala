@@ -10,6 +10,8 @@ object Exceptions:
   
   final class Aborted(value: Any, prompt: Prompt) extends ControlThrowable
 
+  case object AmbiguousCause extends ControlThrowable
+
   final class Unhandled(throwable: Throwable) extends RuntimeException(throwable)
 
   final class TieTheKnot extends RuntimeException

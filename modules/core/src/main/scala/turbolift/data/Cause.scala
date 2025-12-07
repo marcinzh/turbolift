@@ -4,32 +4,55 @@ import scala.util.{Try, Failure => TryFailure}
 
 
 sealed abstract class Cause:
-  final def toTry: Try[Nothing] = TryFailure(last)
-  final def toEither: Either[Throwable, Nothing] = Left(last)
-  final def ++(that: Cause): Cause = Cause.Then(this, that)
-  final def &(that: Cause): Cause = Cause.Both(this, that)
-  
-  final def last: Throwable =
-    (this: @unchecked) match
-      case Cause.Thrown(x) => x
-      case Cause.Then(_, x) => x.last
-      case Cause.Both(_, x) => x.last
-      case Cause.Cancelled => Exceptions.Cancelled
-      case Cause.Aborted(x, p) => Exceptions.Aborted(x, p)
+  final def ||(that: Cause): Cause = Cause.Both(this, that)
+  final def &&(that: Cause): Cause = Cause.Then(this, that)
+  final def ^^(that: Cause): Cause = Cause.Then(that, this)
 
-  final def all: Vector[Throwable] =
-    (this: @unchecked) match
-      case Cause.Thrown(x) => Vector(x)
-      case Cause.Then(x, y) => x.all ++ y.all
-      case Cause.Both(x, y) => x.all ++ y.all
-      case Cause.Cancelled => Vector(Exceptions.Cancelled)
-      case Cause.Aborted(x, p) => Vector(Exceptions.Aborted(x, p))
+  final def last: Cause.Singular =
+    this match
+      case cause: Cause.Singular => cause
+      case Cause.Both(_, that) => that.last
+      case Cause.Then(_, that) => that.last
+
+  final def split: (Cause.Singular, Option[Cause]) =
+    this match
+      case cause: Cause.Singular => (cause, None)
+      case Cause.Both(_, _) => (Cause.Ambiguous, Some(this))
+      case Cause.Then(t1, t2) =>
+        val (c, ot3) = t2.split
+        (c, Some(ot3.fold(t1)(t1 && _)))
+
+  final def toSnap: Snap[Nothing] =
+    val (c, s) = split
+    Snap.Failure(c, s)
+
 
 object Cause:
-  def apply(e: Throwable): Cause = Thrown(e)
+  def apply(e: Throwable): Singular = Thrown(e)
 
-  case object Cancelled extends Cause
-  case class Thrown(throwable: Throwable) extends Cause
-  case class Aborted(value: Any, prompt: Prompt) extends Cause
-  case class Then(left: Cause, right: Cause) extends Cause
-  case class Both(left: Cause, right: Cause) extends Cause
+  case object Cancelled extends Singular
+  final case class Thrown(throwable: Throwable) extends Singular
+  final case class Aborted(value: Any, prompt: Prompt) extends Singular
+  final case class Both(left: Cause, right: Cause) extends Cause
+  final case class Then(left: Cause, right: Cause) extends Cause
+
+  val Ambiguous = Thrown(Exceptions.AmbiguousCause)
+
+
+  sealed abstract class Singular extends Cause:
+    final def toTry: Try[Nothing] = TryFailure(toThrowable)
+    final def toEither: Either[Throwable, Nothing] = Left(toThrowable)
+
+    final def toThrowable: Throwable =
+      this match
+        case Thrown(x) => x
+        case Cancelled => Exceptions.Cancelled
+        //@#@WTF Error: unreachable case
+        // case Aborted(x, p) => Exceptions.Aborted(x, p)
+        case c: Aborted => Exceptions.Aborted(c.value, c.prompt)
+
+    final def +>(suppressed: Option[Cause]): Cause =
+      (this, suppressed) match
+        case (Ambiguous, Some(p: Both)) => p
+        case (c, None) => c
+        case (c, Some(t)) => t && c

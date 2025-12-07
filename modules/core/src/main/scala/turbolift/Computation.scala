@@ -1,13 +1,13 @@
 package turbolift
 import scala.annotation.nowarn
 import scala.concurrent.duration.FiniteDuration
-import turbolift.effects.{ChoiceSignature, Alternative, IO, UnsafeIO, Each, Finalizer, FinalizerIO, Error}
+import turbolift.effects.{ChoiceSignature, Alternative, IO, Each, Finalizer, FinalizerIO, Error}
 import turbolift.internals.auxx.CanPartiallyHandle
 import turbolift.internals.executor.Executor
 import turbolift.internals.engine.{Tag, Env, FiberImpl, Halt}
 import turbolift.interpreter.Prompt
-import turbolift.data.Outcome
-import turbolift.io.{Fiber, Warp}
+import turbolift.data.{Outcome, Cause}
+import turbolift.io.{Fiber, Warp, Zipper}
 import turbolift.mode.Mode
 import turbolift.{ComputationCases => CC}
 
@@ -59,13 +59,13 @@ sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift]
    * being inherently sequential (e.g. `State.handlers.local` or `Error.handlers.first`).
    * In such case, `zipPar` behaves like `zip`.
    */
-  final def zipPar[B, U2 <: U](that: B !! U2): (A, B) !! U2 = zipWithPar(that)(Computation.pairCtorFun[A, B])
+  final def zipPar[B, U2 <: U](that: B !! U2): (A, B) !! U2 = IO.raceBoth(this, that)
 
   /** Like [[zip]], but followed by untupled `map`. */
   final def zipWith[B, C, U2 <: U](that: => B !! U2)(f: (A, B) => C): C !! U2 = flatMap(a => that.map(f(a, _)))
 
   /** Like [[zipPar]], but followed by untupled `map`. */
-  final def zipWithPar[B, C, U2 <: U](that: B !! U2)(f: (A, B) => C): C !! U2 = CC.intrinsic(_.intrinsicZipPar(this, that, f))
+  final def zipWithPar[B, C, U2 <: U](that: B !! U2)(f: (A, B) => C): C !! U2 = IO.raceBothWith(this, that)(f)
   
   /** Discards the result, and replaces it by given pure value. */
   final def as[B](value: B): B !! U = map(_ => value)
@@ -109,14 +109,14 @@ sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift]
    * Runs both computations parallelly, each in fresh fiber.
    * Once one of them finishes, the other is cancelled.
    */
-  final def |![A2 >: A, U2 <: U & IO](that: A2 !! U2): A2 !! U2 = CC.intrinsic(_.intrinsicOrPar(this, that))
+  final def |![A2 >: A, U2 <: U & IO](that: A2 !! U2): A2 !! U2 = IO.race(this, that)
 
   /** Sequential "or-else" operator.
    *
    * Runs the first computations in fresh fiber.
    * If it ends up cancelled, the second computation is run.
    */
-  final def ||![A2 >: A, U2 <: U & IO](that: => A2 !! U2): A2 !! U2 = CC.intrinsic(_.intrinsicOrSeq(this, () => that))
+  final def ||![A2 >: A, U2 <: U & IO](that: => A2 !! U2): A2 !! U2 = IO.orElse(this, that)
 
   /** Parallel version of `++!`. */
   final def +![A2 >: A, U2 <: U & ChoiceSignature](that: A2 !! U2): A2 !! U2 = Alternative.plusPar(this, that)
@@ -143,38 +143,39 @@ sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift]
   //---------- misc ----------
 
 
-  def when[U2 <: U](cond: A => Boolean)(comp: Unit !! U2): A !! U2 =
+  final def when[U2 <: U](cond: A => Boolean)(comp: Unit !! U2): A !! U2 =
     tapEff(a => if cond(a) then comp else !!.unit )
 
-  def whenEff[U2 <: U](cond: A => Boolean !! U2)(comp: Unit !! U2): A !! U2 =
+  final def whenEff[U2 <: U](cond: A => Boolean !! U2)(comp: Unit !! U2): A !! U2 =
     tapEff(a => cond(a).flatMap(if _ then comp else !!.unit))
 
-  def ifThen[U2 <: U](cond: A => Boolean)(comp: => Unit !! U2): Unit !! U2 =
+  final def ifThen[U2 <: U](cond: A => Boolean)(comp: => Unit !! U2): Unit !! U2 =
     flatMap(a => if cond(a) then comp else !!.unit)
 
-  def ifThenEff[U2 <: U](cond: A => Boolean !! U2)(comp: => Unit !! U2): Unit !! U2 =
+  final def ifThenEff[U2 <: U](cond: A => Boolean !! U2)(comp: => Unit !! U2): Unit !! U2 =
     flatMap(cond).flatMap(if _ then comp else !!.unit)
 
-  def ifThenElse[B, U2 <: U](cond: A => Boolean)(comp1: => B !! U2)(comp2: => B !! U2): B !! U2 =
+  final def ifThenElse[B, U2 <: U](cond: A => Boolean)(comp1: => B !! U2)(comp2: => B !! U2): B !! U2 =
     flatMap(a => if cond(a) then comp1 else comp2)
 
-  def ifThenElseEff[B, U2 <: U](cond: A => Boolean !! U2)(comp1: => B !! U2)(comp2: => B !! U2): B !! U2 =
+  final def ifThenElseEff[B, U2 <: U](cond: A => Boolean !! U2)(comp1: => B !! U2)(comp2: => B !! U2): B !! U2 =
     flatMap(cond).flatMap(if _ then comp1 else comp2)
-
 
 
   //---------- postfix syntax ----------
 
 
-  final def guarantee[U2 <: U](release: Unit !! U2): A !! U2 = !!.guarantee(release)(this)
+  final def guarantee[U2 <: U](release: Unit !! U2): A !! U2 = IO.guarantee(release)(this)
 
-  final def onSuccess[U2 <: U](f: A => Unit !! U2): A !! U2 = !!.onSuccess(this)(f)
+  final def onSuccess[U2 <: U](f: A => Unit !! U2): A !! U2 = IO.onSuccess(this)(f)
 
-  final def onAbort[U2 <: U](f: (Any, Prompt) => Unit !! U2): A !! U2 = !!.onAbort(this)(f)
+  final def onFailure[U2 <: U](f: Cause => Unit !! U2): A !! U2 = IO.onFailure(this)(f)
 
-  final def onFailure[U2 <: U](f: Throwable => Unit !! U2): A !! U2 = !!.onFailure(this)(f)
+  final def onException[U2 <: U](f: Throwable => Unit !! U2): A !! U2 = IO.onException(this)(f)
 
-  final def onCancel[U2 <: U](comp: Unit !! U2): A !! U2 = !!.onCancel(this)(comp)
+  final def onAbort[U2 <: U](f: (Any, Prompt) => Unit !! U2): A !! U2 = IO.onAbort(this)(f)
+
+  final def onCancel[U2 <: U](comp: Unit !! U2): A !! U2 = IO.onCancel(this)(comp)
 
 
   //---------- IO operations in postfix syntax ----------
@@ -183,14 +184,47 @@ sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift]
   /** Run this computation in a new fiber. */
   final def fork: Fiber[A, U] !! (U & IO & Warp) = Fiber.fork(this)
 
+  /** Run this computation in a new fiber. */
+  final def fork(name: String): Fiber[A, U] !! (U & IO & Warp) = Fiber.fork(name)(this)
+
   /** Like [[fork]], but the fiber is created as a child of specific warp, rather than the current warp. */
   final def forkAt(warp: Warp): Fiber[A, U] !! (U & IO) = Fiber.forkAt(warp)(this)
 
+  /** Like [[fork]], but the fiber is created as a child of specific warp, rather than the current warp. */
+  final def forkAt(warp: Warp, name: String): Fiber[A, U] !! (U & IO) = Fiber.forkAt(warp, name)(this)
+
+  /** Postfix alias of `IO.raceFibers`. */
+  final def raceFibers[B, V](that: B !! V): Either[(Zipper[A, U], Fiber[B, V]), (Fiber[A, U], Zipper[B, V])] !! (IO & Warp) = IO.raceFibers(this, that)
+
+  /** Postfix alias of `IO.executeOn`. */
   final def executeOn[U2 <: U & IO](exec: Executor): A !! U2 = IO.executeOn(exec)(this)
 
-  final def delay[U2 <: U & IO](millis: Long): A !! U2 = IO.delay(millis)(this)
+  /** Postfix alias of `IO.delay`. */
+  final def delay[U2 <: U & IO](millis: Long): A !! U2 = IO.delay(this, millis)
 
-  final def delay[U2 <: U & IO](duration: FiniteDuration): A !! U2 = IO.delay(duration)(this)
+  /** Postfix alias of `IO.delay`. */
+  final def delay[U2 <: U & IO](duration: FiniteDuration): A !! U2 = IO.delay(this, duration)
+
+  /** Postfix alias of `IO.timeout`. */
+  final def timeout[U2 <: U & IO](millis: Long): Option[A] !! U2 = IO.timeout(this, millis)
+
+  /** Postfix alias of `IO.timeout`. */
+  final def timeout[U2 <: U & IO](duration: FiniteDuration): Option[A] !! U2 = IO.timeout(this, duration)
+
+  /** Postfix alias of `IO.timeoutTo`. */
+  final def timeoutTo[A2 >: A, U2 <: U & IO](millis: Long)(fallback: => A2): A2 !! U2 = IO.timeoutTo(this, millis, fallback)
+
+  /** Postfix alias of `IO.timeoutTo`. */
+  final def timeoutTo[A2 >: A, U2 <: U & IO](duration: FiniteDuration)(fallback: => A2): A2 !! U2 = IO.timeoutTo(this, duration, fallback)
+
+  /** Postfix alias of `IO.timeoutToEff`. */
+  final def timeoutToEff[A2 >: A, U2 <: U & IO](millis: Long)(fallback: => A2 !! U2): A2 !! U2 = IO.timeoutToEff(this, millis, fallback)
+
+  /** Postfix alias of `IO.timeoutToEff`. */
+  final def timeoutToEff[A2 >: A, U2 <: U & IO](duration: FiniteDuration)(fallback: => A2 !! U2): A2 !! U2 = IO.timeoutToEff(this, duration, fallback)
+
+  /** Postfix alias of `IO.timed`. */
+  final def timed[U2 <: U & IO]: (A, FiniteDuration) !! U2 = IO.timed(this)
 
   /** Syntax for giving names to fibers. */
   final def named[A2 >: A, U2 <: U](name: String) = new Computation.NamedSyntax[A2, U2](this, name)
@@ -327,22 +361,6 @@ object Computation:
   def sequentially[A, U](body: A !! U): A !! U = parallellyIf(false)(body)
 
 
-  //---------- Bracket ----------
-
-
-  def guarantee[A, U](release: Unit !! U)(body: A !! U): A !! U = UnsafeIO.guarantee(release)(body)
-  def onSuccess[A, U](body: A !! U)(f: A => Unit !! U): A !! U = UnsafeIO.onSuccess(body)(f)
-  def onAbort[A, U](body: A !! U)(f: (Any, Prompt) => Unit !! U): A !! U = UnsafeIO.onAbort(body)(f)
-  def onFailure[A, U](body: A !! U)(f: Throwable => Unit !! U): A !! U = UnsafeIO.onFailure(body)(f)
-  def onCancel[A, U](body: A !! U)(comp: Unit !! U): A !! U = UnsafeIO.onCancel(body)(comp)
-
-  def bracket[A, B, U](acquire: A !! U, release: A => Unit !! U)(use: A => B !! U): B !! U =
-    UnsafeIO.bracket(acquire, release)(use)
-
-  def bracket[A, U](acquire: Unit !! U, release: Unit !! U)(use: A !! U): A !! U =
-    UnsafeIO.bracket(acquire, release)(use)
-
-
   //---------- Extensions ----------
 
 
@@ -358,7 +376,7 @@ object Computation:
     /** Runs the computation, provided that it requests IO effect only, or none at all. */
     def runIO(using mode: Mode = Mode.default): Outcome[A] = Executor.pick(mode).runSync(thiz, "")
 
-    def runAsync(using mode: Mode = Mode.default)(callback: Outcome[A] => Unit): Unit = Executor.pick(mode).runAsync(thiz, "", callback)
+    def runAsync(using mode: Mode = Mode.default)(callback: Outcome[A] => Unit): Unit = Executor.pick(mode).runAsync(thiz, callback, "")
 
     def runIOST: Outcome[A] = Executor.ST.runSync(thiz, "")
     def runIOMT: Outcome[A] = Executor.MT.runSync(thiz, "")
@@ -455,7 +473,7 @@ object Computation:
   object NamedSyntax:
     extension [A](thiz: NamedSyntax[A, IO])
       def runIO(using mode: Mode = Mode.default): Outcome[A] = Executor.pick(mode).runSync(thiz.comp, thiz.name)
-      def runAsync(using mode: Mode = Mode.default)(callback: Outcome[A] => Unit): Unit = Executor.pick(mode).runAsync(thiz.comp,thiz. name, callback)
+      def runAsync(using mode: Mode = Mode.default)(callback: Outcome[A] => Unit): Unit = Executor.pick(mode).runAsync(thiz.comp, callback, thiz.name)
 
 
 //@#@TEMP public bcoz inline bug

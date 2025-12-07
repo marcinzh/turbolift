@@ -22,7 +22,7 @@ private[internals] final class ZeroThreadedExecutor extends WaiterLink.Queue wit
     outcome
 
 
-  override def runAsync[A](comp: Computation[A, ?], name: String, callback: Outcome[A] => Unit): Unit =
+  override def runAsync[A](comp: Computation[A, ?], callback: Outcome[A] => Unit, name: String): Unit =
     callback(runSync(comp, name))
 
 

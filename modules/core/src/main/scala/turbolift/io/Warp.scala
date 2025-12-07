@@ -52,7 +52,7 @@ sealed trait Warp:
   final def fork[A, U](comp: A !! U): Fiber[A, U] !! (U & IO) = Fiber.forkAt(this)(comp)
 
   /** Create a child [[Fiber]]. */
-  final def fork[A, U](name: String)(comp: A !! U): Fiber[A, U] !! (U & IO) = Fiber.named(name).forkAt(this)(comp)
+  final def fork[A, U](name: String)(comp: A !! U): Fiber[A, U] !! (U & IO) = Fiber.forkAt(this, name)(comp)
 
   /** Create a child [[Warp]]. */
   final def spawn: Warp !! IO = spawn("")

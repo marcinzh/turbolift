@@ -4,29 +4,71 @@ import turbolift.effects.IO
 import turbolift.interpreter.Prompt
 import turbolift.internals.engine.stacked.Prompt
 import scala.util.{Try, Success => TrySuccess, Failure => TryFailure}
+import Snap.{Success, Failure}
 
+
+/** Represents a value computed by a pending fiber.
+ *
+ * Unlike [[Outcome]], which refers to a *completed* fiber.
+ *
+ * [[Snap]] can be obtained with `IO.snap(computation)`.
+ */
 
 sealed abstract class Snap[+A]:
-  final def toOutcome: Outcome[A] =
-    (this: @unchecked) match
-      case Snap.Success(a) => Outcome.Success(a)
-      case Snap.Failure(c) => Outcome.Failure(c)
-      case Snap.Cancelled => Outcome.Cancelled
-      case Snap.Aborted(a, p) => Outcome.Failure(Cause.Thrown(Exceptions.Aborted(a, p)))
+  final def map[B](f: A => B): Snap[B] =
+    this match
+      case Success(a) => Success(f(a))
+      case x: Failure => x
+
+  final def flatMap[B](f: A => Snap[B]): Snap[B] =
+    this match
+      case Success(a) => f(a)
+      case x: Failure => x
+
+  final def get: A =
+    this match
+      case Success(a) => a
+      case Failure(c, _) => throw c.toThrowable
+
+  final def isSuccess: Boolean =
+    this match
+      case Success(_) => true
+      case _ => false
+
+  final def isFailure: Boolean =
+    this match
+      case Failure(_, _) => true
+      case _ => false
+
+  final def isCancelled: Boolean =
+    this match
+      case Failure(Cause.Cancelled, _) => true
+      case _ => false
+
+  final def isThrown: Boolean =
+    this match
+      case Failure(Cause.Thrown(_), _) => true
+      case _ => false
 
   final def toTry: Try[A] =
-    (this: @unchecked) match
-      case Snap.Success(a) => TrySuccess(a)
-      case Snap.Failure(c) => c.toTry
-      case Snap.Cancelled => TryFailure(Exceptions.Cancelled)
-      case Snap.Aborted(a, p) => TryFailure(Exceptions.Aborted(a, p))
+    this match
+      case Success(a) => TrySuccess(a)
+      case Failure(c, _) => TryFailure(c.toThrowable)
 
   final def toEither: Either[Throwable, A] =
-    (this: @unchecked) match
-      case Snap.Success(a) => Right(a)
-      case Snap.Failure(c) => c.toEither
-      case Snap.Cancelled => Left(Exceptions.Cancelled)
-      case Snap.Aborted(a, p) => Left(Exceptions.Aborted(a, p))
+    this match
+      case Success(a) => Right(a)
+      case Failure(c, _) => Left(c.toThrowable)
+
+  final def toOption: Option[A] =
+    this match
+      case Success(a) => Some(a)
+      case _ => None
+
+  final def toOutcome: Outcome[A] =
+    this match
+      case Success(a) => Outcome.Success(a)
+      case Failure(c, ot) => Outcome.Failure(c +> ot)
 
   final def run: A !! IO = IO.unsnap(this)
 
@@ -34,10 +76,10 @@ sealed abstract class Snap[+A]:
 object Snap:
   val unit: Snap[Unit] = Snap.Success(())
 
-  def fromOutcome[A](aa: Outcome[A]): Snap[A] = aa.toSnap
-
-  sealed abstract class NotSuccess extends Snap[Nothing]
   final case class Success[A](value: A) extends Snap[A]
-  final case class Failure(cause: Cause) extends NotSuccess
-  final case class Aborted(value: Any, prompt: Prompt) extends NotSuccess
-  case object Cancelled extends NotSuccess
+  final case class Failure(cause: Cause.Singular, suppressed: Option[Cause]) extends Snap[Nothing]
+
+  val Cancelled = Failure(Cause.Cancelled, None)
+
+  object Failure:
+    def apply(e: Throwable): Failure = Failure(Cause(e), None)

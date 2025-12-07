@@ -2,7 +2,7 @@ package turbolift.effects
 import java.io.{Closeable => JCloseable}
 import turbolift.{!!, Signature, Effect, Handler}
 import turbolift.Extensions._
-import turbolift.data.{Resource, Trail}
+import turbolift.data.{Resource, Snap}
 
 
 /** Signature of [[FinalizerEffect]].
@@ -40,39 +40,44 @@ trait FinalizerEffect[U] extends Effect[FinalizerSignature[U]] with FinalizerSig
   object handlers:
     def default[U]: Handler.IdId[enclosing.type, U] =
       Handler.fromFunction([A, V] => (comp: A !! (V & enclosing.type)) => {
-        underlying[U].handle(comp)
-        .onSuccess((_, trail) => trail.run)
-        .map(_._1)
+        IO.uncancellableWith: restore =>
+          restore.snap(underlying[U].handle(comp)).flatMap:
+            case Snap.Success((a, s)) => s.as(a)
+            case Snap.Failure(c, s) => IO.fail(c, s)
       })
 
-    private def underlying[U]: Handler[Identity, (_, Trail[U]), enclosing.type, U] =
-      new impl.Stateful[Identity, (_, Trail[U]), U] with impl.Parallel.ForkJoin with FinalizerSignature[U]:
-        override type Local = Trail[U]
-        override def onInitial: Local !! Any = !!.pure(Trail.empty)
+
+    private def seq[U](a: Unit !! U, b: Unit !! U): Unit !! U = a.guarantee(b)
+
+    private def underlying[U]: Handler[Identity, (_, Unit !! U), enclosing.type, U] =
+      new impl.Stateful[Identity, (_, Unit !! U), U] with impl.Parallel.ForkJoin with FinalizerSignature[U]:
+        override type Local = Unit !! U
+        override def onInitial: Local !! Any = !!.pure(!!.unit)
         override def onReturn(a: Unknown, s: Local): (Unknown, Local) !! Any = !!.pure((a, s))
-        override def onAbort(s: Local): Unit !! ThisEffect = s.run
+        override def onAbort(s: Local): Unit !! ThisEffect = s
 
         override def onRestart(a_s: (Unknown, Local)): Unknown !! ThisEffect =
           val (a, s) = a_s
-          Local.modify(s ++ _).as(a)
+          Local.modify(seq(s, _)).as(a)
 
         override def onOnce(aa: (Unknown, Local)): Option[Unknown] = Some(aa._1)
 
         override def onZip[A, B, C](a_s: (A, Local), b_s: (B, Local), k: (A, B) => C): (C, Local) =
           val (a, s1) = a_s
           val (b, s2) = b_s
-          (k(a, b), s1 & s2)
+          (k(a, b), s1 &! s2)
 
-        override def onFork(s: Local): (Local, Local) = (s, Trail.empty)
+        override def onFork(s: Local): (Local, Local) = (s, !!.unit)
 
-        override def register(release: Unit !! U): Unit !! ThisEffect = Local.modify(Trail(release) ++ _)
+        override def register(release: Unit !! U): Unit !! ThisEffect = Local.modify(seq(release, _))
 
         override def use[A](acquire: A !! U, release: A => Unit !! U): A !! ThisEffect =
-          UnsafeIO.uncancellable:
+          IO.uncancellable:
             acquire.flatMap: a =>
-              Local.modify(Trail(release(a)) ++ _).as(a)
+              Local.modify(seq(release(a), _)).as(a)
 
       .toHandler
+
 
 
 object FinalizerEffect:

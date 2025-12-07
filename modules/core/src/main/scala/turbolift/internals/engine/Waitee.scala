@@ -6,27 +6,22 @@ import turbolift.internals.engine.concurrent.atomic.AtomicBoolVH
 /** Either Fiber, Warp, Queque or anything from `turbolift.internals.engine.concurrent.*` */
 
 private[engine] abstract class Waitee extends AtomicBoolVH(false):
-  protected var firstWaiter: FiberImpl | Null = null
-  protected var varyingBits: Byte = 0
+  protected var theFirstWaiter: FiberImpl | Null = null
+  protected var theCancellation: Byte = 0
+  protected[engine] var theCompletion: Boolean = false
 
 
   //-------------------------------------------------------------------
   // bits
   //-------------------------------------------------------------------
 
+  private[engine] final def isPending: Boolean = !theCompletion
+  private[engine] final def isPendingAndNotCancelled: Boolean = !theCompletion & (theCancellation == 0)
+  private[engine] final def isCancellationSignalled: Boolean = theCancellation >= Bits.Cancellation_Signalled
+  private[engine] final def isCancellationUnlatched: Boolean = theCancellation == Bits.Cancellation_Signalled
 
-  private[engine] final def isPending: Boolean = Bits.isPending(varyingBits)
-  private[engine] final def isCancellationSignalled: Boolean = Bits.isCancellationSignalled(varyingBits)
-  private[engine] final def isPendingAndNotCancelled: Boolean = Bits.isPendingAndNotCancelled(varyingBits)
-  private[engine] final def isCancellationUnlatched: Boolean = Bits.isCancellationUnlatched(varyingBits)
-
-
-  inline protected final def setCompletionToSuccess(): Unit =
-    varyingBits = (varyingBits | Bits.Completion_Success_bug).toByte
-
-  //// meaningful only in FiberImpl, but moved here for convenience
-  inline protected final def setCancellationLatch(): Unit =
-    varyingBits = (varyingBits | Bits.Cancellation_Latch_Bug).toByte
+  inline protected final def setCompletion(): Unit =
+    this.theCompletion = true
 
 
   //-------------------------------------------------------------------
@@ -52,7 +47,8 @@ private[engine] abstract class Waitee extends AtomicBoolVH(false):
       spinReleaseBoth(fiber)
       a
     else
-      Halt.Cancel
+      fiber.willContinueAsCancelled()
+      Halt.Continue
 
 
   final private def spinAcquireBoth(fiber: FiberImpl): Boolean =
@@ -67,7 +63,7 @@ private[engine] abstract class Waitee extends AtomicBoolVH(false):
     @tailrec def loop(): Boolean =
       if fiber.spinAcquire() then
         if fiber.isCancellationUnlatched then
-          fiber.setCancellationLatch()
+          this.theCancellation = Bits.Cancellation_Latched
           fiber.spinRelease()
           false
         else
@@ -106,9 +102,9 @@ private[engine] abstract class Waitee extends AtomicBoolVH(false):
 
   //// Called only from `atomically` blocks
   final def subscribeWaiterUnsync(waiter: FiberImpl): Unit =
-    val x = firstWaiter
+    val x = theFirstWaiter
     if x == null then
-      firstWaiter = waiter
+      theFirstWaiter = waiter
       waiter.linkWaiterWithSelf()
     else
       x.insertWaiterBeforeSelf(waiter)
@@ -117,7 +113,7 @@ private[engine] abstract class Waitee extends AtomicBoolVH(false):
 
   //// Simpler `subscribeWaiterUnsync`, for when the caller knows that waiter list is empty
   final def subscribeFirstWaiterUnsync(waiter: FiberImpl): Unit =
-    firstWaiter = waiter
+    theFirstWaiter = waiter
     waiter.linkWaiterWithSelf()
     waiter.theWaiteeOrBlocker = this
 
@@ -149,35 +145,35 @@ private[engine] abstract class Waitee extends AtomicBoolVH(false):
 
 
   final def finallyNotifyAllWaiters(): Unit =
-    val x = firstWaiter
+    val x = theFirstWaiter
     if x != null then
-      firstWaiter = null
+      theFirstWaiter = null
       Waitee.notifyAllWaiters(x)
 
 
   final def removeFirstWaiter(): Unit =
-    val x = firstWaiter.nn
-    val y = x.nextWaiter
+    val x = theFirstWaiter.nn
+    val y = x.theNextWaiter
     if x == y then
-      firstWaiter = null
+      theFirstWaiter = null
     else
-      firstWaiter = y.nn.asFiber
+      theFirstWaiter = y.nn.asFiber
     x.removeWaiterAtSelf()
 
 
   private final def removeWaiterAnywhere(waiter: FiberImpl): Unit =
     if waiter.isWaiterLinkedWithSelf then
-      firstWaiter = null
+      theFirstWaiter = null
     else
-      if waiter == firstWaiter then
-        firstWaiter = waiter.nextWaiter.nn.asFiber
+      if waiter == theFirstWaiter then
+        theFirstWaiter = waiter.theNextWaiter.nn.asFiber
       waiter.removeWaiterAtSelf()
 
 
 private[engine] object Waitee:
   private def notifyAllWaiters(first: FiberImpl): Unit =
     @tailrec def loop(waiter: FiberImpl): Unit =
-      val next = waiter.nextWaiter.nn.asFiber
+      val next = waiter.theNextWaiter.nn.asFiber
       waiter.resume()
       if next != first then
         loop(next)

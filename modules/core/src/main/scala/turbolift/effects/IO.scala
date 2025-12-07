@@ -1,11 +1,15 @@
 package turbolift.effects
 import java.time.Instant
+import java.util.concurrent.TimeUnit
 import scala.util.{Try, Success => TrySuccess, Failure => TryFailure}
 import scala.concurrent.duration._
 import turbolift.{!!, Signature, ComputationCases => CC}
 import turbolift.data.{Cause, Snap}
+import turbolift.io.{Zipper, Fiber, Warp, OnceVar}
 import turbolift.interpreter.Prompt
 import turbolift.internals.executor.Executor
+import turbolift.io.Zipper
+import turbolift.Extensions._
 
 
 sealed trait IO extends Signature
@@ -43,8 +47,8 @@ case object IO extends IO:
   def attemptEff[A, U <: IO](body: A !! U): Either[Throwable, A] !! U =
     snap(body).flatMap:
       case Snap.Success(a) => !!.pure(Right(a))
-      case Snap.Failure(c) => !!.pure(c.toEither)
-      case aa: Snap.NotSuccess => unsnap(aa)
+      case Snap.Failure(Cause.Thrown(e), _) => succeed(Left(e), None)
+      case Snap.Failure(c, s) => fail(c, s)
 
   @deprecated("Use attemptBlocking")
   def blockingAttempt[A](thunk: => A): Either[Throwable, A] !! IO = CC.intrinsic(_.intrinsicBlocking(() => thunk, isAttempt = true))
@@ -53,9 +57,21 @@ case object IO extends IO:
   //---------- Exceptions ----------
 
 
-  def fail(c: Cause): Nothing !! IO = unsnap(Snap.Failure(c))
+  /** Type-unsafe because of lack `IO` in the result type */
 
-  def raise(e: Throwable): Nothing !! IO = fail(Cause.Thrown(e))
+  //// experimental
+  def succeed[A](value: A, suppressed: Option[Cause]): A !! Any = CC.intrinsic(_.intrinsicSucceed(value, suppressed, reset = true))
+
+  //// experimental
+  def fail(cause: Cause.Singular, suppressed: Option[Cause]): Nothing !! Any = failExt(cause, suppressed, reset = true)
+
+  //// experimental
+  def failFromOutcome(cause: Cause): Nothing !! Any = { val (c, s) = cause.split; IO.failExt(c, s, reset = false) }
+
+  //// experimental
+  private def failExt(cause: Cause.Singular, suppressed: Option[Cause], reset: Boolean): Nothing !! Any = CC.intrinsic(_.intrinsicFail(cause, suppressed, reset))
+
+  def raise(e: Throwable): Nothing !! IO = failExt(Cause.Thrown(e), None, reset = false)
 
   def raiseFromOption[A](ee: Option[A])(e: => Throwable): A !! IO = ee.fold(raise(e))(!!.pure)
 
@@ -69,16 +85,17 @@ case object IO extends IO:
 
   def catchToTry[A, U <: IO](body: A !! U): Try[A] !! U =
     snap(body).flatMap:
-      case Snap.Success(a) => !!.pure(TrySuccess(a)) 
-      case Snap.Failure(c) => !!.pure(c.toTry) 
-      case aa: Snap.NotSuccess => unsnap(aa)
+      case Snap.Success(a) => !!.pure(TrySuccess(a))
+      case Snap.Failure(Cause.Thrown(e), _) => succeed(TryFailure(e), None)
+      case Snap.Failure(c, s) => fail(c, s)
 
   def catchAll[A, U <: IO](body: A !! U)(f: Throwable => A): A !! U = catchAllEff(body)(f.andThen(!!.pure))
 
   def catchAllEff[A, U <: IO](body: A !! U)(f: Throwable => A !! U): A !! U =
     snap(body).flatMap:
-      case Snap.Failure(e) => f(e.last)
-      case aa => unsnap(aa)
+      case Snap.Success(a) => !!.pure(a)
+      case Snap.Failure(Cause.Thrown(e), _) => f(e).flatMap(succeed(_, None))
+      case Snap.Failure(c, s) => fail(c, s)
 
   def catchSome[A, U <: IO](body: A !! U)(f: PartialFunction[Throwable, A]): A !! U = catchSomeEff(body)(f.andThen(!!.pure))
 
@@ -97,49 +114,108 @@ case object IO extends IO:
   //---------- Finalization ----------
 
 
-  def guarantee[A, U <: IO](release: Unit !! U)(body: A !! U): A !! U = UnsafeIO.guarantee(release)(body)
+  //// Functions defined in this section don't introduce `IO` to the result, despite being defined
+  //// in the `IO` module. It was decided so, because finalizers may run effects not polluted by `IO`.
 
-  def guaranteeSnap[A, U <: IO](release: Snap[A] => A !! U)(body: A !! U): A !! U = UnsafeIO.guaranteeSnap(release)(body)
 
-  def bracket[A, B, U <: IO](acquire: A !! U, release: A => Unit !! U)(use: A => B !! U): B !! U = UnsafeIO.bracket(acquire, release)(use)
+  def guarantee[A, U](release: Unit !! U)(body: A !! U): A !! U =
+    uncancellableWith: restore =>
+      restore.snap(body).flatMap: s =>
+        release &&! unsnap(s)
 
-  def bracket[A, U <: IO](acquire: Unit !! U, release: Unit !! U)(use: A !! U): A !! U = UnsafeIO.bracket(acquire, release)(use)
+  def guaranteeSnap[A, U](release: Snap[A] => Unit !! U)(body: A !! U): A !! U =
+    uncancellableWith: restore =>
+      restore.snap(body).flatMap: s =>
+        release(s) &&! unsnap(s)
 
-  def bracketSnap[A, B, U <: IO](acquire: A !! U, release: (A, Snap[B]) => B !! U)(use: A => B !! U): B !! U = UnsafeIO.bracketSnap(acquire, release)(use)
+  def bracket[A, B, U](acquire: A !! U, release: A => Unit !! U)(use: A => B !! U): B !! U =
+    bracketSnap[A, B, U](acquire, (a, bb) => release(a) &&! unsnap(bb))(use)
 
-  def cancellable[A, U <: IO](comp: A !! U): A !! U = UnsafeIO.cancellable(comp)
+  def bracket[A, U](acquire: Unit !! U, release: Unit !! U)(use: A !! U): A !! U =
+    bracket(acquire, _ => release)(_ => use)
 
-  def cancellableSnap[A, U <: IO](comp: A !! U): Snap[A] !! U = UnsafeIO.cancellableSnap(comp)
+  def bracketSnap[A, B, U](acquire: A !! U, release: (A, Snap[B]) => B !! U)(use: A => B !! U): B !! U =
+    uncancellableWith: restore =>
+      acquire.flatMap: a =>
+        restore.snap(use(a))
+        .flatMap(release(a, _))
 
-  def uncancellable[A, U <: IO](comp: A !! U): A !! U = UnsafeIO.uncancellable(comp)
+  def isCancellable: Boolean !! Any = !!.envAsk(_.isCancellable)
 
-  def uncancellableWith[A, U <: IO](body: UnsafeIO.CancellabilityScope => A !! U): A !! U = UnsafeIO.uncancellableWith(body)
+  def cancellable[A, U](comp: A !! U): A !! U = CC.intrinsic(_.intrinsicSuppress(true, _ => comp))
 
-  def isCancellable: Boolean !! IO = UnsafeIO.isCancellable
+  //@#@TODO fuse
+  def cancellableSnap[A, U](comp: A !! U): Snap[A] !! U = snap(cancellable(comp))
 
-  def snap[A, U <: IO](body: A !! U): Snap[A] !! U = UnsafeIO.snap(body)
+  def uncancellable[A, U](comp: A !! U): A !! U = CC.intrinsic(_.intrinsicSuppress(false, _ => comp))
 
-  def unsnap[A](aa: Snap[A]): A !! IO = UnsafeIO.unsnap(aa)
+  def uncancellableWith[A, U](body: RestoreCancellable => A !! U): A !! U =
+    CC.intrinsic(_.intrinsicSuppress(false, x => body(RestoreCancellable(x))))
 
-  def onSuccess[A, U <: IO](body: A !! U)(f: A => Unit !! U): A !! U = UnsafeIO.onSuccess(body)(f)
+  final class RestoreCancellable(val wasCancellable: Boolean):
+    def apply[A, U](body: A !! U): A !! U = if wasCancellable then cancellable(body) else body
+    def snap[A, U](body: A !! U): Snap[A] !! U = if wasCancellable then cancellableSnap(body) else IO.snap(body)
 
-  def onAbort[A, U <: IO](body: A !! U)(f: (Any, Prompt) => Unit !! U): A !! U = UnsafeIO.onAbort(body)(f)
+  def snap[A, U](body: A !! U): Snap[A] !! U = CC.intrinsic(_.intrinsicSnap(body))
 
-  def onFailure[A, U <: IO](body: A !! U)(f: Throwable => Unit !! U): A !! U = UnsafeIO.onFailure(body)(f)
+  def unsnap[A](snap: Snap[A]): A !! Any =
+    snap match
+      case Snap.Success(a) => !!.pure(a)
+      case Snap.Failure(c, s) => fail(c, s)
 
-  def onCancel[A, U <: IO](body: A !! U)(comp: Unit !! U): A !! U = UnsafeIO.onCancel(body)(comp)
+  def onSuccess[A, U](body: A !! U)(f: A => Unit !! U): A !! U =
+    snap(body).flatMap:
+      case Snap.Success(a) => f(a).as(a)
+      case Snap.Failure(c, s) => fail(c, s)
+
+  def onFailure[A, U](body: A !! U)(f: Cause => Unit !! U): A !! U =
+    snap(body).flatMap:
+      case Snap.Success(a) => !!.pure(a)
+      case Snap.Failure(c, s) => f(c) &&! fail(c, s)
+
+  def onSomeFailure[A, U](body: A !! U)(f: PartialFunction[Cause, Unit !! U]) =
+    snap(body).flatMap:
+      case Snap.Success(a) => !!.pure(a)
+      case Snap.Failure(c, s) => f.lift(c).getOrElse(!!.unit) &&! fail(c, s)
+
+  def onAbort[A, U](body: A !! U)(f: (Any, Prompt) => Unit !! U): A !! U =
+    onSomeFailure(body) { case c: Cause.Aborted => f(c.value, c.prompt) }
+
+  def onException[A, U](body: A !! U)(f: Throwable => Unit !! U): A !! U =
+    onSomeFailure(body) { case Cause.Thrown(e) => f(e) }
+
+  def onCancel[A, U](body: A !! U)(comp: => Unit !! U): A !! U =
+    onSomeFailure(body) { case Cause.Cancelled => comp }
 
 
   //---------- Time ----------
 
 
-  def sleep(millis: Long): Unit !! IO = CC.intrinsic(_.intrinsicSleep(millis))
+  def sleep(millis: Long): Unit !! IO = CC.intrinsic(_.intrinsicSleep(millis, TimeUnit.MILLISECONDS))
 
   def sleep(duration: FiniteDuration): Unit !! IO = CC.intrinsic(_.intrinsicSleep(duration.length, duration.unit))
 
-  def delay[A, U <: IO](millis: Long)(comp: A !! U): A !! U = sleep(millis) &&! comp
+  def delay[A, U <: IO](comp: A !! U, millis: Long): A !! U = sleep(millis) &&! comp
 
-  def delay[A, U <: IO](duration: FiniteDuration)(comp: A !! U): A !! U = sleep(duration) &&! comp
+  def delay[A, U <: IO](comp: A !! U, duration: FiniteDuration): A !! U = sleep(duration) &&! comp
+
+  def timeout[A, U <: IO](comp: A !! U, millis: Long): Option[A] !! U =
+    CC.intrinsic(_.intrinsicRaceSleep(comp, millis, TimeUnit.MILLISECONDS))
+
+  def timeout[A, U <: IO](comp: A !! U, duration: FiniteDuration): Option[A] !! U =
+    CC.intrinsic(_.intrinsicRaceSleep(comp, duration.length, duration.unit))
+
+  def timeoutTo[A, U <: IO](comp: A !! U, millis: Long, fallback: => A): A !! U =
+    timeout(comp, millis).map(_.getOrElse(fallback))
+
+  def timeoutTo[A, U <: IO](comp: A !! U, duration: FiniteDuration, fallback: => A): A !! U =
+    timeout(comp, duration).map(_.getOrElse(fallback))
+
+  def timeoutToEff[A, U <: IO](comp: A !! U, millis: Long, fallback: => A !! U): A !! U =
+    timeout(comp, millis).flatMap(_.fold(fallback)(!!.pure))
+
+  def timeoutToEff[A, U <: IO](comp: A !! U, duration: FiniteDuration, fallback: => A !! U): A !! U =
+    timeout(comp, duration).flatMap(_.fold(fallback)(!!.pure))
 
   val nowRaw: Long !! IO = !!.impure(System.currentTimeMillis())
 
@@ -149,7 +225,7 @@ case object IO extends IO:
 
   val nanoTime: FiniteDuration !! IO = !!.impure(new FiniteDuration(System.nanoTime(), NANOSECONDS))
 
-  def instant: Instant !! IO = !!.impure(Instant.now().nn)
+  def instant: Instant !! IO = !!.impure[Instant](Instant.now().nn)
 
   def timed[A, U <: IO](comp: A !! U): (A, FiniteDuration) !! U =
     for
@@ -160,6 +236,49 @@ case object IO extends IO:
     yield (a, d)
 
 
+  //---------- Race ----------
+
+
+  def race[A, B, U <: IO](lhs: A !! U, rhs: A !! U): A !! U = raceEither(lhs, rhs).map(_.merge)
+
+  def raceEither[A, B, U <: IO](lhs: A !! U, rhs: B !! U): Either[A, B] !! U = CC.intrinsic(_.intrinsicRaceEither(lhs, rhs))
+
+  def raceBoth[A, B, U](lhs: A !! U, rhs: B !! U): (A, B) !! U = raceBothWith(lhs, rhs)(pairCtorFun[A, B])
+
+  def raceBothWith[A, B, C, U](lhs: A !! U, rhs: B !! U)(f: (A, B) => C): C !! U = CC.intrinsic(_.intrinsicRaceBothWith(lhs, rhs, f))
+
+  def raceFirst[A, U <: IO](comps: Iterable[A !! U]): A !! U = CC.intrinsic(_.intrinsicRaceFirst(comps))
+
+  def raceAll[A, U](comps: Iterable[A !! U]): Vector[A] !! U = CC.intrinsic(_.intrinsicRaceAll(comps, isVoid = false))
+
+  def raceAllVoid[U](comps: Iterable[Unit !! U]): Unit !! U = CC.intrinsic(_.intrinsicRaceAll(comps, isVoid = true))
+
+  def raceOne[A, U <: IO](comp: A !! U): Option[A] !! U = CC.intrinsic(_.intrinsicRaceOne(comp))
+
+  def orElse[A, U <: IO](lhs: A !! U, rhs: => A !! U): A !! U =
+    IO.raceOne(lhs).flatMap:
+      case Some(a) => !!.pure(a)
+      case None => rhs
+
+  def either[A, B, U <: IO](lhs: A !! U, rhs: => B !! U): Either[A, B] !! U =
+    IO.raceOne(lhs).flatMap:
+      case Some(a) => !!.pure(Left(a))
+      case None => rhs.map(Right(_))
+
+  def raceFibers[A, B, U, V](comp1: A !! U, comp2: B !! V): Either[(Zipper[A, U], Fiber[B, V]), (Fiber[A, U], Zipper[B, V])] !! (IO & Warp) =
+    for
+      ovar <- OnceVar.create[Either[(Zipper[A, U], Fiber[B, V]), (Fiber[A, U], Zipper[B, V])]]
+      fib1 <- Fiber.forkIdle[A, U](null, "Left")
+      fib2 <- Fiber.forkIdle[B, V](null, "Right")
+      _ = fib1.unsafeStart(comp1, zipp => ovar.unsafePut(Left((zipp, fib2))))
+      _ = fib2.unsafeStart(comp2, zipp => ovar.unsafePut(Right((fib1, zipp))))
+      x <- ovar.get
+    yield x
+
+  private def pairCtorFun[A, B]: (A, B) => (A, B) = pairCtorVal.asInstanceOf[(A, B) => (A, B)]
+  private val pairCtorVal: (Any, Any) => Any = (_, _)
+
+
   //---------- Others ----------
 
 
@@ -167,68 +286,7 @@ case object IO extends IO:
 
   def executeOn[A, U <: IO](exec: Executor)(body: A !! U): A !! U = CC.intrinsic(_.intrinsicExecOn(exec, body))
 
-  val cancel: Nothing !! IO = unsnap(Snap.Cancelled)
+  val cancel: Nothing !! IO = CC.intrinsic(_.intrinsicSelfCancel)
 
   val yeld: Unit !! IO = CC.intrinsic(_.intrinsicYield)
 
-
-/** Some [[IO]] operations with [[IO]] effect removed from the signature.
- *
- * Provided because in some circumstances they may be safely considered as [[IO]]-free.
- */
-object UnsafeIO:
-  def guarantee[A, U](release: Unit !! U)(body: A !! U): A !! U =
-    guaranteeSnap[A, U](aa => release &&! unsnap(aa))(body)
-
-  def guaranteeSnap[A, U](release: Snap[A] => A !! U)(body: A !! U): A !! U =
-    uncancellable:
-      cancellableSnap(body)
-      .flatMap(release)
-
-  def bracket[A, B, U](acquire: A !! U, release: A => Unit !! U)(use: A => B !! U): B !! U =
-    bracketSnap[A, B, U](acquire, (a, bb) => release(a) &&! unsnap(bb))(use)
-
-  def bracket[A, U](acquire: Unit !! U, release: Unit !! U)(use: A !! U): A !! U =
-    bracket(acquire, _ => release)(_ => use)
-
-  def bracketSnap[A, B, U](acquire: A !! U, release: (A, Snap[B]) => B !! U)(use: A => B !! U): B !! U =
-    uncancellable:
-      acquire.flatMap: a =>
-        cancellableSnap(use(a))
-        .flatMap(release(a, _))
-
-  def cancellable[A, U](comp: A !! U): A !! U = CC.intrinsic(_.intrinsicSuppress(true, _ => comp))
-
-  def uncancellable[A, U](comp: A !! U): A !! U = CC.intrinsic(_.intrinsicSuppress(false, _ => comp))
-
-  def uncancellableWith[A, U](body: CancellabilityScope => A !! U): A !! U =
-    CC.intrinsic(_.intrinsicSuppress(false, x => body(CancellabilityScope(x))))
-
-  final class CancellabilityScope(val wasCancellable: Boolean):
-    def apply[A, U](body: A !! U): A !! U = if wasCancellable then cancellable(body) else body
-
-  def isCancellable: Boolean !! Any = !!.envAsk(_.isCancellable)
-
-  //@#@TODO fuse
-  def cancellableSnap[A, U](comp: A !! U): Snap[A] !! U = snap(cancellable(comp))
-
-  def snap[A, U](body: A !! U): Snap[A] !! U = CC.intrinsic(_.intrinsicSnap(body))
-
-  def unsnap[A](aa: Snap[A]): A !! Any = CC.intrinsic(_.intrinsicUnsnap(aa))
-
-  def onSnapSome[A, U](body: A !! U)(f: PartialFunction[Snap[A], Unit !! U]) = 
-    snap(body).flatMap(ss => f.lift(ss).getOrElse(!!.unit) &&! unsnap(ss))
-
-  def onSuccess[A, U](body: A !! U)(f: A => Unit !! U): A !! U =
-    onSnapSome(body) { case Snap.Success(a) => f(a) }
-
-  def onAbort[A, U](body: A !! U)(f: (Any, Prompt) => Unit !! U): A !! U =
-    //@#@WTF unreachable case
-    // onSnapSome(body) { case Snap.Aborted(x, p) => f(x, p) }
-    onSnapSome(body) { case ss: Snap.Aborted => f(ss.value, ss.prompt) }
-
-  def onFailure[A, U](body: A !! U)(f: Throwable => Unit !! U): A !! U =
-    onSnapSome(body) { case Snap.Failure(c) => f(c.last) }
-
-  def onCancel[A, U](body: A !! U)(comp: Unit !! U): A !! U =
-    onSnapSome(body) { case Snap.Cancelled => comp }

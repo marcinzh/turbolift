@@ -22,8 +22,8 @@ Runnable with [`scala-cli`](https://scala-cli.virtuslab.org/).
 > Turbolift requires **Java 11** or newer.
 
 ```scala
-//> using scala "3.3.6"
-//> using dep "io.github.marcinzh::turbolift-core:0.122.0"
+//> using scala "3.3.7"
+//> using dep "io.github.marcinzh::turbolift-core:0.124.0"
 import turbolift.!!
 import turbolift.effects.{Reader, State, Error}
 
@@ -54,9 +54,9 @@ import turbolift.effects.{Reader, State, Error}
 Same, but with [bindless](modules/bindless) syntax extension (`async/await` alike):
 
 ```scala
-//> using scala "3.3.6"
-//> using dep "io.github.marcinzh::turbolift-core:0.122.0"
-//> using dep "io.github.marcinzh::turbolift-bindless:0.122.0"
+//> using scala "3.3.7"
+//> using dep "io.github.marcinzh::turbolift-core:0.124.0"
+//> using dep "io.github.marcinzh::turbolift-bindless:0.124.0"
 import turbolift.!!
 import turbolift.effects.{Reader, State, Error}
 import turbolift.bindless._
@@ -90,8 +90,8 @@ Same as the first example, but using monomorphized effect instances:
 - 👎 Slightly more verbose, since effect instance definitions are required (e.g. `case object MyEffect extends SomeEffect`).
 
 ```scala
-//> using scala "3.3.6"
-//> using dep "io.github.marcinzh::turbolift-core:0.122.0"
+//> using scala "3.3.7"
+//> using dep "io.github.marcinzh::turbolift-core:0.124.0"
 import turbolift.!!
 import turbolift.effects.{ReaderEffect, StateEffect, ErrorEffect}
 
@@ -133,11 +133,11 @@ sbt examples/run
 ## Usage in SBT
 
 ```scala
-libraryDependencies += "io.github.marcinzh" %% "turbolift-core" % "0.122.0"
+libraryDependencies += "io.github.marcinzh" %% "turbolift-core" % "0.124.0"
 ```
 
 Optionally, for the [bindless](modules/bindless) syntax extension:
 
 ```scala
-libraryDependencies += "io.github.marcinzh" %% "turbolift-bindless" % "0.122.0"
+libraryDependencies += "io.github.marcinzh" %% "turbolift-bindless" % "0.124.0"
 ```
