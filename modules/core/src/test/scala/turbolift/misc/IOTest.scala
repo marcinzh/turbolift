@@ -4,7 +4,7 @@ import org.specs2.mutable._
 import turbolift.!!
 import turbolift.effects.{IO, ErrorEffect}
 import turbolift.data.{Outcome, Cause}
-import turbolift.io.AtomicVar
+import turbolift.io.{AtomicVar, OnceVar}
 import turbolift.internals.executor.Executor
 import Auxx._
 
@@ -73,6 +73,27 @@ class IOTest extends Specification:
       .warpCancel
       .runIO
       .===(Outcome.Success(42))
+    }
+
+    "fork & Thread.interrupt" >>{
+      (for
+        ovar <- OnceVar[Thread]
+        fib <-
+          IO.blocking:
+            ovar.unsafePut(Thread.currentThread().nn)
+            Thread.sleep(1000)
+            42
+          .fork
+        thread <- ovar.get
+        _ <- IO.sleep(10)
+        _ <- IO.sync(thread.interrupt())
+        zipp <- fib.await
+        outcome = zipp.getIO
+      yield outcome)
+      .warp
+      .runIO match
+        case Outcome.Success(Outcome.Failure(Cause.Thrown(_: InterruptedException))) => success
+        case x => failure(x.toString)
     }
   }
 
