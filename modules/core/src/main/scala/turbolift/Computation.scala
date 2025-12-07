@@ -376,7 +376,7 @@ object Computation:
     /** Runs the computation, provided that it requests IO effect only, or none at all. */
     def runIO(using mode: Mode = Mode.default): Outcome[A] = Executor.pick(mode).runSync(thiz, "")
 
-    def runAsync(using mode: Mode = Mode.default)(callback: Outcome[A] => Unit): Unit = Executor.pick(mode).runAsync(thiz, "", callback)
+    def runAsync(using mode: Mode = Mode.default)(callback: Outcome[A] => Unit): Unit = Executor.pick(mode).runAsync(thiz, callback, "")
 
     def runIOST: Outcome[A] = Executor.ST.runSync(thiz, "")
     def runIOMT: Outcome[A] = Executor.MT.runSync(thiz, "")
@@ -473,7 +473,7 @@ object Computation:
   object NamedSyntax:
     extension [A](thiz: NamedSyntax[A, IO])
       def runIO(using mode: Mode = Mode.default): Outcome[A] = Executor.pick(mode).runSync(thiz.comp, thiz.name)
-      def runAsync(using mode: Mode = Mode.default)(callback: Outcome[A] => Unit): Unit = Executor.pick(mode).runAsync(thiz.comp,thiz. name, callback)
+      def runAsync(using mode: Mode = Mode.default)(callback: Outcome[A] => Unit): Unit = Executor.pick(mode).runAsync(thiz.comp, callback, thiz.name)
 
 
 //@#@TEMP public bcoz inline bug

@@ -14,7 +14,7 @@ trait Executor extends ExecutionContext:
 
   private[turbolift] def resume(fiber: FiberImpl): Unit
   def runSync[A](comp: Computation[A, ?], name: String = ""): Outcome[A]
-  def runAsync[A](comp: Computation[A, ?], name: String, callback: Outcome[A] => Unit): Unit
+  def runAsync[A](comp: Computation[A, ?], callback: Outcome[A] => Unit, name: String = ""): Unit
 
 
 object Executor:
