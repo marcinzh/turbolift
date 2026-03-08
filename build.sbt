@@ -27,13 +27,12 @@ ThisBuild / publish / skip := (scalaVersion.value != ScalaLTS)
 
 val Deps = {
   val specs2_v = "5.4.0"
-  val cps_v = "1.1.2"
+  val cps_v = "1.3.1"
   object deps {
     val specs2_core = "org.specs2" %% "specs2-core" % specs2_v % "test"
     val specs2_extra = "org.specs2" %% "specs2-matcher-extra" % specs2_v % "test"
     val jol = "org.openjdk.jol" % "jol-core" % "0.17"
     val cps = "io.github.dotty-cps-async" %% "dotty-cps-async" % cps_v
-    val cps_next = "io.github.dotty-cps-async" %% "dotty-cps-async-next" % cps_v
   }
   deps
 }
@@ -70,11 +69,10 @@ lazy val bindless = project
     case ScalaLTS => "turbolift-bindless"
     case ScalaNext => "turbolift-bindless-next"
   }))
-  .settings(libraryDependencies += (scalaVersion.value match {
-    case ScalaLTS => Deps.cps
-    case ScalaNext => Deps.cps_next
-  }))
-  .settings(libraryDependencies += Deps.specs2_core)
+  .settings(libraryDependencies ++= Seq(
+    Deps.cps,
+    Deps.specs2_core,
+  ))
   .settings(licenses += ("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")))
   .dependsOn(core)
 
