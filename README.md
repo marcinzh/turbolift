@@ -24,7 +24,7 @@ Runnable with [`scala-cli`](https://scala-cli.virtuslab.org/).
 
 ```scala
 //> using scala "3.3.7"
-//> using dep "io.github.marcinzh::turbolift-core:0.124.0"
+//> using dep "io.github.marcinzh::turbolift-core:0.126.0"
 import turbolift.!!
 import turbolift.effects.{ReaderEffect, StateEffect, ErrorEffect}
 
@@ -61,8 +61,8 @@ Same, but with [bindless](modules/bindless) syntax extension (`async/await` alik
 
 ```scala
 //> using scala "3.3.7"
-//> using dep "io.github.marcinzh::turbolift-core:0.124.0"
-//> using dep "io.github.marcinzh::turbolift-bindless:0.124.0"
+//> using dep "io.github.marcinzh::turbolift-core:0.126.0"
+//> using dep "io.github.marcinzh::turbolift-bindless:0.126.0"
 import turbolift.!!
 import turbolift.effects.{ReaderEffect, StateEffect, ErrorEffect}
 import turbolift.bindless._
@@ -104,11 +104,11 @@ sbt examples/run
 ## Usage in SBT
 
 ```scala
-libraryDependencies += "io.github.marcinzh" %% "turbolift-core" % "0.124.0"
+libraryDependencies += "io.github.marcinzh" %% "turbolift-core" % "0.126.0"
 ```
 
 Optionally, for the [bindless](modules/bindless) syntax extension:
 
 ```scala
-libraryDependencies += "io.github.marcinzh" %% "turbolift-bindless" % "0.124.0"
+libraryDependencies += "io.github.marcinzh" %% "turbolift-bindless" % "0.126.0"
 ```
