@@ -12,7 +12,6 @@ ThisBuild / scalacOptions ++= Seq(
   "-Xfatal-warnings",
   "-release", "11",
 )
-ThisBuild / javacOptions ++= Seq("--release", "11")
 ThisBuild / scalacOptions += {
   if (VersionNumber(scalaVersion.value).matchesSemVer(SemanticSelector(">=3.4.0")))
     "-Xkind-projector:underscores"
