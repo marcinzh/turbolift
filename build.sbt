@@ -1,5 +1,5 @@
 val ScalaLTS = "3.3.7"
-val ScalaNext = "3.7.4"
+val ScalaNext = "3.8.2"
 
 ThisBuild / organization := "io.github.marcinzh"
 ThisBuild / version := "0.125.0-SNAPSHOT"
@@ -9,9 +9,14 @@ ThisBuild / scalacOptions ++= Seq(
   "-deprecation",
   "-feature",
   "-unchecked",
-  "-Xfatal-warnings",
-  "-release", "11",
+  "-Werror",
 )
+ThisBuild / scalacOptions ++= {
+  if (VersionNumber(scalaVersion.value).matchesSemVer(SemanticSelector(">=3.8.0")))
+    Seq("-release", "17")
+  else
+    Seq("-release", "11")
+}
 ThisBuild / scalacOptions += {
   if (VersionNumber(scalaVersion.value).matchesSemVer(SemanticSelector(">=3.4.0")))
     "-Xkind-projector:underscores"
