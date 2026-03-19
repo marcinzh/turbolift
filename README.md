@@ -57,7 +57,8 @@ import turbolift.effects.{ReaderEffect, StateEffect, ErrorEffect}
 
 &nbsp;
 
-Same, but with [bindless](modules/bindless) syntax extension (`async/await` alike):
+Same, but with [bindless](modules/bindless) syntax extension.
+Similar to `async/await`, or Rust's `?` operator.
 
 ```scala
 //> using scala "3.3.7"
@@ -75,8 +76,8 @@ import turbolift.bindless._
 
   val program =
     `do`:
-      val a = State.get[Int].!
-      val b = Reader.ask[Int].!
+      val a = State.get.!
+      val b = Reader.ask.!
       val c =
         if b != 0
         then a / b
