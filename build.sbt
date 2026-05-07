@@ -27,7 +27,7 @@ ThisBuild / publish / skip := (scalaVersion.value != ScalaLTS)
 
 val Deps = {
   val specs2_v = "5.4.0"
-  val cps_v = "1.3.1"
+  val cps_v = "1.3.2"
   object deps {
     val specs2_core = "org.specs2" %% "specs2-core" % specs2_v % "test"
     val specs2_extra = "org.specs2" %% "specs2-matcher-extra" % specs2_v % "test"
