@@ -18,8 +18,7 @@ class ChannelTest extends Specification:
           _ <- channel.put(42)
           a <- channel.get
         yield a)
-        .runIO
-        .===(Outcome.Success(42))
+        .runSync === Outcome.Success(42)
       }
 
       "put put get get" >>{
@@ -30,8 +29,7 @@ class ChannelTest extends Specification:
           a <- channel.get
           b <- channel.get
         yield (a, b))
-        .runIO
-        .===(Outcome.Success((1, 2)))
+        .runSync === Outcome.Success((1, 2))
       }
 
       "put get put get" >>{
@@ -42,8 +40,7 @@ class ChannelTest extends Specification:
           _ <- channel.put(2)
           b <- channel.get
         yield (a, b))
-        .runIO
-        .===(Outcome.Success((1, 2)))
+        .runSync === Outcome.Success((1, 2))
       }
 
       "tryPut tryGet" >>{
@@ -52,8 +49,7 @@ class ChannelTest extends Specification:
           a <- channel.tryPut(42)
           b <- channel.tryGet
         yield (a, b))
-        .runIO
-        .===(Outcome.Success((true, Some(42))))
+        .runSync === Outcome.Success((true, Some(42)))
       }
 
       "tryGet tryPut" >>{
@@ -62,8 +58,7 @@ class ChannelTest extends Specification:
           a <- channel.tryGet
           b <- channel.tryPut(42)
         yield (a, b))
-        .runIO
-        .===(Outcome.Success((None, true)))
+        .runSync === Outcome.Success((None, true))
       }
     }
 
@@ -74,8 +69,7 @@ class ChannelTest extends Specification:
           _ <- channel.put(42)
           a <- channel.get
         yield a)
-        .runIO
-        .===(Outcome.Success(42))
+        .runSync === Outcome.Success(42)
       }
 
       "put put get get" >>{
@@ -86,8 +80,7 @@ class ChannelTest extends Specification:
           a <- channel.get
           b <- channel.get
         yield (a, b))
-        .runIO
-        .===(Outcome.Success((1, 2)))
+        .runSync === Outcome.Success((1, 2))
       }
 
       "put get put get" >>{
@@ -98,8 +91,7 @@ class ChannelTest extends Specification:
           _ <- channel.put(2)
           b <- channel.get
         yield (a, b))
-        .runIO
-        .===(Outcome.Success((1, 2)))
+        .runSync === Outcome.Success((1, 2))
       }
     }
 
@@ -109,8 +101,7 @@ class ChannelTest extends Specification:
           channel <- Channel.synchronous[Int]
           a <- channel.put(42) &! (IO.sleep(10) &&! channel.get)
         yield a)
-        .runIO
-        .===(Outcome.Success(42))
+        .runSync === Outcome.Success(42)
       }
 
       "get &! put" >>{
@@ -118,8 +109,7 @@ class ChannelTest extends Specification:
           channel <- Channel.synchronous[Int]
           a <- channel.get &<! (IO.sleep(10) &&! channel.put(42))
         yield a)
-        .runIO
-        .===(Outcome.Success(42))
+        .runSync === Outcome.Success(42)
       }
 
       "tryPut tryGet" >>{
@@ -128,8 +118,7 @@ class ChannelTest extends Specification:
           a <- channel.tryPut(42)
           b <- channel.tryGet
         yield (a, b))
-        .runIO
-        .===(Outcome.Success((false, None)))
+        .runSync === Outcome.Success((false, None))
       }
     }
   }
@@ -150,8 +139,7 @@ class ChannelTest extends Specification:
           n <- v.get
         yield (a, b, n))
         .warpAwait
-        .runIO
-        .===(Outcome.Success((1, 2, 213)))
+        .runSync === Outcome.Success((1, 2, 213))
       }
 
       "block on get" >>{
@@ -170,8 +158,7 @@ class ChannelTest extends Specification:
           n <- v.get
         yield (a, b, n))
         .warpAwait
-        .runIO
-        .===(Outcome.Success((1, 2, 24153)))
+        .runSync === Outcome.Success((1, 2, 24153))
       }
     }
 
@@ -189,8 +176,7 @@ class ChannelTest extends Specification:
           n <- v.get
         yield (a, b, n))
         .warpAwait
-        .runIO
-        .===(Outcome.Success((1, 2, 2413)))
+        .runSync === Outcome.Success((1, 2, 2413))
       }
 
       "block on get" >>{
@@ -209,8 +195,7 @@ class ChannelTest extends Specification:
           n <- v.get
         yield (a, b, n))
         .warpAwait
-        .runIO
-        .===(Outcome.Success((1, 2, 2413)))
+        .runSync === Outcome.Success((1, 2, 2413))
       }
     }
   }

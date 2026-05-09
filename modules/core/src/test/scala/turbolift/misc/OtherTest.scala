@@ -32,8 +32,7 @@ class OtherTest extends Specification:
       yield ())
       .warp
       .handleWith(handler)
-      .runIO
-      .===(result)
+      .runSync === result
     }
 
     "fork2" >>{
@@ -43,7 +42,6 @@ class OtherTest extends Specification:
         _ <- W.tell(4)
       yield ())
       .handleWith(handler)
-      .runIO
-      .===(result)
+      .runSync === result
     }
   }

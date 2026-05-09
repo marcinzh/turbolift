@@ -20,8 +20,7 @@ class ZipperTest extends Specification:
           a <- zip.run
         yield a)
         .warp
-        .runIO
-        .===(Outcome.Success(42))
+        .runSync === Outcome.Success(42)
       }
 
       "handleIO + get" >>{
@@ -31,8 +30,7 @@ class ZipperTest extends Specification:
           a = zip.handleIO.map(_.get)
         yield a)
         .warp
-        .runIO
-        .===(Outcome.Success(Outcome.Success(42)))
+        .runSync === Outcome.Success(Outcome.Success(42))
       }
 
       "get" >>{
@@ -42,8 +40,7 @@ class ZipperTest extends Specification:
           a = zip.get
         yield a)
         .warp
-        .runIO
-        .===(Outcome.Success(42))
+        .runSync === Outcome.Success(42)
       }
 
       "getIO" >>{
@@ -53,8 +50,7 @@ class ZipperTest extends Specification:
           oa = zip.getIO
         yield oa)
         .warp
-        .runIO
-        .===(Outcome.Success(Outcome.Success(42)))
+        .runSync === Outcome.Success(Outcome.Success(42))
       }
     }
   }
@@ -68,8 +64,7 @@ class ZipperTest extends Specification:
         zip <- fib.await
       yield zip.outcome)
       .warp
-      .runIO
-      .===(Outcome.Success(Outcome.Cancelled))
+      .runSync === Outcome.Success(Outcome.Cancelled)
     }
 
     "implicit fiber" >>{
@@ -80,8 +75,7 @@ class ZipperTest extends Specification:
         zip <- fib.await
       yield zip.outcome)
       .warp
-      .runIO
-      .===(Outcome.Success(Outcome.Success(())))
+      .runSync === Outcome.Success(Outcome.Success(()))
     }
   }
 
@@ -100,8 +94,7 @@ class ZipperTest extends Specification:
       yield a)
       .handleWith(E.handlers.all)
       .warp
-      .runIO
-      .===(Outcome.Success(Left(List("A", "B"))))
+      .runSync === Outcome.Success(Left(List("A", "B")))
     }
 
     "with Writer" >>{
@@ -118,8 +111,7 @@ class ZipperTest extends Specification:
       yield a)
       .handleWith(W.handler.justState)
       .warp
-      .runIO
-      .===(Outcome.Success(List("1", "A", "B", "2")))
+      .runSync === Outcome.Success(List("1", "A", "B", "2"))
     }
   }
 

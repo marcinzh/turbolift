@@ -60,7 +60,7 @@ class AbortTest extends Specification:
         .map(_.toOutcome)
       n <- v.get
     yield (a, n))
-    .runIO
+    .runSync
 
   "Nop"    >>{ prog(Mode.Nop)    === Outcome.Success((Outcome.Success(Right(())), 321)) }
   "Error"  >>{ prog(Mode.Error)  === Outcome.Success((Outcome.Success(Left("OMG")), 21)) }

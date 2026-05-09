@@ -16,7 +16,7 @@ class CoroutineTest extends Specification:
           !!.pure("bye")
         a <- coro.resume
       yield a)
-      .runIO === Outcome.Success(Left("bye"))
+      .runSync === Outcome.Success(Left("bye"))
     }
 
     "1 yield" >>{
@@ -27,7 +27,7 @@ class CoroutineTest extends Specification:
         a <- coro.resume
         b <- coro.resume
       yield (a, b))
-      .runIO === Outcome.Success((Right(42), Left("bye")))
+      .runSync === Outcome.Success((Right(42), Left("bye")))
     }
 
     "2 yields" >>{
@@ -40,7 +40,7 @@ class CoroutineTest extends Specification:
         b <- coro.resume
         c <- coro.resume
       yield (a, b, c))
-      .runIO === Outcome.Success((Right(42), Right(1337), Left("bye")))
+      .runSync === Outcome.Success((Right(42), Right(1337), Left("bye")))
     }
 
     "exit" >>{
@@ -50,7 +50,7 @@ class CoroutineTest extends Specification:
           !!.pure("bye")
         a <- coro.resume
       yield a)
-      .runIO === Outcome.Success(Left("omg"))
+      .runSync === Outcome.Success(Left("omg"))
     }
 
     "yield & exit" >>{
@@ -63,6 +63,6 @@ class CoroutineTest extends Specification:
         a <- coro.resume
         b <- coro.resume
       yield (a, b))
-      .runIO === Outcome.Success((Right(42), Left("omg")))
+      .runSync === Outcome.Success((Right(42), Left("omg")))
     }
   }

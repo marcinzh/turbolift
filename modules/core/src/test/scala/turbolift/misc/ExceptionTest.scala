@@ -15,15 +15,15 @@ class ExceptionTest extends Specification:
     def bad3 = IO.raise(E)
 
     "throw" >> {
-      "impure(throw)"  >>{bad1.runIO match { case Outcome.Failure(Cause.Thrown(_: Unhandled)) => success; case x => failure(x.toString) }}
-      "IO.sync(throw)" >>{bad2.runIO === Outcome.Failure(Cause.Thrown(E)) }
-      "IO.raise"       >>{bad3.runIO === Outcome.Failure(Cause.Thrown(E)) }
+      "impure(throw)"  >>{bad1.runSync match { case Outcome.Failure(Cause.Thrown(_: Unhandled)) => success; case x => failure(x.toString) }}
+      "IO.sync(throw)" >>{bad2.runSync === Outcome.Failure(Cause.Thrown(E)) }
+      "IO.raise"       >>{bad3.runSync === Outcome.Failure(Cause.Thrown(E)) }
     }
 
     "catchToEither" >> {
-      "pure"           >>{IO.catchToEither(!!.pure(42)).runIO === Outcome.Success(Right(42)) }
-      "IO.sync(throw)" >>{IO.catchToEither(bad2).runIO === Outcome.Success(Left(E)) }
-      "IO.raise"       >>{IO.catchToEither(bad3).runIO === Outcome.Success(Left(E)) }
+      "pure"           >>{IO.catchToEither(!!.pure(42)).runSync === Outcome.Success(Right(42)) }
+      "IO.sync(throw)" >>{IO.catchToEither(bad2).runSync === Outcome.Success(Left(E)) }
+      "IO.raise"       >>{IO.catchToEither(bad3).runSync === Outcome.Success(Left(E)) }
     }
   }
 
@@ -37,15 +37,15 @@ class ExceptionTest extends Specification:
 
     "accumulate" >> {
       "IO.raise" >>{
-        IO.raise(E1).guarantee(IO.raise(E2)).runIO === Outcome.Failure(C12)
+        IO.raise(E1).guarantee(IO.raise(E2)).runSync === Outcome.Failure(C12)
       }
 
       "IO.sync(throw)" >>{
-        IO.sync(throw E1).guarantee(IO.sync(throw E2)).runIO === Outcome.Failure(C12)
+        IO.sync(throw E1).guarantee(IO.sync(throw E2)).runSync === Outcome.Failure(C12)
       }
 
       "Error.raise" >>{
-        (E.raise(()).guarantee(IO.raise(E2)).handleWith(E.handler).runIO: @unchecked) match
+        (E.raise(()).guarantee(IO.raise(E2)).handleWith(E.handler).runSync: @unchecked) match
           case Outcome.Failure(Cause.Then(Cause.Aborted(Left(()), _), C2)) => success
           case o => failure(o.toString)
       }
@@ -53,7 +53,7 @@ class ExceptionTest extends Specification:
 
     "reset" >> {
       "catchToEither" >>{
-        IO.catchToEither(IO.raise(E1)).guarantee(IO.raise(E2)).runIO === Outcome.Failure(C2)
+        IO.catchToEither(IO.raise(E1)).guarantee(IO.raise(E2)).runSync === Outcome.Failure(C2)
       }
     }
   }

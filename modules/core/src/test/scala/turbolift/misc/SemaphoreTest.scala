@@ -16,8 +16,7 @@ class SemaphoreTest extends Specification:
         semaphore <- Semaphore(1)
         _ <- semaphore.acquire(1)
       yield ())
-      .runIO
-      .===(Outcome.Success(()))
+      .runSync === Outcome.Success(())
     }
 
     "release" >>{
@@ -26,8 +25,7 @@ class SemaphoreTest extends Specification:
         _ <- semaphore.release(1)
         _ <- semaphore.acquire(1)
       yield ())
-      .runIO
-      .===(Outcome.Success(()))
+      .runSync === Outcome.Success(())
     }
 
     "use" >>{
@@ -35,8 +33,7 @@ class SemaphoreTest extends Specification:
         semaphore <- Semaphore(1)
         a <- semaphore.use(1)(!!.pure(42))
       yield a)
-      .runIO
-      .===(Outcome.Success(42))
+      .runSync === Outcome.Success(42)
     }
   }
 
@@ -53,8 +50,7 @@ class SemaphoreTest extends Specification:
           yield ()
         n <- v.get
       yield n)
-      .runIO
-      .===(Outcome.Success(12))
+      .runSync === Outcome.Success(12)
     }
 
     "order" >>{
@@ -76,8 +72,7 @@ class SemaphoreTest extends Specification:
           yield ()
         n <- v.get
       yield n)
-      .runIO
-      .===(Outcome.Success(12034))
+      .runSync === Outcome.Success(12034)
     }
 
     "partial releases" >>{
@@ -99,8 +94,7 @@ class SemaphoreTest extends Specification:
           yield ()
         n <- v.get
       yield n)
-      .runIO
-      .===(Outcome.Success(31425))
+      .runSync === Outcome.Success(31425)
     }
 
     "cancel first waiter" >>{
@@ -118,7 +112,6 @@ class SemaphoreTest extends Specification:
           yield ()
         n <- v.get
       yield n)
-      .runIO
-      .===(Outcome.Success(324))
+      .runSync === Outcome.Success(324)
     }
   }

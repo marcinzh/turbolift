@@ -91,7 +91,7 @@ class PolyEffectTest extends Specification:
     prog
     .handleWith(S1.handler(10))
     .handleWith(S2.handler(100))
-    .runIO.toEither.===(Right(((Left(E), 11), 101)))
+    .runSync.toEither.===(Right(((Left(E), 11), 101)))
   }
 
 

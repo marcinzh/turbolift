@@ -66,7 +66,7 @@ class LazyMemoizerTest extends Specification with CanLaunchTheMissiles:
           .handleWith(W.handler.mapState(_.sorted))
           .map((_, missiles))
 
-        val (results, missiles) = prog.runIO.get
+        val (results, missiles) = prog.runIO
         results.===((0, 5), (0 until outgoings.size))
         missiles.map(_.launchCount) === Vector.fill(8)(1)
       }

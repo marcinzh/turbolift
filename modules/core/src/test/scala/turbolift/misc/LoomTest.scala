@@ -19,8 +19,7 @@ class LoomTest extends Specification:
       x <- loom.fold(Nil: List[Int])(_ :+ _)
     yield x)
     .warp
-    .runIO
-    .===(Outcome.Success(List(1, 2)))
+    .runSync === Outcome.Success(List(1, 2))
   }
 
 
@@ -28,7 +27,7 @@ class LoomTest extends Specification:
     case object E extends ErrorEffect[String]; type E = E.type
     case object W extends WriterEffect[String]; type W = W.type
 
-    "writer" >> {
+    "writer" >>{
       (for
         loom <- Loom.create[Unit, W & IO]
         _ <- loom.submit(W.tell("a").delay(10))
@@ -39,11 +38,10 @@ class LoomTest extends Specification:
       yield ())
       .warp
       .handleWith(W.handler)
-      .runIO
-      .===(Outcome.Success(((), "abc")))
+      .runSync === Outcome.Success(((), "abc"))
     }
 
-    "writer & error" >> {
+    "writer & error" >>{
       (for
         loom <- Loom.create[Unit, E & W & IO]
         _ <- loom.submit(W.tell("a").delay(10))
@@ -56,8 +54,7 @@ class LoomTest extends Specification:
       .warp
       .handleWith(E.handler)
       .handleWith(W.handler)
-      .runIO
-      .===(Outcome.Success((Left("OMG"), "ab")))
+      .runSync === Outcome.Success((Left("OMG"), "ab"))
     }
 
     //@#@TODO custom fold with early exit on error

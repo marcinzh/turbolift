@@ -13,7 +13,7 @@ class InspectTest extends Specification with CanLaunchTheMissiles:
       val missile = Missile()
       IO.guarantee(missile.launch_!):
         !!.pure(1)
-      .runIO === Outcome.Success(1)
+      .runSync === Outcome.Success(1)
       missile.mustHaveLaunchedOnce
     }
 
@@ -22,7 +22,7 @@ class InspectTest extends Specification with CanLaunchTheMissiles:
       val e = new Exception("OMG")
       IO.guarantee(missile.launch_!):
         IO(throw e)
-      .runIO === Outcome.Failure(Cause(e))
+      .runSync === Outcome.Failure(Cause(e))
       missile.mustHaveLaunchedOnce
     }
 
@@ -31,7 +31,7 @@ class InspectTest extends Specification with CanLaunchTheMissiles:
       val e = new Exception("OMG")
       IO.guarantee(missile.launch_!):
         IO.raise(e)
-      .runIO === Outcome.Failure(Cause(e))
+      .runSync === Outcome.Failure(Cause(e))
       missile.mustHaveLaunchedOnce
     }
 
@@ -39,7 +39,7 @@ class InspectTest extends Specification with CanLaunchTheMissiles:
       val missile = Missile()
       IO.guarantee(missile.launch_!):
         IO.cancel
-      .runIO == Outcome.Cancelled
+      .runSync === Outcome.Cancelled
       missile.mustHaveLaunchedOnce
     }
   }
@@ -52,7 +52,7 @@ class InspectTest extends Specification with CanLaunchTheMissiles:
         E.raise("OMG")
       .as(())
       .handleWith(E.handler)
-      .runIO === Outcome.Success(Left("OMG"))
+      .runSync === Outcome.Success(Left("OMG"))
       missile.mustHaveLaunchedOnce
     }
   }

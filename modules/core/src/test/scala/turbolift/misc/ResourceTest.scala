@@ -29,8 +29,7 @@ class ResourceTest extends Specification:
         _ <- v.event(6)
         n <- v.get
       yield n)
-      .runIO
-      .===(Outcome.Success(142536))
+      .runSync === Outcome.Success(142536)
     }
 
     "two res" >>{
@@ -50,8 +49,7 @@ class ResourceTest extends Specification:
         _ <- v.event(9)
         n <- v.get
       yield n)
-      .runIO
-      .===(Outcome.Success(162748539))
+      .runSync === Outcome.Success(162748539)
     }
   }
 
@@ -70,8 +68,7 @@ class ResourceTest extends Specification:
         _ <- v.event(6)
         n <- v.get
       yield (n, e))
-      .runIO
-      .===(Outcome.Success((12436, Left(EX1))))
+      .runSync === Outcome.Success((12436, Left(EX1)))
     }
 
     "in acquire" >>{
@@ -85,8 +82,7 @@ class ResourceTest extends Specification:
           .finalized
         n <- v.get
       yield (n, e))
-      .runIO
-      .===(Outcome.Success((1, Left(EX1))))
+      .runSync === Outcome.Success((1, Left(EX1)))
     }
 
     "in release" >>{
@@ -101,8 +97,7 @@ class ResourceTest extends Specification:
         _ <- v.event(4)
         n <- v.get
       yield (n, e))
-      .runIO
-      .===(Outcome.Success((1234, Left(EX1))))
+      .runSync === Outcome.Success((1234, Left(EX1)))
     }
 
     "in release x2" >>{
@@ -119,8 +114,7 @@ class ResourceTest extends Specification:
         _ <- v.event(6)
         n <- v.get
       yield (n, e))
-      .runIO
-      .===(Outcome.Success((123456, Snap.Failure(Cause.Thrown(EX1), Some(Cause.Thrown(EX2))))))
+      .runSync === Outcome.Success((123456, Snap.Failure(Cause.Thrown(EX1), Some(Cause.Thrown(EX2)))))
     }
   }
 
@@ -142,7 +136,7 @@ class ResourceTest extends Specification:
         .finalized
       n <- v.get
     yield n)
-    .runIO
+    .runSync
     .===(Outcome.Success(1346572))
   }
 
@@ -175,8 +169,7 @@ class ResourceTest extends Specification:
         n <- v.get
       yield n)
       .warp
-      .runIO
-      .===(Outcome.Success(112203344L))
+      .runSync === Outcome.Success(112203344L)
     }
 
     "par + seq" >>{
@@ -200,8 +193,7 @@ class ResourceTest extends Specification:
         n <- v.get
       yield n)
       .warp
-      .runIO
-      .===(Outcome.Success(1334470855662L))
+      .runSync === Outcome.Success(1334470855662L)
     }
 
     "with exceptions" >>{
@@ -222,7 +214,6 @@ class ResourceTest extends Specification:
         n <- v.get
       yield (n, e))
       .warp
-      .runIO
-      .===(Outcome.Success((112203344L, Left(EX1))))
+      .runSync === Outcome.Success((112203344L, Left(EX1)))
     }
   }

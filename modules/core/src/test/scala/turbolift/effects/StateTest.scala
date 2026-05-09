@@ -29,7 +29,7 @@ class StateTest extends Specification:
 
     Fragment.foreach(Pickers) { picker =>
       val h = picker.handler(S)
-      def program[A](op: A !! S.type): (A, Int) = op.handleWith(h(1)).runIO.get
+      def program[A](op: A !! S.type): (A, Int) = op.handleWith(h(1)).runIO
       picker.header >> {
         "pure" >> {
           "get" >>{ program(S.get) === (1, 1) }
@@ -75,7 +75,7 @@ class StateTest extends Specification:
             b <- S.get
           yield (a, b))
           .handleWith(picker.handler(S)(1))
-          .unsafeRun.get === ((1, 2), 2)
+          .runIO === ((1, 2), 2)
         }
           
         "2 states interleaved" >>{
@@ -88,7 +88,7 @@ class StateTest extends Specification:
             _ <- S2.modify(_ + 10 * a)
           yield (a, b))
           .handleWith(picker.handler(S1)(1) ***! picker.handler(S2)(2))
-          .unsafeRun.get === ((1, 2), (21, 12))
+          .runIO === ((1, 2), (21, 12))
         }
       }
     }

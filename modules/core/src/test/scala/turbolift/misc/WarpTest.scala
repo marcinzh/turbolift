@@ -13,8 +13,7 @@ class WarpTest extends Specification:
   "empty scoped warp" >>{
     !!.pure(42)
     .warp
-    .runIO
-    .===(Outcome.Success(42))
+    .runSync === Outcome.Success(42)
   }
 
   "status" >> {
@@ -32,8 +31,7 @@ class WarpTest extends Specification:
         _ <- g.open
       yield (a, b, c))
       .warp
-      .runIO
-      .===(Outcome.Success((3, 2, 1)))
+      .runSync === Outcome.Success((3, 2, 1))
     }
   }
 
@@ -49,8 +47,7 @@ class WarpTest extends Specification:
         ok = warp.parent == Some(fib)
       yield ok)
       .warp
-      .runIO
-      .===(Outcome.Success(true))
+      .runSync === Outcome.Success(true)
     }
 
     "forked fiber's parent" >>{
@@ -60,8 +57,7 @@ class WarpTest extends Specification:
         ok = warp == fib.parent 
       yield ok)
       .warp
-      .runIO
-      .===(Outcome.Success(true))
+      .runSync === Outcome.Success(true)
     }
 
     "2 nested scoped warps" >>{
@@ -71,8 +67,7 @@ class WarpTest extends Specification:
         ok = warp2.outer == Some(warp1)
       yield ok)
       .warp
-      .runIO
-      .===(Outcome.Success(true))
+      .runSync === Outcome.Success(true)
     }
   }
 
@@ -90,8 +85,7 @@ class WarpTest extends Specification:
         _ <- v.event(3)
         a <- v.get
       yield a)
-      .runIO
-      .===(Outcome.Success(153))
+      .runSync === Outcome.Success(153)
     }
 
     "scoped warp & automatic shutdown" >>{
@@ -101,8 +95,7 @@ class WarpTest extends Specification:
         _ <- v.event(3)
         a <- v.get
       yield a)
-      .runIO
-      .===(Outcome.Success(123))
+      .runSync === Outcome.Success(123)
     }
 
     "unscoped warp & manual cancel" >>{
@@ -123,8 +116,7 @@ class WarpTest extends Specification:
         a <- v.get
       yield a)
       .warp
-      .runIO
-      .===(Outcome.Success(124))
+      .runSync === Outcome.Success(124)
     }
 
     "unscoped warp & manual shutdown" >>{
@@ -141,8 +133,7 @@ class WarpTest extends Specification:
         b <- v2.get
       yield (a, b))
       .warp
-      .runIO
-      .===(Outcome.Success((2, "b")))
+      .runSync === Outcome.Success((2, "b"))
     }
   }
 
@@ -151,8 +142,7 @@ class WarpTest extends Specification:
       case object E extends Exception
       IO(throw E)
       .warp
-      .runIO
-      .===(Outcome.Failure(E))
+      .runSync === Outcome.Failure(E)
     }
 
     "Error effect" >>{
@@ -160,8 +150,7 @@ class WarpTest extends Specification:
       E.raise("OMG")
       .warp
       .handleWith(E.handler)
-      .runIO
-      .===(Outcome.Success(Left("OMG")))
+      .runSync === Outcome.Success(Left("OMG"))
     }
 
     "Error effect & paused fiber" >>{
@@ -177,8 +166,7 @@ class WarpTest extends Specification:
           .handleWith(E.handler)
         a <- v.get
       yield (a, e))
-      .runIO
-      .===(Outcome.Success((42, Left("OMG"))))
+      .runSync === Outcome.Success((42, Left("OMG")))
     }
 
     "Error effect & paused fiber with guarantee" >>{
@@ -198,7 +186,6 @@ class WarpTest extends Specification:
         a <- v1.get
         b <- v2.get
       yield (a, b, e))
-      .runIO
-      .===(Outcome.Success((42, "b", Left("OMG"))))
+      .runSync === Outcome.Success((42, "b", Left("OMG")))
     }
   }

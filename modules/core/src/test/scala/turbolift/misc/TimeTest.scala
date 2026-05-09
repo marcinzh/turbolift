@@ -12,7 +12,7 @@ class TimeTest extends Specification:
 
   "sleep" >> {
     "pure" >>{
-      IO.sleep(1).runIO === Outcome.Success(())
+      IO.sleep(1).runSync === Outcome.Success(())
     }
 
     "fork & sleep & join" >>{
@@ -21,7 +21,7 @@ class TimeTest extends Specification:
         a <- fib.join
       yield a)
       .warp
-      .runIO === Outcome.Success(42)
+      .runSync === Outcome.Success(42)
     }
 
     "fork & sleep & cancel" >>{
@@ -32,7 +32,7 @@ class TimeTest extends Specification:
         a <- v.get
       yield a)
       .warp
-      .runIO === Outcome.Success(42)
+      .runSync === Outcome.Success(42)
     }
   }
 
@@ -47,12 +47,12 @@ class TimeTest extends Specification:
         yield ()
       x <- v.get
     yield x)
-    .runIO === Outcome.Success(123)
+    .runSync === Outcome.Success(123)
   }
 
   "timeout" >> {
-    "short" >>{ IO.sleep(100).as("L").timeoutTo(1)("R").runIO === Outcome.Success("R") }
-    "long"  >>{ IO.sleep(1).as("L").timeoutTo(100)("R").runIO === Outcome.Success("L") }
+    "short" >>{ IO.sleep(100).as("L").timeoutTo(1)("R").runSync === Outcome.Success("R") }
+    "long"  >>{ IO.sleep(1).as("L").timeoutTo(100)("R").runSync === Outcome.Success("L") }
 
     "cancel" >>{
       IO.sleep(100).timeout(1000).fork.flatMap: fib =>
@@ -60,6 +60,6 @@ class TimeTest extends Specification:
       .warp
       .timed
       .map { case (_, t) => t.toMillis < 100 }
-      .runIO === Outcome.Success(true)
+      .runSync === Outcome.Success(true)
     }
   }

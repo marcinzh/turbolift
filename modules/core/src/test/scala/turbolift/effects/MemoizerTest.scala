@@ -46,7 +46,7 @@ class MemoizerTest extends Specification with CanLaunchTheMissiles:
           yield ((c, b, a), missiles))
           .handleWith(picker.handler(M)(fib))
 
-        val (results, missiles) = prog(10).runIO.get
+        val (results, missiles) = prog(10).runIO
         results === ((21, 34, 55))
         missiles.map(_.launchCount) === Vector.fill(11)(1)
       }
@@ -99,7 +99,7 @@ class MemoizerTest extends Specification with CanLaunchTheMissiles:
           .handleWith(W.handler.mapState(_.sorted))
           .map((_, missiles))
 
-        val (results, missiles) = prog.runIO.get
+        val (results, missiles) = prog.runIO
         results.===((0, 5), (0 until outgoings.size))
         missiles.map(_.launchCount) === Vector.fill(8)(1)
       }

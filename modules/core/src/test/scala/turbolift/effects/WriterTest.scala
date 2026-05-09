@@ -29,31 +29,31 @@ class WriterTest extends Specification:
         "tell" >>{
           W.tell(1)
           .handleWith(h)
-          .unsafeRun.get === ((), 1)
+          .runIO === ((), 1)
         }
 
         "listen" >>{
           W.listen(W.tell(1))
           .handleWith(h)
-          .unsafeRun.get === (((), 1), 1)
+          .runIO === (((), 1), 1)
         }
 
         "censor" >>{
           W.censor(_ + 1)(W.tell(1))
           .handleWith(h)
-          .unsafeRun.get === ((), 2)
+          .runIO === ((), 2)
         }
 
         "mute" >>{
           W.mute(W.tell(1))
           .handleWith(h)
-          .unsafeRun.get === ((), 0)
+          .runIO === ((), 0)
         }
 
         "pass" >>{
           W.pass(W.tell(1) **! !!.pure(_ + 2))
           .handleWith(h)
-          .unsafeRun.get === ((), 3)
+          .runIO === ((), 3)
         }
       }
     }
@@ -66,7 +66,7 @@ class WriterTest extends Specification:
           case object W extends WriterEffect[String]
           (W.tell("a") &&! W.tell("b"))
           .handleWith(picker.handler(W).justState)
-          .unsafeRun.get === "ab"
+          .runIO === "ab"
         }
 
         "tell & listen" >>{
@@ -78,7 +78,7 @@ class WriterTest extends Specification:
             _ <- W.tell("d")
           yield x)
           .handleWith(picker.handler(W))
-          .unsafeRun.get === ("bc", "abcd")
+          .runIO === ("bc", "abcd")
         }
 
         "2 writers" >>{
@@ -92,7 +92,7 @@ class WriterTest extends Specification:
           yield ())
           .handleWith(picker.handler(W1))
           .handleWith(picker.handler(W2))
-          .unsafeRun.get === (((), 3), "ab")
+          .runIO === (((), 3), "ab")
         }
       }
     }
@@ -106,25 +106,25 @@ class WriterTest extends Specification:
         "tell x2 using *!" >>{
           (W.tell("a") *! W.tell("b"))
           .handleWith(h)
-          .unsafeRun.get === "ab"
+          .runIO === "ab"
         }
 
         "tell x2 using &!" >>{
           (W.tell("a") &! W.tell("b"))
           .handleWith(h)
-          .unsafeRun.get === "ab"
+          .runIO === "ab"
         }
 
         "tell x3 using &&!(&!)" >>{
           (W.tell("a") &&! (W.tell("b") &! W.tell("c")))
           .handleWith(h)
-          .unsafeRun.get === "abc"
+          .runIO === "abc"
         }
 
         "tell x3 using &!(&&!)" >>{
           (W.tell("a") &! (W.tell("b") &&! W.tell("c")))
           .handleWith(h)
-          .unsafeRun.get === "abc"
+          .runIO === "abc"
         }
 
         "tell & censor" >>{
@@ -139,7 +139,7 @@ class WriterTest extends Specification:
           } &&!
           W.tell("g"))
           .handleWith(h)
-          .unsafeRun.get === "a(b[c]d{e}f)g"
+          .runIO === "a(b[c]d{e}f)g"
         }
       }
     }
@@ -156,7 +156,7 @@ class WriterTest extends Specification:
             _ <- W.tell('d')
           yield ())
           .handleWith(picker.handler(W).justState)
-          .unsafeRun.get === "abcd".toVector
+          .runIO === "abcd".toVector
         }
 
         "WriterGK" >>{
@@ -173,7 +173,7 @@ class WriterTest extends Specification:
             _ <- W.tell("a", 3)
           yield ())
           .handleWith(picker.handler(W).justState)
-          .unsafeRun.get === Map(
+          .runIO === Map(
             "a" -> Vector(1, 2, 3),
             "b" -> Vector(10, 20, 30),
             "c" -> Vector(100, 200, 300),

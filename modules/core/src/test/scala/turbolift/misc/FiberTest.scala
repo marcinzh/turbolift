@@ -17,8 +17,7 @@ class FiberTest extends Specification:
       (for
         fib <- Fiber.current
       yield fib.name)
-      .named("main").runIO
-      .===(Outcome.Success("main"))
+      .named("main").runSync === Outcome.Success("main")
     }
 
     "forks" >>{
@@ -27,8 +26,7 @@ class FiberTest extends Specification:
         fib2 <- !!.unit.named("fork 2").fork
       yield (fib1.name, fib2.name))
       .warp
-      .runIO
-      .===(Outcome.Success(("fork 1", "fork 2")))
+      .runSync === Outcome.Success(("fork 1", "fork 2"))
     }
   }
 
@@ -40,8 +38,7 @@ class FiberTest extends Specification:
         fib <- Fiber.current
         s <- fib.status 
       yield s)
-      .runIO
-      .===(Outcome.Success(Fiber.Status.Pending(Fiber.Role.Runner, false, false)))
+      .runSync === Outcome.Success(Fiber.Status.Pending(Fiber.Role.Runner, false, false))
     }
 
     "blocker" >>{
@@ -54,8 +51,7 @@ class FiberTest extends Specification:
         _ <- g2.open
       yield s)
       .warp
-      .runIO
-      .===(Outcome.Success(Fiber.Status.Pending(Fiber.Role.Blocker, false, false)))
+      .runSync === Outcome.Success(Fiber.Status.Pending(Fiber.Role.Blocker, false, false))
     }
 
     "waiter" >>{
@@ -71,16 +67,14 @@ class FiberTest extends Specification:
           case _ => false
       yield ok)
       .warp
-      .runIO
-      .===(Outcome.Success(true))
+      .runSync === Outcome.Success(true)
     }
 
     "racer" >>{
       val r = Fiber.Status.Pending(Fiber.Role.Runner, isRacer = true, isCancelled = false)
       val comp = Fiber.current.flatMap(_.status)
       (comp *! comp)
-      .runIO
-      .===(Outcome.Success(((r, r))))
+      .runSync === Outcome.Success(((r, r)))
     }
 
     "arbiter" >>{
@@ -99,8 +93,7 @@ class FiberTest extends Specification:
         _ <- g2.open
       yield ok)
       .warp
-      .runIO
-      .===(Outcome.Success(true))
+      .runSync === Outcome.Success(true)
     }
 
     "cancelled & pending" >>{
@@ -114,8 +107,7 @@ class FiberTest extends Specification:
         _ <- g2.open
       yield s)
       .warp
-      .runIO
-      .===(Outcome.Success(Fiber.Status.Pending(Fiber.Role.Runner, isRacer = false, isCancelled = true)))
+      .runSync === Outcome.Success(Fiber.Status.Pending(Fiber.Role.Runner, isRacer = false, isCancelled = true))
     }
 
     "cancelled & completed" >>{
@@ -125,8 +117,7 @@ class FiberTest extends Specification:
         s <- fib.status 
       yield s)
       .warp
-      .runIO
-      .===(Outcome.Success(Fiber.Status.Completed(Outcome.Cancelled)))
+      .runSync === Outcome.Success(Fiber.Status.Completed(Outcome.Cancelled))
     }
   }
 
@@ -142,8 +133,7 @@ class FiberTest extends Specification:
         _ <- g.open
       yield b)
       .warp
-      .runIO
-      .===(Outcome.Success(None))
+      .runSync === Outcome.Success(None)
     }
 
     "completed" >>{
@@ -154,8 +144,7 @@ class FiberTest extends Specification:
         b = a.map(_.get)
       yield b)
       .warp
-      .runIO
-      .===(Outcome.Success(Some(42)))
+      .runSync === Outcome.Success(Some(42))
     }
   }
 
@@ -170,8 +159,7 @@ class FiberTest extends Specification:
         a <- fib.join
       yield a)
       .warp
-      .runIO
-      .===(Outcome.Success(42))
+      .runSync === Outcome.Success(42)
     }
 
     "(fork & join) x2 pending" >>{
@@ -188,8 +176,7 @@ class FiberTest extends Specification:
         b <- fib2.join
       yield (a, b))
       .warp
-      .runIO
-      .===(Outcome.Success((42, "a")))
+      .runSync === Outcome.Success((42, "a"))
     }
 
     "fork & (join x2) pending" >>{
@@ -207,8 +194,7 @@ class FiberTest extends Specification:
         b <- v2.get
       yield (a, b))
       .warp
-      .runIO
-      .===(Outcome.Success((1337, "b")))
+      .runSync === Outcome.Success((1337, "b"))
     }
 
     "fork & join completed" >>{
@@ -218,8 +204,7 @@ class FiberTest extends Specification:
         a <- fib.join
       yield a)
       .warp
-      .runIO
-      .===(Outcome.Success(42))
+      .runSync === Outcome.Success(42)
     }
   }
 
@@ -234,8 +219,7 @@ class FiberTest extends Specification:
         a <- v.get
       yield a)
       .warp
-      .runIO
-      .===(Outcome.Success(42))
+      .runSync === Outcome.Success(42)
     }
 
     "completed" >>{
@@ -247,8 +231,7 @@ class FiberTest extends Specification:
         a <- v.get
       yield a)
       .warp
-      .runIO
-      .===(Outcome.Success(42))
+      .runSync === Outcome.Success(42)
     }
 
     "guarantee" >>{
@@ -263,8 +246,7 @@ class FiberTest extends Specification:
         b <- v2.get
       yield (a, b))
       .warp
-      .runIO
-      .===(Outcome.Success((42, "a")))
+      .runSync === Outcome.Success((42, "a"))
     }
   }
 
@@ -277,8 +259,7 @@ class FiberTest extends Specification:
         zip <- fib.nowOrNever
       yield zip.getIO)
       .warp
-      .runIO
-      .===(Outcome.Success(Outcome.Cancelled))
+      .runSync === Outcome.Success(Outcome.Cancelled)
     }
 
     "completed" >>{
@@ -288,8 +269,7 @@ class FiberTest extends Specification:
         zip <- fib.nowOrNever
       yield zip.get)
       .warp
-      .runIO
-      .===(Outcome.Success(42))
+      .runSync === Outcome.Success(42)
     }
   }
 
@@ -300,8 +280,7 @@ class FiberTest extends Specification:
         zip <- fib.getOrDie
       yield zip.getIO)
       .warp
-      .runIO
-      .isFailure.===(true)
+      .runSync.isFailure === true
     }
 
     "completed" >>{
@@ -311,8 +290,7 @@ class FiberTest extends Specification:
         zip <- fib.getOrDie
       yield zip.get)
       .warp
-      .runIO
-      .===(Outcome.Success(42))
+      .runSync === Outcome.Success(42)
     }
   }
 
@@ -332,8 +310,7 @@ class FiberTest extends Specification:
         a = zip.getIO
       yield a)
       .warp
-      .runIO
-      .===(Outcome.Success(Outcome.Cancelled))
+      .runSync === Outcome.Success(Outcome.Cancelled)
     }
 
     "self cancel" >>{
@@ -348,8 +325,7 @@ class FiberTest extends Specification:
         a = zip.getIO
       yield a)
       .warp
-      .runIO
-      .===(Outcome.Success(Outcome.Cancelled))
+      .runSync === Outcome.Success(Outcome.Cancelled)
     }
   }
 
@@ -365,8 +341,7 @@ class FiberTest extends Specification:
       yield a)
       .handleWith(E.handlers.all)
       .warp
-      .runIO
-      .===(Outcome.Success(Left(List("A", "B"))))
+      .runSync === Outcome.Success(Left(List("A", "B")))
     }
 
     "using Writer" >>{
@@ -380,8 +355,7 @@ class FiberTest extends Specification:
       yield a)
       .handleWith(W.handler.justState)
       .warp
-      .runIO
-      .===(Outcome.Success(List("1", "A", "B", "2")))
+      .runSync === Outcome.Success(List("1", "A", "B", "2"))
     }
 
     "using Choice" >>{
@@ -396,8 +370,7 @@ class FiberTest extends Specification:
       yield s"$a-$b-$c-$d")
       .handleWith(C.handler)
       .warp
-      .runIO
-      .===(Outcome.Success(List(
+      .runSync === Outcome.Success(List(
         "true-a-x-1",
         "true-a-x-2",        
         "true-a-y-1",
@@ -414,7 +387,7 @@ class FiberTest extends Specification:
         "false-b-x-2",        
         "false-b-y-1",
         "false-b-y-2",        
-      )))
+      ))
     }
 
     "using local effect & handler" >>{
@@ -429,8 +402,7 @@ class FiberTest extends Specification:
       yield x)
       .handleWith(W1.handler)
       .warp
-      .runIO
-      .===(Outcome.Success(("c", "adbe")))
+      .runSync === Outcome.Success(("c", "adbe"))
     }
   }
 
@@ -442,8 +414,7 @@ class FiberTest extends Specification:
         _ <- !!.unit.fork
       yield 42)
       .warpAwait
-      .runIO
-      .===(Outcome.Success(42))
+      .runSync === Outcome.Success(42)
     }
   }
 
@@ -457,8 +428,7 @@ class FiberTest extends Specification:
             aw <- fib.join.handleWith(W.handler)
           yield aw)
           .warp
-          .runIO
-          .===(Outcome.Success((42, "a")))
+          .runSync === Outcome.Success((42, "a"))
         """} must succeed.not
       }
 
@@ -470,8 +440,7 @@ class FiberTest extends Specification:
         yield a)
         .handleWith(W.handler)
         .warp
-        .runIO
-        .===(Outcome.Success((42, "a")))
+        .runSync === Outcome.Success((42, "a"))
       }
 
       "also correct" >>{
@@ -482,8 +451,7 @@ class FiberTest extends Specification:
           aw <- fib.join.handleWith(W.handler)
         yield (aw, w))
         .warp
-        .runIO
-        .===(Outcome.Success(((42, "a"), "")))
+        .runSync === Outcome.Success(((42, "a"), ""))
       }
     }
   }

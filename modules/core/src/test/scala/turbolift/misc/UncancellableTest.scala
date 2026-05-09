@@ -13,11 +13,11 @@ class UncancellableTest extends Specification:
 
   "basic" >> {
     "uncancellable" >>{
-      IO.uncancellable(!!.pure(42)).runIO.===(Outcome.Success(42))
+      IO.uncancellable(!!.pure(42)).runSync === Outcome.Success(42)
     }
 
     "cancellable" >>{
-      IO.cancellable(!!.pure(42)).runIO.===(Outcome.Success(42))
+      IO.cancellable(!!.pure(42)).runSync === Outcome.Success(42)
     }
   }
 
@@ -34,8 +34,7 @@ class UncancellableTest extends Specification:
         a <- v.get
       yield a)
       .warp
-      .runIO
-      .===(Outcome.Success(12))
+      .runSync === Outcome.Success(12)
     }
 
     "cancel uncancellable(cancellable(_))" >>{
@@ -51,8 +50,7 @@ class UncancellableTest extends Specification:
         a <- v.get
       yield a)
       .warp
-      .runIO
-      .===(Outcome.Success(1))
+      .runSync === Outcome.Success(1)
     }
 
     "cancel after uncancellable" >>{
@@ -66,8 +64,7 @@ class UncancellableTest extends Specification:
         a <- v.get
       yield a)
       .warp
-      .runIO
-      .===(Outcome.Success(1))
+      .runSync === Outcome.Success(1)
     }
 
     "cancel after cancellable" >>{
@@ -82,20 +79,19 @@ class UncancellableTest extends Specification:
         a <- v.get
       yield a)
       .warp
-      .runIO
-      .===(Outcome.Success(12))
+      .runSync === Outcome.Success(12)
     }
   }
 
   "self-cancel in uncancellable" >> {
     "IO.cancel" >>{
-      IO.uncancellable(IO.cancel).runIO.===(Outcome.Cancelled)
+      IO.uncancellable(IO.cancel).runSync === Outcome.Cancelled
     }
 
     "Fiber.cancel" >>{
       IO.uncancellable:
         Fiber.current.flatMap(_.cancel)
-      .runIO.===(Outcome.Cancelled)
+      .runSync === Outcome.Cancelled
     }
   }
 
@@ -109,5 +105,5 @@ class UncancellableTest extends Specification:
           restoreInner(IO.isCancellable) **!
           restoreOuter(IO.isCancellable)
     )
-    .runIO.===(Outcome.Success((true, (false, ((false, false), true)))))
+    .runSync === Outcome.Success((true, (false, ((false, false), true))))
   }

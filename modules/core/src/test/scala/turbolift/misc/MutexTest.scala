@@ -16,8 +16,7 @@ class MutexTest extends Specification:
         lock <- Mutex.create
         a <- lock.use(!!.pure(42))
       yield a)
-      .runIO
-      .===(Outcome.Success(42))
+      .runSync === Outcome.Success(42)
     }
 
     "cancel" >>{
@@ -25,8 +24,7 @@ class MutexTest extends Specification:
         lock <- Mutex.create
         _ <- lock.use(IO.cancel)
       yield ())
-      .runIO
-      .===(Outcome.Cancelled)
+      .runSync === Outcome.Cancelled
     }
   }
 
@@ -36,8 +34,7 @@ class MutexTest extends Specification:
         lock <- Mutex.create
         a <- lock.isLocked
       yield a)
-      .runIO
-      .===(Outcome.Success(false))
+      .runSync === Outcome.Success(false)
     }
 
     "locked" >>{
@@ -47,8 +44,7 @@ class MutexTest extends Specification:
         x <- lock.use:
           lock.isLocked
       yield x)
-      .runIO
-      .===(Outcome.Success(true))
+      .runSync === Outcome.Success(true)
     }
 
   }
@@ -67,8 +63,7 @@ class MutexTest extends Specification:
           yield ()
         n <- v.get
       yield n)
-      .runIO
-      .===(Outcome.Success(1234))
+      .runSync === Outcome.Success(1234)
     }
 
     "sequential access ; cancelled" >>{
@@ -83,8 +78,7 @@ class MutexTest extends Specification:
           yield ()
         n <- v.get
       yield n)
-      .runIO
-      .===(Outcome.Success(13))
+      .runSync === Outcome.Success(13)
     }
 
     "very sequential access" >>{
@@ -106,8 +100,7 @@ class MutexTest extends Specification:
           yield ()
         n <- v.get
       yield n)
-      .runIO
-      .===(Outcome.Success(123))
+      .runSync === Outcome.Success(123)
     }
   }
 
@@ -119,8 +112,7 @@ class MutexTest extends Specification:
         a <- lock.use(lock.tryUse(v.put(42).as(1337)))
         b <- v.get
       yield (a, b))
-      .runIO
-      .===(Outcome.Success((None, 0)))
+      .runSync === Outcome.Success((None, 0))
     }
 
     "concurrent" >>{
@@ -147,7 +139,6 @@ class MutexTest extends Specification:
           yield ()
         a <- v.get
       yield a)
-      .runIO
-      .===(Outcome.Success(1345))
+      .runSync === Outcome.Success(1345)
     }
   }

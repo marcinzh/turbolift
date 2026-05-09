@@ -16,8 +16,7 @@ class CyclicBarrierTest extends Specification:
         barrier <- CyclicBarrier(0)
         _ <- barrier.await
       yield ())
-      .runIO
-      .===(Outcome.Success(()))
+      .runSync === Outcome.Success(())
     }
 
     "one" >>{
@@ -25,8 +24,7 @@ class CyclicBarrierTest extends Specification:
         barrier <- CyclicBarrier(1)
         _ <- barrier.await
       yield ())
-      .runIO
-      .===(Outcome.Success(()))
+      .runSync === Outcome.Success(())
     }
 
     "one x2" >>{
@@ -35,8 +33,7 @@ class CyclicBarrierTest extends Specification:
         _ <- barrier.await
         _ <- barrier.await
       yield ())
-      .runIO
-      .===(Outcome.Success(()))
+      .runSync === Outcome.Success(())
     }
   }
 
@@ -54,8 +51,7 @@ class CyclicBarrierTest extends Specification:
           yield ()
         n <- v.get
       yield n)
-      .runIO
-      .===(Outcome.Success(123456))
+      .runSync === Outcome.Success(123456)
     }
 
 
@@ -71,7 +67,6 @@ class CyclicBarrierTest extends Specification:
           yield ()
         n <- v.get
       yield n)
-      .runIO
-      .===(Outcome.Success(12))
+      .runSync === Outcome.Success(12)
     }
   }

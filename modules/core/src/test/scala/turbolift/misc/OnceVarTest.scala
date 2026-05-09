@@ -15,8 +15,7 @@ class OnceVarTest extends Specification:
         ovar <- OnceVar[Int]
         a <- ovar.tryGet
       yield a)
-      .runIO
-      .===(Outcome.Success(None))
+      .runSync === Outcome.Success(None)
     }
 
     "put" >>{
@@ -24,8 +23,7 @@ class OnceVarTest extends Specification:
         ovar <- OnceVar[Int]
         _ <- ovar.put(42)
       yield ())
-      .runIO
-      .===(Outcome.Success(()))
+      .runSync === Outcome.Success(())
     }
 
     "tryPut" >>{
@@ -33,8 +31,7 @@ class OnceVarTest extends Specification:
         ovar <- OnceVar[Int]
         a <- ovar.tryPut(42)
       yield a)
-      .runIO
-      .===(Outcome.Success(true))
+      .runSync === Outcome.Success(true)
     }
   }
 
@@ -46,8 +43,7 @@ class OnceVarTest extends Specification:
         _ <- ovar.put(42)
         a <- ovar.get
       yield a)
-      .runIO
-      .===(Outcome.Success(42))
+      .runSync === Outcome.Success(42)
     }
 
     "put & tryGet" >>{
@@ -56,8 +52,7 @@ class OnceVarTest extends Specification:
         _ <- ovar.put(42)
         a <- ovar.tryGet
       yield a)
-      .runIO
-      .===(Outcome.Success(Some(42)))
+      .runSync === Outcome.Success(Some(42))
     }
 
     "put & tryPut" >>{
@@ -66,8 +61,7 @@ class OnceVarTest extends Specification:
         _ <- ovar.put(42)
         a <- ovar.tryPut(1337)
       yield a)
-      .runIO
-      .===(Outcome.Success(false))
+      .runSync === Outcome.Success(false)
     }
 
     "put & put & get" >>{
@@ -77,8 +71,7 @@ class OnceVarTest extends Specification:
         _ <- ovar.put(1337)
         a <- ovar.get
       yield a)
-      .runIO
-      .===(Outcome.Success(42))
+      .runSync === Outcome.Success(42)
     }
 
     "get & fork(put)" >>{
@@ -88,8 +81,7 @@ class OnceVarTest extends Specification:
         a <- ovar.get
       yield a)
       .warp
-      .runIO
-      .===(Outcome.Success(42))
+      .runSync === Outcome.Success(42)
     }
 
     "fork & get & cancel" >>{
@@ -99,7 +91,6 @@ class OnceVarTest extends Specification:
         _ <- fib.cancel
       yield ())
       .warp
-      .runIO
-      .===(Outcome.Success(()))
+      .runSync === Outcome.Success(())
     }
   }

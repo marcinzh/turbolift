@@ -373,15 +373,22 @@ object Computation:
 
 
   extension [A](thiz: Computation[A, IO])
-    /** Runs the computation, provided that it requests IO effect only, or none at all. */
-    def runIO(using mode: Mode = Mode.default): Outcome[A] = Executor.pick(mode).runSync(thiz, "")
+    /** Like [[runSync]], but unwraps the successful result, or rethrows the failure. */
+    def runIO(using mode: Mode = Mode.default): A = runSync.get
 
+    /** Runs the computation, provided that it requests IO effect only, or none at all.
+     *
+     * The result of the computation is wrapped in `Outcome[A]`.
+     */
+    def runSync(using mode: Mode = Mode.default): Outcome[A] = Executor.pick(mode).runSync(thiz, "")
+
+    /** Asynchronous version of [[runSync]]. */
     def runAsync(using mode: Mode = Mode.default)(callback: Outcome[A] => Unit): Unit = Executor.pick(mode).runAsync(thiz, callback, "")
 
     def runIOST: Outcome[A] = Executor.ST.runSync(thiz, "")
     def runIOMT: Outcome[A] = Executor.MT.runSync(thiz, "")
 
-    /*@deprecated*/ def unsafeRun(using mode: Mode = Mode.default): Outcome[A] = runIO
+    /*@deprecated*/ def unsafeRun(using mode: Mode = Mode.default): Outcome[A] = runSync
     /*@deprecated*/ def unsafeRunAsync(using mode: Mode = Mode.default)(callback: Outcome[A] => Unit): Unit = runAsync(callback)
     /*@deprecated*/ def unsafeRunST: Outcome[A] = Executor.ST.runSync(thiz, "")
     /*@deprecated*/ def unsafeRunMT: Outcome[A] = Executor.MT.runSync(thiz, "")
@@ -472,7 +479,8 @@ object Computation:
 
   object NamedSyntax:
     extension [A](thiz: NamedSyntax[A, IO])
-      def runIO(using mode: Mode = Mode.default): Outcome[A] = Executor.pick(mode).runSync(thiz.comp, thiz.name)
+      def runIO(using mode: Mode = Mode.default): A = Executor.pick(mode).runSync(thiz.comp, thiz.name).get
+      def runSync(using mode: Mode = Mode.default): Outcome[A] = Executor.pick(mode).runSync(thiz.comp, thiz.name)
       def runAsync(using mode: Mode = Mode.default)(callback: Outcome[A] => Unit): Unit = Executor.pick(mode).runAsync(thiz.comp, callback, thiz.name)
 
 

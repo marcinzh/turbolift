@@ -18,8 +18,7 @@ class EffectfulVarTest extends Specification:
         zipp <- makeZipper(42)
         _ <- evar.put(zipp)
       yield ())
-      .runIO
-      .===(Outcome.Success(()))
+      .runSync === Outcome.Success(())
     }
 
     "tryPut" >>{
@@ -28,8 +27,7 @@ class EffectfulVarTest extends Specification:
         zipp <- makeZipper(42)
         a <- evar.tryPut(zipp)
       yield a)
-      .runIO
-      .===(Outcome.Success(true))
+      .runSync === Outcome.Success(true)
     }
   }
 
@@ -42,8 +40,7 @@ class EffectfulVarTest extends Specification:
         _ <- evar.put(zipp)
         a <- evar.getOrCancel
       yield a)
-      .runIO
-      .===(Outcome.Success(42))
+      .runSync === Outcome.Success(42)
     }
 
     "put & tryPut" >>{
@@ -54,8 +51,7 @@ class EffectfulVarTest extends Specification:
         _ <- evar.put(zipp1)
         a <- evar.tryPut(zipp2)
       yield a)
-      .runIO
-      .===(Outcome.Success(false))
+      .runSync === Outcome.Success(false)
     }
 
     "put & put & get" >>{
@@ -67,8 +63,7 @@ class EffectfulVarTest extends Specification:
         _ <- evar.put(zipp2)
         a <- evar.getOrCancel
       yield a)
-      .runIO
-      .===(Outcome.Success(42))
+      .runSync === Outcome.Success(42)
     }
 
     "get & fork(put)" >>{
@@ -79,8 +74,7 @@ class EffectfulVarTest extends Specification:
         a <- evar.getOrCancel
       yield a)
       .warp
-      .runIO
-      .===(Outcome.Success(42))
+      .runSync === Outcome.Success(42)
     }
 
     "fork & get & cancel" >>{
@@ -91,8 +85,7 @@ class EffectfulVarTest extends Specification:
         _ <- fib.cancel
       yield ())
       .warp
-      .runIO
-      .===(Outcome.Success(()))
+      .runSync === Outcome.Success(())
     }
   }
 
@@ -115,8 +108,7 @@ class EffectfulVarTest extends Specification:
       .handleWith(Broken.toOption)
       .handleWith(W.handler)
       .warp
-      .runIO
-      .===(Outcome.Success((Some((42, 42)), "a")))
+      .runSync === Outcome.Success((Some((42, 42)), "a"))
     }
 
     "memoize with Writer" >>{
@@ -126,8 +118,7 @@ class EffectfulVarTest extends Specification:
       yield ab)
       .handleWith(W.handler)
       .warp
-      .runIO
-      .===(Outcome.Success((Some((42, 42)), "ab")))
+      .runSync === Outcome.Success((Some((42, 42)), "ab"))
     }
 
     "memoize with Error" >>{
@@ -137,7 +128,6 @@ class EffectfulVarTest extends Specification:
       yield x)
       .handleWith(E.handlers.all)
       .warp
-      .runIO
-      .===(Outcome.Success(Left("ab")))
+      .runSync === Outcome.Success(Left("ab"))
     }
   }

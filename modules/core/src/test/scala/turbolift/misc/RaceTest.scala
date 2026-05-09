@@ -22,16 +22,16 @@ class RaceTest extends Specification:
             case Right((_, zipp)) => Right(zipp.getIO)
 
       "left wins" >>{
-        IO.raceFibers(win, lose).warp.justZipper.runIO === Outcome.Success(Left(Outcome.Success(42)))
+        IO.raceFibers(win, lose).warp.justZipper.runSync === Outcome.Success(Left(Outcome.Success(42)))
       }
       "right wins" >>{
-        IO.raceFibers(lose, win).warp.justZipper.runIO === Outcome.Success(Right(Outcome.Success(42)))
+        IO.raceFibers(lose, win).warp.justZipper.runSync === Outcome.Success(Right(Outcome.Success(42)))
       }
       "left cancelled" >>{
-        IO.raceFibers(canc, lose).warp.justZipper.runIO === Outcome.Success(Left(Outcome.Cancelled))
+        IO.raceFibers(canc, lose).warp.justZipper.runSync === Outcome.Success(Left(Outcome.Cancelled))
       }
       "right cancelled" >>{
-        IO.raceFibers(lose, canc).warp.justZipper.runIO === Outcome.Success(Right(Outcome.Cancelled))
+        IO.raceFibers(lose, canc).warp.justZipper.runSync === Outcome.Success(Right(Outcome.Cancelled))
       }
     }
 
@@ -42,34 +42,34 @@ class RaceTest extends Specification:
       "raceFirst" >> {
         "all succeed" >>{
           IO.raceFirst(Vector(sleep(10), sleep(1), sleep(50)))
-          .runIO === Outcome.Success(1)
+          .runSync === Outcome.Success(1)
         }
         "all cancelled" >>{
           IO.raceFirst(Vector(IO.cancel, IO.cancel))
-          .runIO === Outcome.Cancelled
+          .runSync === Outcome.Cancelled
         }
         "one cancelled early" >>{
           IO.raceFirst(Vector(IO.cancel, sleep(1), sleep(50)))
-          .runIO === Outcome.Success(1)
+          .runSync === Outcome.Success(1)
         }
         "one failed early" >>{
           IO.raceFirst(Vector(sleep(10), IO(throw E)))
-          .runIO === Outcome.Failure(Cause.Thrown(E))
+          .runSync === Outcome.Failure(Cause.Thrown(E))
         }
       }
 
       "raceAll" >> {
         "all succeed" >>{
           IO.raceAll(Vector(sleep(10), sleep(1), sleep(50)))
-          .runIO === Outcome.Success(Vector(10, 1, 50))
+          .runSync === Outcome.Success(Vector(10, 1, 50))
         }
         "one cancelled" >>{
           IO.raceAll(Vector(IO.cancel, sleep(1), sleep(50)))
-          .runIO === Outcome.Cancelled
+          .runSync === Outcome.Cancelled
         }
         "one failed" >>{
           IO.raceAll(Vector(sleep(1), IO.sleep(50) &&! IO(throw E)))
-          .runIO === Outcome.Failure(Cause.Thrown(E))
+          .runSync === Outcome.Failure(Cause.Thrown(E))
         }
       }
 
@@ -83,15 +83,15 @@ class RaceTest extends Specification:
           ))
           b <- avar.get
         yield (a, b))
-        .runIO === Outcome.Success(((), 111))
+        .runSync === Outcome.Success(((), 111))
       }
 
       "edge cases" >> {
         val aa = !!.pure(42)
-        "raceFirst 0" >>{ IO.raceFirst(Vector()).runIO === Outcome.Cancelled }
-        "raceFirst 1" >>{ IO.raceFirst(Vector(aa)).runIO === Outcome.Success(42) }
-        "raceAll 0" >>{ IO.raceAll(Vector()).runIO === Outcome.Success(Vector()) }
-        "raceAll 1" >>{ IO.raceAll(Vector(aa)).runIO === Outcome.Success(Vector(42)) }
+        "raceFirst 0" >>{ IO.raceFirst(Vector()).runSync === Outcome.Cancelled }
+        "raceFirst 1" >>{ IO.raceFirst(Vector(aa)).runSync === Outcome.Success(42) }
+        "raceAll 0" >>{ IO.raceAll(Vector()).runSync === Outcome.Success(Vector()) }
+        "raceAll 1" >>{ IO.raceAll(Vector(aa)).runSync === Outcome.Success(Vector(42)) }
       }
     }
   }

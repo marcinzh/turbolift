@@ -16,8 +16,7 @@ class ReentrantLockTest extends Specification:
         lock <- ReentrantLock.create
         a <- lock.use(!!.pure(42))
       yield a)
-      .runIO
-      .===(Outcome.Success(42))
+      .runSync === Outcome.Success(42)
     }
 
     "cancel" >>{
@@ -25,8 +24,7 @@ class ReentrantLockTest extends Specification:
         lock <- ReentrantLock.create
         _ <- lock.use(IO.cancel)
       yield ())
-      .runIO
-      .===(Outcome.Cancelled)
+      .runSync === Outcome.Cancelled
     }
   }
 
@@ -38,8 +36,7 @@ class ReentrantLockTest extends Specification:
         b <- lock.isHeldByCurrentFiber
         c <- lock.owner
       yield (a, b, c))
-      .runIO
-      .===(Outcome.Success((0, false, None)))
+      .runSync === Outcome.Success((0, false, None))
     }
 
     "locked" >>{
@@ -53,8 +50,7 @@ class ReentrantLockTest extends Specification:
             c <- lock.owner
           yield (a, b, c == Some(fib))
       yield x)
-      .runIO
-      .===(Outcome.Success((1, true, true)))
+      .runSync === Outcome.Success((1, true, true))
     }
 
     "reentry" >>{
@@ -69,8 +65,7 @@ class ReentrantLockTest extends Specification:
               c <- lock.owner
             yield (a, b, c == Some(fib))
       yield x)
-      .runIO
-      .===(Outcome.Success((2, true, true)))
+      .runSync === Outcome.Success((2, true, true))
     }
   }
 
@@ -88,8 +83,7 @@ class ReentrantLockTest extends Specification:
           yield ()
         n <- v.get
       yield n)
-      .runIO
-      .===(Outcome.Success(1234))
+      .runSync === Outcome.Success(1234)
     }
 
     "sequential access ; cancelled" >>{
@@ -104,8 +98,7 @@ class ReentrantLockTest extends Specification:
           yield ()
         n <- v.get
       yield n)
-      .runIO
-      .===(Outcome.Success(13))
+      .runSync === Outcome.Success(13)
     }
 
     "very sequential access" >>{
@@ -127,8 +120,7 @@ class ReentrantLockTest extends Specification:
           yield ()
         n <- v.get
       yield n)
-      .runIO
-      .===(Outcome.Success(123))
+      .runSync === Outcome.Success(123)
     }
   }
 
@@ -140,8 +132,7 @@ class ReentrantLockTest extends Specification:
         a <- lock.use(lock.use(v.put(42).as(1337)))
         b <- v.get
       yield (a, b))
-      .runIO
-      .===(Outcome.Success((1337, 42)))
+      .runSync === Outcome.Success((1337, 42))
     }
 
     "concurrent" >>{
@@ -168,7 +159,6 @@ class ReentrantLockTest extends Specification:
           yield ()
         a <- v.get
       yield a)
-      .runIO
-      .===(Outcome.Success(12345))
+      .runSync === Outcome.Success(12345)
     }
   }

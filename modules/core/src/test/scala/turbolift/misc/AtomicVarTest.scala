@@ -27,7 +27,7 @@ class AtomicVarTest extends Specification:
             a <- op(avar)
             nevv <- avar.get
           yield (a, nevv))
-          .runIO.get
+          .runIO
 
         "pure" >> {
           "get" >>{ program(_.get) === (1, 1) }
@@ -94,7 +94,6 @@ class AtomicVarTest extends Specification:
         x <- aa *! bb
         n <- bvar.get
       yield (x, n))
-      .runIO
-      .===(Outcome.Success(((1, 12), (12, 123)), 123))
+      .runSync === Outcome.Success(((1, 12), (12, 123)), 123)
     }
   }

@@ -15,15 +15,15 @@ class IOTest extends Specification:
   "Basic ops" >> {
     "raise" >>{
       val e = new Exception("e")
-      IO.raise(e).unsafeRun === Outcome.Failure(Cause.Thrown(e))
+      IO.raise(e).runSync === Outcome.Failure(Cause.Thrown(e))
     }
 
     "cancel" >>{
-      IO.cancel.unsafeRun === Outcome.Cancelled
+      IO.cancel.runSync === Outcome.Cancelled
     }
 
     "yield" >>{
-      IO.yeld.unsafeRun === Outcome.Success(())
+      IO.yeld.runSync === Outcome.Success(())
     }
 
     "yield order" >>{
@@ -40,7 +40,7 @@ class IOTest extends Specification:
         _ <- prog1 &! prog2
         n <- v.get
       yield n)
-      .runIO.===(Outcome.Success(132))
+      .runSync === Outcome.Success(132)
     }
   }
 
@@ -49,19 +49,19 @@ class IOTest extends Specification:
     case object E extends Exception
 
     "success" >>{
-      IO.blocking(42).runIO.===(Outcome.Success(42))
+      IO.blocking(42).runSync === Outcome.Success(42)
     }
 
     "failure" >>{
-      IO.blocking(throw E).runIO.===(Outcome.Failure(Cause.Thrown(E)))
+      IO.blocking(throw E).runSync === Outcome.Failure(Cause.Thrown(E))
     }
 
     "attempt success" >>{
-      IO.attemptBlocking(42).runIO === Outcome.Success(Right(42))
+      IO.attemptBlocking(42).runSync === Outcome.Success(Right(42))
     }
 
     "attempt failure" >>{
-      IO.attemptBlocking(throw E).runIO === Outcome.Success(Left(E))
+      IO.attemptBlocking(throw E).runSync === Outcome.Success(Left(E))
     }
 
     "fork & cancel " >>{
@@ -71,8 +71,7 @@ class IOTest extends Specification:
         _ <- IO.sleep(10)
       yield x)
       .warpCancel
-      .runIO
-      .===(Outcome.Success(42))
+      .runSync === Outcome.Success(42)
     }
 
     "fork & Thread.interrupt" >>{
@@ -91,7 +90,7 @@ class IOTest extends Specification:
         outcome = zipp.getIO
       yield outcome)
       .warp
-      .runIO match
+      .runSync match
         case Outcome.Success(Outcome.Failure(Cause.Thrown(_: InterruptedException))) => success
         case x => failure(x.toString)
     }
@@ -110,15 +109,13 @@ class IOTest extends Specification:
             cb(Right("omg"))
           b <- IO(x)
         yield (a, b))
-        .runIO
-        .===(Outcome.Success(("omg", 42)))
+        .runSync === Outcome.Success(("omg", 42))
       }
 
       "failure" >>{
         IO.async: cb =>
           cb(Left(E))
-        .runIO
-        .===(Outcome.Failure(Cause.Thrown(E)))
+        .runSync === Outcome.Failure(Cause.Thrown(E))
       }
     }
 
@@ -131,15 +128,13 @@ class IOTest extends Specification:
             cb(Right("omg"))
           b <- IO(x)
         yield (a, b))
-        .runIO
-        .===(Outcome.Success((Right("omg"), 42)))
+        .runSync === Outcome.Success((Right("omg"), 42))
       }
 
       "failure" >>{
         IO.attemptAsync: cb =>
           cb(Left(E))
-        .runIO
-        .===(Outcome.Success(Left(E)))
+        .runSync === Outcome.Success(Left(E))
       }
     }
   }
@@ -151,8 +146,7 @@ class IOTest extends Specification:
 
     "basic" >>{
       IO.executeOn(otherExec)(!!.pure(42))
-      .runIO
-      .===(Outcome.Success(42))
+      .runSync === Outcome.Success(42)
     }
 
     "unwind" >> {
@@ -162,8 +156,7 @@ class IOTest extends Specification:
           ex2 <- IO.executeOn(otherExec)(IO.executor)
           ex3 <- IO.executor
         yield (ex1 == ex3, ex2 == otherExec))
-        .runIO
-        .===(Outcome.Success((true, true)))
+        .runSync === Outcome.Success((true, true))
       }
 
       "error" >>{
@@ -173,8 +166,7 @@ class IOTest extends Specification:
           err <- E.raise("OMG").executeOn(otherExec).handleWith(E.handler)
           ex2 <- IO.executor
         yield (ex1 == ex2, err))
-        .runIO
-        .===(Outcome.Success((true, Left("OMG"))))
+        .runSync === Outcome.Success((true, Left("OMG")))
       }
 
       "exception" >>{
@@ -184,8 +176,7 @@ class IOTest extends Specification:
           err <- IO.catchToEither(IO.raise(E).executeOn(otherExec))
           ex2 <- IO.executor
         yield (ex1 == ex2, err))
-        .runIO
-        .===(Outcome.Success((true, Left(E))))
+        .runSync === Outcome.Success((true, Left(E)))
       }
     }
   }

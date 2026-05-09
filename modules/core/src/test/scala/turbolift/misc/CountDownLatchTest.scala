@@ -16,8 +16,7 @@ class CountDownLatchTest extends Specification:
         latch <- CountDownLatch(0)
         _ <- latch.await
       yield ())
-      .runIO
-      .===(Outcome.Success(()))
+      .runSync === Outcome.Success(())
     }
 
     "one" >>{
@@ -26,8 +25,7 @@ class CountDownLatchTest extends Specification:
         _ <- latch.release
         _ <- latch.await
       yield ())
-      .runIO
-      .===(Outcome.Success(()))
+      .runSync === Outcome.Success(())
     }
 
     "one too many" >>{
@@ -37,8 +35,7 @@ class CountDownLatchTest extends Specification:
         _ <- latch.release
         _ <- latch.await
       yield ())
-      .runIO
-      .===(Outcome.Success(()))
+      .runSync === Outcome.Success(())
     }
   }
 
@@ -58,8 +55,7 @@ class CountDownLatchTest extends Specification:
           yield ()
         n <- v.get
       yield n)
-      .runIO
-      .===(Outcome.Success(3012))
+      .runSync === Outcome.Success(3012)
     }
 
     "1 await 2 release" >>{
@@ -75,8 +71,7 @@ class CountDownLatchTest extends Specification:
           yield ()
         n <- v.get
       yield n)
-      .runIO
-      .===(Outcome.Success(123))
+      .runSync === Outcome.Success(123)
     }
 
     "1 cancel 0 release" >>{
@@ -93,7 +88,6 @@ class CountDownLatchTest extends Specification:
         _ <- v.event(4)
         n <- v.get
       yield n)
-      .runIO
-      .===(Outcome.Success(324))
+      .runSync === Outcome.Success(324)
     }
   }
