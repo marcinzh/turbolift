@@ -4,7 +4,7 @@ import turbolift.!!
 import turbolift.Extensions._
 import turbolift.effects.WriterEffectK
 import turbolift.effects.Generator
-import turbolift.mode.ST
+import turbolift.runtime.ST
 
 
 class GeneratorTest extends Specification:

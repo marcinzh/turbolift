@@ -8,7 +8,7 @@ import turbolift.internals.engine.{Tag, Env, FiberImpl, Halt}
 import turbolift.interpreter.Prompt
 import turbolift.data.{Outcome, Cause}
 import turbolift.io.{Fiber, Warp, Zipper}
-import turbolift.mode.Mode
+import turbolift.runtime.{Runtime, Mode}
 import turbolift.{ComputationCases => CC}
 
 
@@ -352,6 +352,7 @@ object Computation:
 
   def envAsk[A](f: Env => A): A !! Any = CC.intrinsic(_.intrinsicEnvAsk(f))
   def envMod[A, U](f: Env => Env, body: A !! U): A !! U = CC.intrinsic(_.intrinsicEnvMod(f, body))
+  def getRuntime[A]: Runtime !! Any = CC.intrinsic(_.intrinsicGetRuntime)
 
   def isParallel: Boolean !! Any = envAsk(_.isParallelismRequested)
   def isSequential: Boolean !! Any = isParallel.map(!_)
@@ -366,32 +367,32 @@ object Computation:
 
   extension [A](thiz: Computation[A, Any])
     /** Runs the computation, provided that it requests no effects. */
-    def run(using mode: Mode = Mode.default): A = Executor.pick(mode).runSync(thiz, "").get
+    def run(using mode: Mode = None): A = Runtime(mode).runSync(thiz).get
 
-    def runST: A = Executor.ST.runSync(thiz, "").get
-    def runMT: A = Executor.MT.runSync(thiz, "").get
+    def runST: A = run(using Mode.ST)
+    def runMT: A = run(using Mode.MT)
 
 
   extension [A](thiz: Computation[A, IO])
     /** Like [[runSync]], but unwraps the successful result, or rethrows the failure. */
-    def runIO(using mode: Mode = Mode.default): A = runSync.get
+    def runIO(using mode: Mode = None): A = runSync.get
 
     /** Runs the computation, provided that it requests IO effect only, or none at all.
      *
      * The result of the computation is wrapped in `Outcome[A]`.
      */
-    def runSync(using mode: Mode = Mode.default): Outcome[A] = Executor.pick(mode).runSync(thiz, "")
+    def runSync(using mode: Mode = None): Outcome[A] = Runtime(mode).runSync(thiz)
 
     /** Asynchronous version of [[runSync]]. */
-    def runAsync(using mode: Mode = Mode.default)(callback: Outcome[A] => Unit): Unit = Executor.pick(mode).runAsync(thiz, callback, "")
+    def runAsync(using mode: Mode = None)(callback: Outcome[A] => Unit): Unit = Runtime(mode).runAsync(thiz, callback)
 
-    def runIOST: Outcome[A] = Executor.ST.runSync(thiz, "")
-    def runIOMT: Outcome[A] = Executor.MT.runSync(thiz, "")
+    def runSyncST: Outcome[A] = runSync(using Mode.ST)
+    def runSyncMT: Outcome[A] = runSync(using Mode.MT)
 
-    /*@deprecated*/ def unsafeRun(using mode: Mode = Mode.default): Outcome[A] = runSync
-    /*@deprecated*/ def unsafeRunAsync(using mode: Mode = Mode.default)(callback: Outcome[A] => Unit): Unit = runAsync(callback)
-    /*@deprecated*/ def unsafeRunST: Outcome[A] = Executor.ST.runSync(thiz, "")
-    /*@deprecated*/ def unsafeRunMT: Outcome[A] = Executor.MT.runSync(thiz, "")
+    /*@deprecated*/ def unsafeRun(using mode: Mode = None): Outcome[A] = runSync
+    /*@deprecated*/ def unsafeRunAsync(using mode: Mode = None)(callback: Outcome[A] => Unit): Unit = runAsync(callback)
+    /*@deprecated*/ def unsafeRunST: Outcome[A] = runSyncST
+    /*@deprecated*/ def unsafeRunMT: Outcome[A] = runSyncMT
 
 
   extension [A, U <: IO](thiz: Computation[A, U & Warp])
@@ -475,13 +476,13 @@ object Computation:
   final class NamedSyntax[A, U](val comp: Computation[A, U], val name: String):
     def fork: Fiber[A, U] !! (U & IO & Warp) = Fiber.named(name).fork(comp)
     def forkAt(warp: Warp): Fiber[A, U] !! (U & IO) = Fiber.named(name).forkAt(warp)(comp)
-    def run(using mode: Mode = Mode.default, ev: Any <:< U): Outcome[A] = Executor.pick(mode).runSync(comp, name)
+    def run(using mode: Mode = None, ev: Any <:< U): Outcome[A] = Runtime(mode).runSync(comp, name)
 
   object NamedSyntax:
     extension [A](thiz: NamedSyntax[A, IO])
-      def runIO(using mode: Mode = Mode.default): A = Executor.pick(mode).runSync(thiz.comp, thiz.name).get
-      def runSync(using mode: Mode = Mode.default): Outcome[A] = Executor.pick(mode).runSync(thiz.comp, thiz.name)
-      def runAsync(using mode: Mode = Mode.default)(callback: Outcome[A] => Unit): Unit = Executor.pick(mode).runAsync(thiz.comp, callback, thiz.name)
+      def runIO(using mode: Mode = None): A = runSync.get
+      def runSync(using mode: Mode = None): Outcome[A] = Runtime(mode).runSync(thiz.comp, thiz.name)
+      def runAsync(using mode: Mode = None)(callback: Outcome[A] => Unit): Unit = Runtime(mode).runAsync(thiz.comp, callback, thiz.name)
 
 
 //@#@TEMP public bcoz inline bug

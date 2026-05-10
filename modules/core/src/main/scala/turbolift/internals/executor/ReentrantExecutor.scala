@@ -1,28 +1,28 @@
 package turbolift.internals.executor
+import java.lang.{Runtime => JRuntime}
 import java.lang.ThreadLocal
 import java.util.concurrent.ArrayBlockingQueue
-import scala.annotation.tailrec
 import turbolift.Computation
 import turbolift.data.Outcome
+import turbolift.runtime.Runtime
 import turbolift.internals.engine.{FiberImpl, WaiterLink}
-
 
 
 private[turbolift] final class ReentrantExecutor(maxBusyThreads: Int) extends WaiterLink.Queue with Executor:
   enclosing =>
   private var idleCounter: Int = maxBusyThreads
-  protected val pad1, pad2, pad3 = 0L
+  protected val pad1, pad2, pad3, pad4 = 0L
 
 
-  override def runSync[A](comp: Computation[A, ?], name: String): Outcome[A] =
+  override def runSync[A](comp: Computation[A, ?], runtime: Runtime, name: String): Outcome[A] =
     val queue = new ArrayBlockingQueue[Outcome[A]](1)
-    runAsync(comp, queue.offer, name)
+    runAsync(comp, runtime, queue.offer, name)
     queue.take().nn
 
 
-  override def runAsync[A](comp: Computation[A, ?], callback: Outcome[A] => Unit, name: String): Unit =
+  override def runAsync[A](comp: Computation[A, ?], runtime: Runtime, callback: Outcome[A] => Unit, name: String): Unit =
     val isReentry = ReentrantExecutor.currentVar.get != null
-    val fiber = FiberImpl.createRoot(comp, this, name, isReentry, callback)
+    val fiber = FiberImpl.createRoot(comp, runtime, name, isReentry, callback)
     if !isReentry then
       resume(fiber)
     else
@@ -78,7 +78,7 @@ private[turbolift] final class ReentrantExecutor(maxBusyThreads: Int) extends Wa
 
 private[turbolift] object ReentrantExecutor:
   def apply(f: Int => Int): ReentrantExecutor =
-    val cpus = Runtime.getRuntime.nn.availableProcessors()
+    val cpus = JRuntime.getRuntime.nn.availableProcessors()
     new ReentrantExecutor(f(cpus))
 
   lazy val default: ReentrantExecutor = apply(n => n)

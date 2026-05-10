@@ -5,7 +5,7 @@ import org.specs2.matcher.TypecheckMatchers._
 import turbolift.!!
 import turbolift.Extensions._
 import turbolift.effects.{Reader, Writer, State, Error, Finalizer}
-import turbolift.mode.ST
+import turbolift.runtime.ST
 
 
 class PolyEffectTest extends Specification:

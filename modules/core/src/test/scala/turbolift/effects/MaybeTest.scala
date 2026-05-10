@@ -2,7 +2,7 @@ package turbolift.effects
 import org.specs2.mutable._
 import turbolift.!!
 import turbolift.effects.MaybeEffect
-import turbolift.mode.ST
+import turbolift.runtime.ST
 
 
 class MaybeTest extends Specification with CanLaunchTheMissiles:

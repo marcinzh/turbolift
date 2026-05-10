@@ -3,6 +3,7 @@ import scala.annotation.{tailrec, switch}
 import turbolift.{Computation, Signature}
 import turbolift.data.{Snap, Outcome, Cause, Exceptions}
 import turbolift.io.{Fiber, Zipper, Warp, OnceVar}
+import turbolift.runtime.Runtime
 import turbolift.internals.executor.Executor
 import turbolift.internals.engine.Misc._
 import turbolift.internals.engine.stacked.{Stack, Store}
@@ -15,7 +16,8 @@ private[turbolift] sealed abstract class FiberImplPart1 (
   private[engine] var theWaiterStateAny: Any = null
   private[engine] var thePendingRacerCount: Int = 0
   private[engine] var theTotalRacerCount: Int = 0
-  private[engine] val pad1_I1: Int = 0
+  private[engine] val pad1: Int = 0
+  private[engine] val pad2: Short = 0
 
 
 private[turbolift] sealed abstract class FiberImplPart2 (
@@ -36,12 +38,13 @@ private[turbolift] final class FiberImpl private (
   private[engine] var theName: String,
   private[engine] val theJoinStack: Stack | Null,
   private[engine] var theCallback: (Any => Unit) | Null,
+  private[engine] val theRuntime: Runtime,
 ) extends FiberImplPart2(_parent) with Engine:
   private[engine] var theCurrentTickHigh: Int = 0
   private[engine] var theCurrentCause: Cause.Singular | Null = null
   private[engine] var theSuppressedCause: Option[Cause] = None
   private[engine] var theFiberToBecome: FiberImpl | Null = null
-  private[engine] val pad3_L1: Long = 0
+  private[engine] val pad3: Int = 0
 
 
   //-------------------------------------------------------------------
@@ -629,6 +632,7 @@ private[turbolift] final class FiberImpl private (
       theName = "",
       theJoinStack = null,
       theCallback = null,
+      theRuntime = theRuntime,
     )
     that.theCurrentEnv = theCurrentEnv.fork
     that
@@ -637,34 +641,35 @@ private[turbolift] final class FiberImpl private (
 private[turbolift] object FiberImpl:
   type Callback = Outcome[Nothing] => Unit
 
-  def createRoot(comp: Computation[?, ?], executor: Executor, name: String, isReentry: Boolean, callback: Callback): FiberImpl =
+  def createRoot(comp: Computation[?, ?], runtime: Runtime, name: String, isReentry: Boolean, callback: Callback): FiberImpl =
     val kind = (if isReentry then Bits.Kind_Reentry else Bits.Kind_Main).toByte
-    val env = Env.initial(executor)
     val fiber = new FiberImpl(
       _parent = WarpImpl.root,
       theKind = kind,
       theName = name,
       theJoinStack = Stack.initial, //// can't be null, as long as callback takes Zipper
       theCallback = callback.asInstanceOf[(Any => Unit) | Null],
+      theRuntime = runtime,
     )
     fiber.willContinueEffStackEnv(
       comp = comp.untyped,
       step = Step.Pop,
       stack = Stack.initial,
-      store = Store.initial(env),
-      env = env,
+      store = Store.initial(runtime.initialEnv),
+      env = runtime.initialEnv,
     )
     WarpImpl.root.tryAddFiber(fiber)
     fiber
 
 
-  def createExplicit(joinStack: Stack, parentWarp: WarpImpl, env: Env, name: String, callback: (ZipperImpl => Unit) | Null): FiberImpl =
+  def createExplicit(joinStack: Stack, parentWarp: WarpImpl, runtime: Runtime, env: Env, name: String, callback: (ZipperImpl => Unit) | Null): FiberImpl =
     val fiber = new FiberImpl(
       _parent = parentWarp,
       theKind = Bits.Kind_Explicit,
       theName = name,
       theJoinStack = joinStack,
       theCallback = callback.asInstanceOf[(Any => Unit) | Null],
+      theRuntime = runtime
     )
     fiber.theCurrentEnv = env
     fiber

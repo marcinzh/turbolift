@@ -4,7 +4,7 @@ import org.specs2.specification.core.Fragment
 import turbolift.!!
 import turbolift.Extensions._
 import turbolift.effects.{StateEffect, IO}
-import turbolift.mode.ST
+import turbolift.runtime.ST
 
 
 class StateTest extends Specification:

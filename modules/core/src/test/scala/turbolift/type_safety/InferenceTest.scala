@@ -4,7 +4,7 @@ import org.specs2.execute.Typecheck
 import org.specs2.matcher.TypecheckMatchers._
 import turbolift.!!
 import turbolift.effects.{ReaderEffect, WriterEffect, StateEffect, ChoiceEffect}
-import turbolift.mode.ST
+import turbolift.runtime.ST
 
 
 class InferenceTest extends Specification:

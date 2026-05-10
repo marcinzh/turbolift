@@ -2,6 +2,7 @@ package turbolift.internals.executor
 import scala.annotation.tailrec
 import turbolift.Computation
 import turbolift.data.Outcome
+import turbolift.runtime.Runtime
 import turbolift.internals.engine.{FiberImpl, WaiterLink}
 
 
@@ -12,18 +13,18 @@ private[internals] final class ZeroThreadedExecutor extends WaiterLink.Queue wit
   override def toString = s"ZeroThreadedExecutor@${hashCode.toHexString}"
 
 
-  override def runSync[A](comp: Computation[A, ?], name: String): Outcome[A] =
+  override def runSync[A](comp: Computation[A, ?], runtime: Runtime, name: String): Outcome[A] =
     var outcome: Outcome[A] = null.asInstanceOf[Outcome[A]]
     def callback(o: Outcome[A]): Unit =
       outcome = o
       isDone = true
-    val fiber = FiberImpl.createRoot(comp, this, name, isReentry = false, callback)
+    val fiber = FiberImpl.createRoot(comp, runtime, name, isReentry = false, callback)
     drain(fiber)
     outcome
 
 
-  override def runAsync[A](comp: Computation[A, ?], callback: Outcome[A] => Unit, name: String): Unit =
-    callback(runSync(comp, name))
+  override def runAsync[A](comp: Computation[A, ?], runtime: Runtime, callback: Outcome[A] => Unit, name: String): Unit =
+    callback(runSync(comp, runtime, name))
 
 
   private[turbolift] override def resume(fiber: FiberImpl): Unit =

@@ -1,8 +1,10 @@
 package examples
+import java.lang.{Runtime => JRuntime}
 import java.util.concurrent.atomic.AtomicInteger
 import turbolift.!!
 import turbolift.Extensions._
 import turbolift.internals.executor.Executor
+import turbolift.runtime.{Runtime, RuntimeConfig}
 
 
 case object ReentrantRun extends Example:
@@ -14,7 +16,7 @@ case object ReentrantRun extends Example:
     running it stays total and deterministic.
   """
 
-  val CPUS = Runtime.getRuntime.nn.availableProcessors()
+  val CPUS = JRuntime.getRuntime.nn.availableProcessors()
   val DELAY = 1000
   val TIMES = 10
 
@@ -49,5 +51,6 @@ case object ReentrantRun extends Example:
   override def apply() =
     println(s"$CPUS CPUs found.")
     val hogs = (1 until CPUS).map(hog)
-    Executor.reentrant.runSync:
+    val runtime = Runtime(RuntimeConfig(Executor.reentrant))
+    runtime.runSync:
       (dig +: hogs).traverseVoidPar

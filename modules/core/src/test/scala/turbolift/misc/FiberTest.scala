@@ -407,7 +407,7 @@ class FiberTest extends Specification:
   }
 
   "ZeroThreadedExecutor" >> {
-    import turbolift.mode.ST
+    import turbolift.runtime.ST
 
     "fork" >>{
       (for

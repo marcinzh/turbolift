@@ -1,7 +1,7 @@
 package turbolift.misc
 import org.specs2.mutable._
 import turbolift.!!
-import turbolift.mode.ST
+import turbolift.runtime.ST
 
 
 class EnvTest extends Specification:

@@ -6,7 +6,7 @@ import turbolift.{!!, Handler}
 import turbolift.Extensions._
 import turbolift.effects.{ErrorEffect, StateEffect}
 import turbolift.typeclass.Accum
-import turbolift.mode.ST
+import turbolift.runtime.ST
 
 
 class ErrorTest extends Specification with CanLaunchTheMissiles:

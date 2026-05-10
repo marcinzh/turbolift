@@ -953,11 +953,16 @@ private trait Engine extends Runnable:
     Halt.Continue
 
 
+  final def intrinsicGetRuntime[A, U]: Halt =
+    this.willContinuePure(theRuntime)
+    Halt.Continue
+
+
   final def intrinsicForkFiber[A, U](warp0: Warp | Null, comp: A !! U | Null, name: String, callback: (Zipper.Untyped => Unit) | Null = null): Halt =
     val warp = if warp0 != null then warp0.asImpl else theCurrentEnv.currentWarp.nn
     val stackFork = theCurrentStack.lazyFork
     val (storeDown, storeFork) = OpCascaded.fork1(theCurrentStack, theCurrentStore, stackFork)
-    val child = FiberImpl.createExplicit(stackFork, warp, theCurrentEnv.fork, name, callback)
+    val child = FiberImpl.createExplicit(stackFork, warp, theRuntime, theCurrentEnv.fork, name, callback)
     this.willContinuePureStore(child, storeDown)
     child.willContinuePureStack(null, Step.Pop, stackFork, storeFork)
     if warp.tryAddFiber(child) then

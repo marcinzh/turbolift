@@ -5,7 +5,7 @@ import org.specs2.execute.Result
 import turbolift.!!
 import turbolift.Extensions._
 import turbolift.effects.{ChoiceEffect, ErrorEffect}
-import turbolift.mode.ST
+import turbolift.runtime.ST
 
 
 class ChoiceTest extends Specification:

@@ -2,7 +2,7 @@ package turbolift.effects
 import org.specs2.mutable._
 import turbolift.!!
 import turbolift.effects.{ErrorEffect, WriterEffect, StateEffect, ChoiceEffect}
-import turbolift.mode.ST
+import turbolift.runtime.ST
 
 /** Based on "The Effect Semantics Zoo"
  *  https://github.com/lexi-lambda/eff/blob/8c4df4bf54faf22456354be18095b14825be5e85/notes/semantics-zoo.md

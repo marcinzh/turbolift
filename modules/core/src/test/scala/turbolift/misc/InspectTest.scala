@@ -4,7 +4,7 @@ import turbolift.!!
 import turbolift.effects.{IO, ErrorEffect}
 import turbolift.effects.CanLaunchTheMissiles
 import turbolift.data.{Outcome, Cause}
-import turbolift.mode.ST
+import turbolift.runtime.ST
 
 
 class InspectTest extends Specification with CanLaunchTheMissiles:

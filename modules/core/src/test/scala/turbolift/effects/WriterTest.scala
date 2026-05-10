@@ -5,7 +5,7 @@ import turbolift.!!
 import turbolift.Extensions._
 import turbolift.effects.{WriterEffectExt, WriterEffect, WriterEffectK, WriterEffectGK, IO}
 import turbolift.typeclass.AccumZero
-import turbolift.mode.ST
+import turbolift.runtime.ST
 
 
 class WriterTest extends Specification:

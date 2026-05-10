@@ -6,8 +6,8 @@ import turbolift.internals.executor.Executor
 
 private[turbolift] final class Env(
   val executor: Executor,
-  val tickLow: Short,
-  val tickHigh: Short,
+  val tickLow: Int,
+  val tickHigh: Int,
   val currentWarp: WarpImpl | Null,
   val shadowMap: ShadowMap,
   val isParallelismRequested: Boolean = true,
@@ -15,8 +15,8 @@ private[turbolift] final class Env(
 ):
   def copy(
     executor: Executor = executor,
-    tickLow: Short = tickLow,
-    tickHigh: Short = tickHigh,
+    tickLow: Int = tickLow,
+    tickHigh: Int = tickHigh,
     currentWarp: WarpImpl | Null = currentWarp,
     shadowMap: ShadowMap = shadowMap,
     isParallelismRequested: Boolean = isParallelismRequested,
@@ -58,12 +58,16 @@ private[turbolift] final class Env(
 
 
 
-private[internals] object Env:
-  def initial(executor: Executor): Env =
+private[turbolift] object Env:
+  def initial(
+    executor: Executor,
+    tickLow: Int,
+    tickHigh: Int,
+  ): Env =
     new Env(
       executor = executor,
-      tickHigh = 20,
-      tickLow = 1000,
+      tickHigh = tickHigh,
+      tickLow = tickLow,
       currentWarp = null,
       shadowMap = ShadowMap.empty,
       isCancellable = true,

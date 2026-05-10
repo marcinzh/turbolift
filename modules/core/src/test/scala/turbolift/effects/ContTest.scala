@@ -4,7 +4,7 @@ import turbolift.!!
 import turbolift.Extensions._
 import turbolift.effects.WriterEffect
 import turbolift.effects.Cont
-import turbolift.mode.ST
+import turbolift.runtime.ST
 
 
 class ContTest extends Specification:

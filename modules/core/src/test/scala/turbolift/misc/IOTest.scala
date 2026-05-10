@@ -27,7 +27,7 @@ class IOTest extends Specification:
     }
 
     "yield order" >>{
-      import turbolift.mode.ST
+      import turbolift.runtime.ST
       (for
         v <- AtomicVar(0)
         prog1 =
