@@ -33,6 +33,8 @@ val Deps = {
     val specs2_extra = "org.specs2" %% "specs2-matcher-extra" % specs2_v % "test"
     val jol = "org.openjdk.jol" % "jol-core" % "0.17"
     val cps = "io.github.dotty-cps-async" %% "dotty-cps-async" % cps_v
+    val cats_core = "org.typelevel" %% "cats-core" % "2.13.0"
+    val cats_effect = "org.typelevel" %% "cats-effect" % "3.7.0"
   }
   deps
 }
@@ -42,7 +44,7 @@ lazy val root = project
   .settings(name := "turbolift-root")
   .settings(sourcesInBase := false)
   .settings(publish / skip := true)
-  .aggregate(core, extra_effects, devel, examples, bindless)
+  .aggregate(core, extra_effects, devel, examples, bindless, spot)
 
 lazy val core = project
   .in(file("modules/core"))
@@ -84,18 +86,27 @@ lazy val extra_effects = project
   ))
   .dependsOn(core)
 
+lazy val spot = project
+  .in(file("modules/spot"))
+  .settings(name := "turbolift-spot")
+  .settings(libraryDependencies ++= Seq(
+    Deps.cats_core,
+    Deps.cats_effect,
+  ))
+  .dependsOn(core)
+
 lazy val examples = project
   .in(file("modules/examples"))
   .settings(name := "turbolift-examples")
   .settings(publish / skip := true)
-  .dependsOn(core, extra_effects)
+  .dependsOn(core, extra_effects, spot)
 
 lazy val devel = project
   .in(file("modules/devel"))
   .settings(name := "turbolift-devel")
   .settings(publish / skip := true)
   .settings(libraryDependencies += Deps.jol)
-  .dependsOn(core, extra_effects)
+  .dependsOn(core, extra_effects, spot)
 
 lazy val site = (project in file("docs"))
   .settings(publish / skip := true)
