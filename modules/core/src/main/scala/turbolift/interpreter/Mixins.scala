@@ -23,24 +23,28 @@ object Mixins:
   private[interpreter] sealed trait HasNotZip extends Interpreter.Unsealed:
     final override def onZip[A, B, C](aa: To[A], bb: To[B], k: (A, B) => C): To[C] = unimplemented
   
+  private[interpreter] sealed trait HasNotEarly extends Interpreter.Unsealed:
+    final override def onEarly(aa: To[Unknown]): Either[Boolean, Unknown] = unimplemented
 
   /** Mixin trait for interpreters, that prohibit parallelism. */
   trait Sequential extends Sequential.Default
 
   object Sequential:
-    trait Default extends HasNotZip with HasNotForkJoin with HasNotRestart
+    trait Default extends HasNotZip with HasNotForkJoin with HasNotRestart with HasNotEarly
 
-    trait Restartable extends HasNotZip with HasNotForkJoin
+    trait Restartable extends HasNotZip with HasNotForkJoin with HasNotEarly
 
 
   /** Mixin trait for interpreters, that allow parallelism. */
   trait Parallel extends Parallel.Default
 
   object Parallel:
-    trait Default extends HasNotForkJoin
+    trait Early extends HasNotForkJoin
 
-    trait Trivial extends HasNotZip with HasNotForkJoin with HasNotRestart
+    trait Default extends HasNotForkJoin with HasNotEarly
 
-    trait ForkJoin extends Interpreter.Unsealed:
+    trait Trivial extends HasNotZip with HasNotForkJoin with HasNotRestart with HasNotEarly
+
+    trait ForkJoin extends Interpreter.Unsealed with HasNotEarly:
       //@#@TODO
       final override def onJoin(s1: Local, s2: Local): Local = unimplemented

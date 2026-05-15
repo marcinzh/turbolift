@@ -498,7 +498,11 @@ private trait Engine extends Runnable:
     if theWaiterStateAny != null then
       val winner = theWaiterStateAny.asInstanceOf[FiberImpl]
       this.theWaiterStateAny = null
-      arbitrageFailedRace(winner)
+      if winner.theEarlyFlag then
+        val comp = OpCascaded.restart(theCurrentStack, winner.theCurrentPayload)
+        this.willContinueEff(comp)
+      else
+        arbitrageFailedRace(winner)
     else
       val comp = OpCascaded.zipAndRestart(
         stack = theCurrentStack,
@@ -570,7 +574,12 @@ private trait Engine extends Runnable:
     if theWaiterStateAny != null then
       val winner = theWaiterStateAny.asInstanceOf[FiberImpl]
       this.theWaiterStateAny = null
-      arbitrageFailedRace(winner)
+      if winner.theEarlyFlag then
+        //@#@TODO Should we also restart racers that completed successfully before the early-exiting error?
+        val comp = OpCascaded.restart(theCurrentStack, winner.theCurrentPayload)
+        this.willContinueEff(comp)
+      else
+        arbitrageFailedRace(winner)
     else
       val isVoid = theCurrentPayload.asInstanceOf[Boolean]
       val comp =
@@ -803,9 +812,9 @@ private trait Engine extends Runnable:
 
 
   final def intrinsicRaceOne[A, U](comp: A !! U): Halt =
-    val racer = this.createManyChildren(1, Bits.Kind_RaceOne)
+    val stack2 = theCurrentStack.lazyFork
+    val racer = this.createManyChildren(1, Bits.Kind_RaceOne, stack2)
     if this.tryStartRace(racer, 1) then
-      val stack2 = theCurrentStack.lazyFork
       val (storeDown, storeFork) = OpCascaded.fork1(theCurrentStack, theCurrentStore, stack2)
       this.willContinueTagStore(Tag.NotifyRaceOne, null, storeDown)
       racer.willContinueEffStack(comp, Step.Pop, stack2, storeFork)
@@ -817,10 +826,10 @@ private trait Engine extends Runnable:
 
 
   final def intrinsicRaceSleep[A, U](comp: A !! U, length: Long, unit: TimeUnit): Halt =
-    val leftRacer = this.createTwoChildren(Bits.Kind_RaceFirst)
+    val stack2 = theCurrentStack.lazyFork
+    val leftRacer = this.createTwoChildren(Bits.Kind_RaceFirst, stack2)
     if this.tryStartRace(leftRacer, 2) then
       val rightRacer = leftRacer.getNextRacer
-      val stack2 = theCurrentStack.lazyFork
       val (storeDown, storeFork) = OpCascaded.fork1(theCurrentStack, theCurrentStore, stack2)
       this.willContinueTagStore(Tag.NotifyRaceSleep, null, storeDown)
       leftRacer.willContinueEffStack(comp, Step.Pop, stack2, storeFork)
@@ -856,10 +865,10 @@ private trait Engine extends Runnable:
 
   private final inline def raceTwo[A, B, U](lhs: A !! U, rhs: B !! U, kind: Byte, notifyTag: Int, payload: Any)(inline fallback: => AnyComp): Halt =
     if theCurrentStack.accumFeatures.isParallel && theCurrentEnv.isParallelismRequested then
-      val leftRacer = this.createTwoChildren(kind)
+      val stack2 = theCurrentStack.lazyFork
+      val leftRacer = this.createTwoChildren(kind, stack2)
       if this.tryStartRace(leftRacer, 2) then
         val rightRacer = leftRacer.getNextRacer
-        val stack2 = theCurrentStack.lazyFork
         val (storeDown, storeLeft, storeRight) = OpCascaded.fork2(theCurrentStack, theCurrentStore, stack2)
         this.willContinueTagStore(notifyTag, payload, storeDown)
         leftRacer.willContinueEffStack(lhs, Step.Pop, stack2, storeLeft)
@@ -879,9 +888,9 @@ private trait Engine extends Runnable:
   private final inline def raceMany[A, U <: IO](comps: Iterable[A !! U], kind: Byte, notifyTag: Int, payload: Any)(inline fallback: => AnyComp): Halt =
     if theCurrentStack.accumFeatures.isParallel && theCurrentEnv.isParallelismRequested then
       val count = comps.size
-      val firstRacer = this.createManyChildren(count, kind)
+      val forkStack = theCurrentStack.lazyFork
+      val firstRacer = this.createManyChildren(count, kind, forkStack)
       if this.tryStartRace(firstRacer, count) then
-        val forkStack = theCurrentStack.lazyFork
         val it = comps.iterator
         @tailrec def loop(racer: FiberImpl, lastStore: Store): Store =
           if it.hasNext then

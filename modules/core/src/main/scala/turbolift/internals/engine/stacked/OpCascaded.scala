@@ -26,6 +26,17 @@ object OpCascaded:
     loop(stack)
 
 
+  def early(stack: Stack, ftor: Any): Boolean =
+    def loop(todo: Stack): Either[Boolean, Any] =
+      if todo.isTailless then
+        earlySegment(todo, ftor)
+      else
+        loop(todo.tail).flatMap(earlySegment(todo, _))
+    loop(stack) match
+      case Right(_) => false
+      case Left(x) => x
+
+
   def zip(stack: Stack, ftorLeft: Any, ftorRight: Any, fun: (Any, Any) => Any): Any =
     def loop(todo: Stack, a: Any, b: Any, f: (Any, Any) => Any): Any =
       if todo.isTailless then
@@ -146,6 +157,27 @@ object OpCascaded:
           loop(i2, accum)
       else
         Some(accum)
+    loop(0, ftor)
+
+
+  private def earlySegment(seg: Stack, ftor: Any): Either[Boolean, Any] =
+    val n = seg.promptCount
+    @tailrec def loop(i: Int, accum: Any): Either[Boolean, Any] =
+      if i < n then
+        val p = seg.piles(i).prompt
+        val i2 = i + 1
+        if p.hasEarly then
+          p.onEarly(accum) match
+            case Right(ftor2) => loop(i2, ftor2)
+            case left => left
+        else if p.hasRestart then
+          p.onOnce(accum) match
+            case Some(ftor2) => loop(i2, ftor2)
+            case None => loop(i2, accum)
+        else
+          loop(i2, accum)
+      else
+        Right(accum)
     loop(0, ftor)
 
 

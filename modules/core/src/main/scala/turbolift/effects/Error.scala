@@ -72,12 +72,46 @@ trait ErrorEffectExt[E, E1] extends Effect[ErrorSignature[E, E1]] with ErrorSign
 
   /** Predefined handlers for this effect. */
   object handlers:
-    /** Short-circuit on the first error. */
-    def first(using E: One[E, E1]): Handler[Identity, Either[E, _], enclosing.type, Any] =
+    @deprecated("Use firstSeq or firstPar")
+    def first(using E: One[E, E1]): Handler[Identity, Either[E, _], enclosing.type, Any] = firstSeq
+
+    /** Short-circuit on the first error. Sequential version.
+     *
+     * Preserves determinism, but silently disables parallellism.
+     * For example: `zipPar` will behave the same as `zip`.
+     *
+     * @see [[firstPar]]
+     */
+    def firstSeq(using E: One[E, E1]): Handler[Identity, Either[E, _], enclosing.type, Any] =
       new impl.Stateless[Identity, Either[E, _], Any] with impl.Sequential.Restartable with ErrorSignature[E, E1]:
         override def onReturn(a: Unknown): Either[E, Unknown] !! Any = !!.pure(Right(a))
         override def onRestart(aa: Either[E, Unknown]): Unknown !! enclosing.type = aa.fold(enclosing.raises, !!.pure)
         override def onOnce(aa: Either[E, Unknown]): Option[Unknown] = aa.toOption
+
+        override def raise(e: E1): Nothing !! ThisEffect = raises(E.one(e))
+        override def raises(e: E): Nothing !! ThisEffect = Control.abort(Left(e))
+        override def catchToEither[A, U <: ThisEffect](body: A !! U): Either[E, A] !! U = Control.delimit(body)
+      .toHandler
+
+    /** Short-circuit on the first error. Parallel version.
+     *
+     * Preserves parallellism, but introduces non-determinism.
+     * Because of this, [[IO]] is in the result type.
+     * The first branch that [[raise]]s an error causes cancellation of its siblings.
+     *
+     * @see [[firstSeq]]
+     */
+    def firstPar(using E: One[E, E1]): Handler[Identity, Either[E, _], enclosing.type, IO] =
+      new impl.Stateless[Identity, Either[E, _], IO] with impl.Parallel.Early with ErrorSignature[E, E1]:
+        override def onReturn(a: Unknown): Either[E, Unknown] !! Any = !!.pure(Right(a))
+        override def onRestart(aa: Either[E, Unknown]): Unknown !! enclosing.type = aa.fold(enclosing.raises, !!.pure)
+        override def onOnce(aa: Either[E, Unknown]): Option[Unknown] = aa.toOption
+        override def onEarly(aa: Either[E, Unknown]): Either[Boolean, Unknown] = aa.left.map(_ => true)
+        override def onZip[A, B, C](ea: Either[E, A], eb: Either[E, B], k: (A, B) => C): Either[E, C] =
+          (ea, eb) match
+            case (Right(a), Right(b)) => Right(k(a, b))
+            case (Left(e), _) => Left(e)
+            case (_, Left(e)) => Left(e)
 
         override def raise(e: E1): Nothing !! ThisEffect = raises(E.one(e))
         override def raises(e: E): Nothing !! ThisEffect = Control.abort(Left(e))
@@ -113,7 +147,7 @@ object ErrorEffectExt:
      *
      * Defined as an extension, to allow custom redefinitions without restrictions imposed by overriding
      */
-    def handler(using E: One[E, E1]): Handler[Identity, Either[E, _], thiz.type, Any] = thiz.handlers.first
+    def handler(using E: One[E, E1]): Handler[Identity, Either[E, _], thiz.type, Any] = thiz.handlers.firstSeq
 
 
 /** Specialized [[ErrorEffectExt]], where `E` and `E1` are the same (e.g. a semigroup). */
@@ -211,7 +245,7 @@ abstract class PolyErrorEffect extends Effect.Polymorphic_-[ErrorEffect, Any](ne
 
   /** Predefined handlers for this effect. */
   object handlers:
-    def default[E]: Handler[Identity, Either[E, _], @@[E], Any] = polymorphize[E].handler(_.handlers.first)
+    def default[E]: Handler[Identity, Either[E, _], @@[E], Any] = polymorphize[E].handler(_.handlers.firstSeq)
 
 
 object PolyErrorEffect:

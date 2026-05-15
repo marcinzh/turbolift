@@ -6,7 +6,7 @@ import turbolift.io.{Fiber, Zipper, Warp, OnceVar}
 import turbolift.runtime.Runtime
 import turbolift.internals.executor.Executor
 import turbolift.internals.engine.Misc._
-import turbolift.internals.engine.stacked.{Stack, Store}
+import turbolift.internals.engine.stacked.{Stack, Store, OpCascaded}
 
 
 private[turbolift] sealed abstract class FiberImplPart1 (
@@ -16,8 +16,9 @@ private[turbolift] sealed abstract class FiberImplPart1 (
   private[engine] var theWaiterStateAny: Any = null
   private[engine] var thePendingRacerCount: Int = 0
   private[engine] var theTotalRacerCount: Int = 0
+  private[engine] var theEarlyFlag: Boolean = false
   private[engine] val pad1: Int = 0
-  private[engine] val pad2: Short = 0
+  private[engine] val pad2: Byte = 0
 
 
 private[turbolift] sealed abstract class FiberImplPart2 (
@@ -36,7 +37,7 @@ private[turbolift] final class FiberImpl private (
   _parent: ChildLink,
   private[engine] val theKind: Byte,
   private[engine] var theName: String,
-  private[engine] val theJoinStack: Stack | Null,
+  private[engine] val theJoinStack: Stack,
   private[engine] var theCallback: (Any => Unit) | Null,
   private[engine] val theRuntime: Runtime,
 ) extends FiberImplPart2(_parent) with Engine:
@@ -277,7 +278,7 @@ private[turbolift] final class FiberImpl private (
     val arbiter = getArbiter
     theKind match
       case Bits.Kind_RaceAll =>
-        if theCurrentCause != null then
+        if theCurrentCause != null || checkEarly() then
           arbiter.tryWinRace(this)
         arbiter.tryFinishRace()
 
@@ -324,25 +325,33 @@ private[turbolift] final class FiberImpl private (
     loop(getFirstChild.asInstanceOf[FiberImpl])
 
 
-  private[engine] final def createTwoChildren(kind: Byte): FiberImpl =
-    val leftChild = this.createImplicit(kind)
-    val rightChild = this.createImplicit(kind)
+  private[engine] final def createTwoChildren(kind: Byte, joinStack: Stack): FiberImpl =
+    val leftChild = this.createImplicit(kind, joinStack)
+    val rightChild = this.createImplicit(kind, joinStack)
     leftChild.linkSiblingWith(rightChild)
     rightChild.linkSiblingWith(leftChild)
     leftChild
 
 
-  private[engine] final def createManyChildren(count: Int, kind: Byte): FiberImpl =
-    val firstChild = this.createImplicit(kind)
+  private[engine] final def createManyChildren(count: Int, kind: Byte, joinStack: Stack): FiberImpl =
+    val firstChild = this.createImplicit(kind, joinStack)
     def loop(i: Int, prevChild: FiberImpl): Unit =
       if i < count then
-        val nextChild = this.createImplicit(kind)
+        val nextChild = this.createImplicit(kind, joinStack)
         prevChild.linkSiblingWith(nextChild)
         loop(i + 1, nextChild)
       else
         prevChild.linkSiblingWith(firstChild)
     loop(1, firstChild)
     firstChild
+
+
+  private[engine] final def checkEarly(): Boolean =
+    if theJoinStack.accumFeatures.hasEarly && OpCascaded.early(theJoinStack, theCurrentPayload) then
+      this.theEarlyFlag = true
+      true
+    else
+      false
 
 
   //-------------------------------------------------------------------
@@ -625,12 +634,12 @@ private[turbolift] final class FiberImpl private (
   private[engine] def getSecondRacer: FiberImpl = getFirstRacer.getNextRacer
   private[engine] def getNextRacer: FiberImpl = getNextSibling.asInstanceOf[FiberImpl]
 
-  def createImplicit(kind: Byte): FiberImpl =
+  def createImplicit(kind: Byte, joinStack: Stack): FiberImpl =
     val that = new FiberImpl(
       _parent = this,
       theKind = kind,
       theName = "",
-      theJoinStack = null,
+      theJoinStack = joinStack,
       theCallback = null,
       theRuntime = theRuntime,
     )

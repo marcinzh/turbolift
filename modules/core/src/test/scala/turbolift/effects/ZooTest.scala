@@ -14,7 +14,7 @@ class ZooTest extends Specification:
     case object E extends ErrorEffect[Unit]
 
     val hS = S.handler(false).eval
-    val hE = E.handlers.first
+    val hE = E.handlers.firstSeq
 
     val prog = E.catchAll(S.put(true) &&! E.raise(()))(_ => ()) &&! S.get
 
@@ -28,7 +28,7 @@ class ZooTest extends Specification:
     case object E extends ErrorEffect[Unit]
 
     val hC = C.handlers.all
-    val hE = E.handlers.first
+    val hE = E.handlers.firstSeq
 
     val prog1 = E.catchAll(!!.pure(true) ++! E.raise(()))(_ => false)
     val prog2 = E.catchAll(E.raise(()) ++! !!.pure(true))(_ => false)

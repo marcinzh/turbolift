@@ -17,6 +17,7 @@ private[turbolift] object Features extends Features_opaque:
     inline def hasZip: Boolean         = (thiz & ZIP) != 0
     inline def hasForkJoin: Boolean    = (thiz & FORKJOIN) != 0
     inline def hasRestart: Boolean     = (thiz & RESTART) != 0
+    inline def hasEarly: Boolean       = (thiz & EARLY) != 0
     inline def isIo: Boolean           = (thiz & IO) != 0
 
     inline def isParallel: Boolean = !isSequential
@@ -28,9 +29,10 @@ private[turbolift] object Features extends Features_opaque:
   private inline val ZIP            = 0x8
   private inline val FORKJOIN       = 0x10
   private inline val RESTART        = 0x20
+  private inline val EARLY          = 0x40
   //--------------------------------------
-  private inline val MASK           = 0x3F
-  private inline val IO             = 0x40
+  private inline val MASK           = 0x7F
+  private inline val IO             = 0x80
   //@#@TODO hints
 
   def Empty: Features = 0
@@ -40,5 +42,6 @@ private[turbolift] object Features extends Features_opaque:
   private[interpreter] def Zip: Features         = ZIP
   private[interpreter] def ForkJoin: Features    = FORKJOIN
   private[interpreter] def Restart: Features     = RESTART
-  private[interpreter] def Io: Features          = IO
+  private[interpreter] def Early: Features       = EARLY
+  private[interpreter] def Io: Features          = IO.toByte
   private[interpreter] def Mask: Features        = MASK

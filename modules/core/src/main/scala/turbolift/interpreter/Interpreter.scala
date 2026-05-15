@@ -69,6 +69,7 @@ sealed trait Interpreter extends Signature:
   def onReturn(aa: From[Unknown], s: Local): To[Unknown] !! ThisEffect
   def onRestart(aa: To[Unknown]): Unknown !! (Elim & ThisEffect)
   def onOnce(aa: To[Unknown]): Option[Unknown]
+  def onEarly(aa: To[Unknown]): Either[Boolean, Unknown]
   def onAbort(s: Local): Unit !! ThisEffect = !!.unit
   def onZip[A, B, C](aa: To[A], bb: To[B], k: (A, B) => C): To[C]
   def onFork(s: Local): (Local, Local)
@@ -94,6 +95,7 @@ sealed trait Interpreter extends Signature:
       Features.cond(Features.Restart, !isInstanceOf[Mixins.HasNotRestart]),
       Features.cond(Features.ForkJoin, !isInstanceOf[Mixins.HasNotForkJoin]),
       Features.cond(Features.Zip, !isInstanceOf[Mixins.HasNotZip]),
+      Features.cond(Features.Early, !isInstanceOf[Mixins.HasNotEarly]),
     ).reduce(_ | _)
     Seq(
       primary,
@@ -121,6 +123,7 @@ sealed trait Interpreter extends Signature:
   final inline def isStateless: Boolean = features.isStateless
   final inline def isParallel: Boolean = features.isParallel
   final inline def hasRestart: Boolean = features.hasRestart
+  final inline def hasEarly: Boolean = features.hasEarly
   final inline def hasZip: Boolean = features.hasZip
   final inline def hasForkJoin: Boolean = features.hasForkJoin
 
