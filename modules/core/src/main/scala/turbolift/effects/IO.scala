@@ -102,6 +102,9 @@ case object IO extends IO:
   def catchSomeEff[A, U <: IO](body: A !! U)(f: PartialFunction[Throwable, A !! U]): A !! U =
     catchAllEff(body)(f.applyOrElse(_, raise))
 
+  // def exceptionToError[A, U <: IO, Fx <: ErrorEffect[Throwable]](fx: Fx)(body: A !! U): A !! (U & fx.type) =
+  //   catchAllEff(body)(E.raise)
+
 
   @deprecated("Use raiseFromOption") def fromOption[A](ee: Option[A])(e: => Throwable): A !! IO = raiseFromOption(ee)(e)
   @deprecated("Use raiseFromEither") def fromEither[A](ee: Either[Throwable, A]): A !! IO = raiseFromEither(ee)

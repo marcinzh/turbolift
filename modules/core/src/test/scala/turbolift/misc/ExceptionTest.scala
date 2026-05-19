@@ -57,3 +57,56 @@ class ExceptionTest extends Specification:
       }
     }
   }
+
+  "conversion between Error & Exception" >> {
+    case object X extends Exception { override val toString = productPrefix }
+    case object E extends ErrorEffect[Throwable]
+    case object F extends ErrorEffect[String]
+
+    "exception -> error" >>{
+      IO.raise(X).raiseOnException(E).as(42)
+      .handleWith(E.handler)
+      .runSync === Outcome.Success(Left(X))
+    }
+
+    "error -> exception" >>{
+      E.raise(X).throwOnError(E).as(42)
+      .handleWith(E.handler)
+      .runSync === Outcome.Failure(X)
+    }
+
+    "error -> cancellation" >>{
+      F.raise("OMG").cancelOnError(F).as(42)
+      .handleWith(F.handler)
+      .runSync === Outcome.Cancelled
+    }
+
+    "handler: error -> exception" >>{
+      E.raise(X).as(42)
+      .handleWith(E.handler.getOrElseThrow)
+      .runSync === Outcome.Failure(X)
+    }
+
+    "handler: error -> cancellation" >>{
+      F.raise("OMG").as(42)
+      .handleWith(F.handler.getOrElseCancel)
+      .runSync === Outcome.Cancelled
+    }
+
+    "race with Errors" >>{
+      val a = IO.sleep(10) &&! F.raise("OMG").as(42)
+      val b = IO.sleep(20) &&! !!.pure(1337)
+
+      "without cancelOnError" >>{
+        (a |! b)
+        .handleWith(F.handler)
+        .runSync === Outcome.Success(Left("OMG"))
+      }
+
+      "with cancelOnError" >>{
+        (a.cancelOnError(F) |! b)
+        .handleWith(F.handler)
+        .runSync === Outcome.Success(Right(1337))
+      }
+    }
+  }

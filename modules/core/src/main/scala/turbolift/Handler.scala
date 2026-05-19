@@ -1,5 +1,6 @@
 package turbolift
 import scala.util.{Try, Success, Failure}
+import turbolift.effects.IO
 import turbolift.Extensions.{Identity, Const}
 import turbolift.internals.auxx.{CanPartiallyHandle, CanPipe}
 import turbolift.interpreter.Interpreter
@@ -233,6 +234,10 @@ object Handler:
     def getOrElse(default: => Nothing): Handler[F, Identity, L, N] =
       thiz.mapK([A] => (result: Option[A]) => result.getOrElse(default))
 
+    /** Like [[getOrElse]], but the `default` is effectful. */
+    def getOrElseEff[U](default: => Nothing !! U): Handler[F, Identity, L, N & U] =
+      thiz.mapEffK([A] => (result: Option[A]) => result.fold(default)(!!.pure))
+
     /** Transforms this handler, by deconstructing its `Option` result. */
     def getOrDie(message: => String): Handler[F, Identity, L, N] =
       getOrElse(sys.error(message))
@@ -265,6 +270,10 @@ object Handler:
     def getOrElse(default: E => Nothing): Handler[F, Identity, L, N] =
       thiz.mapK([A] => (result: Either[E, A]) => result.fold(default, x => x))
 
+    /** Like [[getOrElse]], but the `default` is effectful. */
+    def getOrElseEff[U](default: E => Nothing !! U): Handler[F, Identity, L, N & U] =
+      thiz.mapEffK([A] => (result: Either[E, A]) => result.fold(default, !!.pure(_)))
+
     /** Transforms this handler, by deconstructing its `Either` result. */
     def getOrDie(message: E => String): Handler[F, Identity, L, N] =
       getOrElse(e => sys.error(message(e)))
@@ -287,6 +296,10 @@ object Handler:
         case _ => !!.unit
       )
 
+    /** Transforms this handler, by deconstructing its `Either` result. */
+    def getOrElseCancel: Handler[F, Identity, L, N & IO] =
+      getOrElseEff(_ => IO.cancel)
+
     /** Composes 2 **independent** handlers, also flattening their nested `Either` results.
      *
      * {{{
@@ -297,6 +310,11 @@ object Handler:
     def |||![E2, L2, N2](that: Handler[Identity, Either[E2, _], L2, N2]): Handler[F, Either[E | E2, _], L & L2, N & N2] =
       thiz.composeWith(that).mapK([A] => (eithers: Either[E2, Either[E, A]]) => eithers.flatten: Either[E2 | E, A])
 
+
+  extension [F[+_], L, N](thiz: Handler[F, Either[Throwable, _], L, N])
+    /** Transforms this handler, by deconstructing its `Either[Throwable, _]` result. */
+    def getOrElseThrow: Handler[F, Identity, L, N & IO] =
+      thiz.getOrElseEff(IO.raise)
 
 
 private[turbolift] object HandlerCases:

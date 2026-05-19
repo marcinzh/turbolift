@@ -1,7 +1,7 @@
 package turbolift
 import scala.annotation.nowarn
 import scala.concurrent.duration.FiniteDuration
-import turbolift.effects.{ChoiceSignature, Alternative, IO, Each, Finalizer, FinalizerIO, Error}
+import turbolift.effects.{ChoiceSignature, Alternative, IO, Each, Finalizer, FinalizerIO, Error, ErrorEffect}
 import turbolift.internals.auxx.CanPartiallyHandle
 import turbolift.internals.executor.Executor
 import turbolift.internals.engine.{Tag, Env, FiberImpl, Halt}
@@ -176,6 +176,22 @@ sealed abstract class Computation[+A, -U] private[turbolift] (private[turbolift]
   final def onAbort[U2 <: U](f: (Any, Prompt) => Unit !! U2): A !! U2 = IO.onAbort(this)(f)
 
   final def onCancel[U2 <: U](comp: Unit !! U2): A !! U2 = IO.onCancel(this)(comp)
+
+
+  //---------- Error operations in postfix syntax ----------
+
+
+  /** Converts thrown exception to raised error. */
+  final def raiseOnException[Fx <: ErrorEffect[Throwable]](fx: Fx): A !! (U & IO & fx.type) =
+    fx.raiseOnException(this)
+
+  /** Converts raised error to thrown exception. */
+  final def throwOnError[Fx <: ErrorEffect[Throwable]](fx: Fx): A !! (U & IO & fx.type) =
+    fx.throwOnError(this)
+
+  /** Converts raised error to cancellation. */
+  final def cancelOnError[Fx <: ErrorEffect[?]](fx: Fx): A !! (U & IO & fx.type) =
+    fx.cancelOnError(this)
 
 
   //---------- IO operations in postfix syntax ----------

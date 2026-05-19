@@ -66,6 +66,18 @@ trait ErrorEffectExt[E, E1] extends Effect[ErrorSignature[E, E1]] with ErrorSign
   final def raiseFromEither[A](x: Either[E1, A]): A !! this.type = x.fold(raise, !!.pure)
   final def raiseFromTry[A](x: Try[A])(using ev: Throwable <:< E1): A !! this.type = x.fold(e => raise(ev(e)), !!.pure)
 
+  /** Converts thrown exception to raised error. */
+  final def raiseOnException[A, U <: IO & this.type](using ev: Throwable <:< E1)(body: A !! U) =
+    IO.catchAllEff(body)(e => raise(ev(e)))
+
+  /** Converts raised error to thrown exception. */
+  final def throwOnError[A, U <: IO & this.type](using ev: E <:< Throwable)(body: A !! U) =
+    catchAllEff(body)(e => IO.raise(ev(e)))
+
+  /** Converts raised error to cancellation. */
+  final def cancelOnError[A, U <: IO & this.type](body: A !! U) =
+    catchAllEff(body)(_ => IO.cancel)
+
   @deprecated("Use raiseFromOption") final def fromOption[A](x: Option[A])(e: => E1): A !! this.type = raiseFromOption(x)(e)
   @deprecated("Use raiseFromEither") final def fromEither[A](x: Either[E1, A]): A !! this.type = raiseFromEither(x)
   @deprecated("Use raiseFromTry") final def fromTry[A](x: Try[A])(using ev: Throwable <:< E1): A !! this.type = raiseFromTry(x)
