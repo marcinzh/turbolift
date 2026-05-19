@@ -54,7 +54,7 @@ trait RandomEffect extends Effect[RandomSignature] with RandomSignature:
 
   /** Predefined handlers for this effect. */
   object handlers:
-    private def randomSeed: Long !! IO = IO.sync(ScalaRandom.nextLong)
+    private def randomSeed: Long !! IO = IO.sync(ScalaRandom.nextLong())
 
     def local: Handler[Identity, Identity, enclosing.type, IO] = randomSeed.flatMapHandler(local(_))
     def shared: Handler[Identity, Identity, enclosing.type, IO] = randomSeed.flatMapHandler(shared(_))
@@ -113,14 +113,14 @@ trait RandomEffect extends Effect[RandomSignature] with RandomSignature:
     def shared(seed: Long): Handler[Identity, Identity, enclosing.type, IO] =
       IO(new ScalaRandom(seed)).flatMapHandler: rng =>
         new impl.Proxy[IO] with RandomSignature:
-          override def nextBoolean: Boolean !! ThisEffect = IO(rng.nextBoolean)
-          override def nextInt: Int !! ThisEffect = IO(rng.nextInt)
+          override def nextBoolean: Boolean !! ThisEffect = IO(rng.nextBoolean())
+          override def nextInt: Int !! ThisEffect = IO(rng.nextInt())
           override def nextInt(n: Int): Int !! ThisEffect = IO(rng.nextInt(n))
-          override def nextLong: Long !! ThisEffect = IO(rng.nextLong)
+          override def nextLong: Long !! ThisEffect = IO(rng.nextLong())
           override def nextLong(n: Long): Long !! ThisEffect = IO(rng.nextLong(n))
-          override def nextFloat: Float !! ThisEffect = IO(rng.nextFloat)
-          override def nextDouble: Double !! ThisEffect = IO(rng.nextDouble)
-          override def nextGaussian: Double !! ThisEffect = IO(rng.nextGaussian)
+          override def nextFloat: Float !! ThisEffect = IO(rng.nextFloat())
+          override def nextDouble: Double !! ThisEffect = IO(rng.nextDouble())
+          override def nextGaussian: Double !! ThisEffect = IO(rng.nextGaussian())
           override def between(minInclusive: Int, maxExclusive: Int): Int !! ThisEffect = IO(rng.between(minInclusive, maxExclusive))
           override def between(minInclusive: Long, maxExclusive: Long): Long !! ThisEffect = IO(rng.between(minInclusive, maxExclusive))
           override def between(minInclusive: Float, maxExclusive: Float): Float !! ThisEffect = IO(rng.between(minInclusive, maxExclusive))

@@ -28,6 +28,6 @@ object Main:
       println(s"${Console.BOLD}$i. ${o.name}:${Console.RESET}")
       for l <- Utils.paragraph(o.description, 80) do
         println(l)
-      println
+      println()
       // println(s" ${i.toString.padTo(w1, ' ')} | ${o.name.padTo(w2, ' ')} | ${lines(0)}")
-    println
+    println()

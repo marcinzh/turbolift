@@ -25,7 +25,7 @@ case object ReentrantRun extends Example:
     (s: String) => !!.impure {
       print(s)
       if counter.updateAndGet(i => (i + 1) % CPUS) == 0 then
-        println
+        println()
     }
 
   val sleep = !!.impure(Thread.sleep(DELAY))
