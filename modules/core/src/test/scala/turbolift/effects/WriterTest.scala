@@ -32,6 +32,12 @@ class WriterTest extends Specification:
           .runIO === ((), 1)
         }
 
+        "local" >>{
+          W.local(W.tell(1))
+          .handleWith(h)
+          .runIO === (((), 1), 0)
+        }
+
         "listen" >>{
           W.listen(W.tell(1))
           .handleWith(h)
@@ -67,6 +73,18 @@ class WriterTest extends Specification:
           (W.tell("a") &&! W.tell("b"))
           .handleWith(picker.handler(W).justState)
           .runIO === "ab"
+        }
+
+        "tell & local" >>{
+          case object W extends WriterEffect[String]
+          (for
+            _ <- W.tell("a")
+            workaround <- W.local(W.tell("b") &&! W.tell("c"))
+            ((), x) = workaround
+            _ <- W.tell("d")
+          yield x)
+          .handleWith(picker.handler(W))
+          .runIO === ("bc", "ad")
         }
 
         "tell & listen" >>{
