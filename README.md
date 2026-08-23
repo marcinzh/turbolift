@@ -9,7 +9,6 @@ See also:
 | Project | Description |
 |---|---|
 | [DaaE](https://github.com/marcinzh/daae) | Demo: a debugger implemented as an effect |
-| [Spot](https://github.com/marcinzh/spot) | Cats-Effect instances for Turbolift's `IO` effect |
 | [Enterprise](https://github.com/marcinzh/enterprise) | HTTP server implemented using Turbolift's effects |
 | [Beam](https://github.com/marcinzh/beam) | Streams implemented with Turbolift's effects |
 | [Effect Zoo](https://github.com/marcinzh/effect-zoo) | Microbenchmark suite for several effect systems, including Turbolift |
@@ -23,8 +22,8 @@ Runnable with [`scala-cli`](https://scala-cli.virtuslab.org/).
 
 
 ```scala
-//> using scala "3.3.7"
-//> using dep "io.github.marcinzh::turbolift-core:0.126.0"
+//> using scala "3.3.8"
+//> using dep "io.github.marcinzh::turbolift-core:0.128.0"
 import turbolift.!!
 import turbolift.effects.{ReaderEffect, StateEffect, ErrorEffect}
 
@@ -61,9 +60,9 @@ Same, but with [bindless](modules/bindless) syntax extension.
 Similar to `async/await`, or Rust's `?` operator.
 
 ```scala
-//> using scala "3.3.7"
-//> using dep "io.github.marcinzh::turbolift-core:0.126.0"
-//> using dep "io.github.marcinzh::turbolift-bindless:0.126.0"
+//> using scala "3.3.8"
+//> using dep "io.github.marcinzh::turbolift-core:0.128.0"
+//> using dep "io.github.marcinzh::turbolift-bindless:0.128.0"
 import turbolift.!!
 import turbolift.effects.{ReaderEffect, StateEffect, ErrorEffect}
 import turbolift.bindless._
@@ -105,11 +104,19 @@ sbt examples/run
 ## Usage in SBT
 
 ```scala
-libraryDependencies += "io.github.marcinzh" %% "turbolift-core" % "0.126.0"
+libraryDependencies += "io.github.marcinzh" %% "turbolift-core" % "0.128.0"
 ```
 
-Optionally, for the [bindless](modules/bindless) syntax extension:
+Optional, for the [bindless](modules/bindless) syntax extension:
 
 ```scala
-libraryDependencies += "io.github.marcinzh" %% "turbolift-bindless" % "0.126.0"
+libraryDependencies += "io.github.marcinzh" %% "turbolift-bindless" % "0.128.0"
+```
+
+Optional, for:
+- Cats instances for Turbolift's `Computation` monad
+- Cats-Effect instances for Turbolift's `IO` effect
+
+```scala
+libraryDependencies += "io.github.marcinzh" %% "turbolift-spot" % "0.128.0"
 ```
