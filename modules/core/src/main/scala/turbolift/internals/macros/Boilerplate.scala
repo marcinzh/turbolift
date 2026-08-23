@@ -5,7 +5,6 @@ import scala.quoted.*
 import turbolift.{Signature => Sig, Effect}
 
 
-//@#@TODO doesn't properly handle methods with type parameters
 @experimental object Boilerplate:
   private inline def debug(x: Any) = ()
   // private def debug(x: Any) = println(s"[Bolierplate] $x")
@@ -99,15 +98,29 @@ import turbolift.{Signature => Sig, Effect}
               debug(s"   A = ${paramAType.show}")
               debug(s"   U = ${paramUType.show}")
 
+              val substFn: TypeRepr => TypeRepr = newMethodType match
+                case poly: PolyType =>
+                  val typeParamSyms = paramss.head.collect { case tt: TypeTree => tt.symbol }
+                  def subst(tpe: TypeRepr): TypeRepr = tpe match
+                    case ParamRef(binder, i) if binder == poly => typeParamSyms(i).typeRef
+                    case AppliedType(tycon, args) => AppliedType(subst(tycon), args.map(subst))
+                    case _ => tpe
+                  subst
+                case _ => identity
+
+              val substAType = substFn(paramAType)
+              val substUType = substFn(paramUType)
+              val substResultType = substFn(resultType)
+
               val lambda = createLambda(
                 methodSymbol = concreteMethodSym,
                 methodType = newMethodType,
                 methodParamss = paramss,
-                lambdaParamType = makeLambdaParamType(paramUType),
-                resultType = resultType,
+                lambdaParamType = makeLambdaParamType(substUType),
+                resultType = substResultType,
               )
               val performUnapplied = Select.unique(This(effectSymbol), "performNoInline")
-              val performApplied1 = TypeApply(performUnapplied, List(Inferred(paramAType), Inferred(paramUType)))
+              val performApplied1 = TypeApply(performUnapplied, List(Inferred(substAType), Inferred(substUType)))
               val performApplied2 = Apply(performApplied1, List(lambda))
               Some(performApplied2)
           )
@@ -167,7 +180,9 @@ import turbolift.{Signature => Sig, Effect}
             val appliedTerm2 = Apply(appliedTerm, params.asInstanceOf[List[Term]])
             applyMethodParamss(appliedTerm2, typ.resType, moreParamss)
           case typ: PolyType =>
-            val appliedTerm2 = TypeApply(appliedTerm, params.asInstanceOf[List[TypeTree]])
+            val typeDefs = params.asInstanceOf[List[TypeDef]]
+            val typeArgs = typeDefs.map(td => TypeIdent(td.symbol))
+            val appliedTerm2 = TypeApply(appliedTerm, typeArgs)
             applyMethodParamss(appliedTerm2, typ.resType, moreParamss)
 
 

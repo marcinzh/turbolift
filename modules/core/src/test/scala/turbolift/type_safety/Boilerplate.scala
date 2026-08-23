@@ -11,7 +11,7 @@ object MacroSafeSpace:
     trait ExampleSig extends Signature:
       def foo: Int !! ThisEffect
       def bar(x: Int): String !! ThisEffect
-      // def qux[T](x: T, n: Int): List[T] !! ThisEffect
+      def qux[T](x: T, n: Int): List[T] !! ThisEffect
 
     val ExampleEffect = Effect.boilerplate[ExampleSig]
 
@@ -23,7 +23,7 @@ object MacroSafeSpace:
       new ExampleEffect.impl.Proxy[Any] with ExampleSig:
         override def foo: Int !! ThisEffect = 42.pure_!!
         override def bar(x: Int): String !! ThisEffect = x.toString.mkString(".").pure_!!
-        // override def qux[T](x: T, n: Int): List[T] !! ThisEffect = List.fill(n)(x).pure_!!
+        override def qux[T](x: T, n: Int): List[T] !! ThisEffect = List.fill(n)(x).pure_!!
       .toHandler
 
 
@@ -35,6 +35,7 @@ class BoilerplateTest extends Specification:
 
     ExampleEffect.foo
     .**!(ExampleEffect.bar(123))
+    .**!(ExampleEffect.qux(true, 3))
     .handleWith(theHandler)
-    .run.===((42, "1.2.3"))
+    .run === ((42, "1.2.3"), List(true, true, true))
   }
