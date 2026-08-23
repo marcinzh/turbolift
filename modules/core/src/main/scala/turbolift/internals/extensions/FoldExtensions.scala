@@ -1,9 +1,13 @@
 package turbolift.internals.extensions
 import turbolift.!!
+import turbolift.typeclass.{Plus, PlusZero}
 
 /** No need to use this trait directly, because it's inherited by [[turbolift.Extensions Extensions]] object. */
 /*private[turbolift]*/ trait FoldExtensions:
   extension [A, S[X] <: IterableOnce[X]](thiz: S[A])
+    /** Like `fold` from the standard library, but using `PlusZero` instance. */
+    def foldPlus(using ev: PlusZero[A]): A = thiz.iterator.foldLeft(ev.zero)(ev.plus)
+
     /** Like `foldLeft` from the standard library, but using effectful function. */
     def foldLeftEff[U, B](z: B)(op: (B, A) => B !! U): B !! U =
       thiz.iterator.foldLeft(!!.pure(z).upCast[U])((mb, a) => mb.flatMap(op(_, a)))
@@ -27,6 +31,12 @@ import turbolift.!!
 
 
   extension [A, S[X] <: Iterable[X]](thiz: S[A])
+    /** Like `reduce` from the standard library, but using `Plus` instance. */
+    def reducePlus(using ev: Plus[A]): A = thiz.reduce(ev.plus)
+
+    /** Like `reduce` from the standard library, but using `Plus` instance. */
+    def reduceOptionPlus(using ev: Plus[A]): Option[A] = thiz.reduceOption(ev.plus)
+
     /** Like `reduceRight` from the standard library, but using effectful function. */
     def reduceRightEff[U](op: (A, A) => A !! U): A !! U =
       thiz.init.foldRightEff(thiz.last)(op)
