@@ -1,5 +1,5 @@
-val ScalaLTS = "3.3.7"
-val ScalaNext = "3.8.3"
+val ScalaLTS = "3.3.8"
+val ScalaNext = "3.8.4"
 
 ThisBuild / organization := "io.github.marcinzh"
 ThisBuild / version := "0.127.0-SNAPSHOT"
@@ -27,7 +27,7 @@ ThisBuild / publish / skip := (scalaVersion.value != ScalaLTS)
 
 val Deps = {
   val specs2_v = "5.4.0"
-  val cps_v = "1.3.3"
+  val cps_v = "1.3.4"
   object deps {
     val specs2_core = "org.specs2" %% "specs2-core" % specs2_v % "test"
     val specs2_extra = "org.specs2" %% "specs2-matcher-extra" % specs2_v % "test"
