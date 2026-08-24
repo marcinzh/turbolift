@@ -334,6 +334,16 @@ private[engine] final class Stack private (
     assert(arr.forall(_ == 1))
 
 
+  def collectPrompts: Vector[Prompt] = collectPromptsLoop.toVector.distinct
+
+  private def collectPromptsLoop: Iterator[Prompt] =
+    val it = piles.iterator.map(_.prompt)
+    if hasTail then
+      tail.collectPromptsLoop ++ it
+    else
+      it
+
+
 private[engine] object Stack:
   val initial: Stack =
     val stack = newSegment(

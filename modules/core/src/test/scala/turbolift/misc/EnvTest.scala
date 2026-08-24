@@ -1,7 +1,7 @@
 package turbolift.misc
 import org.specs2.mutable._
 import turbolift.!!
-import turbolift.runtime.ST
+import turbolift.effects.{ReaderEffect, StateEffect, IO}
 
 
 class EnvTest extends Specification:
@@ -25,6 +25,29 @@ class EnvTest extends Specification:
 
       a * 2 === b
       a === c
+    }
+
+    "getStatus" >> {
+      case object S extends StateEffect[Int]
+      case object R extends ReaderEffect[Boolean]
+      val prog1 = !!.isParallelizable
+      val prog2 = S.put(42) &&! !!.isParallelizable
+      "isParallelizable" >> {
+        "no effects" >>{
+          prog1.run === true
+        }
+        "State with local handler" >>{
+          prog2.handleWith(S.handlers.local(0)).run === (false, 42)
+        }
+        "State with shared handler" >>{
+          prog2.handleWith(S.handlers.shared(0)).runIO === (true, 42)
+        }
+      }
+      "effects" >>{
+        val prog = !!.getEffects
+        val hand = S.handler(0).dropState &&&! R.handler(true)
+        prog.handleWith(hand).run === Vector(IO, R, S)
+      }
     }
   }
 

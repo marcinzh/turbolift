@@ -962,6 +962,16 @@ private trait Engine extends Runnable:
     Halt.Continue
 
 
+  final def intrinsicGetStatus: Halt =
+    val prompts = theCurrentStack.collectPrompts
+    val status = Computation.Status(
+      isParallelizable = theCurrentStack.accumFeatures.isParallel,
+      effects = prompts.flatMap(_.signatures),
+    )
+    this.willContinuePure(status)
+    Halt.Continue
+
+
   final def intrinsicGetRuntime[A, U]: Halt =
     this.willContinuePure(theRuntime)
     Halt.Continue

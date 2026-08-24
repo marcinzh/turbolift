@@ -378,6 +378,12 @@ object Computation:
   def sequentially[A, U](body: A !! U): A !! U = parallellyIf(false)(body)
 
 
+  final case class Status(isParallelizable: Boolean, effects: Vector[Signature])
+
+  def getStatus: Status !! Any = CC.intrinsic(_.intrinsicGetStatus)
+  def getEffects: Vector[Signature] !! Any = getStatus.map(_.effects)
+  def isParallelizable: Boolean !! Any = getStatus.map(_.isParallelizable)
+
   //---------- Extensions ----------
 
 
