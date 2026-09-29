@@ -22,8 +22,8 @@ Runnable with [`scala-cli`](https://scala-cli.virtuslab.org/).
 
 
 ```scala
-//> using scala "3.3.8"
-//> using dep "io.github.marcinzh::turbolift-core:0.128.0"
+//> using scala "3.9.0"
+//> using dep "io.github.marcinzh::turbolift-core:0.130.0"
 import turbolift.!!
 import turbolift.effects.{ReaderEffect, StateEffect, ErrorEffect}
 
@@ -60,9 +60,9 @@ Same, but with [bindless](modules/bindless) syntax extension.
 Similar to `async/await`, or Rust's `?` operator.
 
 ```scala
-//> using scala "3.3.8"
-//> using dep "io.github.marcinzh::turbolift-core:0.128.0"
-//> using dep "io.github.marcinzh::turbolift-bindless:0.128.0"
+//> using scala "3.9.0"
+//> using dep "io.github.marcinzh::turbolift-core:0.130.0"
+//> using dep "io.github.marcinzh::turbolift-bindless:0.130.0"
 import turbolift.!!
 import turbolift.effects.{ReaderEffect, StateEffect, ErrorEffect}
 import turbolift.bindless._
@@ -104,13 +104,13 @@ sbt examples/run
 ## Usage in SBT
 
 ```scala
-libraryDependencies += "io.github.marcinzh" %% "turbolift-core" % "0.128.0"
+libraryDependencies += "io.github.marcinzh" %% "turbolift-core" % "0.130.0"
 ```
 
 Optional, for the [bindless](modules/bindless) syntax extension:
 
 ```scala
-libraryDependencies += "io.github.marcinzh" %% "turbolift-bindless" % "0.128.0"
+libraryDependencies += "io.github.marcinzh" %% "turbolift-bindless" % "0.130.0"
 ```
 
 Optional, for:
@@ -118,5 +118,5 @@ Optional, for:
 - Cats-Effect instances for Turbolift's `IO` effect
 
 ```scala
-libraryDependencies += "io.github.marcinzh" %% "turbolift-spot" % "0.128.0"
+libraryDependencies += "io.github.marcinzh" %% "turbolift-spot" % "0.130.0"
 ```
