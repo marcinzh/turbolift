@@ -1,10 +1,10 @@
-val ScalaLTS = "3.3.8"
-val ScalaNext = "3.8.4"
+val ScalaLTS = "3.9.0"
+val ScalaNext = "unused until next Scala version"
 
 ThisBuild / organization := "io.github.marcinzh"
 ThisBuild / version := "0.129.0-SNAPSHOT"
 ThisBuild / scalaVersion := ScalaLTS
-ThisBuild / crossScalaVersions := Seq(ScalaLTS, ScalaNext)
+ThisBuild / crossScalaVersions := Seq(ScalaLTS/*, ScalaNext*/) // until next Scala version
 ThisBuild / scalacOptions ++= Seq(
   "-deprecation",
   "-feature",
@@ -27,7 +27,7 @@ ThisBuild / publish / skip := (scalaVersion.value != ScalaLTS)
 
 val Deps = {
   val specs2_v = "5.4.0"
-  val cps_v = "1.3.4"
+  val cps_v = "1.4.0"
   object deps {
     val specs2_core = "org.specs2" %% "specs2-core" % specs2_v % "test"
     val specs2_extra = "org.specs2" %% "specs2-matcher-extra" % specs2_v % "test"
