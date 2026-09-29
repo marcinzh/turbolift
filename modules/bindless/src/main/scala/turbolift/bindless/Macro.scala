@@ -48,7 +48,7 @@ private object Macro:
     @tailrec def loop(l: List[TypeRepr], acc: List[TypeRepr]): List[TypeRepr] =
       l match
         case Nil => acc.distinct
-        case AndType(a, b) :: Nil => loop(a :: b :: Nil, acc)
+        case AndType(a, b) :: tail => loop(a :: b :: tail, acc)
         case head :: tail => loop(tail, head :: acc)
     loop(l, Nil)
 
@@ -64,7 +64,8 @@ private object Macro:
     import quotes.reflect.*
     new TreeTraverser:
       override def traverseTree(tree: Tree)(owner: Symbol): Unit =
-        pf.lift(tree).getOrElse(super.traverseTree(tree)(owner))
+        pf.lift(tree)
+        super.traverseTree(tree)(owner)
     .traverseTree(tree)(Symbol.spliceOwner)
 
 
@@ -72,7 +73,8 @@ private object Macro:
     import quotes.reflect.*
     new TreeMap:
       override def transformTerm(tree: Term)(owner: Symbol): Term =
-        pf.lift(tree).getOrElse(super.transformTerm(tree)(owner))
+        val rebuilt = super.transformTerm(tree)(owner)
+        pf.lift(rebuilt).getOrElse(rebuilt)
     .transformTree(tree)(Symbol.spliceOwner)
 
 

@@ -6,7 +6,7 @@ import turbolift.bindless._
 
 
 object MacroSafeSpace:
-  def stuff =
+  def basic =
     case object S extends StateEffect[Int]
     case object W extends WriterEffect[String]
     case object R extends ReaderEffect[Boolean]
@@ -23,7 +23,21 @@ object MacroSafeSpace:
     .run
 
 
+  def nested =
+    case object R extends ReaderEffect[Int]
+    case object S extends StateEffect[Int]
+    `do`:
+      S.put(R.ask.!).!
+    .handleWith(R.handler(1337))
+    .handleWith(S.handler(42))
+    .run
+
+
 class BindlessTest extends Specification:
-  "test" >>{
-    MacroSafeSpace.stuff.===((43, 420), "omg it works")
+  "basic" >>{
+    MacroSafeSpace.basic.===((43, 420), "omg it works")
+  }
+
+  "nested" >>{
+    MacroSafeSpace.nested.===((), 1337)
   }
